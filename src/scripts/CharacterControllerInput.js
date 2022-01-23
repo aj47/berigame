@@ -1,10 +1,10 @@
 class CharacterControllerInput {
 
-  constructor() {
-    this.init();
+  constructor(canvasRef) {
+    this.init(canvasRef);
   }
 
-  init() {
+  init(canvasRef) {
     this.keys = {
       forward: false,
       backward: false,
@@ -16,12 +16,14 @@ class CharacterControllerInput {
       cmd: false
     }
     this.holdClickTimer = null
-    document.addEventListener('keydown', (e) => this.onKeyDown(e), false);
-    document.addEventListener('keyup', (e) => this.onKeyUp(e), false);
-    document.addEventListener('pointerdown', (e) => this.onMouseDown(e), false);
-    document.addEventListener('pointerup', (e) => this.onMouseUp(e), false);
-    document.addEventListener("touchstart", (e) => this.onMouseDown(e), false);
-    document.addEventListener("touchend", (e) => this.onMouseUp(e), false);
+    console.log(canvasRef, "canvasRef");
+    const currentCanvasRef = canvasRef.current;
+    currentCanvasRef.addEventListener('keydown', (e) => this.onKeyDown(e), false);
+    currentCanvasRef.addEventListener('keyup', (e) => this.onKeyUp(e), false);
+    currentCanvasRef.addEventListener('pointerdown', (e) => this.onMouseDown(e), false);
+    currentCanvasRef.addEventListener('pointerup', (e) => this.onMouseUp(e), false);
+    currentCanvasRef.addEventListener("touchstart", (e) => this.onMouseDown(e), false);
+    currentCanvasRef.addEventListener("touchend", (e) => this.onMouseUp(e), false);
   }
 
   onKeyDown(event) {

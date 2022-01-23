@@ -18,7 +18,7 @@ class CharacterController {
 
     this.animations = {};
 
-    this.input = new CharacterControllerInput();
+    this.input = new CharacterControllerInput(params.canvasRef);
 
     // To debounce clicking movment
     this.justClicked = false;

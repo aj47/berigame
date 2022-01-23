@@ -1,0 +1,22 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+#chatBox .chatLog {
+  width: 300px;
+  height: 400px;
+}
+
+#chatBox .openChatButton { 
+  z-index: 2;
+  position: absolute;
+  width: 100px;
+  height: 100px;
+}
