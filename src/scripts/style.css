@@ -17,6 +17,9 @@ canvas {
 #chatBox .openChatButton { 
   z-index: 2;
   position: absolute;
-  width: 100px;
-  height: 100px;
+  top: 5px;
+  left: 5px;
+  height: 50px;
+  width: 50px;
+  background-color: rgba(255, 233, 205, 0.514);
 }

@@ -24,7 +24,6 @@ class Metaverse {
     this.renderedUsers = {};
     this.renderedUsersPositions = {};
     this.userId = "test" + Math.floor(Math.random() * 100);
-    // webSocketConnect();
     // const response = await serverPOST(
     //   "login",
     //   { email: "1", password: "1" },
@@ -33,6 +32,7 @@ class Metaverse {
     // this.apiToken = response.token;
     // auth.setToken(this.apiToken);
     // connectToChatRoom(null);
+    webSocketConnect();
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({

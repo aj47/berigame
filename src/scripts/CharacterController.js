@@ -120,6 +120,9 @@ class CharacterController {
           const { x, y, z } = intersect.point;
           sphere.position.set(x, y, z);
           this.params.scene.add(sphere);
+          setTimeout(() => {
+            this.params.scene.remove(sphere)  
+          }, 1000);
           clickPointOnLand = intersect.point;
           break;
       }
