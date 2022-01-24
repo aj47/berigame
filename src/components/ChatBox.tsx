@@ -17,6 +17,7 @@ const ChatBox = () => {
       >
         {chatLogArray.map((data, i) => {
           const log = JSON.parse(data)
+          if (!log.chatMessage) return;
           return (
             <ul key={i} >
               <li>{log.message}</li>

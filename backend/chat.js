@@ -269,6 +269,7 @@ exports.handler = async function (event, context) {
                 Data: JSON.stringify(
                   {
                     message: bodyAsJSON.message,
+                    chatMessage: true,
                     timestamp: Date.now()
                   }
                 )
