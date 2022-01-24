@@ -13,7 +13,7 @@ export const webSocketConnection = new WebSocket(wsUrl);
 // Might be used in future for messaging user directly 
 // for notification or something
 const _webSocketOpen = (e: Event) => {
-  connectToChatRoom(null);
+  connectToChatRoom("");
 }
 
 const defaultHeaders = {

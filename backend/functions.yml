@@ -36,8 +36,8 @@ connectionHandler:
         route: $disconnect
     - websocket:
         route: saveConnection
-    - websocket:
-        route: sendMessage
+    # - websocket:
+    #     route: sendMessage
     - websocket:
         route: sendMessagePublic
     - websocket:
@@ -46,24 +46,24 @@ connectionHandler:
         route: connectToChatRoom
 
 #-- Chat http functions
-createChatRoom:
-  handler: chat.createChatRoom
-  events:
-    - http:
-        path: createChatRoom
-        method: post
-        cors: true
-getChatRooms:
-  handler: chat.getChatRooms
-  events:
-    - http:
-        path: getChatRooms
-        method: get
-        cors: true
-openChatRoom:
-  handler: chat.openChatRoom
-  events:
-    - http:
-        path: openChatRoom
-        method: post
-        cors: true
+# createChatRoom:
+#   handler: chat.createChatRoom
+#   events:
+#     - http:
+#         path: createChatRoom
+#         method: post
+#         cors: true
+# getChatRooms:
+#   handler: chat.getChatRooms
+#   events:
+#     - http:
+#         path: getChatRooms
+#         method: get
+#         cors: true
+# openChatRoom:
+#   handler: chat.openChatRoom
+#   events:
+#     - http:
+#         path: openChatRoom
+#         method: post
+#         cors: true

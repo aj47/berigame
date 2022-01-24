@@ -273,18 +273,6 @@ exports.handler = async function (event, context) {
             // console.log("couldn't send websocket message to "+ connectionId, e);
           }
         }
-        //Store message in DB
-        const params = {
-          TableName: process.env.DB,
-          Item: {
-            PK: bodyAsJSON.chatRoomId,
-            SK: "MESSAGE#" + timestamp + uuid.v1(),
-            message: bodyAsJSON.message,
-            sender: userPK,
-            created: timestamp,
-          },
-        };
-        await dynamodb.put(params).promise();
       } catch (e) {
         console.error(e);
       }
