@@ -1,14 +1,26 @@
 import { ReactComponentElement, ReactElement, useState } from "react";
 import MetaverseCanvas from "./components/MetaverseCanvas";
+import { webSocketSendMessage } from "./scripts/helpers/Api";
 
 function App() {
   const [chatOpen, setChatOpen] = useState(false);
 
   const ChatInputBar = () => {
+    const [inputText, setInputText] = useState("");
     return (
       <div className="chatInputBar">
-        <textarea />
-        <button>Send</button>
+        <textarea
+          value={inputText}
+          onChange={e => setInputText(e.target.value)}
+        />
+        <button
+          onClick={(e) => {
+            webSocketSendMessage(JSON.stringify(inputText));
+            setInputText("");
+          }}
+        >
+          Send
+        </button>
       </div>
     );
   };

@@ -1,9 +1,9 @@
 org: arash
-app: chatchatbox-api
+app: virtualify-api
 # For full config options, check the docs:
 #    docs.serverless.com
 
-service: chatchatbox-api
+service: virtualify-api
 frameworkVersion: '2'
 
 provider:
