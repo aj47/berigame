@@ -8,14 +8,15 @@ const ChatBox = () => {
     const [chatLogArray, setChatLogArray] = useState([])
     const websocketConnection = webSocketConnection;
     websocketConnection.onmessage = e => {
-      setChatLogArray([...chatLogArray, { message: e.data }]);
+      setChatLogArray([...chatLogArray, e.data]);
     }
     return (
       <div
         style={{ maxHeight: chatOpen ? 400 : 0, padding: chatOpen ? 5 : 0 }}
         className="chatLog"
       >
-        {chatLogArray.map((log, i) => {
+        {chatLogArray.map((data, i) => {
+          const log = JSON.parse(data)
           return (
             <ul key={i} >
               <li>{log.message}</li>
@@ -36,7 +37,7 @@ const ChatBox = () => {
         />
         <button
           onClick={(e) => {
-            webSocketSendMessage(JSON.stringify(inputText));
+            webSocketSendMessage(inputText);
             setInputText("");
           }}
         >
@@ -48,7 +49,7 @@ const ChatBox = () => {
 
   return (
     <div id="chatBox">
-      <ChatLog />
+      {chatOpen && <ChatLog />}
       {chatOpen && <ChatInputBar />}
       <button
         className="openChatButton"

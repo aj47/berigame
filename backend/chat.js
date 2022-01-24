@@ -266,11 +266,16 @@ exports.handler = async function (event, context) {
             await apig
               .postToConnection({
                 ConnectionId: connectionId,
-                Data: bodyAsJSON.message,
+                Data: JSON.stringify(
+                  {
+                    message: bodyAsJSON.message,
+                    timestamp: Date.now()
+                  }
+                )
               })
               .promise();
           } catch (e) {
-            // console.log("couldn't send websocket message to "+ connectionId, e);
+            console.log("couldn't send websocket message to "+ connectionId, e);
           }
         }
       } catch (e) {
