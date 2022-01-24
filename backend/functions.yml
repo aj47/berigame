@@ -1,0 +1,69 @@
+hello:
+  handler: handler.hello
+  events:
+    - http:
+        path: hello
+        method: get
+signup:
+  handler: userAuth.signup
+  events:
+    - http:
+        path: signup
+        method: post
+        cors: true
+login:
+  handler: userAuth.login
+  events:
+    - http:
+        path: login
+        method: post
+        cors: true
+auth:
+  handler: userAuth.auth
+  events:
+    - http:
+        path: auth
+        method: post
+        cors: true
+
+#-- Chat Websocket handler
+connectionHandler:
+  handler: chat.handler
+  events:
+    - websocket:
+        route: $connect
+    - websocket:
+        route: $disconnect
+    - websocket:
+        route: saveConnection
+    - websocket:
+        route: sendMessage
+    - websocket:
+        route: sendMessagePublic
+    - websocket:
+        route: sendPosition
+    - websocket:
+        route: connectToChatRoom
+
+#-- Chat http functions
+createChatRoom:
+  handler: chat.createChatRoom
+  events:
+    - http:
+        path: createChatRoom
+        method: post
+        cors: true
+getChatRooms:
+  handler: chat.getChatRooms
+  events:
+    - http:
+        path: getChatRooms
+        method: get
+        cors: true
+openChatRoom:
+  handler: chat.openChatRoom
+  events:
+    - http:
+        path: openChatRoom
+        method: post
+        cors: true

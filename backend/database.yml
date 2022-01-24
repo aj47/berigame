@@ -1,0 +1,63 @@
+Resources:
+  chatchatboxTable:
+    Type: 'AWS::DynamoDB::Table'
+    DeletionPolicy: Delete
+    #Data model: 
+    # {pk: "USER#<user_ID>", sk: "CREATED#<dateTime_created>"} - Created user
+    # {pk: "USER#<user_ID>", sk: "POST#<Post_ID>#<dateTime_created>"} - Post object
+    # {pk: "USER#<user_ID>", sk: "CONNECTION#<Connection_ID>#<dateTime_created>"} - Websocket connection object
+    # {pk: "USER#<user_ID>", sk: "CHATROOM#<chatroom_ID>"} - chatroom 
+    # -------------------------------------------------------
+    # {pk: "CHATROOM#<chatroom_ID>", sk: "USER#<user_handle>#<dateTime_created>"} - User Chatroom ownership
+    # {pk: "CHATROOM#<chatroom_ID>", sk: "MESSAGE#<message_ID>#<dateTime_created>"} - Chatroom Message Object
+    # https://stackoverflow.com/questions/67933217/dynamo-db-erd-for-chat-application
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "PK"
+          AttributeType: "S"
+        - AttributeName: "SK"
+          AttributeType: "S"
+        - AttributeName: "email"
+          AttributeType: "S"
+        - AttributeName: "handle"
+          AttributeType: "S"
+        - AttributeName: "chatroom"
+          AttributeType: "S"
+        - AttributeName: "created"
+          AttributeType: "N"
+      KeySchema:
+        - AttributeName: "PK"
+          KeyType: "HASH" 
+        - AttributeName: "SK"
+          KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits:  1
+        WriteCapacityUnits: 1
+      GlobalSecondaryIndexes:
+        - IndexName: HandleIndex
+          KeySchema:
+            - AttributeName: handle
+              KeyType: "HASH"
+            - AttributeName: SK
+              KeyType: "RANGE"
+          Projection:
+              ProjectionType: ALL
+          ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: "HASH"
+            - AttributeName: SK
+              KeyType: "RANGE"
+          Projection:
+              ProjectionType: ALL
+          ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+      TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+      TableName: ${self:provider.environment.DB}
+      

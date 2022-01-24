@@ -1,0 +1,46 @@
+org: arash
+app: chatchatbox-api
+# For full config options, check the docs:
+#    docs.serverless.com
+
+service: chatchatbox-api
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  profile: sub2me
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  stage: ${opt:stage, 'dev'}
+  region: ap-southeast-2
+  environment:
+    JWT_SECRET: "${self:custom.secrets.jwtSecret}"
+    DB: ${self:service}-${opt:stage, self:provider.stage}
+    APIG_ENDPOINT:
+      Fn::Join:
+        - ''
+        - - Ref: WebsocketsApi
+          - .execute-api.
+          - Ref: AWS::Region
+          - .amazonaws.com/
+          - ${opt:stage, 'dev'}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource: "*"
+
+functions:
+  - ${file(./functions.yml)}
+
+resources:
+  - ${file(./database.yml)}
+
+custom:
+  secrets: ${file(secrets.json)}
+        
+plugins:
+  - serverless-offline
