@@ -45,8 +45,7 @@ class CharacterController {
   loadPlayer() {
     const fbxLoader = new FBXLoader();
     // https://sketchfab.com/3d-models/low-poly-woman-752778128b9a4b578586dbce40c0366f
-    const rootPath = "../public/";
-    fbxLoader.setPath(rootPath + "source/");
+    fbxLoader.setPath("/source/");
     fbxLoader.load("woman.fbx", (fbx) => {
       fbx.scale.setScalar(0.01);
       fbx.traverse((c) => {

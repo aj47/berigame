@@ -50,7 +50,7 @@ const ChatBox = () => {
 
   return (
     <div id="chatBox">
-      {chatOpen && <ChatLog />}
+      <ChatLog />
       {chatOpen && <ChatInputBar />}
       <button
         className="openChatButton"
