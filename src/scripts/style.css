@@ -16,6 +16,7 @@ canvas {
   bottom: 5px;
   left: 5px;
   width: calc(100vw - 10px);
+  max-width: 1000px;
   pointer-events: none;
 }
 
@@ -30,6 +31,9 @@ button {
   max-width: 1000px;
   height: 400px;
   background-color: rgba(255, 233, 205, 0.14);
+  word-wrap: break-word;
+  overflow: scroll;
+  overflow-x: hidden;
 }
 
 #chatBox .chatInputBar { 

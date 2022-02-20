@@ -8,7 +8,7 @@ const MetaverseCanvas = () => {
   }, [canvasRef]);
 
   return (
-    <canvas id="canvas" ref={canvasRef} onPointerUp={(e) => console.log("yo")} />
+    <canvas id="canvas" ref={canvasRef}/>
   );
 };
 

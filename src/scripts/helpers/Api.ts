@@ -6,9 +6,12 @@ if (process.env.NODE_ENV === 'development')  {
   url = "http://localhost:3000/dev/";
   wsUrl = "ws://localhost:3001";
 }
-const connectedUsers = {};
+const connectedUsers: any = {};
 
 export const webSocketConnection = new WebSocket(wsUrl);
+
+let appendChatLog: any = null;
+export const setAppendChatLog = (method: any) => {appendChatLog = method};
 
 // Might be used in future for messaging user directly 
 // for notification or something
@@ -125,6 +128,8 @@ export const connectToChatRoom = async (chatRoomId: string) => {
 const _webSocketMessageReceived = (e) => {
   if (e.data) {
     const messageObject = JSON.parse(e.data);
+    if (messageObject.chatMessage)
+      appendChatLog(messageObject);
     if (messageObject.position && messageObject.userId) {
       updateUserPosition(messageObject);
     }
@@ -139,7 +144,7 @@ const _webSocketClose = (e: Event) => {
   console.log("Websocket close:", e);
 }
 
-const updateUserPosition = (newData) => {
+const updateUserPosition = (newData: any) => {
   connectedUsers[newData.userId] = newData;
 }
 

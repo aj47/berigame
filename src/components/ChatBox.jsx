@@ -1,27 +1,27 @@
 import { ReactComponentElement, ReactElement, useState } from "react";
-import { webSocketConnect, webSocketConnection, webSocketSendMessage } from "../scripts/helpers/Api";
+import { setAppendChatLog, webSocketConnect, webSocketConnection, webSocketSendMessage } from "../scripts/helpers/Api";
 const ChatBox = () => {
   const [chatOpen, setChatOpen] = useState(false);
   webSocketConnect();
 
   const ChatLog = () => {
     const [chatLogArray, setChatLogArray] = useState([])
-    const websocketConnection = webSocketConnection;
-    websocketConnection.onmessage = e => {
-      setChatLogArray([...chatLogArray, e.data]);
+    const appendChatLogArray = (data) => {
+      console.log(data, "dat");
+      setChatLogArray([...chatLogArray, data]);
+      console.log(chatLogArray, "chatLogArray");
     }
+    setAppendChatLog(appendChatLogArray);
     return (
       <div
         style={{ maxHeight: chatOpen ? 400 : 0, padding: chatOpen ? 5 : 0 }}
         className="chatLog"
       >
         {chatLogArray.map((data, i) => {
-          const log = JSON.parse(data)
-          if (!log.chatMessage) return;
           return (
-            <ul key={i} >
-              <li>{log.message}</li>
-            </ul>
+            <div key={i} >
+              <p><strong>Player said: </strong>{data.message}</p>
+            </div>
           );
         })}
       </div>
