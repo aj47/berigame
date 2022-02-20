@@ -16,6 +16,7 @@ canvas {
   bottom: 5px;
   left: 5px;
   width: calc(100vw - 10px);
+  pointer-events: none;
 }
 
 button {
@@ -28,13 +29,14 @@ button {
   transition: max-height 0.15s ease-out;
   max-width: 1000px;
   height: 400px;
-  background-color: rgba(255, 233, 205, 0.514);
+  background-color: rgba(255, 233, 205, 0.14);
 }
 
 #chatBox .chatInputBar { 
   display: flex;
 }
 #chatBox .chatInputBar textarea{ 
+  pointer-events: all;
   width: 100%;
   max-width: calc(1000px - 43px);
   border: 0px;
@@ -44,10 +46,12 @@ button {
 }
 
 #chatBox .chatInputBar button {
+  pointer-events: all;
   background-color: rgba(255, 233, 205, 0.877);
 }
 
 #chatBox .openChatButton { 
+  pointer-events: all;
   height: 50px;
   width: 50px;
   background-color: rgba(255, 233, 205, 0.514);
