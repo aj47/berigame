@@ -113,7 +113,7 @@ class CharacterController {
       switch (intersect.object.name) {
         case "land_mesh":
           const sphere = new THREE.Mesh(
-            new THREE.SphereGeometry(2, 32, 16),
+            new THREE.SphereGeometry(0.5, 32, 16),
             new THREE.MeshBasicMaterial({ color: 0xffff00 })
           );
           const { x, y, z } = intersect.point;

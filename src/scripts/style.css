@@ -20,10 +20,11 @@ canvas {
 
 button {
   border: none;
-  border-radius: 0 0 2px 0;
+  border-radius: 0 0 3px 0;
 }
 
 #chatBox .chatLog {
+  border-radius: 3px 3px 0 0;
   transition: max-height 0.15s ease-out;
   max-width: 1000px;
   height: 400px;
@@ -35,6 +36,7 @@ button {
 }
 #chatBox .chatInputBar textarea{ 
   width: 100%;
+  max-width: calc(1000px - 43px);
   border: 0px;
   padding: 5px;
   margin-top: auto;
@@ -49,5 +51,5 @@ button {
   height: 50px;
   width: 50px;
   background-color: rgba(255, 233, 205, 0.514);
-  border-radius: 0 0 5px 5px;
+  border-radius: 0 0 3px 3px;
 }
