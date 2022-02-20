@@ -1,7 +1,7 @@
 import { ReactComponentElement, ReactElement, useState } from "react";
 import { webSocketConnect, webSocketConnection, webSocketSendMessage } from "../scripts/helpers/Api";
 const ChatBox = () => {
-  const [chatOpen, setChatOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
   webSocketConnect();
 
   const ChatLog = () => {

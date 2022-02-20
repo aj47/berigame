@@ -54,10 +54,10 @@ class Metaverse {
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera(
-      74,
+      100,
       window.innerWidth / window.innerHeight,
       0.1,
-      10000
+      100000
     );
     this.camera.position.set(0, 10, 50);
     this.orbitControls = new OrbitControls(

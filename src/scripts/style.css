@@ -13,8 +13,9 @@ canvas {
 #chatBox {
   z-index: 2;
   position: absolute;
-  top: 5px;
+  bottom: 5px;
   left: 5px;
+  width: calc(100vw - 10px);
 }
 
 button {
@@ -24,7 +25,7 @@ button {
 
 #chatBox .chatLog {
   transition: max-height 0.15s ease-out;
-  width: 300px;
+  max-width: 1000px;
   height: 400px;
   background-color: rgba(255, 233, 205, 0.514);
 }
@@ -33,7 +34,7 @@ button {
   display: flex;
 }
 #chatBox .chatInputBar textarea{ 
-  width: calc(100% - 12px);
+  width: 100%;
   border: 0px;
   padding: 5px;
   margin-top: auto;
@@ -48,4 +49,5 @@ button {
   height: 50px;
   width: 50px;
   background-color: rgba(255, 233, 205, 0.514);
+  border-radius: 0 0 5px 5px;
 }
