@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import * as THREE from "THREE";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { CharacterController } from "./CharacterController.js";
@@ -154,37 +155,13 @@ class Metaverse {
     }
   }
 
-  instantiateUser(position, userId) {
-    const fbxLoader = new FBXLoader();
-    // https://sketchfab.com/3d-models/low-poly-woman-752778128b9a4b578586dbce40c0366f
-    fbxLoader.setPath("/source/");
-    fbxLoader.load("woman.fbx", (fbx) => {
-      fbx.scale.setScalar(0.01);
-      fbx.traverse((c) => {
-        c.castShadow = true;
-        c.receiveShadow = true;
-      });
-      this.scene.add(fbx);
-      fbx.position.set(position.x, position.y, position.z);
-      fbx.rotateY(9.95);
-      this.renderedUsers[userId] = fbx;
-
-      // Animations
-      // this.mixer = new THREE.AnimationMixer(this.target);
-      // const loadAnimation = (animationName, index) => {
-      //   const clip = fbx.animations[in fassdex];
-      //   const action = this.mixer.clipAction(clip);
-
-      //   this.animations[animationName] = {
-      //     clip,
-      //     action
-      //   }
-      // }
-      // loadAnimation("idle", 3);
-      // loadAnimation("walk", 4);
-      // loadAnimation("run", 4);
-      // this.animations["idle"].action.play();
-    });
+  async instantiateUser(position, userId) {
+    const gltfLoader = new GLTFLoader;
+    const gltf = await gltfLoader.loadAsync("/source/bald.glb")
+    const target = gltf.scene.children[0];
+    this.renderedUsers[userId] = target;
+    target.position.set(position.x, position.y, position.z);
+    this.scene.add(gltf.scene);
   }
 
   // Window resizing
