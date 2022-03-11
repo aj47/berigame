@@ -4,13 +4,8 @@ import * as THREE from "THREE";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { CharacterController } from "./CharacterController.js";
 import {
-  connectToChatRoom,
   getUserPositions,
-  serverGET,
-  serverPOST,
-  webSocketConnect,
-  webSocketSendMessage,
-  webSocketSendPosition,
+  deleteUserPosition,
 } from "./helpers/Api";
 import { auth } from "./helpers/Auth";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
@@ -136,8 +131,14 @@ class Metaverse {
     const allUserPositions = getUserPositions();
     const userKeys = Object.keys(allUserPositions);
     for (const userId of userKeys) {
-      if (userId === this.userId) continue;
+      if (userId === this.userId) continue; //Dont render yourself as other user
       if (this.renderedUsers[userId]) {
+        if (allUserPositions[userId].selfDestroyTime < new Date().getTime()) {
+          this.scene.remove(this.renderedUsers[userId].gltfScene);
+          delete this.renderedUsers[userId];
+          deleteUserPosition(userId);
+          continue;
+        }
         //If user is already heading to same position dont move it
         if (
           JSON.stringify(this.renderedUsersPositions[userId]) ===
@@ -156,9 +157,10 @@ class Metaverse {
   }
 
   async instantiateUser(position, userId) {
-    const gltfLoader = new GLTFLoader;
-    const gltf = await gltfLoader.loadAsync("/source/bald.glb")
+    const gltfLoader = new GLTFLoader();
+    const gltf = await gltfLoader.loadAsync("/source/bald.glb");
     const target = gltf.scene.children[0];
+    target.gltfScene = gltf.scene;
     this.renderedUsers[userId] = target;
     target.position.set(position.x, position.y, position.z);
     this.scene.add(gltf.scene);

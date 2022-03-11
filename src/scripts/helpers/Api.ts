@@ -145,7 +145,12 @@ const _webSocketClose = (e: Event) => {
 }
 
 const updateUserPosition = (newData: any) => {
+  newData.selfDestroyTime = (new Date().getTime()) + 1000;
   connectedUsers[newData.userId] = newData;
+}
+
+export const deleteUserPosition = (userId: string) => {
+  delete connectedUsers[userId];
 }
 
 export const getUserPositions = () => {
