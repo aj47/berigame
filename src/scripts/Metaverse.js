@@ -151,7 +151,7 @@ class Metaverse {
         this.renderedUsers[userId].rotation.set(_x, _y, _z);
         this.renderedUsersPositions[userId] = allUserPositions[userId];
       } else {
-        this.instantiateUser(allUserPositions[userId], userId);
+        this.instantiateUser(allUserPositions[userId].position, userId);
       }
     }
   }
