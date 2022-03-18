@@ -9,6 +9,7 @@ import {
 } from "./helpers/Api";
 import { auth } from "./helpers/Auth";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
+import { tickMS } from "./helpers/Constants";
 import "./style.css";
 class Metaverse {
   constructor(props) {
@@ -72,7 +73,7 @@ class Metaverse {
     this.previousRAF = null;
     this.loadPlayer(canvasRef);
     this.animate();
-    setInterval(this.renderOtherUsers.bind(this), 1000);
+    setInterval(this.renderOtherUsers.bind(this), tickMS);
   }
 
   loadPlayer(canvasRef) {

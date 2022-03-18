@@ -3,6 +3,8 @@ import * as THREE from "THREE";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { CharacterControllerInput } from "./CharacterControllerInput";
 import { webSocketSendPosition } from "./helpers/Api";
+import { tickMS } from "./helpers/Constants";
+
 
 class CharacterController {
   constructor(params) {
@@ -28,7 +30,7 @@ class CharacterController {
     this.loadPlayer();
 
     //Start broadcasting position
-    setInterval(this.broadcastPosition.bind(this), 2000);
+    setTimeout(() => {setInterval(this.broadcastPosition.bind(this), tickMS)}, 2000); //TODO: LOAD PROPERLY AND NOT WITH SETTIMEOUT
   }
 
   broadcastPosition() {
