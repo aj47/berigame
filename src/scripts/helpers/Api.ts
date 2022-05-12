@@ -7,6 +7,7 @@ if (process.env.NODE_ENV === 'development')  {
   wsUrl = "ws://localhost:3001";
 }
 const connectedUsers: any = {};
+let allConnections: any = [];
 
 export const webSocketConnection = new WebSocket(wsUrl);
 
@@ -16,7 +17,7 @@ export const setAppendChatLog = (method: any) => {appendChatLog = method};
 // Might be used in future for messaging user directly 
 // for notification or something
 const _webSocketOpen = (e: Event) => {
-  connectToChatRoom("");
+  connectToChatRoom();
 }
 
 const defaultHeaders = {
@@ -75,12 +76,19 @@ export const webSocketSaveConnection = async () => {
   }
 }
 
-export const webSocketSendPosition = async (message: string) => {
+interface PositionMessage {
+  userId: string | number;
+  position: string | number;
+  rotation: string | number;
+}
+
+export const webSocketSendPosition = async (message: PositionMessage) => {
   try {
     const token = await auth.getToken();
     const payload = {
       token,
       message,
+      connections: allConnections,
       chatRoomId: "CHATROOM#913a9780-ff43-11eb-aa45-277d189232f4", //The one chatroom for MVP
       action: "sendPosition",
     }
@@ -108,7 +116,7 @@ export const webSocketSendMessage = async (message: string) => {
   }
 }
 
-export const connectToChatRoom = async (chatRoomId: string) => {
+export const connectToChatRoom = async (chatRoomId: string = "") => {
   try {
     const token = await auth.getToken();
     const payload = {
@@ -133,6 +141,9 @@ const _webSocketMessageReceived = (e) => {
     if (messageObject.position && messageObject.userId) {
       updateUserPosition(messageObject);
     }
+    if (messageObject.connections) {
+      updateConnections(messageObject.connections);
+    }
   }
 }
 
@@ -144,9 +155,19 @@ const _webSocketClose = (e: Event) => {
   console.log("Websocket close:", e);
 }
 
+const updateConnections = (connections: any) => {
+  const tempAllConnections = [];
+  for (const item of connections) {
+    tempAllConnections.push(item.SK.split("#")[1]);
+  }
+  allConnections = tempAllConnections;
+}
+
 const updateUserPosition = (newData: any) => {
   newData.selfDestroyTime = (new Date().getTime()) + 5000;
   connectedUsers[newData.userId] = newData;
+  if (allConnections.indexOf(newData.connectionId) === -1)
+    allConnections.push(newData.connectionId);
 }
 
 export const deleteUserPosition = (userId: string) => {

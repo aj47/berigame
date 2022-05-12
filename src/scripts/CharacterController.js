@@ -40,7 +40,7 @@ class CharacterController {
         position: this.target.position,
         rotation: this.target.rotation,
       };
-      webSocketSendPosition(JSON.stringify(positionData));
+      webSocketSendPosition(positionData);
     }
   }
 

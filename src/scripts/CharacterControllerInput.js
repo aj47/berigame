@@ -16,7 +16,6 @@ class CharacterControllerInput {
       cmd: false
     }
     this.holdClickTimer = null
-    console.log(canvasRef, "canvasRef");
     const currentCanvasRef = canvasRef.current;
     currentCanvasRef.addEventListener('keydown', (e) => this.onKeyDown(e), false);
     currentCanvasRef.addEventListener('keyup', (e) => this.onKeyUp(e), false);

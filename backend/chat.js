@@ -235,10 +235,35 @@ exports.handler = async function (event, context) {
             PK,
             SK,
             created: timestamp,
-            ttl: parseInt(Date.now() / 1000 + 3600) // 3 hours form now?
+            ttl: parseInt(Date.now() / 1000 + 3600), // 3 hours form now?
           },
         })
         .promise();
+      //Get all connectionIDs associated with chatroom to send back to user
+      const usersParams = {
+        TableName: process.env.DB,
+        KeyConditionExpression: "PK = :pk and begins_with(SK, :sk)",
+        ExpressionAttributeValues: {
+          ":pk": bodyAsJSON.chatRoomId,
+          ":sk": "CONNECTION#",
+        },
+      };
+      const getConnections = await dynamodb.query(usersParams).promise();
+      try {
+        await apig
+          .postToConnection({
+            ConnectionId: connectionId,
+            Data: JSON.stringify({
+              connections: getConnections.Items,
+            }),
+          })
+          .promise();
+      } catch (e) {
+        console.log(
+          "Could not send chatroom connections to user",
+          connectionId
+        );
+      }
       break;
 
     // const samplePayload = {
@@ -266,48 +291,40 @@ exports.handler = async function (event, context) {
             await apig
               .postToConnection({
                 ConnectionId: connectionId,
-                Data: JSON.stringify(
-                  {
-                    message: bodyAsJSON.message,
-                    chatMessage: true,
-                    timestamp: Date.now()
-                  }
-                )
+                Data: JSON.stringify({
+                  message: bodyAsJSON.message,
+                  chatMessage: true,
+                  timestamp: Date.now(),
+                }),
               })
               .promise();
           } catch (e) {
-            console.log("couldn't send websocket message to "+ connectionId, e);
+            console.log(
+              "couldn't send websocket message to " + connectionId,
+              e
+            );
           }
         }
       } catch (e) {
         console.error(e);
       }
       break;
-    
+
     case "sendPosition":
       try {
-        //Get all connectionIDs associated with chatroom
-        const usersParams = {
-          TableName: process.env.DB,
-          KeyConditionExpression: "PK = :pk and begins_with(SK, :sk)",
-          ExpressionAttributeValues: {
-            ":pk": bodyAsJSON.chatRoomId,
-            ":sk": "CONNECTION#",
-          },
-        };
-        const getConnections = await dynamodb.query(usersParams).promise();
         //Send message to socket connections
-        for (const connection of getConnections.Items) {
-          const connectionId = connection.SK.split("#")[1];
+        for (const otherConnectionId of bodyAsJSON.connections) {
+          bodyAsJSON.message.connectionId = connectionId;
+
           try {
             await apig
               .postToConnection({
-                ConnectionId: connectionId,
-                Data: bodyAsJSON.message,
+                ConnectionId: otherConnectionId,
+                Data: JSON.stringify(bodyAsJSON.message),
               })
               .promise();
           } catch (e) {
-            // console.log("couldn't send websocket message to "+ connectionId, e);
+            // console.log("couldn't send websocket message to "+ otherConnectionId, e);
           }
         }
       } catch (e) {
