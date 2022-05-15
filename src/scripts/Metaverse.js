@@ -1,14 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import * as THREE from "THREE";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { CharacterController } from "./CharacterController.js";
-import {
-  getUserPositions,
-  deleteUserPosition,
-} from "./helpers/Api";
-import { auth } from "./helpers/Auth";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
+import { getUserPositions, deleteUserPosition } from "./helpers/Api";
 import { tickMS } from "./helpers/Constants";
 import "./style.css";
 class Metaverse {
@@ -17,18 +11,10 @@ class Metaverse {
   }
 
   async init(canvasRef) {
-    //Connect to backend
     this.renderedUsers = {};
     this.renderedUsersPositions = {};
     this.userId = "guest" + Math.random() * 10;
-    // const response = await serverPOST(
-    //   "login",
-    //   { email: "1", password: "1" },
-    //   false
-    // );
-    // this.apiToken = response.token;
-    // auth.setToken(this.apiToken);
-    // connectToChatRoom(null);
+    this.loadingManager = this.initLoadingManager();
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({
@@ -75,6 +61,44 @@ class Metaverse {
     this.animate();
     setInterval(this.renderOtherUsers.bind(this), tickMS);
   }
+  
+  initLoadingManager() {
+    const manager = new THREE.LoadingManager();
+    manager.onStart = function (url, itemsLoaded, itemsTotal) {
+      console.log(
+        "Started loading file: " +
+          url +
+          ".\nLoaded " +
+          itemsLoaded +
+          " of " +
+          itemsTotal +
+          " files."
+      );
+    };
+
+    manager.onLoad = function () {
+      const loadingSpinner = document.getElementById("loading-spinner");
+      loadingSpinner.style.display = "none";
+      console.log("Loading complete!");
+    };
+
+    manager.onProgress = function (url, itemsLoaded, itemsTotal) {
+      console.log(
+        "Loading file: " +
+          url +
+          ".\nLoaded " +
+          itemsLoaded +
+          " of " +
+          itemsTotal +
+          " files."
+      );
+    };
+
+    manager.onError = function (url) {
+      console.log("There was an error loading " + url);
+    };
+    return manager;
+  }
 
   loadPlayer(canvasRef) {
     const params = {
@@ -83,6 +107,7 @@ class Metaverse {
       camera: this.camera,
       scene: this.scene,
       userId: this.userId,
+      loadingManager: this.loadingManager
     };
     if (!this.controls) {
       this.controls = {};
@@ -158,7 +183,7 @@ class Metaverse {
   }
 
   async instantiateUser(position, userId) {
-    const gltfLoader = new GLTFLoader();
+    const gltfLoader = new GLTFLoader(this.loadingManager);
     const gltf = await gltfLoader.loadAsync("/source/bald.glb");
     const target = gltf.scene.children[0];
     target.gltfScene = gltf.scene;

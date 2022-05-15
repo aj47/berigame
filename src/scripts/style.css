@@ -61,3 +61,24 @@ button {
   background-color: rgba(255, 233, 205, 0.514);
   border-radius: 0 0 3px 3px;
 }
+
+.loading-spinner {
+  z-index: 1;
+  position: absolute;
+  left: calc(50% - 1.75em);
+  margin-top: 150px;
+	pointer-events: none;
+	width: 2.5em;
+	height: 2.5em;
+	border: 0.4em solid transparent;
+	border-color: #eee;
+	border-top-color: #3E67EC;
+	border-radius: 50%;
+	animation: loadingspin 1s linear infinite;
+}
+
+@keyframes loadingspin {
+	100% {
+			transform: rotate(360deg)
+	}
+}

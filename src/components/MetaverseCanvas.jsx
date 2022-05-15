@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState} from "react";
 import Metaverse from "../scripts/Metaverse";
+
+const LoadingSpinner = () => {
+  return <div id="loading-spinner" className="loading-spinner"/>
+}
+
 const MetaverseCanvas = () => {
 	const [MetaverseObject, setMetaverseObject] = useState(null);
   const canvasRef = useRef(null);
@@ -8,7 +13,10 @@ const MetaverseCanvas = () => {
   }, [canvasRef]);
 
   return (
-    <canvas id="canvas" ref={canvasRef}/>
+    <>
+      <LoadingSpinner/>
+      <canvas id="canvas" ref={canvasRef}/>
+    </>
   );
 };
 
