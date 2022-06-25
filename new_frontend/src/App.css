@@ -1,0 +1,26 @@
+body {
+	margin: 0;
+	font-family: sans-serif;
+	background-image: url('/sky.jpg');
+}
+
+.btn {
+	padding: 15px;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.pane {
+	position: absolute;	
+	z-index: 1;
+	padding: 10px;
+	padding-top: 60px;
+	width: 200px;
+	overflow: scroll;
+	min-height: 500px;
+	max-height: 90vh;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-evenly;
+	align-items: center;
+}
