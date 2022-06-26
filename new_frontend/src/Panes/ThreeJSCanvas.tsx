@@ -1,25 +1,20 @@
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Suspense, useState } from "react";
+import { Canvas } from "@react-three/fiber";
 import CameraController from "../Components/CameraController";
-import RenderGLB from "../Components/RenderGLB";
+import GroundPlane from "../Objects/GroundPane";
+import PlayerController from "../Objects/PlayerController";
 
-interface ThreeJSCanvasProps {
-  templateURL: string;
-  children: any;
-  customColor: THREE.Color;
-}
+// react three fiber docs
+// https://docs.pmnd.rs/react-three-fiber/api/objects
 
-const ThreeJSCanvas = (props: ThreeJSCanvasProps) => {
+const ThreeJSCanvas = () => {
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Canvas resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
-        {props.templateURL && (
-          <Suspense fallback={null}>
-            <RenderGLB url={props.templateURL} customColor={props.customColor}/>
-          </Suspense>
-        )}
+        <pointLight position={[10, 9, 10]} intensity={0.3} />
+        <pointLight position={[-10, 10, -10]} intensity={0.3} />
+        <GroundPlane />
+        <PlayerController/>
         <CameraController />
-        {props.children}
       </Canvas>
     </div>
   );
