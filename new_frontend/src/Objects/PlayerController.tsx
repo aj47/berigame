@@ -4,7 +4,7 @@ import RenderGLB from "../Components/RenderGLB";
 const PlayerController = (props) => {
   return (
     <Suspense fallback={null}>
-      <RenderGLB url={"public/woman.glb"} />
+      <RenderGLB url={"man/man.glb"} />
     </Suspense>
   );
 };

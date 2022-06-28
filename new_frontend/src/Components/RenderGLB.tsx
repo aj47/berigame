@@ -7,13 +7,7 @@ const RenderGLB = ({ url, onClick = null }) => {
   const { scene, materials, animations } = useGLTF(url) as any;
   const { actions, mixer, ref, names } = useAnimations(animations, scene);
   useEffect(() => {
-    // console.log(names, "names");
-    // console.log(animations, "animations");
-    // console.log(actions, "actions");
-    console.log(
-      actions[Object.keys(actions)[0]]?.play(),
-      "Object.keys(actions)"
-    );
+    actions["Idle"]?.play();
   }, [animations, mixer]);
 
   return (
