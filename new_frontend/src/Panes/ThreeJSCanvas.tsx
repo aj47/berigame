@@ -9,7 +9,7 @@ import PlayerController from "../Objects/PlayerController";
 const ThreeJSCanvas = () => {
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
-      <Canvas resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
+      <Canvas id="three-canvas" resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
         <pointLight position={[10, 9, 10]} intensity={0.3} />
         <pointLight position={[-10, 10, -10]} intensity={0.3} />
         <GroundPlane />
