@@ -1,6 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import CameraController from "../Components/CameraController";
-import GroundPlane from "../Objects/GroundPane";
+import GroundPlane from "../Objects/GroundPlane";
 import PlayerController from "../Objects/PlayerController";
 
 // react three fiber docs
