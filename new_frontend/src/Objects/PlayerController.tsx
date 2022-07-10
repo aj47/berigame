@@ -23,7 +23,6 @@ const PlayerController = (props) => {
   const [clickedPointOnLand, setClickedPointOnLand] = useState<Vector3 | null>(
     null
   );
-  const [hasJustClicked, setHasJustClicked] = useState(false);
 
   let currentWalkTween: null | Tween<any> = null;
 
@@ -33,8 +32,6 @@ const PlayerController = (props) => {
     ?.addEventListener("pointerup", (e) => mouseUp(e), false);
 
   const mouseUp = (e) => {
-    console.log(hasJustClicked, "hasJustClicked");
-    if (hasJustClicked) return;
     // Get clicked position on land
     const clickPosition = {
       x: (e.clientX * 2) / gl.domElement.clientWidth - 1,
@@ -58,8 +55,6 @@ const PlayerController = (props) => {
         setClickedPointOnLand(intersect.point);
       }
     }
-    setHasJustClicked(true);
-    setTimeout(() => {setHasJustClicked(false);console.log("yes")}, 1000);
   };
 
   useEffect(() => {
@@ -69,6 +64,7 @@ const PlayerController = (props) => {
       obj.lookAt(clickedPointOnLand);
 
       // Smoothly transition position of character to clicked location
+      TWEEN.removeAll();
       currentWalkTween = new TWEEN.Tween(obj.position)
         .to(
           clickedPointOnLand,

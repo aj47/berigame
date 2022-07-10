@@ -10,10 +10,10 @@ const GroundPlane = (props) => {
       name="land_mesh"
       scale={[500, 500, 1]}
       rotation={[Math.PI / 2, 0, 0]}
-      position={[0, 0, 0]}
+      position={[0, -0.1, 0]}
     >
       <planeBufferGeometry />
-      <meshBasicMaterial color="grey" side={DoubleSide} />
+      <meshBasicMaterial color="#006994" side={DoubleSide} />
     </mesh>
   );
 };
