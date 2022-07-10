@@ -13,7 +13,7 @@ import {
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
-  const { scene: obj, materials, animations } = useGLTF("man.glb") as any;
+  const { scene: obj, materials, animations } = useGLTF("man2.glb") as any;
   const { actions, mixer, ref, names } = useAnimations(animations, obj);
   const { camera, gl, scene } = useThree();
   const [clickedPointOnLand, setClickedPointOnLand] = useState<Vector3 | null>(
@@ -53,7 +53,7 @@ const PlayerController = (props) => {
 
   useEffect(() => {
     if (clickedPointOnLand) {
-      actions["Walking"]?.play();
+      actions["Walk"]?.play();
       obj.lookAt(clickedPointOnLand);
 
       // Smoothly transition position of character to clicked location
@@ -67,6 +67,8 @@ const PlayerController = (props) => {
         })
         .onComplete(() => {
           setClickedPointOnLand(null);
+          actions["Walk"]?.stop();
+          actions["Idle"]?.play();
         })
         .start();
     }

@@ -1,5 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import CameraController from "../Components/CameraController";
+import BasicTree from "../Objects/BasicTree";
 import GroundPlane from "../Objects/GroundPlane";
 import PlayerController from "../Objects/PlayerController";
 
@@ -13,6 +14,8 @@ const ThreeJSCanvas = () => {
         <pointLight position={[10, 9, 10]} intensity={0.3} />
         <pointLight position={[-10, 10, -10]} intensity={0.3} />
         <GroundPlane />
+        <BasicTree position={[5,0,0]}/>
+        <BasicTree position={[-5,0,0]}/>
         <PlayerController/>
         <CameraController />
       </Canvas>
