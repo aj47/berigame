@@ -1,4 +1,5 @@
 import { Canvas } from "@react-three/fiber";
+import React from "react";
 import CameraController from "../Components/CameraController";
 import BasicTree from "../Objects/BasicTree";
 import GroundPlane from "../Objects/GroundPlane";
