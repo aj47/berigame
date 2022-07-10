@@ -13,7 +13,7 @@ import {
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
-  const { scene: obj, materials, animations } = useGLTF("man2.glb") as any;
+  const { scene: obj, materials, animations } = useGLTF("island-man.glb") as any;
   const { actions, mixer, ref, names } = useAnimations(animations, obj);
   const { camera, gl, scene } = useThree();
   const [clickedPointOnLand, setClickedPointOnLand] = useState<Vector3 | null>(
