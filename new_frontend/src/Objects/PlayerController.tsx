@@ -1,5 +1,5 @@
 import React, { Suspense, useState } from "react";
-import TWEEN from "@tweenjs/tween.js";
+import TWEEN, { Tween } from "@tweenjs/tween.js";
 import { useAnimations, useGLTF } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -13,12 +13,19 @@ import {
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
-  const { scene: obj, materials, animations } = useGLTF("island-man.glb") as any;
+  const {
+    scene: obj,
+    materials,
+    animations,
+  } = useGLTF("island-man.glb") as any;
   const { actions, mixer, ref, names } = useAnimations(animations, obj);
   const { camera, gl, scene } = useThree();
   const [clickedPointOnLand, setClickedPointOnLand] = useState<Vector3 | null>(
     null
   );
+  const [hasJustClicked, setHasJustClicked] = useState(false);
+
+  let currentWalkTween: null | Tween<any> = null;
 
   //Listener for click / touch
   document
@@ -26,6 +33,8 @@ const PlayerController = (props) => {
     ?.addEventListener("pointerup", (e) => mouseUp(e), false);
 
   const mouseUp = (e) => {
+    console.log(hasJustClicked, "hasJustClicked");
+    if (hasJustClicked) return;
     // Get clicked position on land
     const clickPosition = {
       x: (e.clientX * 2) / gl.domElement.clientWidth - 1,
@@ -49,15 +58,18 @@ const PlayerController = (props) => {
         setClickedPointOnLand(intersect.point);
       }
     }
+    setHasJustClicked(true);
+    setTimeout(() => {setHasJustClicked(false);console.log("yes")}, 1000);
   };
 
   useEffect(() => {
     if (clickedPointOnLand) {
+      console.log("yo");
       actions["Walk"]?.play();
       obj.lookAt(clickedPointOnLand);
 
       // Smoothly transition position of character to clicked location
-      new TWEEN.Tween(obj.position)
+      currentWalkTween = new TWEEN.Tween(obj.position)
         .to(
           clickedPointOnLand,
           obj.position.distanceTo(clickedPointOnLand) * 500
