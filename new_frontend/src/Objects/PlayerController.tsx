@@ -90,6 +90,10 @@ const PlayerController = (props) => {
     actions["Idle"]?.play();
   }, [animations, mixer]);
 
+  useEffect(() => {
+    props.setPlayerRef(objRef);
+  }, [objRef]);
+
   return (
     <Suspense fallback={null}>
       <primitive object={obj} ref={objRef} />;
