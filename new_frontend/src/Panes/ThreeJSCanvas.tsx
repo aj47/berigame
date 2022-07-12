@@ -1,8 +1,7 @@
-import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import React, { useState } from "react";
 import CameraController from "../Components/CameraController";
-import BasicTree from "../Objects/BasicTree";
+import RenderGLB from "../Components/RenderGLB";
 import GroundPlane from "../Objects/GroundPlane";
 import PlayerController from "../Objects/PlayerController";
 
@@ -17,8 +16,8 @@ const ThreeJSCanvas = () => {
         <pointLight position={[10, 9, 10]} intensity={0.3} />
         <pointLight position={[-10, 10, -10]} intensity={0.3} />
         <GroundPlane />
-        <BasicTree position={[5,0,0]}/>
-        <BasicTree position={[-5,0,0]}/>
+        <RenderGLB url={"/tree.glb"} position={[5,0,0]}/>
+        <RenderGLB url={"/tree.glb"} position={[-5,0,0]}/>
         <PlayerController setPlayerRef={setPlayerRef}/>
         <CameraController playerRef={playerRef}/>
       </Canvas>

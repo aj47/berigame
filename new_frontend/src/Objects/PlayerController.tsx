@@ -59,7 +59,6 @@ const PlayerController = (props) => {
 
   useEffect(() => {
     if (clickedPointOnLand) {
-      console.log("yo");
       actions["Walk"]?.play();
       obj.lookAt(clickedPointOnLand);
 

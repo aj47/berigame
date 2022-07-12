@@ -1,13 +1,12 @@
-import { useAnimations, useGLTF } from "@react-three/drei";
-import { useEffect, useRef } from "react";
-import { AnimationMixer } from "three";
+import { useGLTF } from "@react-three/drei";
+import { useMemo } from "react";
 
-const RenderGLB = ({ url, onClick = null }) => {
-  const group: any = useRef();
+const RenderGLB = ({ url, onClick = null, position }) => {
   const { scene } = useGLTF(url) as any;
+	const copiedScene = useMemo(() => scene.clone(), [scene]);
   return (
-    <group ref={group}>
-      <primitive object={scene} onClick={onClick} />;
+    <group>
+      <primitive object={copiedScene} onClick={onClick} position={position} />;
     </group>
   );
 };

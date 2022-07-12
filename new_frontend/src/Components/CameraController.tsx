@@ -17,7 +17,7 @@ const CameraController = (props) => {
   }, [camera, gl]);
   
   useFrame(() => {
-    if (!props.playerRef.current.position) return
+    if (!props.playerRef?.current?.position) return
     const {x,y,z} = props.playerRef?.current?.position;
     controls.target.set(x,y,z);
     return controls.update();
