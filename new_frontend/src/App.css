@@ -7,22 +7,88 @@ body {
 }
 
 .btn {
-	padding: 15px;
-	border-radius: 5px;
-	cursor: pointer;
+  padding: 15px;
+  border-radius: 5px;
+  cursor: pointer;
 }
 
 .pane {
-	position: absolute;	
-	z-index: 1;
-	padding: 10px;
-	padding-top: 60px;
-	width: 200px;
-	overflow: scroll;
-	min-height: 500px;
-	max-height: 90vh;
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: space-evenly;
-	align-items: center;
+  position: absolute;
+  z-index: 1;
+  padding: 10px;
+  padding-top: 60px;
+  width: 200px;
+  overflow: scroll;
+  min-height: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  align-items: center;
+}
+
+.input {
+}
+
+input {
+  padding: 10px;
+  font-size: 1rem;
+  border-radius: 5px;
+  border: 1px solid rgb(215, 234, 255);
+  background-color: white;
+}
+
+button {
+  cursor: pointer;
+  padding: 5px 50px;
+  font-size: 1rem;
+  border-radius: 5px;
+	border: none;
+  background-color: white;
+}
+
+/* begin login */
+.login {
+  position: absolute;
+  height: 150px;
+  top: calc(50vh - 250px);
+  width: 300px;
+  left: calc(50vw - 200px);
+  background-color: rgba(240, 248, 255, 0.473);
+  padding: 100px 50px;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login button:hover {
+  background-color: rgb(215, 234, 255);
+}
+.login button {
+  margin-top: 10px;
+}
+
+h2 {
+  font-size: 2rem;
+  padding-bottom: 5px;
+  color: #d85d41;
+}
+
+input {
+  margin-top: 110px;
+}
+
+.logo {
+	margin-top: -40px;
+	width: 150px;
+	position: absolute;
+}
+
+/* end login */
+
+.username-text {
+	position: absolute;
+	z-index: 5;
+	bottom: 0;
 }
