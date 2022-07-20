@@ -1,14 +1,15 @@
-import React from "react";
-import ThreeJSCanvas from "./Panes/ThreeJSCanvas";
+import React, { useEffect, useState } from "react";
 import "./App.css";
+import Login from "./Components/Login";
+import ThreeJsCanvas from "./Panes/ThreeJSCanvas";
 
 function App() {
+
   return (
     <>
-      <ThreeJSCanvas />
+      <Login/>
     </>
   );
 }
 
 export default App;
-
