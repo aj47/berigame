@@ -1,22 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { Magic } from "magic-sdk";
+import Logout from "./Logout";
 
-const Login = (props) => {
+interface LoginProps {
+  setUserData: any;
+  userData: any;
+}
+
+const Login = ({ userData, setUserData }: LoginProps) => {
   const magic = new Magic(import.meta.env.VITE_MAGIC_API_KEY, {
     network: "ropsten",
   });
-  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
 
   const submitAuth = async () => {
-    const redirectURI = `${window.location.origin}/login-callback`;
-    await magic.auth.loginWithMagicLink({ email, redirectURI });
+    const redirectURI = `${window.location.origin}/callback`;
+    const DID = await magic.auth.loginWithMagicLink({ email, redirectURI });
+    if (DID) setUserData(await magic.user.getMetadata());
   };
 
   const tryAuth = async () => {
     try {
-      await magic.auth.loginWithCredential();
+      const DID = await magic.auth.loginWithCredential();
       window.location.href = window.location.origin + "/play";
     } catch (e) {
       console.error(e);
@@ -27,24 +33,28 @@ const Login = (props) => {
   const checkAuth = async () => {
     const isLoggedIn = await magic.user.isLoggedIn();
     if (isLoggedIn) {
-      if (window.location.pathname !== "/play")
-        window.location.href = window.location.origin + "/play";
       const userMetadata = await magic.user.getMetadata();
       setUserData(userMetadata);
       setLoading(false);
     } else if (window.location.pathname !== "/") {
-      window.location.href = window.location.origin;
+      tryAuth();
     }
     setLoading(false);
   };
+  
+  const logout = async () => {
+    setLoading(true);
+    await magic.user.logout();
+    window.location.href = window.location.origin;
+  }
 
   useEffect(() => {
-    console.log(userData, "userData");
-    if (window.location.pathname === "/login-callback") tryAuth();
-    else if (userData === null) checkAuth();
+    if (userData === null) checkAuth();
+    if (window.location.pathname === "/callback") tryAuth();
   }, [userData]);
 
-  if (loading) return "loading...";
+  if (loading) return <div className="login">Authenticating...</div>;
+  if (userData) return <Logout logout={logout}/>
 
   return (
     <div className="login">
