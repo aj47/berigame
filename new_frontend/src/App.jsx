@@ -3,14 +3,14 @@ import "./App.css";
 import Login from "./Components/Login";
 import ChatBox from "./Components/ChatBox";
 import Logout from "./Components/Logout";
-import ThreeJsCanvas from "./Panes/ThreeJSCanvas";
+import ThreeJSCanvas from "./Components/3D/ThreeJSCanvas";
 
 function App() {
   const [userData, setUserData] = useState(null);
 
   return (
     <>
-      <ThreeJsCanvas />
+      <ThreeJSCanvas />
       <ChatBox/>
       {/* <Login setUserData={setUserData} userData={userData} /> */}
     </>

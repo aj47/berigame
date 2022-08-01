@@ -1,10 +1,10 @@
 import { Text } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import React, { useState } from "react";
-import CameraController from "../Components/CameraController";
-import RenderGLB from "../Components/RenderGLB";
-import GroundPlane from "../Objects/GroundPlane";
-import PlayerController from "../Objects/PlayerController";
+import CameraController from "./CameraController";
+import RenderGLB from "../3D/RenderGLB";
+import GroundPlane from "../../Objects/GroundPlane";
+import PlayerController from "./PlayerController";
 
 // react three fiber docs
 // https://docs.pmnd.rs/react-three-fiber/api/objects
