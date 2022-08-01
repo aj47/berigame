@@ -43,7 +43,7 @@ button {
   padding: 5px 50px;
   font-size: 1rem;
   border-radius: 5px;
-	border: none;
+  border: none;
   background-color: white;
 }
 
@@ -80,17 +80,28 @@ input {
 }
 
 .logo {
-	margin-top: -40px;
-	width: 150px;
-	position: absolute;
+  margin-top: -40px;
+  width: 150px;
+  position: absolute;
 }
 
 /* end login */
 
 .username-text {
-	position: absolute;
-	z-index: 5;
-	bottom: 0;
+  position: absolute;
+  z-index: 5;
+  bottom: 0;
+}
+
+.player-chat-bubble {
+  white-space: nowrap;
+  font-size: 18px;
+  font-weight: 800;
+  color: yellow;
+  stroke: 1px solid black;
+  background-color: #00000024;
+  padding: 1px 10px;
+  pointer-events: none;
 }
 
 
