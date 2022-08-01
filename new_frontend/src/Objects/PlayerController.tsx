@@ -1,6 +1,6 @@
 import React, { Suspense, useState } from "react";
 import TWEEN, { Tween } from "@tweenjs/tween.js";
-import { useAnimations, useGLTF } from "@react-three/drei";
+import { Html, Text, useAnimations, useGLTF } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import {
@@ -64,7 +64,7 @@ const PlayerController = (props) => {
 
       // Smoothly transition position of character to clicked location
       TWEEN.removeAll();
-      currentWalkTween = new TWEEN.Tween(obj.position)
+      currentWalkTween = new TWEEN.Tween(objRef.current.position)
         .to(
           clickedPointOnLand,
           obj.position.distanceTo(clickedPointOnLand) * 500
@@ -94,9 +94,18 @@ const PlayerController = (props) => {
   }, [objRef]);
 
   return (
-    <Suspense fallback={null}>
-      <primitive object={obj} ref={objRef} />;
-    </Suspense>
+    <group ref={objRef}>
+      <Html
+        center
+        position={[obj.position.x, obj.position.y + 2, obj.position.z]}
+        className="player-chat-bubble"
+      >
+        HELLO WORLD Hello
+      </Html>
+      <Suspense fallback={null}>
+        <primitive object={obj} />;
+      </Suspense>
+    </group>
   );
 };
 

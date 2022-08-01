@@ -10,7 +10,7 @@ function App() {
   return (
     <>
       <ThreeJsCanvas />
-      <Login setUserData={setUserData} userData={userData} />
+      {/* <Login setUserData={setUserData} userData={userData} /> */}
     </>
   );
 }
