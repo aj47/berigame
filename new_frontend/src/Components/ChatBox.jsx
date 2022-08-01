@@ -1,6 +1,6 @@
 import { ReactComponentElement, ReactElement, useState } from "react";
 import { setAppendChatLog, webSocketConnect, webSocketConnection, webSocketSendMessage } from "../Api";
-const ChatBox = () => {
+const ChatBox = ({setChatMessageSent}) => {
   const [chatOpen, setChatOpen] = useState(false);
   webSocketConnect();
 
@@ -39,6 +39,10 @@ const ChatBox = () => {
         <button
           onClick={(e) => {
             webSocketSendMessage(inputText);
+            setChatMessageSent(inputText);
+            setTimeout(() => {
+              setChatMessageSent(null);
+            }, 3000);
             setInputText("");
           }}
         >

@@ -95,13 +95,15 @@ const PlayerController = (props) => {
 
   return (
     <group ref={objRef}>
-      <Html
-        center
-        position={[obj.position.x, obj.position.y + 2, obj.position.z]}
-        className="player-chat-bubble"
-      >
-        HELLO WORLD Hello
-      </Html>
+      {props.chatMessage && (
+        <Html
+          center
+          position={[obj.position.x, obj.position.y + 2, obj.position.z]}
+          className="player-chat-bubble"
+        >
+          {props.chatMessage}
+        </Html>
+      )}
       <Suspense fallback={null}>
         <primitive object={obj} />;
       </Suspense>
