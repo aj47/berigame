@@ -15,30 +15,25 @@ const ChatBox = ({ setChatMessageSent }) => {
   const [inputText, setInputText] = useState("");
   webSocketConnect();
 
-  const enterPressed = () => {
-    if (!chatOpen) setChatOpen(true);
-    if (inputText !== "") sendMessage();
-    if (chatOpen) setChatOpen(false);
-  };
 
   const sendMessage = () => {
+    const messageText = inputText;
+    setInputText("");
     webSocketSendMessage(inputText);
     setChatMessageSent(inputText);
     setTimeout(() => {
       setChatMessageSent(null);
     }, 6000);
-    setInputText("");
   };
 
-  useEffect(() => {
-    const keyDownHandler = (e) => {
-      if (e.code === "Enter") {
-        e.preventDefault();
-        enterPressed();
-      }
-    };
-    document.addEventListener("keydown", keyDownHandler);
-  });
+  const keyDownHandler = (e) => {
+    if (e.code === "Enter") {
+      e.preventDefault();
+      if (!chatOpen) setChatOpen(true);
+      if (inputText !== "") sendMessage();
+      if (chatOpen) setChatOpen(false);
+    }
+  };
 
   const ChatLog = () => {
     const [chatLogArray, setChatLogArray] = useState([]);
@@ -73,9 +68,11 @@ const ChatBox = ({ setChatMessageSent }) => {
       {chatOpen && (
         <div className="chatInputBar">
           <textarea
+            placeholder="Type your message here..."
             autoFocus={true}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={keyDownHandler}
           />
           <button
             onClick={(e) => {
@@ -93,7 +90,7 @@ const ChatBox = ({ setChatMessageSent }) => {
           setChatOpen(!chatOpen);
         }}
       >
-        {!chatOpen ? "Chat" : "^"}
+        {!chatOpen ? "Chat" : "X"}
       </button>
     </div>
   );
