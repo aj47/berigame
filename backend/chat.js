@@ -130,43 +130,6 @@ module.exports.createChatRoom = async (event, context, callback) => {
     };
     await dynamodb.put(userParams).promise();
 
-    // Previously used to add users to chatroom on creation
-    // for (const handle of data.users) {
-    //   // Create rows CHATROOM#xxx - USER#xxx
-    //   // used to get users in chatroom
-    //   const checkHandleParams = {
-    //     TableName: process.env.DB,
-    //     IndexName: "HandleIndex",
-    //     KeyConditionExpression: "handle = :ha",
-    //     ExpressionAttributeValues: { ":ha": handle },
-    //   };
-    //   const handleCheck = await dynamodb.query(checkHandleParams).promise();
-    //   const userPK = handleCheck.Items[0].PK;
-    //   const roomParams = {
-    //     TableName: process.env.DB,
-    //     Item: {
-    //       PK: chatRoomId,
-    //       SK: userPK,
-    //       handle: handle,
-    //       modified: timestamp
-    //     }
-    //   }
-    //   await dynamodb.put(roomParams).promise();
-
-    //   //Create row USER#xxx - CHATROOM#xxx
-    //   // used to get user chatrooms
-    //   const userParams = {
-    //     TableName: process.env.DB,
-    //     Item: {
-    //       PK: userPK,
-    //       SK: chatRoomId,
-    //       handle: handle,
-    //       created: timestamp
-    //     }
-    //   }
-    //   await dynamodb.put(userParams).promise();
-    // }
-
     callback(null, helpers.validCallbackObject({ chatRoomId }));
   } catch (e) {
     console.error(e);
@@ -175,10 +138,6 @@ module.exports.createChatRoom = async (event, context, callback) => {
 };
 
 exports.handler = async function (event, context) {
-  // For debug purposes only.
-  // You should not log any sensitive information in production.
-  // console.log("EVENT: \n" + JSON.stringify(event, null, 2));
-
   const {
     body,
     requestContext: { connectionId, routeKey },
@@ -190,7 +149,7 @@ exports.handler = async function (event, context) {
     SK = null;
   if (body) {
     bodyAsJSON = JSON.parse(body);
-    userPK = jwt.decode(bodyAsJSON.token, process.env.JWT_SECRET).PK;
+    // userPK = jwt.decode(bodyAsJSON.token, process.env.JWT_SECRET).PK;
   }
   switch (routeKey) {
     case "$connect":
@@ -199,25 +158,6 @@ exports.handler = async function (event, context) {
 
     case "$disconnect":
       // console.log("disconnected", connectionId);
-      break;
-
-    // const samplePayload = {
-    //   "action": "saveConnection",
-    //   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJQSyI6IlVTRVIjZmNjMmNjNTAtZGNiOC0xMWViLWJjOWItZTFkNmIwNmI3ZGIzIiwiaWF0IjoxNjI1NjY0MjEwfQ.CI8C_oZpDfIETQOHktt4HkIlBEhn_2jy7dLwd0b0zPM"
-    // }
-    case "saveConnection":
-      SK = "CONNECTION#" + connectionId;
-      await dynamodb
-        .put({
-          TableName: DB,
-          Item: {
-            PK: userPK,
-            SK,
-            ttl: parseInt(Date.now() / 1000 + 3600),
-            created: timestamp,
-          },
-        })
-        .promise();
       break;
 
     // const samplePayload = {
