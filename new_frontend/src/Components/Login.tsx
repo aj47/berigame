@@ -23,10 +23,10 @@ const Login = ({ userData, setUserData }: LoginProps) => {
   const tryAuth = async () => {
     try {
       const DID = await magic.auth.loginWithCredential();
+      console.log(DID, "DID");
       window.location.href = window.location.origin + "/play";
     } catch (e) {
       console.error(e);
-      window.location.href = window.location.origin;
     }
   };
 
@@ -51,6 +51,7 @@ const Login = ({ userData, setUserData }: LoginProps) => {
   useEffect(() => {
     if (userData === null) checkAuth();
     if (window.location.pathname === "/callback") tryAuth();
+    if (userData !== null) setLoading(false);
   }, [userData]);
 
   if (loading) return <div className="login">Authenticating...</div>;
@@ -58,7 +59,8 @@ const Login = ({ userData, setUserData }: LoginProps) => {
 
   return (
     <div className="login">
-      <img src="/saturn-og.png" alt="saturn" className="logo" />
+      <img src="/logo.png" alt="logo" className="logo" />
+      <h2>cubespaced</h2>
       <input
         placeholder="email@domain.com"
         type="email"

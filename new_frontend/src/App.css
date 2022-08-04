@@ -50,39 +50,37 @@ button {
 /* begin login */
 .login {
   position: absolute;
-  height: 150px;
   top: calc(50vh - 250px);
   width: 300px;
   left: calc(50vw - 200px);
   background-color: rgba(240, 248, 255, 0.473);
-  padding: 100px 50px;
+  padding: 70px 50px;
   border-radius: 5px;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+.login input {
+  background-color: rgba(255, 255, 255, 0.638);
+  width: 100%;
+}
+
 .login button:hover {
   background-color: rgb(215, 234, 255);
 }
 .login button {
-  margin-top: 10px;
+  margin-top: 20px;
 }
 
 h2 {
   font-size: 2rem;
   padding-bottom: 5px;
-  color: #d85d41;
-}
-
-input {
-  margin-top: 110px;
+  color: #566b81;
 }
 
 .logo {
-  margin-top: -40px;
   width: 150px;
-  position: absolute;
 }
 
 /* end login */

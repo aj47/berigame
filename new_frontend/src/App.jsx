@@ -9,8 +9,8 @@ function App() {
 
   return (
     <>
-      <GameComponent />
-      {/* <Login setUserData={setUserData} userData={userData} /> */}
+      {userData && <GameComponent />}
+      <Login setUserData={setUserData} userData={userData} />
     </>
   );
 }
