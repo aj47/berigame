@@ -2,8 +2,6 @@ const uuid = require("uuid");
 const AWS = require("aws-sdk");
 const jwt = require("jsonwebtoken");
 const helpers = require("./helpers");
-const { Magic } = require("@magic-sdk/admin");
-const crypto = require("crypto");
 const { getRounds } = require("bcryptjs");
 const { validCallbackObject } = require("./helpers");
 const apig = new AWS.ApiGatewayManagementApi({
@@ -17,7 +15,6 @@ const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const DB = process.env.DB;
 
-magic = new Magic(process.env.MAGIC_API_KEY);
 
 exports.handler = async function (event, context) {
   const {
@@ -33,10 +30,7 @@ exports.handler = async function (event, context) {
   if (body) {
     bodyAsJSON = JSON.parse(body);
     // userPK = jwt.decode(bodyAsJSON.token, process.env.JWT_SECRET).PK;
-    senderId = crypto
-      .createHash("md5")
-      .update(magic.token.getIssuer(bodyAsJSON.token))
-      .digest("hex");
+    senderId = connectionId;
   }
   switch (routeKey) {
     case "$connect":
@@ -120,7 +114,7 @@ exports.handler = async function (event, context) {
                 ConnectionId: connectionId,
                 Data: JSON.stringify({
                   message: bodyAsJSON.message,
-                  sender: senderId,
+                  senderId,
                   chatMessage: true,
                   timestamp: Date.now(),
                 }),
