@@ -1,14 +1,7 @@
-import {
-  memo,
-  ReactComponentElement,
-  ReactElement,
-  useEffect,
-  useState,
-} from "react";
+import { memo, useState } from "react";
 import {
   setAppendChatLog,
   webSocketConnect,
-  webSocketConnection,
   webSocketSendMessage,
 } from "../Api";
 const ChatBox = memo(({ setChatMessageSent }) => {
@@ -22,13 +15,13 @@ const ChatBox = memo(({ setChatMessageSent }) => {
       setChatMessageSent(null);
     }, 8000);
   };
-  
+
   const keyDownHandler = (e) => {
     if (e.code === "Enter" && !chatOpen) {
       e.preventDefault();
       setChatOpen(true);
     }
-  }
+  };
   document.addEventListener("keydown", keyDownHandler, false);
 
   const InputTextArea = () => {
