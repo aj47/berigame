@@ -45,7 +45,7 @@ const ChatBox = ({ setChatMessageSent }) => {
     setAppendChatLog(appendChatLogArray);
     return (
       <div
-        style={{ maxHeight: chatOpen ? 400 : 0, padding: chatOpen ? 5 : 0 }}
+        style={{ maxHeight: chatOpen ? "70vh" : 0, padding: chatOpen ? 5 : 0 }}
         className="chatLog"
       >
         {chatLogArray.map((data, i) => {

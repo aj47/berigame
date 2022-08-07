@@ -40,7 +40,7 @@ input {
 
 button {
   cursor: pointer;
-  padding: 5px 50px;
+  /* padding: 5px 50px; */
   font-size: 1rem;
   border-radius: 5px;
   border: none;
@@ -107,7 +107,7 @@ h2 {
 #chatBox {
   z-index: 2;
   position: absolute;
-  bottom: 5px;
+  top: 5px;
   left: 5px;
   width: calc(100vw - 10px);
   max-width: 1000px;
@@ -149,7 +149,9 @@ h2 {
   pointer-events: all;
   height: 50px;
   width: 50px;
-  background-color: rgba(255, 233, 205, 0.514);
+  background-color: rgba(255, 233, 205, 0.1);
   border-radius: 0 0 3px 3px;
+  position: absolute;
+  top: 5px;
 }
 /* end chatbox */
