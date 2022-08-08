@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { auth } from "../Auth";
 import { Magic } from "magic-sdk";
 import Logout from "./Logout";
 
@@ -14,17 +15,26 @@ const Login = ({ userData, setUserData }: LoginProps) => {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
 
+  const initUserData = async () => {
+    const userMetadata = await magic.user.getMetadata();
+    const DID = await magic.user.getIdToken();
+    auth.setToken(DID);
+    setUserData({ ...userMetadata, DID });
+    setLoading(false);
+  };
+
   const submitAuth = async () => {
     const redirectURI = `${window.location.origin}/callback`;
     const DID = await magic.auth.loginWithMagicLink({ email, redirectURI });
-    if (DID) setUserData(await magic.user.getMetadata());
+    if (DID) initUserData();
   };
 
   const tryAuth = async () => {
+    const token = await auth.getToken();
+    if (!token) return;
     try {
-      const DID = await magic.auth.loginWithCredential();
-      console.log(DID, "DID");
-      window.location.href = window.location.origin + "/play";
+      const DID = await magic.auth.loginWithCredential(token);
+      if (DID) initUserData();
     } catch (e) {
       console.error(e);
     }
@@ -33,29 +43,26 @@ const Login = ({ userData, setUserData }: LoginProps) => {
   const checkAuth = async () => {
     const isLoggedIn = await magic.user.isLoggedIn();
     if (isLoggedIn) {
-      const userMetadata = await magic.user.getMetadata();
-      setUserData(userMetadata);
-      setLoading(false);
-    } else if (window.location.pathname !== "/") {
+      initUserData();
+    } else {
       tryAuth();
     }
     setLoading(false);
   };
-  
+
   const logout = async () => {
     setLoading(true);
     await magic.user.logout();
     window.location.href = window.location.origin;
-  }
+  };
 
   useEffect(() => {
     if (userData === null) checkAuth();
-    if (window.location.pathname === "/callback") tryAuth();
-    if (userData !== null) setLoading(false);
+    else setLoading(false);
   }, [userData]);
 
   if (loading) return <div className="login">Authenticating...</div>;
-  if (userData) return <Logout logout={logout}/>
+  if (userData) return <Logout logout={logout} />;
 
   return (
     <div className="login">

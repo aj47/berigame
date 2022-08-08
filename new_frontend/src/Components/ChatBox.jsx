@@ -1,46 +1,67 @@
-import {
-  ReactComponentElement,
-  ReactElement,
-  useEffect,
-  useState,
-} from "react";
+import { memo, useState } from "react";
 import {
   setAppendChatLog,
   webSocketConnect,
-  webSocketConnection,
   webSocketSendMessage,
 } from "../Api";
-const ChatBox = ({ setChatMessageSent }) => {
+const ChatBox = memo(({ setChatMessageSent }) => {
   const [chatOpen, setChatOpen] = useState(false);
-  const [inputText, setInputText] = useState("");
   webSocketConnect();
 
-
-  const sendMessage = () => {
-    const messageText = inputText;
-    setInputText("");
+  const sendMessage = (inputText) => {
     webSocketSendMessage(inputText);
     setChatMessageSent(inputText);
     setTimeout(() => {
       setChatMessageSent(null);
-    }, 6000);
+    }, 8000);
   };
 
   const keyDownHandler = (e) => {
-    if (e.code === "Enter") {
+    if (e.code === "Enter" && !chatOpen) {
       e.preventDefault();
-      if (!chatOpen) setChatOpen(true);
-      if (inputText !== "") sendMessage();
-      if (chatOpen) setChatOpen(false);
+      setChatOpen(true);
     }
+  };
+  document.addEventListener("keydown", keyDownHandler, false);
+
+  const InputTextArea = () => {
+    const [inputText, setInputText] = useState("");
+    const keyDownHandler = (e) => {
+      if (e.code === "Enter") {
+        e.preventDefault();
+        if (!chatOpen) setChatOpen(true);
+        if (inputText !== "") {
+          sendMessage(inputText);
+          setInputText("");
+        }
+      }
+    };
+    return (
+      <>
+        <textarea
+          placeholder="Type your message here..."
+          autoFocus={true}
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          onKeyDown={keyDownHandler}
+        />
+
+        <button
+          onClick={(e) => {
+            sendMessage(inputText);
+            setInputText("");
+          }}
+        >
+          Send
+        </button>
+      </>
+    );
   };
 
   const ChatLog = () => {
     const [chatLogArray, setChatLogArray] = useState([]);
     const appendChatLogArray = (data) => {
-      console.log(data, "dat");
       setChatLogArray([...chatLogArray, data]);
-      console.log(chatLogArray, "chatLogArray");
     };
     setAppendChatLog(appendChatLogArray);
     return (
@@ -52,7 +73,7 @@ const ChatBox = ({ setChatMessageSent }) => {
           return (
             <div key={i}>
               <p>
-                <strong>Player said: </strong>
+                <strong>User-{data.senderId.substring(29)} said: </strong>
                 {data.message}
               </p>
             </div>
@@ -67,20 +88,7 @@ const ChatBox = ({ setChatMessageSent }) => {
       <ChatLog />
       {chatOpen && (
         <div className="chatInputBar">
-          <textarea
-            placeholder="Type your message here..."
-            autoFocus={true}
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={keyDownHandler}
-          />
-          <button
-            onClick={(e) => {
-              sendMessage();
-            }}
-          >
-            Send
-          </button>
+          <InputTextArea />
         </div>
       )}
       <button
@@ -94,6 +102,6 @@ const ChatBox = ({ setChatMessageSent }) => {
       </button>
     </div>
   );
-};
+});
 
 export default ChatBox;

@@ -5,13 +5,13 @@ export const auth =  {
     if (this.jwtToken)
       return this.jwtToken;
     else
-      this.jwtToken = await window.localStorage.getItem('chatchatboxapi');
+      this.jwtToken = await window.localStorage.getItem('cubespacedapi');
       return this.jwtToken;
   },
   async setToken(token) {
-    window.localStorage.setItem('chatchatboxapi', token);
+    window.localStorage.setItem('cubespacedapi', token);
   },
   removeToken() {
-    window.localStorage.removeItem('chatchatboxapi');
+    window.localStorage.removeItem('cubespacedapi');
 }
 }

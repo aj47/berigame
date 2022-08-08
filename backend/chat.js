@@ -14,6 +14,153 @@ const apig = new AWS.ApiGatewayManagementApi({
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const DB = process.env.DB;
+
+
+exports.handler = async function (event, context) {
+  const {
+    body,
+    requestContext: { connectionId, routeKey },
+  } = event;
+  const timestamp = new Date().getTime();
+  let userPK = null,
+    bodyAsJSON = null,
+    PK = null,
+    SK = null,
+    senderId = null;
+  if (body) {
+    bodyAsJSON = JSON.parse(body);
+    // userPK = jwt.decode(bodyAsJSON.token, process.env.JWT_SECRET).PK;
+    senderId = connectionId;
+  }
+  switch (routeKey) {
+    case "$connect":
+      // console.log("connected", connectionId);
+      break;
+
+    case "$disconnect":
+      // console.log("disconnected", connectionId);
+      break;
+
+    // const samplePayload = {
+    //   "action": "connectToChatRoom",
+    //   "chatRoomId": "CHATROOM#123"
+    //   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJQSyI6IlVTRVIjZmNjMmNjNTAtZGNiOC0xMWViLWJjOWItZTFkNmIwNmI3ZGIzIiwiaWF0IjoxNjI1NjY0MjEwfQ.CI8C_oZpDfIETQOHktt4HkIlBEhn_2jy7dLwd0b0zPM"
+    // }
+    case "connectToChatRoom":
+      SK = "CONNECTION#" + connectionId;
+      PK = bodyAsJSON.chatRoomId; //TODO: Auth check
+      await dynamodb
+        .put({
+          TableName: DB,
+          Item: {
+            PK,
+            SK,
+            created: timestamp,
+            ttl: parseInt(Date.now() / 1000 + 3600), // 3 hours form now?
+          },
+        })
+        .promise();
+      //Get all connectionIDs associated with chatroom to send back to user
+      const usersParams = {
+        TableName: process.env.DB,
+        KeyConditionExpression: "PK = :pk and begins_with(SK, :sk)",
+        ExpressionAttributeValues: {
+          ":pk": bodyAsJSON.chatRoomId,
+          ":sk": "CONNECTION#",
+        },
+      };
+      const getConnections = await dynamodb.query(usersParams).promise();
+      try {
+        await apig
+          .postToConnection({
+            ConnectionId: connectionId,
+            Data: JSON.stringify({
+              connections: getConnections.Items,
+            }),
+          })
+          .promise();
+      } catch (e) {
+        console.log(
+          "Could not send chatroom connections to user",
+          connectionId
+        );
+      }
+      break;
+
+    // const samplePayload = {
+    //   "message": "yo whats up?",
+    //   "action": "sendMessagePublic",
+    //   "chatRoomId": "CHATROOM#1234567",
+    //   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJQSyI6IlVTRVIjZmNjMmNjNTAtZGNiOC0xMWViLWJjOWItZTFkNmIwNmI3ZGIzIiwiaWF0IjoxNjI1NjY0MjEwfQ.CI8C_oZpDfIETQOHktt4HkIlBEhn_2jy7dLwd0b0zPM"
+    // }
+    case "sendMessagePublic":
+      try {
+        //Get all connectionIDs associated with chatroom
+        const usersParams = {
+          TableName: process.env.DB,
+          KeyConditionExpression: "PK = :pk and begins_with(SK, :sk)",
+          ExpressionAttributeValues: {
+            ":pk": bodyAsJSON.chatRoomId,
+            ":sk": "CONNECTION#",
+          },
+        };
+        const getConnections = await dynamodb.query(usersParams).promise();
+        //Send message to socket connections
+        for (const connection of getConnections.Items) {
+          const connectionId = connection.SK.split("#")[1];
+          try {
+            await apig
+              .postToConnection({
+                ConnectionId: connectionId,
+                Data: JSON.stringify({
+                  message: bodyAsJSON.message,
+                  senderId,
+                  chatMessage: true,
+                  timestamp: Date.now(),
+                }),
+              })
+              .promise();
+          } catch (e) {
+            console.log(
+              "couldn't send websocket message to " + connectionId,
+              e
+            );
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      break;
+
+    case "sendPosition":
+      try {
+        //Send message to socket connections
+        for (const otherConnectionId of bodyAsJSON.connections) {
+          bodyAsJSON.message.connectionId = connectionId;
+
+          try {
+            await apig
+              .postToConnection({
+                ConnectionId: otherConnectionId,
+                Data: JSON.stringify(bodyAsJSON.message),
+              })
+              .promise();
+          } catch (e) {
+            // console.log("couldn't send websocket message to "+ otherConnectionId, e);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      break;
+  }
+
+  // Return a 200 status to tell API Gateway the message was processed
+  // successfully.
+  // Otherwise, API Gateway will return a 500 to the client.
+  return { statusCode: 200 };
+};
+
 // /openChatRoom - get messages for chatroom
 // header: token
 // body: {
@@ -130,211 +277,9 @@ module.exports.createChatRoom = async (event, context, callback) => {
     };
     await dynamodb.put(userParams).promise();
 
-    // Previously used to add users to chatroom on creation
-    // for (const handle of data.users) {
-    //   // Create rows CHATROOM#xxx - USER#xxx
-    //   // used to get users in chatroom
-    //   const checkHandleParams = {
-    //     TableName: process.env.DB,
-    //     IndexName: "HandleIndex",
-    //     KeyConditionExpression: "handle = :ha",
-    //     ExpressionAttributeValues: { ":ha": handle },
-    //   };
-    //   const handleCheck = await dynamodb.query(checkHandleParams).promise();
-    //   const userPK = handleCheck.Items[0].PK;
-    //   const roomParams = {
-    //     TableName: process.env.DB,
-    //     Item: {
-    //       PK: chatRoomId,
-    //       SK: userPK,
-    //       handle: handle,
-    //       modified: timestamp
-    //     }
-    //   }
-    //   await dynamodb.put(roomParams).promise();
-
-    //   //Create row USER#xxx - CHATROOM#xxx
-    //   // used to get user chatrooms
-    //   const userParams = {
-    //     TableName: process.env.DB,
-    //     Item: {
-    //       PK: userPK,
-    //       SK: chatRoomId,
-    //       handle: handle,
-    //       created: timestamp
-    //     }
-    //   }
-    //   await dynamodb.put(userParams).promise();
-    // }
-
     callback(null, helpers.validCallbackObject({ chatRoomId }));
   } catch (e) {
     console.error(e);
     callback(null, helpers.invalidCallbackObject("Failed to create chatroom"));
   }
-};
-
-exports.handler = async function (event, context) {
-  // For debug purposes only.
-  // You should not log any sensitive information in production.
-  // console.log("EVENT: \n" + JSON.stringify(event, null, 2));
-
-  const {
-    body,
-    requestContext: { connectionId, routeKey },
-  } = event;
-  const timestamp = new Date().getTime();
-  let userPK = null,
-    bodyAsJSON = null,
-    PK = null,
-    SK = null;
-  if (body) {
-    bodyAsJSON = JSON.parse(body);
-    userPK = jwt.decode(bodyAsJSON.token, process.env.JWT_SECRET).PK;
-  }
-  switch (routeKey) {
-    case "$connect":
-      // console.log("connected", connectionId);
-      break;
-
-    case "$disconnect":
-      // console.log("disconnected", connectionId);
-      break;
-
-    // const samplePayload = {
-    //   "action": "saveConnection",
-    //   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJQSyI6IlVTRVIjZmNjMmNjNTAtZGNiOC0xMWViLWJjOWItZTFkNmIwNmI3ZGIzIiwiaWF0IjoxNjI1NjY0MjEwfQ.CI8C_oZpDfIETQOHktt4HkIlBEhn_2jy7dLwd0b0zPM"
-    // }
-    case "saveConnection":
-      SK = "CONNECTION#" + connectionId;
-      await dynamodb
-        .put({
-          TableName: DB,
-          Item: {
-            PK: userPK,
-            SK,
-            ttl: parseInt(Date.now() / 1000 + 3600),
-            created: timestamp,
-          },
-        })
-        .promise();
-      break;
-
-    // const samplePayload = {
-    //   "action": "connectToChatRoom",
-    //   "chatRoomId": "CHATROOM#123"
-    //   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJQSyI6IlVTRVIjZmNjMmNjNTAtZGNiOC0xMWViLWJjOWItZTFkNmIwNmI3ZGIzIiwiaWF0IjoxNjI1NjY0MjEwfQ.CI8C_oZpDfIETQOHktt4HkIlBEhn_2jy7dLwd0b0zPM"
-    // }
-    case "connectToChatRoom":
-      SK = "CONNECTION#" + connectionId;
-      PK = bodyAsJSON.chatRoomId; //TODO: Auth check
-      await dynamodb
-        .put({
-          TableName: DB,
-          Item: {
-            PK,
-            SK,
-            created: timestamp,
-            ttl: parseInt(Date.now() / 1000 + 3600), // 3 hours form now?
-          },
-        })
-        .promise();
-      //Get all connectionIDs associated with chatroom to send back to user
-      const usersParams = {
-        TableName: process.env.DB,
-        KeyConditionExpression: "PK = :pk and begins_with(SK, :sk)",
-        ExpressionAttributeValues: {
-          ":pk": bodyAsJSON.chatRoomId,
-          ":sk": "CONNECTION#",
-        },
-      };
-      const getConnections = await dynamodb.query(usersParams).promise();
-      try {
-        await apig
-          .postToConnection({
-            ConnectionId: connectionId,
-            Data: JSON.stringify({
-              connections: getConnections.Items,
-            }),
-          })
-          .promise();
-      } catch (e) {
-        console.log(
-          "Could not send chatroom connections to user",
-          connectionId
-        );
-      }
-      break;
-
-    // const samplePayload = {
-    //   "message": "yo whats up?",
-    //   "action": "sendMessagePublic",
-    //   "chatRoomId": "CHATROOM#1234567",
-    //   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJQSyI6IlVTRVIjZmNjMmNjNTAtZGNiOC0xMWViLWJjOWItZTFkNmIwNmI3ZGIzIiwiaWF0IjoxNjI1NjY0MjEwfQ.CI8C_oZpDfIETQOHktt4HkIlBEhn_2jy7dLwd0b0zPM"
-    // }
-    case "sendMessagePublic":
-      try {
-        //Get all connectionIDs associated with chatroom
-        const usersParams = {
-          TableName: process.env.DB,
-          KeyConditionExpression: "PK = :pk and begins_with(SK, :sk)",
-          ExpressionAttributeValues: {
-            ":pk": bodyAsJSON.chatRoomId,
-            ":sk": "CONNECTION#",
-          },
-        };
-        const getConnections = await dynamodb.query(usersParams).promise();
-        //Send message to socket connections
-        for (const connection of getConnections.Items) {
-          const connectionId = connection.SK.split("#")[1];
-          try {
-            await apig
-              .postToConnection({
-                ConnectionId: connectionId,
-                Data: JSON.stringify({
-                  message: bodyAsJSON.message,
-                  chatMessage: true,
-                  timestamp: Date.now(),
-                }),
-              })
-              .promise();
-          } catch (e) {
-            console.log(
-              "couldn't send websocket message to " + connectionId,
-              e
-            );
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      break;
-
-    case "sendPosition":
-      try {
-        //Send message to socket connections
-        for (const otherConnectionId of bodyAsJSON.connections) {
-          bodyAsJSON.message.connectionId = connectionId;
-
-          try {
-            await apig
-              .postToConnection({
-                ConnectionId: otherConnectionId,
-                Data: JSON.stringify(bodyAsJSON.message),
-              })
-              .promise();
-          } catch (e) {
-            // console.log("couldn't send websocket message to "+ otherConnectionId, e);
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      }
-      break;
-  }
-
-  // Return a 200 status to tell API Gateway the message was processed
-  // successfully.
-  // Otherwise, API Gateway will return a 500 to the client.
-  return { statusCode: 200 };
 };
