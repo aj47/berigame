@@ -9,18 +9,18 @@ interface LoginProps {
 }
 
 const Login = ({ userData, setUserData }: LoginProps) => {
-  const magic = new Magic(import.meta.env.VITE_MAGIC_API_KEY, {
-    network: "ropsten",
-  });
-  const [loading, setLoading] = useState(true);
+  const [magic, setMagic] = useState<any>(null);
+  const [loading, setLoading] = useState("Loading...");
   const [email, setEmail] = useState("");
 
   const initUserData = async () => {
+    setLoading("Authenticating user...")
     const userMetadata = await magic.user.getMetadata();
+    setLoading("Logging in...");
     const DID = await magic.user.getIdToken();
     auth.setToken(DID);
     setUserData({ ...userMetadata, DID });
-    setLoading(false);
+    setLoading("");
   };
 
   const submitAuth = async () => {
@@ -30,6 +30,7 @@ const Login = ({ userData, setUserData }: LoginProps) => {
   };
 
   const tryAuth = async () => {
+    setLoading("Attempting Authentication...");
     const token = await auth.getToken();
     if (!token) return;
     try {
@@ -37,31 +38,37 @@ const Login = ({ userData, setUserData }: LoginProps) => {
       if (DID) initUserData();
     } catch (e) {
       console.error(e);
+      setLoading("");
     }
   };
 
   const checkAuth = async () => {
+    setLoading("Attempting Authentication...");
     const isLoggedIn = await magic.user.isLoggedIn();
     if (isLoggedIn) {
       initUserData();
     } else {
       tryAuth();
     }
-    setLoading(false);
   };
 
   const logout = async () => {
-    setLoading(true);
+    setLoading("Logging out...");
     await magic.user.logout();
     window.location.href = window.location.origin;
   };
-
   useEffect(() => {
+    if (!magic) {
+      setMagic(
+        new Magic(import.meta.env.VITE_MAGIC_API_KEY, { network: "ropsten" })
+      );
+      return;
+    }
     if (userData === null) checkAuth();
-    else setLoading(false);
-  }, [userData]);
+    else setLoading("");
+  }, [userData, magic]);
 
-  if (loading) return <div className="login">Authenticating...</div>;
+  if (loading) return <div className="login">{loading}</div>;
   if (userData) return <Logout logout={logout} />;
 
   return (
