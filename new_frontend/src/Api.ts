@@ -14,12 +14,6 @@ export const webSocketConnection = new WebSocket(wsUrl);
 let appendChatLog: any = null;
 export const setAppendChatLog = (method: any) => {appendChatLog = method};
 
-// Might be used in future for messaging user directly 
-// for notification or something
-const _webSocketOpen = (e: Event) => {
-  connectToChatRoom();
-}
-
 const defaultHeaders = {
   'Accept': 'application/json',
   'Content-Type': 'application/json',
@@ -57,8 +51,8 @@ export const serverGET = async (endpoint: string, withToken=true) => {
 export const webSocketConnect = () => {
   webSocketConnection.onerror = _webSocketError;
   webSocketConnection.onclose = _webSocketClose;
-  webSocketConnection.onopen = _webSocketOpen;
   webSocketConnection.onmessage = _webSocketMessageReceived;
+  connectToChatRoom();
 }
 
 export const webSocketSaveConnection = async () => {

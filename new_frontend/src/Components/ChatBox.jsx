@@ -73,7 +73,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
           return (
             <div key={i}>
               <p>
-                <strong>User-{data.senderId.substring(29)} said: </strong>
+                <strong>User-{data.senderId.substring(13)} said: </strong>
                 {data.message}
               </p>
             </div>
