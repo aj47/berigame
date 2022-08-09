@@ -52,7 +52,6 @@ const Login = ({ userData, setUserData }: LoginProps) => {
     }
   };
 
-    setLoading("Getting user data...")
   const logout = async () => {
     setLoading("Logging out...");
     await magic.user.logout();
