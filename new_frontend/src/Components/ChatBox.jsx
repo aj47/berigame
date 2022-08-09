@@ -6,6 +6,7 @@ import {
 } from "../Api";
 const ChatBox = memo(({ setChatMessageSent }) => {
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatLogArray, setChatLogArray] = useState([]);
   webSocketConnect();
 
   const sendMessage = (inputText) => {
@@ -58,8 +59,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
     );
   };
 
-  const ChatLog = () => {
-    const [chatLogArray, setChatLogArray] = useState([]);
+  const ChatLog = memo(() => {
     const appendChatLogArray = (data) => {
       setChatLogArray([...chatLogArray, data]);
     };
@@ -81,7 +81,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
         })}
       </div>
     );
-  };
+  });
 
   return (
     <div id="chatBox">
