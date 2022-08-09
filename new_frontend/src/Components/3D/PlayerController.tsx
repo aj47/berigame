@@ -10,6 +10,7 @@ import {
   SphereGeometry,
   Vector3,
 } from "three";
+import { webSocketSendPosition } from "../../Api";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
@@ -92,6 +93,17 @@ const PlayerController = (props) => {
   useEffect(() => {
     props.setPlayerRef(objRef);
   }, [objRef]);
+
+  useEffect(() => {
+    // broadcast position
+    setInterval(() => {
+      if (objRef.current)
+        webSocketSendPosition({
+          position: objRef.current.position,
+          rotation: objRef.current.rotation,
+        });
+    }, 1000);
+  }, [])
 
   return (
     <group ref={objRef}>

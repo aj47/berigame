@@ -13,6 +13,8 @@ export const webSocketConnection = new WebSocket(wsUrl);
 
 let appendChatLog: any = null;
 export const setAppendChatLog = (method: any) => {appendChatLog = method};
+let setUserPositions: any = null;
+export const setSetUserPositions = (method: any) => {setUserPositions = method};
 
 const defaultHeaders = {
   'Accept': 'application/json',
@@ -71,7 +73,7 @@ export const webSocketSaveConnection = async () => {
 }
 
 interface PositionMessage {
-  userId: string | number;
+  // userId: string | number;
   position: string | number;
   rotation: string | number;
 }
@@ -162,6 +164,7 @@ const updateUserPosition = (newData: any) => {
   connectedUsers[newData.userId] = newData;
   if (allConnections.indexOf(newData.connectionId) === -1)
     allConnections.push(newData.connectionId);
+  setUserPositions(connectedUsers);
 }
 
 export const deleteUserPosition = (userId: string) => {

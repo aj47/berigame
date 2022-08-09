@@ -5,6 +5,7 @@ import RenderGLB from "./RenderGLB";
 import GroundPlane from "../../Objects/GroundPlane";
 import PlayerController from "./PlayerController";
 import ChatBox from "../ChatBox";
+import RenderOnlineUsers from "./RenderOnlineUsers";
 
 // react three fiber docs
 // https://docs.pmnd.rs/react-three-fiber/api/objects
@@ -24,6 +25,7 @@ const GameComponent = () => {
         <pointLight position={[10, 30, 0]} intensity={0.5} />
         <GroundPlane />
         <RenderGLB url={"/tree.glb"} position={[5, 0, 0]} />
+        <RenderOnlineUsers/>
         <PlayerController
           chatMessage={chatMessageSent}
           setPlayerRef={setPlayerRef}

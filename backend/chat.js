@@ -137,6 +137,7 @@ exports.handler = async function (event, context) {
         //Send message to socket connections
         for (const otherConnectionId of bodyAsJSON.connections) {
           bodyAsJSON.message.connectionId = connectionId;
+          bodyAsJSON.message.userId = senderId;
 
           try {
             await apig
