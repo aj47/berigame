@@ -75,6 +75,7 @@ exports.handler = async function (event, context) {
           .postToConnection({
             ConnectionId: connectionId,
             Data: JSON.stringify({
+              yourConnectionId: senderId,
               connections: getConnections.Items,
             }),
           })

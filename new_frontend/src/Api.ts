@@ -8,6 +8,7 @@ let wsUrl = "wss://ahftzn2xw8.execute-api.ap-southeast-2.amazonaws.com/dev/"
 // }
 const connectedUsers: any = {};
 let allConnections: any = [];
+let clientConnectionId = null;
 
 export const webSocketConnection = new WebSocket(wsUrl);
 
@@ -139,6 +140,7 @@ const _webSocketMessageReceived = (e) => {
     }
     if (messageObject.connections) {
       updateConnections(messageObject.connections);
+      clientConnectionId = messageObject.yourConnectionId;
     }
   }
 }
@@ -162,9 +164,9 @@ const updateConnections = (connections: any) => {
 const updateUserPosition = (newData: any) => {
   newData.selfDestroyTime = (new Date().getTime()) + 5000;
   connectedUsers[newData.userId] = newData;
+  setUserPositions(connectedUsers);
   if (allConnections.indexOf(newData.connectionId) === -1)
     allConnections.push(newData.connectionId);
-  setUserPositions(connectedUsers);
 }
 
 export const deleteUserPosition = (userId: string) => {
@@ -173,4 +175,8 @@ export const deleteUserPosition = (userId: string) => {
 
 export const getUserPositions = () => {
   return connectedUsers;
+}
+
+export const getClientConnectionId = () => {
+  return clientConnectionId;
 }

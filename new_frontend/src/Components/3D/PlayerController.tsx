@@ -101,7 +101,7 @@ const PlayerController = (props) => {
         webSocketSendPosition({
           position: objRef.current.position,
           rotation: objRef.current.rotation,
-        });
+      });
     }, 1000);
   }, [])
 
