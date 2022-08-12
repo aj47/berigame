@@ -98,9 +98,10 @@ const PlayerController = (props) => {
     // broadcast position
     setInterval(() => {
       if (objRef.current)
+        console.log(objRef.current, "objRef.current");
         webSocketSendPosition({
           position: objRef.current.position,
-          rotation: objRef.current.rotation,
+          rotation: obj.rotation,
       });
     }, 1000);
   }, [])

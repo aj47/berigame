@@ -123,7 +123,7 @@ export const connectToChatRoom = async (chatRoomId: string = "") => {
     }
     webSocketConnection?.send(JSON.stringify(payload));
   } catch (e) {
-    console.error("webSocketSaveConnection Error:", e);
+    console.log("webSocketSaveConnection Error:", e);
     setTimeout(() => {
       connectToChatRoom(chatRoomId);
     }, 500);

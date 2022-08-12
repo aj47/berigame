@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getClientConnectionId, setSetUserPositions } from "../../Api";
 import RenderGLB from "./RenderGLB";
+import RenderOtherUser from "./RenderOtherUser";
 
 const RenderOnlineUsers = (props) => {
   const [userPositions, setUserPositions] = useState<any[]>([]);
@@ -31,12 +32,12 @@ const RenderOnlineUsers = (props) => {
       {Object.keys(userPositions).map((playerKey) => {
 				if (playerKey == clientConnectionId) return;
 				const {x,y,z} = userPositions[playerKey].position;
+				const {_x, _y, _z} = userPositions[playerKey].rotation;
         return (
-          <RenderGLB
+          <RenderOtherUser
 						key={playerKey}
-            url={"/island-man.glb"}
             position={[x,y,z]}
-						animated
+            rotation={[_x, _y, _z]}
           />
         );
       })}

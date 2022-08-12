@@ -9,9 +9,9 @@ function App() {
 
   return (
     <>
-    {/* <GameComponent /> */}
-      {userData && <GameComponent />}
-      <Login setUserData={setUserData} userData={userData} />
+    <GameComponent />
+      {/* {userData && <GameComponent />} */}
+      {/* <Login setUserData={setUserData} userData={userData} /> */}
     </>
   );
 }
