@@ -34,8 +34,9 @@ const RenderOnlineUsers = (props) => {
         return (
           <RenderGLB
 						key={playerKey}
-            url={"/tree.glb"}
+            url={"/island-man.glb"}
             position={[x,y,z]}
+						animated
           />
         );
       })}
