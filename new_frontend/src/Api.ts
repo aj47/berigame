@@ -16,6 +16,8 @@ let appendChatLog: any = null;
 export const setAppendChatLog = (method: any) => {appendChatLog = method};
 let setUserPositions: any = null;
 export const setSetUserPositions = (method: any) => {setUserPositions = method};
+let onNewMessage: any = null;
+export const setOnNewMessage = (method: any) => {onNewMessage = method};
 
 const defaultHeaders = {
   'Accept': 'application/json',
@@ -133,8 +135,10 @@ export const connectToChatRoom = async (chatRoomId: string = "") => {
 const _webSocketMessageReceived = (e) => {
   if (e.data) {
     const messageObject = JSON.parse(e.data);
-    if (messageObject.chatMessage)
+    if (messageObject.chatMessage) {
       appendChatLog(messageObject);
+      onNewMessage(messageObject);
+    }
     if (messageObject.position && messageObject.userId) {
       updateUserPosition(messageObject);
     }
