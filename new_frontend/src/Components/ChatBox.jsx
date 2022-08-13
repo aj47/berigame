@@ -92,7 +92,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
         </div>
       )}
       <button
-        className="openChatButton"
+        className={`openChatButton ${chatOpen && 'open'}`}
         onClick={(e) => {
           e.stopPropagation();
           setChatOpen(!chatOpen);
