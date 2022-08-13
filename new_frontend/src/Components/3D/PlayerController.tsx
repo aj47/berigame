@@ -79,6 +79,11 @@ const PlayerController = (props) => {
           actions["Idle"]?.play();
         })
         .start();
+        webSocketSendPosition({
+          position: objRef.current.position,
+          restPosition: clickedPointOnLand,
+          rotation: obj.rotation,
+      });
     }
   }, [clickedPointOnLand]);
 
@@ -100,9 +105,10 @@ const PlayerController = (props) => {
       if (objRef.current)
         webSocketSendPosition({
           position: objRef.current.position,
+          restPosition: objRef.current.position,
           rotation: obj.rotation,
       });
-    }, 1000);
+    }, 4000);
   }, [])
 
   return (

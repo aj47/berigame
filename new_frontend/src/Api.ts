@@ -1,3 +1,4 @@
+import { Vector3 } from 'three';
 import { auth } from './Auth'
 
 let url = "https://rmwrulu837.execute-api.ap-southeast-2.amazonaws.com/dev/"
@@ -79,6 +80,7 @@ interface PositionMessage {
   // userId: string | number;
   position: string | number;
   rotation: string | number;
+  restPosition: string | Vector3;
 }
 
 export const webSocketSendPosition = async (message: PositionMessage) => {
