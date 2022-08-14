@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import {
   setAppendChatLog,
   webSocketConnect,
@@ -60,14 +60,23 @@ const ChatBox = memo(({ setChatMessageSent }) => {
   };
 
   const ChatLog = memo(() => {
+    const listRef = useRef(null);
     const appendChatLogArray = (data) => {
       setChatLogArray([...chatLogArray, data]);
     };
+    
+    useEffect(() => {
+      listRef.current.style.scrollBehavior = "smooth";
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }, [chatLogArray])
+    
     setAppendChatLog(appendChatLogArray);
     return (
       <div
+        id="chat-log"
         style={{ maxHeight: chatOpen ? "70vh" : 0, padding: chatOpen ? 5 : 0 }}
         className="chatLog"
+        ref={listRef}
       >
         {chatLogArray.map((data, i) => {
           return (
@@ -92,7 +101,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
         </div>
       )}
       <button
-        className={`openChatButton ${chatOpen && 'open'}`}
+        className={`openChatButton ${chatOpen && "open"}`}
         onClick={(e) => {
           e.stopPropagation();
           setChatOpen(!chatOpen);

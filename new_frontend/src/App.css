@@ -115,6 +115,9 @@ h2 {
 }
 
 
+#chatBox .chatLog::-webkit-scrollbar {
+  display: none;
+}
 #chatBox .chatLog {
   border-radius: 3px 3px 0 0;
   transition: max-height 0.15s ease-out;
@@ -124,6 +127,9 @@ h2 {
   word-wrap: break-word;
   overflow: hidden;
   overflow-x: hidden;
+  overflow-y: scroll;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 #chatBox .chatInputBar { 
