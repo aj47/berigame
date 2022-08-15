@@ -7,7 +7,7 @@ const CameraController = (props) => {
   const controls = useMemo(() => new OrbitControls(camera, gl.domElement), [])
   useEffect(() => {
     controls.minDistance = 3;
-    controls.maxDistance = 10;
+    controls.maxDistance = 18;
     controls.maxPolarAngle = Math.PI/2 - 0.1; 
     camera.position.set(0, 2, 8);
     controls.update();

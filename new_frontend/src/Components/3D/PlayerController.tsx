@@ -11,6 +11,7 @@ import {
   Vector3,
 } from "three";
 import { webSocketSendPosition } from "../../Api";
+import { useEventListener } from "usehooks-ts";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
@@ -24,36 +25,43 @@ const PlayerController = (props) => {
   const [clickedPointOnLand, setClickedPointOnLand] = useState<Vector3 | null>(
     null
   );
+  const [justClicked, setJustClicked] = useState(false);
 
   let currentWalkTween: null | Tween<any> = null;
+  useEventListener("pointerup", (e) => mouseUp(e));
+  useEventListener("pointerdown", (e) => mouseDown(e));
 
-  //Listener for click / touch
-  document
-    .getElementById("three-canvas")
-    ?.addEventListener("pointerup", (e) => mouseUp(e), false);
+  const mouseDown = (e) => {
+    setJustClicked(true);
+    setTimeout(() => {
+      setJustClicked(false);
+    }, 333);
+  };
 
   const mouseUp = (e) => {
-    // Get clicked position on land
-    const clickPosition = {
-      x: (e.clientX * 2) / gl.domElement.clientWidth - 1,
-      y: (e.clientY * -2) / gl.domElement.clientHeight + 1,
-    };
-    const raycaster = new Raycaster();
-    raycaster.setFromCamera(clickPosition, camera);
-    const intersects = raycaster.intersectObjects(scene.children, false);
-    for (const intersect of intersects) {
-      if (intersect.object.name === "land_mesh") {
-        const sphere = new Mesh(
-          new SphereGeometry(0.25, 32, 16),
-          new MeshBasicMaterial({ color: 0xffff00 })
-        );
-        const { x, y, z } = intersect.point;
-        sphere.position.set(x, y, z);
-        scene.add(sphere);
-        setTimeout(() => {
-          scene.remove(sphere);
-        }, 1000);
-        setClickedPointOnLand(intersect.point);
+    if (justClicked) {
+      // Get clicked position on land
+      const clickPosition = {
+        x: (e.clientX * 2) / gl.domElement.clientWidth - 1,
+        y: (e.clientY * -2) / gl.domElement.clientHeight + 1,
+      };
+      const raycaster = new Raycaster();
+      raycaster.setFromCamera(clickPosition, camera);
+      const intersects = raycaster.intersectObjects(scene.children, false);
+      for (const intersect of intersects) {
+        if (intersect.object.name === "land_mesh") {
+          const sphere = new Mesh(
+            new SphereGeometry(0.25, 32, 16),
+            new MeshBasicMaterial({ color: 0xffff00 })
+          );
+          const { x, y, z } = intersect.point;
+          sphere.position.set(x, y, z);
+          scene.add(sphere);
+          setTimeout(() => {
+            scene.remove(sphere);
+          }, 1000);
+          setClickedPointOnLand(intersect.point);
+        }
       }
     }
   };
@@ -79,10 +87,10 @@ const PlayerController = (props) => {
           actions["Idle"]?.play();
         })
         .start();
-        webSocketSendPosition({
-          position: objRef.current.position,
-          restPosition: clickedPointOnLand,
-          rotation: obj.rotation,
+      webSocketSendPosition({
+        position: objRef.current.position,
+        restPosition: clickedPointOnLand,
+        rotation: obj.rotation,
       });
     }
   }, [clickedPointOnLand]);
@@ -107,9 +115,9 @@ const PlayerController = (props) => {
           position: objRef.current.position,
           restPosition: objRef.current.position,
           rotation: obj.rotation,
-      });
+        });
     }, 4000);
-  }, [])
+  }, []);
 
   return (
     <group ref={objRef}>
