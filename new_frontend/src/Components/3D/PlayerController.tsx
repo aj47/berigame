@@ -76,11 +76,8 @@ const PlayerController = (props) => {
       currentWalkTween = new TWEEN.Tween(objRef.current.position)
         .to(
           clickedPointOnLand,
-          objRef.position.distanceTo(clickedPointOnLand) * 500
+          objRef.current.position.distanceTo(clickedPointOnLand) * 500
         )
-        .onUpdate((position) => {
-          objRef.position = position;
-        })
         .onComplete(() => {
           setClickedPointOnLand(null);
           actions["Walk"]?.stop();
