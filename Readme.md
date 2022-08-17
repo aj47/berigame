@@ -7,7 +7,7 @@ to run
 `npm run dev`
 
 ### Jul 18 TODO
-- Alpha lobby
+- Alpha lobby DONE
 - Deploy IMX Contracts
 - Create Character selection/creation UI
 
