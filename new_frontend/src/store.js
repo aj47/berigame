@@ -1,5 +1,4 @@
 import create from "zustand";
-import { mountStoreDevtool } from 'simple-zustand-devtools';
 
 export const useChatStore = create((set) => ({
   chatMessages: [],
@@ -9,9 +8,14 @@ export const useChatStore = create((set) => ({
 
 export const useWebsocketStore = create((set) => ({
   websocketConnection: null,
-  setWebSocket: (ws) => set(({ websocketConnection: ws })),
+  allConnections: null,
+  setWebSocket: (ws) => set({ websocketConnection: ws }),
+  setAllConnections: (connections) => set({ allConnections: connections }),
 }));
 
-if (process.env.NODE_ENV === 'development') {
-  mountStoreDevtool('Store', useWebsocketStore);
-}
+export const useUserPositionStore = create((set) => ({
+  userPositions: {},
+  userConnectionId: null,
+  setUserConnectionId: (id) => set({ userConnectionId: id }),
+  setUserPositions: (newUserPositions) => set({userPositions: {...newUserPositions}})
+}));

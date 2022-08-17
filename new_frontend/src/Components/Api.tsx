@@ -1,51 +1,65 @@
 import React, { useEffect } from "react";
-import { useChatStore, useWebsocketStore } from "../store";
+import {
+  useChatStore,
+  useUserPositionStore,
+  useWebsocketStore,
+} from "../store";
 
 const Api = (props) => {
   let url = "https://rmwrulu837.execute-api.ap-southeast-2.amazonaws.com/dev/";
   let wsUrl = "wss://ahftzn2xw8.execute-api.ap-southeast-2.amazonaws.com/dev/";
   const setWebSocket = useWebsocketStore((state: any) => state.setWebSocket);
+  const setAllConnections = useWebsocketStore(
+    (state: any) => state.setAllConnections
+  );
+  const allConnections = useWebsocketStore(
+    (state: any) => state.allConnections
+  );
   const addChatMessage = useChatStore((state: any) => state.addChatMessage);
+  const setUserPositions = useUserPositionStore(
+    (state: any) => state.setUserPositions
+  );
+  const setUserConnectionId = useUserPositionStore(
+    (state: any) => state.setUserConnectionId
+  );
 
   // if (process.env.NODE_ENV === 'development')  {
   //   url = "http://localhost:3000/dev/";
   //   wsUrl = "ws://localhost:3001";
   // }
   const connectedUsers: any = {};
-  let allConnections: any = [];
   let clientConnectionId = null;
 
   const updateUserPosition = (newData: any) => {
     newData.selfDestroyTime = new Date().getTime() + 5000;
     connectedUsers[newData.userId] = newData;
-    // setUserPositions(connectedUsers);
-    if (allConnections.indexOf(newData.connectionId) === -1)
-      allConnections.push(newData.connectionId);
+    setUserPositions(connectedUsers);
+    if (allConnections && allConnections.indexOf(newData.connectionId) === -1) {
+      setAllConnections([...allConnections, newData.connectionId]);
+    }
   };
+  
 
   const updateConnections = (connections: any) => {
     const tempAllConnections = [];
     for (const item of connections) {
       tempAllConnections.push(item.SK.split("#")[1]);
     }
-    allConnections = tempAllConnections;
+    setAllConnections(tempAllConnections);
   };
 
   const _webSocketMessageReceived = (e) => {
-    console.log("receiv");
-    console.log(e, "e");
     if (e.data) {
       const messageObject = JSON.parse(e.data);
       if (messageObject.chatMessage) {
         addChatMessage(messageObject);
-        // onNewMessage(messageObject);
       }
-      // if (messageObject.position && messageObject.userId) {
-      //   updateUserPosition(messageObject);
-      // }
+      if (messageObject.position && messageObject.userId) {
+        updateUserPosition(messageObject);
+      }
       if (messageObject.connections) {
         updateConnections(messageObject.connections);
-        clientConnectionId = messageObject.yourConnectionId;
+        setUserConnectionId(messageObject.yourConnectionId)
       }
     }
   };
@@ -58,14 +72,13 @@ const Api = (props) => {
     console.log("Websocket close:", e);
   };
 
+  //Initialize Websocket
   useEffect(() => {
     const webSocketConnection = new WebSocket(wsUrl);
     webSocketConnection.onerror = _webSocketError;
     webSocketConnection.onclose = _webSocketClose;
     webSocketConnection.onmessage = _webSocketMessageReceived;
-    // connectToChatRoom();
     setWebSocket(webSocketConnection);
-    console.log("set", webSocketConnection);
   }, []);
 
   return <div> </div>;

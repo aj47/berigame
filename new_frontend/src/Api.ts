@@ -10,71 +10,20 @@ let wsUrl = "wss://ahftzn2xw8.execute-api.ap-southeast-2.amazonaws.com/dev/"
 const connectedUsers: any = {};
 let allConnections: any = [];
 let clientConnectionId = null;
-
-export const webSocketConnection = new WebSocket(wsUrl);
-
-let appendChatLog: any = null;
-export const setAppendChatLog = (method: any) => {appendChatLog = method};
-let setUserPositions: any = null;
-export const setSetUserPositions = (method: any) => {setUserPositions = method};
-let onNewMessage: any = null;
-export const setOnNewMessage = (method: any) => {onNewMessage = method};
-
-const defaultHeaders = {
-  'Accept': 'application/json',
-  'Content-Type': 'application/json',
-  'Authorization': ""
-}
-
-export const serverPOST = async (endpoint: string, inputData: any, withToken=true) => {
-  let headers = defaultHeaders;
-  if (withToken && defaultHeaders.Authorization === "") 
-    headers.Authorization = await auth.getToken() || "";
-
-  const fetchData = await fetch(url+endpoint, {
-    headers,
-    method: 'POST',
-    body: JSON.stringify(inputData)
-  }).catch(e => {
-    console.log("serverPOST error", e);
-  });
-  const JSONData = await fetchData.json();
-  JSONData.status = fetchData.status;
-  return JSONData;
-}
-
-export const serverGET = async (endpoint: string, withToken=true) => {
-  let headers = defaultHeaders;
-  if (withToken && defaultHeaders.Authorization === "") 
-    headers.Authorization = await auth.getToken() || "";
-  return await fetch(url+endpoint, {
-    headers,
-    method: 'GET',
-  })
-}
-
-
-export const webSocketConnect = () => {
-  webSocketConnection.onerror = _webSocketError;
-  webSocketConnection.onclose = _webSocketClose;
-  webSocketConnection.onmessage = _webSocketMessageReceived;
-  connectToChatRoom();
-}
-
-export const webSocketSaveConnection = async () => {
-  try {
-    const token = await auth.getToken();
-    if (token) {
-      const payload = {
-        token,
-        action: "saveConnection",
-      }
-      webSocketConnection?.send(JSON.stringify(payload));
-    }
-  } catch (e) {
-    console.error("webSocketSaveConnection Error:", e);
-  }
-}
+// export const webSocketSaveConnection = async () => {
+//   try {
+//     const token = await auth.getToken();
+//     if (token) {
+//       const payload = {
+//         token,
+//         action: "saveConnection",
+//       }
+//       webSocketConnection?.send(JSON.stringify(payload));
+//     }
+//   } catch (e) {
+//     console.error("webSocketSaveConnection Error:", e);
+//   }
+// }
 
 interface PositionMessage {
   // userId: string | number;
@@ -83,21 +32,19 @@ interface PositionMessage {
   restPosition: string | Vector3;
 }
 
-export const webSocketSendPosition = async (message: PositionMessage) => {
+export const webSocketSendPosition = async (message: PositionMessage, ws: any, allConnections: any[]) => {
   try {
-    const token = await auth.getToken();
     const payload = {
-      token,
       message,
       connections: allConnections,
       chatRoomId: "CHATROOM#913a9780-ff43-11eb-aa45-277d189232f4", //The one chatroom for MVP
       action: "sendPosition",
     }
-    webSocketConnection?.send(JSON.stringify(payload));
+    ws?.send(JSON.stringify(payload));
   } catch (e) {
     console.error("webSocketSendMessage Error:", e);
     setTimeout(() => {
-      webSocketSendPosition(message);
+      webSocketSendPosition(message, ws, allConnections);
     }, 500);
   }
 }
@@ -118,15 +65,13 @@ export const webSocketSendMessage = async (message: string, ws: any) => {
 
 export const connectToChatRoom = async (chatRoomId: string = "", ws: any) => {
   try {
-    const token = await auth.getToken();
     const payload = {
-      token,
       chatRoomId: "CHATROOM#913a9780-ff43-11eb-aa45-277d189232f4", //The one chatroom for MVP
       action: "connectToChatRoom",
     }
     ws?.send(JSON.stringify(payload));
   } catch (e) {
-    console.log("webSocketSaveConnection Error:", e);
+    // console.log("webSocketSaveConnection Error:", e);
     setTimeout(() => {
       connectToChatRoom(chatRoomId, ws);
     }, 500);
@@ -152,7 +97,7 @@ const updateConnections = (connections: any) => {
 const updateUserPosition = (newData: any) => {
   newData.selfDestroyTime = (new Date().getTime()) + 5000;
   connectedUsers[newData.userId] = newData;
-  setUserPositions(connectedUsers);
+  // setUserPositions(connectedUsers);
   if (allConnections.indexOf(newData.connectionId) === -1)
     allConnections.push(newData.connectionId);
 }

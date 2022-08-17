@@ -3,7 +3,6 @@ import { connectToChatRoom, webSocketSendMessage } from "../Api";
 import { useChatStore, useWebsocketStore } from "../store";
 const ChatBox = memo(({ setChatMessageSent }) => {
   const [chatOpen, setChatOpen] = useState(false);
-  const addChatMessage = useChatStore((state) => state.addChatMessage);
   const websocketConnection = useWebsocketStore(
     (state) => state.websocketConnection
   );
@@ -23,11 +22,14 @@ const ChatBox = memo(({ setChatMessageSent }) => {
     }
   };
 
-
   useEffect(() => {
     document.addEventListener("keydown", keyDownHandler, false);
-    connectToChatRoom("", websocketConnection);
   }, []);
+
+  useEffect(() => {
+    if (websocketConnection)
+      connectToChatRoom("", websocketConnection);
+  }, [websocketConnection]);
 
   const InputTextArea = memo(() => {
     const [inputText, setInputText] = useState("");
@@ -70,7 +72,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
     useEffect(() => {
       listRef.current.style.scrollBehavior = "smooth";
       listRef.current.scrollTop = listRef.current.scrollHeight;
-    }, [chatMessages])
+    }, [chatMessages]);
     return (
       <div
         id="chat-log"

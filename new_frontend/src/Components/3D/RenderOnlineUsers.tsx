@@ -1,28 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { getClientConnectionId, setSetUserPositions } from "../../Api";
 import RenderGLB from "./RenderGLB";
 import RenderOtherUser from "./RenderOtherUser";
-import { setOnNewMessage } from "../../Api";
 import { Html } from "@react-three/drei";
+import { useUserPositionStore } from "../../store";
 
 const RenderOnlineUsers = (props) => {
-  const [userPositions, setUserPositions] = useState<any[]>([]);
-  const [clientConnectionId, setClientConnectionId] = useState<null | string>(
-    null
-  );
   const [chatMessages, setChatMessages] = useState<any>({});
+  const userPositions = useUserPositionStore(
+    (state: any) => state.userPositions
+  );
+  const userConnectionId = useUserPositionStore(
+    (state: any) => state.userConnectionId
+  );
 
-  // TODO IMPROVEMENT:
-  // this method should probably be done without timeout
-  const getUserConnectionId = () => {
-    const connId = getClientConnectionId();
-    if (connId) setClientConnectionId(connId);
-    else setTimeout(getUserConnectionId, 250);
-  };
-
-  const updateUserPositions = (data) => {
-    setUserPositions({ ...data });
-  };
 
   const onNewMessage = (data) => {
     setChatMessages({ ...chatMessages, [data.senderId]: data });
@@ -32,17 +22,15 @@ const RenderOnlineUsers = (props) => {
       );
     }, 8000);
   };
-  setOnNewMessage(onNewMessage);
-
+  
   useEffect(() => {
-    getUserConnectionId();
-    setSetUserPositions(updateUserPositions);
-  }, []);
+    console.log(userPositions, "userPositions");
+  }, [userPositions])
 
   return (
     <>
       {Object.keys(userPositions).map((playerKey) => {
-        if (playerKey == clientConnectionId) return;
+        if (playerKey == userConnectionId) return;
         const { x, y, z } = userPositions[playerKey].position;
         const { _x, _y, _z } = userPositions[playerKey].rotation;
         const { x: rX, y: rY, z: rZ } = userPositions[playerKey].restPosition;

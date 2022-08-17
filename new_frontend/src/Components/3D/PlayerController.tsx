@@ -10,8 +10,10 @@ import {
   SphereGeometry,
   Vector3,
 } from "three";
-import { webSocketSendPosition } from "../../Api";
+// import { webSocketSendPosition } from "../../Api";
 import { useEventListener } from "usehooks-ts";
+import { useUserPositionStore, useWebsocketStore } from "../../store";
+import { webSocketSendPosition } from "../../Api";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
@@ -26,6 +28,29 @@ const PlayerController = (props) => {
     null
   );
   const [justClicked, setJustClicked] = useState(false);
+  const websocketConnection = useWebsocketStore(
+    (state: any) => state.websocketConnection
+  );
+  const allConnections = useWebsocketStore(
+    (state: any) => state.allConnections
+  );
+  
+  useEffect(() => {
+    // broadcast position
+    if (allConnections) 
+    setInterval(() => {
+      if (objRef.current)
+        webSocketSendPosition(
+          {
+            position: objRef.current.position,
+            restPosition: objRef.current.position,
+            rotation: obj.rotation,
+          },
+          websocketConnection,
+          allConnections
+        );
+    }, 4000);
+  }, [allConnections])
 
   let currentWalkTween: null | Tween<any> = null;
   useEventListener("pointerup", (e) => mouseUp(e));
@@ -84,11 +109,15 @@ const PlayerController = (props) => {
           actions["Idle"]?.play();
         })
         .start();
-      webSocketSendPosition({
-        position: objRef.current.position,
-        restPosition: clickedPointOnLand,
-        rotation: obj.rotation,
-      });
+      webSocketSendPosition(
+        {
+          position: objRef.current.position,
+          restPosition: clickedPointOnLand,
+          rotation: obj.rotation,
+        },
+        websocketConnection,
+        allConnections
+      );
     }
   }, [clickedPointOnLand]);
 
@@ -105,15 +134,6 @@ const PlayerController = (props) => {
   }, [objRef]);
 
   useEffect(() => {
-    // broadcast position
-    setInterval(() => {
-      if (objRef.current)
-        webSocketSendPosition({
-          position: objRef.current.position,
-          restPosition: objRef.current.position,
-          rotation: obj.rotation,
-        });
-    }, 4000);
   }, []);
 
   return (
