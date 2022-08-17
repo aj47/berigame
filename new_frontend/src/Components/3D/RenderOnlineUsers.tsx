@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import RenderGLB from "./RenderGLB";
 import RenderOtherUser from "./RenderOtherUser";
 import { Html } from "@react-three/drei";
-import { useUserPositionStore } from "../../store";
+import { useChatStore, useUserPositionStore } from "../../store";
 
 const RenderOnlineUsers = (props) => {
-  const [chatMessages, setChatMessages] = useState<any>({});
+  const [messagesToRender, setMessagesToRender] = useState<any>({});
+  const chatMessages = useChatStore((state: any) => state.chatMessages);
   const userPositions = useUserPositionStore(
     (state: any) => state.userPositions
   );
@@ -13,19 +14,23 @@ const RenderOnlineUsers = (props) => {
     (state: any) => state.userConnectionId
   );
 
-
-  const onNewMessage = (data) => {
-    setChatMessages({ ...chatMessages, [data.senderId]: data });
+  const updateMessages = () => {
+    const selectedMessage = chatMessages[chatMessages.length - 1];
+    setMessagesToRender({
+      ...messagesToRender,
+      [selectedMessage.senderId]: selectedMessage,
+    });
     setTimeout(() => {
-      setChatMessages(
-        ({ [data.senderId]: value, ...otherMessages }) => otherMessages
+      const key: string = selectedMessage.senderId;
+      setMessagesToRender(
+        ({ [key]: value, ...otherMessages }) => otherMessages
       );
     }, 8000);
   };
-  
+
   useEffect(() => {
-    console.log(userPositions, "userPositions");
-  }, [userPositions])
+    if (chatMessages.length > 0) updateMessages();
+  }, [chatMessages]);
 
   return (
     <>
@@ -36,13 +41,13 @@ const RenderOnlineUsers = (props) => {
         const { x: rX, y: rY, z: rZ } = userPositions[playerKey].restPosition;
         return (
           <group key={playerKey}>
-            {chatMessages[playerKey] && (
+            {messagesToRender[playerKey] && (
               <Html
                 center
                 position={[x, y + 2, z]}
                 className="player-chat-bubble"
               >
-                {chatMessages[playerKey].message}
+                {messagesToRender[playerKey].message}
               </Html>
             )}
             <RenderOtherUser
