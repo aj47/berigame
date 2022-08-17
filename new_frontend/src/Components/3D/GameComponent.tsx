@@ -6,6 +6,7 @@ import GroundPlane from "../../Objects/GroundPlane";
 import PlayerController from "./PlayerController";
 import ChatBox from "../ChatBox";
 import RenderOnlineUsers from "./RenderOnlineUsers";
+import Api from "../Api";
 
 // react three fiber docs
 // https://docs.pmnd.rs/react-three-fiber/api/objects
@@ -15,6 +16,7 @@ const GameComponent = () => {
   const [chatMessageSent, setChatMessageSent] = useState();
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
+      <Api/>
       <ChatBox setChatMessageSent={setChatMessageSent} />
       <Canvas
         id="three-canvas"

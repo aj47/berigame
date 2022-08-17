@@ -102,22 +102,21 @@ export const webSocketSendPosition = async (message: PositionMessage) => {
   }
 }
 
-export const webSocketSendMessage = async (message: string) => {
+export const webSocketSendMessage = async (message: string, ws: any) => {
   try {
-    const token = await auth.getToken();
     const payload = {
-      token,
       message,
       chatRoomId: "CHATROOM#913a9780-ff43-11eb-aa45-277d189232f4", //The one chatroom for MVP
       action: "sendMessagePublic",
     }
-    webSocketConnection?.send(JSON.stringify(payload));
+    ws?.send(JSON.stringify(payload));
+    return payload;
   } catch (e) {
     console.error("webSocketSendMessage Error:", e);
   }
 }
 
-export const connectToChatRoom = async (chatRoomId: string = "") => {
+export const connectToChatRoom = async (chatRoomId: string = "", ws: any) => {
   try {
     const token = await auth.getToken();
     const payload = {
@@ -125,29 +124,12 @@ export const connectToChatRoom = async (chatRoomId: string = "") => {
       chatRoomId: "CHATROOM#913a9780-ff43-11eb-aa45-277d189232f4", //The one chatroom for MVP
       action: "connectToChatRoom",
     }
-    webSocketConnection?.send(JSON.stringify(payload));
+    ws?.send(JSON.stringify(payload));
   } catch (e) {
     console.log("webSocketSaveConnection Error:", e);
     setTimeout(() => {
-      connectToChatRoom(chatRoomId);
+      connectToChatRoom(chatRoomId, ws);
     }, 500);
-  }
-}
-
-const _webSocketMessageReceived = (e) => {
-  if (e.data) {
-    const messageObject = JSON.parse(e.data);
-    if (messageObject.chatMessage) {
-      appendChatLog(messageObject);
-      onNewMessage(messageObject);
-    }
-    if (messageObject.position && messageObject.userId) {
-      updateUserPosition(messageObject);
-    }
-    if (messageObject.connections) {
-      updateConnections(messageObject.connections);
-      clientConnectionId = messageObject.yourConnectionId;
-    }
   }
 }
 

@@ -1,16 +1,15 @@
 import { memo, useEffect, useRef, useState } from "react";
-import {
-  setAppendChatLog,
-  webSocketConnect,
-  webSocketSendMessage,
-} from "../Api";
+import { connectToChatRoom, webSocketSendMessage } from "../Api";
+import { useChatStore, useWebsocketStore } from "../store";
 const ChatBox = memo(({ setChatMessageSent }) => {
   const [chatOpen, setChatOpen] = useState(false);
-  const [chatLogArray, setChatLogArray] = useState([]);
-  webSocketConnect();
+  const addChatMessage = useChatStore((state) => state.addChatMessage);
+  const websocketConnection = useWebsocketStore(
+    (state) => state.websocketConnection
+  );
 
-  const sendMessage = (inputText) => {
-    webSocketSendMessage(inputText);
+  const sendMessage = async (inputText) => {
+    await webSocketSendMessage(inputText, websocketConnection);
     setChatMessageSent(inputText);
     setTimeout(() => {
       setChatMessageSent(null);
@@ -23,9 +22,14 @@ const ChatBox = memo(({ setChatMessageSent }) => {
       setChatOpen(true);
     }
   };
-  document.addEventListener("keydown", keyDownHandler, false);
 
-  const InputTextArea = () => {
+
+  useEffect(() => {
+    document.addEventListener("keydown", keyDownHandler, false);
+    connectToChatRoom("", websocketConnection);
+  }, []);
+
+  const InputTextArea = memo(() => {
     const [inputText, setInputText] = useState("");
     const keyDownHandler = (e) => {
       if (e.code === "Enter") {
@@ -57,20 +61,16 @@ const ChatBox = memo(({ setChatMessageSent }) => {
         </button>
       </>
     );
-  };
+  });
 
   const ChatLog = memo(() => {
+    const chatMessages = useChatStore((state) => state.chatMessages);
     const listRef = useRef(null);
-    const appendChatLogArray = (data) => {
-      setChatLogArray([...chatLogArray, data]);
-    };
-    
+
     useEffect(() => {
       listRef.current.style.scrollBehavior = "smooth";
       listRef.current.scrollTop = listRef.current.scrollHeight;
-    }, [chatLogArray])
-    
-    setAppendChatLog(appendChatLogArray);
+    }, [chatMessages])
     return (
       <div
         id="chat-log"
@@ -78,7 +78,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
         className="chatLog"
         ref={listRef}
       >
-        {chatLogArray.map((data, i) => {
+        {chatMessages.map((data, i) => {
           return (
             <div key={i}>
               <p>
