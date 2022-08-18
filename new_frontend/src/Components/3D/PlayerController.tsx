@@ -37,7 +37,6 @@ const PlayerController = (props) => {
   );
 
   useEffect(() => {
-    console.log(allConnections, "allConnections");
     // broadcast position
     if (!allConnections || allConnections.length === 0) return;
     webSocketSendPosition(

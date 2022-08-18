@@ -4,9 +4,9 @@ import create from "zustand";
 const log = (config) => (set, get, api) =>
   config(
     (args) => {
-      console.log("  applying", args);
+      // console.log("  applying", args);
       set(args);
-      console.log("  new state", get());
+      // console.log("  new state", get());
     },
     get,
     api
