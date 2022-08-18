@@ -56,7 +56,7 @@ exports.handler = async function (event, context) {
             PK,
             SK,
             created: timestamp,
-            ttl: parseInt(Date.now() / 1000 + 3600), // 3 hours form now?
+            ttl: Date.now() + 360, // 6 mins from now?
           },
         })
         .promise();
