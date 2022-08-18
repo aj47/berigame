@@ -54,6 +54,7 @@ const RenderOnlineUsers = (props) => {
               position={[x, y, z]}
               rotation={[_x, _y, _z]}
               restPosition={[rX, rY, rZ]}
+              isWalking={userPositions[playerKey].isWalking}
             />
           </group>
         );

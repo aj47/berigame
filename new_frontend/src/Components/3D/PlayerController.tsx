@@ -36,22 +36,19 @@ const PlayerController = (props) => {
   );
 
   useEffect(() => {
-    // broadcast position
     console.log(allConnections, "allConnections");
+    // broadcast position
     if (!allConnections || allConnections.length === 0) return;
-    const interval = setInterval(() => {
-      if (objRef.current)
-        webSocketSendPosition(
-          {
-            position: objRef.current.position,
-            restPosition: objRef.current.position,
-            rotation: obj.rotation,
-          },
-          websocketConnection,
-          allConnections
-        );
-    }, 4000);
-    return () => clearInterval(interval);
+    webSocketSendPosition(
+      {
+        position: objRef.current.position,
+        restPosition: objRef.current.position,
+        rotation: obj.rotation,
+        isWalking: false,
+      },
+      websocketConnection,
+      allConnections
+    );
   }, [allConnections]);
 
   let currentWalkTween: null | Tween<any> = null;
@@ -109,6 +106,16 @@ const PlayerController = (props) => {
           setClickedPointOnLand(null);
           actions["Walk"]?.stop();
           actions["Idle"]?.play();
+          webSocketSendPosition(
+            {
+              position: objRef.current.position,
+              restPosition: objRef.current.position,
+              rotation: obj.rotation,
+              isWalking: false,
+            },
+            websocketConnection,
+            allConnections
+          );
         })
         .start();
       webSocketSendPosition(
@@ -116,6 +123,7 @@ const PlayerController = (props) => {
           position: objRef.current.position,
           restPosition: clickedPointOnLand,
           rotation: obj.rotation,
+          isWalking: true,
         },
         websocketConnection,
         allConnections

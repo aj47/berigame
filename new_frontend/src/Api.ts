@@ -29,6 +29,7 @@ interface PositionMessage {
   position: string | number;
   rotation: string | number;
   restPosition: string | Vector3;
+  isWalking: boolean;
 }
 
 export const webSocketSendPosition = async (message: PositionMessage, ws: any, allConnections: any[]) => {
