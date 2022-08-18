@@ -34,11 +34,12 @@ const PlayerController = (props) => {
   const allConnections = useWebsocketStore(
     (state: any) => state.allConnections
   );
-  
+
   useEffect(() => {
     // broadcast position
-    if (allConnections) 
-    setInterval(() => {
+    console.log(allConnections, "allConnections");
+    if (!allConnections || allConnections.length === 0) return;
+    const interval = setInterval(() => {
       if (objRef.current)
         webSocketSendPosition(
           {
@@ -50,7 +51,8 @@ const PlayerController = (props) => {
           allConnections
         );
     }, 4000);
-  }, [allConnections])
+    return () => clearInterval(interval);
+  }, [allConnections]);
 
   let currentWalkTween: null | Tween<any> = null;
   useEventListener("pointerup", (e) => mouseUp(e));
@@ -133,8 +135,7 @@ const PlayerController = (props) => {
     props.setPlayerRef(objRef);
   }, [objRef]);
 
-  useEffect(() => {
-  }, []);
+  useEffect(() => {}, []);
 
   return (
     <group ref={objRef}>

@@ -8,7 +8,6 @@ let wsUrl = "wss://ahftzn2xw8.execute-api.ap-southeast-2.amazonaws.com/dev/"
 //   wsUrl = "ws://localhost:3001";
 // }
 const connectedUsers: any = {};
-let allConnections: any = [];
 let clientConnectionId = null;
 // export const webSocketSaveConnection = async () => {
 //   try {
@@ -76,30 +75,6 @@ export const connectToChatRoom = async (chatRoomId: string = "", ws: any) => {
       connectToChatRoom(chatRoomId, ws);
     }, 500);
   }
-}
-
-const _webSocketError = (e: Event) => {
-  console.error("Websocket error:", e);
-}
-
-const _webSocketClose = (e: Event) => {
-  console.log("Websocket close:", e);
-}
-
-const updateConnections = (connections: any) => {
-  const tempAllConnections = [];
-  for (const item of connections) {
-    tempAllConnections.push(item.SK.split("#")[1]);
-  }
-  allConnections = tempAllConnections;
-}
-
-const updateUserPosition = (newData: any) => {
-  newData.selfDestroyTime = (new Date().getTime()) + 5000;
-  connectedUsers[newData.userId] = newData;
-  // setUserPositions(connectedUsers);
-  if (allConnections.indexOf(newData.connectionId) === -1)
-    allConnections.push(newData.connectionId);
 }
 
 export const deleteUserPosition = (userId: string) => {
