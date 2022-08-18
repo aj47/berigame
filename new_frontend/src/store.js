@@ -25,7 +25,7 @@ export const useWebsocketStore = create(
     setWebSocket: (ws) => set({ websocketConnection: ws }),
     setAllConnections: (connections) =>
       set((state) => ({
-        allConnections: [...state.allConnections, ...connections],
+        allConnections: [...connections],
       })),
   }))
 );

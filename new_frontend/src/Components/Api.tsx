@@ -9,6 +9,7 @@ const Api = (props) => {
   let url = "https://rmwrulu837.execute-api.ap-southeast-2.amazonaws.com/dev/";
   let wsUrl = "wss://ahftzn2xw8.execute-api.ap-southeast-2.amazonaws.com/dev/";
   const setWebSocket = useWebsocketStore((state: any) => state.setWebSocket);
+  const websocketConnection = useWebsocketStore((state: any) => state.websocketConnection);
   const setAllConnections = useWebsocketStore(
     (state: any) => state.setAllConnections
   );
@@ -29,6 +30,11 @@ const Api = (props) => {
   // }
   const connectedUsers: any = {};
   let clientConnectionId = null;
+  
+  useEffect(() => {
+    if (websocketConnection)
+      websocketConnection.onmessage = _webSocketMessageReceived;
+  },[allConnections])
 
   const updateUserPosition = (newData: any) => {
     newData.selfDestroyTime = new Date().getTime() + 5000;
