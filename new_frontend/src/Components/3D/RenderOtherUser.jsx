@@ -12,6 +12,7 @@ const RenderOtherUser = ({ position, rotation, restPosition, isWalking }) => {
   const copiedScene = nodes.Scene;
   const { actions, mixer, ref, names } = useAnimations(animations, copiedScene);
   const [atRestPosition, setAtRestPosition] = useState(false);
+  const [currentTween, setCurrentTween] = useState(null);
   const objRef = new useRef();
 
   useEffect(() => {
@@ -38,20 +39,25 @@ const RenderOtherUser = ({ position, rotation, restPosition, isWalking }) => {
 
   useEffect(() => {
     if (isWalking) {
-      console.log(objRef.current.position, "objRef.current.position");
-      console.log(restPosition, "restPosition");
-      new TWEEN.Tween(objRef.current.position)
-        .to(
-          { x: restPosition[0], y: restPosition[1], z: restPosition[2] },
-          objRef.current.position.distanceTo({ x: restPosition[0], y: restPosition[1], z: restPosition[2] }) * 500
-        )
-        .onComplete(() => {
-          actions["Walk"]?.stop();
-          actions["Idle"]?.play();
-        })
-        .start();
+      if (currentTween) TWEEN.remove(currentTween);
+      setCurrentTween(
+        new TWEEN.Tween(objRef.current.position)
+          .to(
+            { x: restPosition[0], y: restPosition[1], z: restPosition[2] },
+            objRef.current.position.distanceTo({
+              x: restPosition[0],
+              y: restPosition[1],
+              z: restPosition[2],
+            }) * 500
+          )
+          .onComplete(() => {
+            actions["Walk"]?.stop();
+            actions["Idle"]?.play();
+          })
+          .start()
+      );
     }
-  }, [isWalking]);
+  }, [isWalking, restPosition]);
 
   useFrame(() => {
     TWEEN.update();

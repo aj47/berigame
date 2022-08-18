@@ -24,6 +24,7 @@ const PlayerController = (props) => {
   } = useGLTF("island-man.glb") as any;
   const { actions, mixer, ref, names } = useAnimations(animations, obj);
   const { camera, gl, scene } = useThree();
+  const [currentTween, setCurrentTween] = useState<any>(null);
   const [clickedPointOnLand, setClickedPointOnLand] = useState<Vector3 | null>(
     null
   );
@@ -51,7 +52,6 @@ const PlayerController = (props) => {
     );
   }, [allConnections]);
 
-  let currentWalkTween: null | Tween<any> = null;
   useEventListener("pointerup", (e) => mouseUp(e));
   useEventListener("pointerdown", (e) => mouseDown(e));
 
@@ -96,28 +96,31 @@ const PlayerController = (props) => {
       obj.lookAt(clickedPointOnLand);
 
       // Smoothly transition position of character to clicked location
-      TWEEN.removeAll();
-      currentWalkTween = new TWEEN.Tween(objRef.current.position)
-        .to(
-          clickedPointOnLand,
-          objRef.current.position.distanceTo(clickedPointOnLand) * 500
-        )
-        .onComplete(() => {
-          setClickedPointOnLand(null);
-          actions["Walk"]?.stop();
-          actions["Idle"]?.play();
-          webSocketSendPosition(
-            {
-              position: objRef.current.position,
-              restPosition: objRef.current.position,
-              rotation: obj.rotation,
-              isWalking: false,
-            },
-            websocketConnection,
-            allConnections
-          );
-        })
-        .start();
+      if (currentTween) TWEEN.remove(currentTween);
+      setCurrentTween(
+        new TWEEN.Tween(objRef.current.position)
+          .to(
+            clickedPointOnLand,
+            objRef.current.position.distanceTo(clickedPointOnLand) * 500
+          )
+          .onComplete(() => {
+            setClickedPointOnLand(null);
+            actions["Walk"]?.stop();
+            actions["Idle"]?.play();
+            webSocketSendPosition(
+              {
+                position: objRef.current.position,
+                restPosition: objRef.current.position,
+                rotation: obj.rotation,
+                isWalking: false,
+              },
+              websocketConnection,
+              allConnections
+            );
+          })
+          .start()
+      );
+
       webSocketSendPosition(
         {
           position: objRef.current.position,
