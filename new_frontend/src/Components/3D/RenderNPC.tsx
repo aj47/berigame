@@ -30,7 +30,6 @@ const RenderNPC = (props) => {
   };
   
   const talkRandom = () => {
-    console.log("talkTakdon");
     const r = Math.floor(Math.random() * 11);
     let newText: any = null;
     if (r === 0) newText = "Hello! Welcome to the cubespaced alpha!";
