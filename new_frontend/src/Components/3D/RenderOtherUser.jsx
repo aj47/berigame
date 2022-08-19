@@ -5,8 +5,8 @@ import { useFrame, useGraph } from "@react-three/fiber";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
 import { Vector3 } from "three";
 
-const RenderOtherUser = ({ position, rotation, restPosition, isWalking }) => {
-  const { scene, materials, animations } = useGLTF("island-man.glb");
+const RenderOtherUser = ({ url = "island-man.glb", position, rotation, restPosition, isWalking }) => {
+  const { scene, materials, animations } = useGLTF(url);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { nodes } = useGraph(clone);
   const copiedScene = nodes.Scene;

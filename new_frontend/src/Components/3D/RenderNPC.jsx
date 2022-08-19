@@ -1,21 +1,15 @@
 import { useAnimations, useGLTF } from "@react-three/drei";
 import { useGraph } from "@react-three/fiber";
-import React, { Suspense, useMemo } from "react"
+import React, { Suspense, useEffect, useMemo } from "react";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
+import RenderOtherUser from "./RenderOtherUser";
 
-const RenderNPC= (props) => {
-  const { scene, materials, animations } = useGLTF("native-woman.glb");
-  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
-  const { nodes } = useGraph(clone);
-  const copiedScene = nodes.Scene;
-  const { actions, mixer, ref, names } = useAnimations(animations, copiedScene);
-	return (
+const RenderNPC = (props) => {
+  return (
     <group>
-      <Suspense fallback={null}>
-        <primitive object={copiedScene} position={[0,0,0]}/>;
-      </Suspense>
+      <RenderOtherUser url={"/native-woman.glb"} position={[0, 0, 0]} restPosition={[10,0,10]} isWalking/>
     </group>
-	)
+  );
 };
 
 export default RenderNPC;
