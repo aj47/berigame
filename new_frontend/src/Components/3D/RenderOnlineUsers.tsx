@@ -41,16 +41,8 @@ const RenderOnlineUsers = (props) => {
         const { x: rX, y: rY, z: rZ } = userPositions[playerKey].restPosition;
         return (
           <group key={playerKey}>
-            {messagesToRender[playerKey] && (
-              <Html
-                center
-                position={[x, y + 2, z]}
-                className="player-chat-bubble"
-              >
-                {messagesToRender[playerKey].message}
-              </Html>
-            )}
             <RenderOtherUser
+              messagesToRender={messagesToRender[playerKey]?.message}
               position={[x, y, z]}
               rotation={[_x, _y, _z]}
               restPosition={[rX, rY, rZ]}
