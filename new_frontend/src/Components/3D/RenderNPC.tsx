@@ -30,13 +30,15 @@ const RenderNPC = (props) => {
       setTimeout(walkRandom, 8000);
     }
   };
-  
+
   const talkRandom = () => {
     const r = Math.floor(Math.random() * 11);
     let newText: any = null;
     if (r === 0) newText = "Hello! Welcome to the cubespaced alpha!";
-    else if (r === 1) newText = "I am the first NPC ever created in this metaverse";
-    else if (r === 2) newText = "I can't wait until i have more friends to play with!";
+    else if (r === 1)
+      newText = "I am the first NPC ever created in this metaverse";
+    else if (r === 2)
+      newText = "I can't wait until i have more friends to play with!";
     else if (r === 4) newText = "hello";
     else if (r === 5) newText = "haha";
     else if (r === 6) newText = "what do you want to see in cubespaced?";
@@ -46,23 +48,22 @@ const RenderNPC = (props) => {
     // else if (r === 3) newText = "sign up at cubespaced.com for whitelist!";
     else newText = "";
     setMessageToRender(newText);
-    addChatMessage(
-    {
-      "message": newText,
-      "senderId": "XGIatezNSwMCEAI+",
-      "chatMessage": true,
-      "timestamp": new Date().getTime()
-    })
+    if (newText)
+      addChatMessage({
+        message: newText,
+        senderId: "XGIatezNSwMCEAI+",
+        chatMessage: true,
+        timestamp: new Date().getTime(),
+      });
     setTimeout(talkRandom, 9000);
-  }
+  };
 
   //npc ai
   useEffect(() => {
     walkRandom();
     setTimeout(talkRandom, 9000);
-  }, [])
-  
-  
+  }, []);
+
   return (
     <group>
       <RenderOtherUser
@@ -71,7 +72,7 @@ const RenderNPC = (props) => {
         position={position}
         restPosition={restPosition}
         isWalking={isWalking}
-        rotation={[0,0,0]}
+        rotation={[0, 0, 0]}
       />
     </group>
   );
