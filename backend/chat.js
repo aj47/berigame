@@ -15,7 +15,6 @@ const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const DB = process.env.DB;
 
-
 exports.handler = async function (event, context) {
   const {
     body,
@@ -56,7 +55,7 @@ exports.handler = async function (event, context) {
             PK,
             SK,
             created: timestamp,
-            ttl: Date.now() + 360, // 6 mins from now?
+            ttl: Math.floor(new Date().getTime() / 1000) + 360, // 6 mins from now?
           },
         })
         .promise();

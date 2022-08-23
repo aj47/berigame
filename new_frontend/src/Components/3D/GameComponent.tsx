@@ -8,6 +8,7 @@ import ChatBox from "../ChatBox";
 import RenderOnlineUsers from "./RenderOnlineUsers";
 import Api from "../Api";
 import RenderNPC from "./RenderNPC";
+import AlphaIsland from "./AlphaIsland";
 
 // react three fiber docs
 // https://docs.pmnd.rs/react-three-fiber/api/objects
@@ -23,11 +24,7 @@ const GameComponent = () => {
         id="three-canvas"
         resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}
       >
-        <pointLight position={[10, 9, 10]} intensity={0.5} />
-        <pointLight position={[-10, 10, 0]} intensity={0.5} />
-        <pointLight position={[10, 30, 0]} intensity={0.5} />
-        <GroundPlane />
-        <RenderGLB url={"/tree.glb"} position={[5, 0, 0]} />
+        <AlphaIsland/>
         <RenderNPC/>
         <RenderOnlineUsers/>
         <PlayerController
