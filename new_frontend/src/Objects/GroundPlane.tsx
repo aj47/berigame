@@ -1,8 +1,43 @@
 import { useThree } from "@react-three/fiber";
-import React from "react";
-import { DoubleSide } from "three";
+import React, { useState } from "react";
+import {
+  DoubleSide,
+  Mesh,
+  MeshBasicMaterial,
+  Raycaster,
+  SphereGeometry,
+} from "three";
 
 const GroundPlane = (props) => {
+  const [justClicked, setJustClicked] = useState(!false);
+  const { camera, gl, scene } = useThree();
+
+  const landClicked = (e) => {
+    // Get clicked position on land
+    const clickPosition = {
+      x: (e.clientX * 2) / gl.domElement.clientWidth - 1,
+      y: (e.clientY * -2) / gl.domElement.clientHeight + 1,
+    };
+    const raycaster = new Raycaster();
+    raycaster.setFromCamera(clickPosition, camera);
+    const intersects = raycaster.intersectObjects(scene.children, false);
+    for (const intersect of intersects) {
+      if (intersect.object.name === "land_mesh") {
+        const sphere = new Mesh(
+          new SphereGeometry(0.25, 32, 16),
+          new MeshBasicMaterial({ color: 0xff0000 })
+        );
+        const { x, y, z } = intersect.point;
+        sphere.position.set(x, y, z);
+        scene.add(sphere);
+        setTimeout(() => {
+          scene.remove(sphere);
+        }, 1000);
+        // clicked position
+        console.log(intersect.point, "intersect.point");
+      }
+    }
+  };
   return (
     <>
       <mesh
@@ -10,6 +45,7 @@ const GroundPlane = (props) => {
         scale={[50, 50, 1]}
         rotation={[Math.PI / 2, 0, 0]}
         position={[0, -0, 0]}
+        onClick={landClicked}
       >
         <planeBufferGeometry />
         <meshBasicMaterial color="#fff1a1" side={DoubleSide} />

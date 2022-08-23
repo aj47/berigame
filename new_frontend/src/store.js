@@ -37,3 +37,8 @@ export const useUserPositionStore = create((set) => ({
   setUserPositions: (newUserPositions) =>
     set({ userPositions: { ...newUserPositions } }),
 }));
+
+export const userInputStore = create((set) => ({
+  clickedPointOnLand: null,
+  setClickedPointOnLand: (newPosition) => set({ clickedPointOnLand: newPosition)
+});
