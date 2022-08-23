@@ -1,16 +1,19 @@
 import { useThree } from "@react-three/fiber";
 import React, { useState } from "react";
 import {
+  ArrowHelper,
   DoubleSide,
   Mesh,
   MeshBasicMaterial,
   Raycaster,
   SphereGeometry,
 } from "three";
+import { useUserInputStore } from "../store";
 
 const GroundPlane = (props) => {
   const [justClicked, setJustClicked] = useState(!false);
   const { camera, gl, scene } = useThree();
+  const setClickedPointOnLand = useUserInputStore((state: any) => state.setClickedPointOnLand);
 
   const landClicked = (e) => {
     // Get clicked position on land
@@ -25,7 +28,7 @@ const GroundPlane = (props) => {
       if (intersect.object.name === "land_mesh") {
         const sphere = new Mesh(
           new SphereGeometry(0.25, 32, 16),
-          new MeshBasicMaterial({ color: 0xff0000 })
+          new MeshBasicMaterial({ color: 0xffff00 })
         );
         const { x, y, z } = intersect.point;
         sphere.position.set(x, y, z);
@@ -34,7 +37,7 @@ const GroundPlane = (props) => {
           scene.remove(sphere);
         }, 1000);
         // clicked position
-        console.log(intersect.point, "intersect.point");
+        setClickedPointOnLand(intersect.point);
       }
     }
   };

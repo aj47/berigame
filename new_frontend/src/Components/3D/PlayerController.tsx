@@ -1,39 +1,24 @@
 import React, { Suspense, useState } from "react";
-import TWEEN, { Tween } from "@tweenjs/tween.js";
-import { Html, Text, useAnimations, useGLTF } from "@react-three/drei";
+import TWEEN from "@tweenjs/tween.js";
+import { Html, useAnimations, useGLTF } from "@react-three/drei";
 import { useEffect, useRef } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
-import {
-  Mesh,
-  MeshBasicMaterial,
-  Raycaster,
-  SphereGeometry,
-  Vector3,
-} from "three";
-// import { webSocketSendPosition } from "../../Api";
-import { useEventListener } from "usehooks-ts";
-import { useUserPositionStore, useWebsocketStore } from "../../store";
+import { useFrame } from "@react-three/fiber";
+import { useUserInputStore, useWebsocketStore } from "../../store";
 import { webSocketSendPosition } from "../../Api";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
-  const {
-    scene: obj,
-    materials,
-    animations,
-  } = useGLTF("island-man.glb") as any;
-  const { actions, mixer, ref, names } = useAnimations(animations, obj);
-  const { camera, gl, scene } = useThree();
+  const { scene: obj, animations } = useGLTF("island-man.glb") as any;
+  const { actions, mixer } = useAnimations(animations, obj);
   const [currentTween, setCurrentTween] = useState<any>(null);
-  const [clickedPointOnLand, setClickedPointOnLand] = useState<Vector3 | null>(
-    null
-  );
-  const [justClicked, setJustClicked] = useState(false);
   const websocketConnection = useWebsocketStore(
     (state: any) => state.websocketConnection
   );
   const allConnections = useWebsocketStore(
     (state: any) => state.allConnections
+  );
+  const clickedPointOnLand = useUserInputStore(
+    (state: any) => state.clickedPointOnLand
   );
 
   useEffect(() => {
@@ -51,21 +36,6 @@ const PlayerController = (props) => {
     );
   }, [allConnections]);
 
-  useEventListener("pointerup", (e) => mouseUp(e));
-  useEventListener("pointerdown", (e) => mouseDown(e));
-
-  const mouseDown = (e) => {
-    setJustClicked(true);
-    setTimeout(() => {
-      setJustClicked(false);
-    }, 333);
-  };
-
-  const mouseUp = (e) => {
-    if (justClicked) {
-    }
-  };
-
   useEffect(() => {
     if (clickedPointOnLand) {
       actions["Walk"]?.play();
@@ -80,7 +50,6 @@ const PlayerController = (props) => {
             objRef.current.position.distanceTo(clickedPointOnLand) * 500
           )
           .onComplete(() => {
-            setClickedPointOnLand(null);
             actions["Walk"]?.stop();
             actions["Idle"]?.play();
             webSocketSendPosition(
