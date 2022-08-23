@@ -16,6 +16,9 @@ const ChatBox = memo(({ setChatMessageSent }) => {
   };
 
   const keyDownHandler = (e) => {
+    if (e.code === "Escape" && !chatOpen) {
+      setChatOpen(false);
+    }
     if (e.code === "Enter" && !chatOpen) {
       e.preventDefault();
       setChatOpen(true);
