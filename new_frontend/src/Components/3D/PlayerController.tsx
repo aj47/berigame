@@ -65,7 +65,7 @@ const PlayerController = (props) => {
     );
   };
 
-  const moveTowardsOtherPlayer = () => {
+  const walkTowardsOtherPlayer = () => {
     const separation = 1.5;
     const pointOnLand = clickedOtherObject.current.position;
     const distance =
@@ -118,7 +118,7 @@ const PlayerController = (props) => {
 
   useEffect(() => {
     if (clickedOtherObject) {
-      setFollowingInterval(setInterval(moveTowardsOtherPlayer, 1000));
+      setFollowingInterval(setInterval(walkTowardsOtherPlayer, 1000));
     }
     return () => clearInterval(followingInterval);
   }, [clickedOtherObject]);
