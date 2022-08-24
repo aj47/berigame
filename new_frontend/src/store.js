@@ -41,6 +41,7 @@ export const useUserInputStore = create((set) => ({
   clickedPointOnLand: null,
   clickedOtherObject: null,
   setClickedPointOnLand: (newPosition) =>
-    set({ clickedPointOnLand: newPosition }),
-  setClickedOtherObject: (newObject) => set({ clickedOtherObject: newObject }),
+    set({ clickedPointOnLand: newPosition, clickedOtherObject: null }),
+  setClickedOtherObject: (newObject) =>
+    set({ clickedOtherObject: newObject, clickedPointOnLand: null }),
 }));

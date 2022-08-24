@@ -5,12 +5,14 @@ import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useUserInputStore, useWebsocketStore } from "../../store";
 import { webSocketSendPosition } from "../../Api";
+import { Vector3 } from "three";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
   const { scene: obj, animations } = useGLTF("island-man.glb") as any;
   const { actions, mixer } = useAnimations(animations, obj);
   const [currentTween, setCurrentTween] = useState<any>(null);
+  const [followingInterval, setFollowingInterval] = useState<any>(null);
   const websocketConnection = useWebsocketStore(
     (state: any) => state.websocketConnection
   );
@@ -20,6 +22,66 @@ const PlayerController = (props) => {
   const clickedPointOnLand = useUserInputStore(
     (state: any) => state.clickedPointOnLand
   );
+  const clickedOtherObject = useUserInputStore(
+    (state: any) => state.clickedOtherObject
+  );
+
+  const walkToPointOnLand = (pointOnLand) => {
+    if (followingInterval) clearInterval(followingInterval);
+    actions["Walk"]?.play();
+    obj.lookAt(pointOnLand);
+
+    // Smoothly transition position of character to clicked location
+    if (currentTween) TWEEN.remove(currentTween);
+    setCurrentTween(
+      new TWEEN.Tween(objRef.current.position)
+        .to(pointOnLand, objRef.current.position.distanceTo(pointOnLand) * 500)
+        .onComplete(() => {
+          actions["Walk"]?.stop();
+          actions["Idle"]?.play();
+          webSocketSendPosition(
+            {
+              position: objRef.current.position,
+              restPosition: objRef.current.position,
+              rotation: obj.rotation,
+              isWalking: false,
+            },
+            websocketConnection,
+            allConnections
+          );
+        })
+        .start()
+    );
+
+    webSocketSendPosition(
+      {
+        position: objRef.current.position,
+        restPosition: pointOnLand,
+        rotation: obj.rotation,
+        isWalking: true,
+      },
+      websocketConnection,
+      allConnections
+    );
+  };
+
+  const moveTowardsOtherPlayer = () => {
+    const dirV = new Vector3();
+    const distV = new Vector3();
+    const separation = 1.5;
+    const direction = dirV
+      .subVectors(objRef.current.position, clickedOtherObject.current.position)
+      .normalize();
+    const distance =
+      objRef.current.position.distanceTo(clickedOtherObject.current.position) -
+      separation;
+    // calculate vector that is towards clicked object but 1 unit away
+    distV.addVectors(
+      objRef.current.position,
+      direction.multiplyScalar(-1 * distance)
+    );
+    walkToPointOnLand(distV);
+  };
 
   useEffect(() => {
     // broadcast position
@@ -37,47 +99,15 @@ const PlayerController = (props) => {
   }, [allConnections]);
 
   useEffect(() => {
-    if (clickedPointOnLand) {
-      actions["Walk"]?.play();
-      obj.lookAt(clickedPointOnLand);
-
-      // Smoothly transition position of character to clicked location
-      if (currentTween) TWEEN.remove(currentTween);
-      setCurrentTween(
-        new TWEEN.Tween(objRef.current.position)
-          .to(
-            clickedPointOnLand,
-            objRef.current.position.distanceTo(clickedPointOnLand) * 500
-          )
-          .onComplete(() => {
-            actions["Walk"]?.stop();
-            actions["Idle"]?.play();
-            webSocketSendPosition(
-              {
-                position: objRef.current.position,
-                restPosition: objRef.current.position,
-                rotation: obj.rotation,
-                isWalking: false,
-              },
-              websocketConnection,
-              allConnections
-            );
-          })
-          .start()
-      );
-
-      webSocketSendPosition(
-        {
-          position: objRef.current.position,
-          restPosition: clickedPointOnLand,
-          rotation: obj.rotation,
-          isWalking: true,
-        },
-        websocketConnection,
-        allConnections
-      );
-    }
+    if (clickedPointOnLand) walkToPointOnLand(clickedPointOnLand);
   }, [clickedPointOnLand]);
+
+  useEffect(() => {
+    if (clickedOtherObject) {
+      setFollowingInterval(setInterval(moveTowardsOtherPlayer, 1000));
+    }
+    return () => clearInterval(followingInterval);
+  }, [clickedOtherObject]);
 
   useFrame(() => {
     TWEEN.update();
