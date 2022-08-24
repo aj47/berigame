@@ -66,15 +66,29 @@ const PlayerController = (props) => {
   };
 
   const moveTowardsOtherPlayer = () => {
+    const separation = 1.5;
+    const pointOnLand = clickedOtherObject.current.position;
+    const distance =
+      objRef.current.position.distanceTo(pointOnLand) - separation;
+    if (distance < 1) {
+      obj.lookAt(pointOnLand);
+      webSocketSendPosition(
+        {
+          position: objRef.current.position,
+          restPosition: objRef.current.position,
+          rotation: obj.rotation,
+          isWalking: true,
+        },
+        websocketConnection,
+        allConnections
+      );
+      return;
+    }
     const dirV = new Vector3();
     const distV = new Vector3();
-    const separation = 1.5;
     const direction = dirV
       .subVectors(objRef.current.position, clickedOtherObject.current.position)
       .normalize();
-    const distance =
-      objRef.current.position.distanceTo(clickedOtherObject.current.position) -
-      separation;
     // calculate vector that is towards clicked object but 1 unit away
     distV.addVectors(
       objRef.current.position,
