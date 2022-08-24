@@ -1,12 +1,13 @@
 import create from "zustand";
 
 // Log every time state is changed
+// usage: create(log((set) => ...
 const log = (config) => (set, get, api) =>
   config(
     (args) => {
-      // console.log("  applying", args);
+      console.log("  applying", args);
       set(args);
-      // console.log("  new state", get());
+      console.log("  new state", get());
     },
     get,
     api
@@ -18,17 +19,15 @@ export const useChatStore = create((set) => ({
     set((state) => ({ chatMessages: [...state.chatMessages, newChatMessage] })),
 }));
 
-export const useWebsocketStore = create(
-  log((set) => ({
-    websocketConnection: null,
-    allConnections: [],
-    setWebSocket: (ws) => set({ websocketConnection: ws }),
-    setAllConnections: (connections) =>
-      set((state) => ({
-        allConnections: [...connections],
-      })),
-  }))
-);
+export const useWebsocketStore = create((set) => ({
+  websocketConnection: null,
+  allConnections: [],
+  setWebSocket: (ws) => set({ websocketConnection: ws }),
+  setAllConnections: (connections) =>
+    set((state) => ({
+      allConnections: [...connections],
+    })),
+}));
 
 export const useUserPositionStore = create((set) => ({
   userPositions: {},
@@ -40,6 +39,8 @@ export const useUserPositionStore = create((set) => ({
 
 export const useUserInputStore = create((set) => ({
   clickedPointOnLand: null,
+  clickedOtherObject: null,
   setClickedPointOnLand: (newPosition) =>
     set({ clickedPointOnLand: newPosition }),
+  setClickedOtherObject: (newObject) => set({ clickedOtherObject: newObject }),
 }));

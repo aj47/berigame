@@ -1,9 +1,9 @@
 import { Html, useAnimations, useGLTF } from "@react-three/drei";
-import TWEEN, { Tween } from "@tweenjs/tween.js";
+import TWEEN from "@tweenjs/tween.js";
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useGraph } from "@react-three/fiber";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
-import { Vector3 } from "three";
+import { BoxBufferGeometry, MeshBasicMaterial, Vector3 } from "three";
 
 const RenderOtherUser = ({
   url = "island-man.glb",
@@ -13,14 +13,15 @@ const RenderOtherUser = ({
   isWalking,
   messagesToRender,
 }) => {
-  const { scene, materials, animations } = useGLTF(url);
+  const { scene, animations } = useGLTF(url);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { nodes } = useGraph(clone);
   const copiedScene = nodes.Scene;
-  const { actions, mixer, ref, names } = useAnimations(animations, copiedScene);
-  const [atRestPosition, setAtRestPosition] = useState(false);
+  const { actions, mixer } = useAnimations(animations, copiedScene);
   const [currentTween, setCurrentTween] = useState(null);
   const objRef = new useRef();
+  const hitBox = new BoxBufferGeometry(1, 5.5, 1);
+  const hitBoxMaterial = new MeshBasicMaterial({ visible: false });
 
   useEffect(() => {
     objRef.current.position.set(position[0], position[1], position[2]);
@@ -62,14 +63,21 @@ const RenderOtherUser = ({
     actions["Idle"]?.play();
   }, [animations, mixer]);
 
+  const onClick = (e) => {
+    e.stopPropagation();
+    // Start walk to player
+    console.log("clicked other player");
+  };
+
   return (
-    <group ref={objRef}>
+    <group ref={objRef} onClick={onClick}>
+      <mesh geometry={hitBox} material={hitBoxMaterial} />
       {messagesToRender && (
         <Html
           center
           position={[
             copiedScene.position.x,
-            copiedScene.position.y + 2,
+            copiedScene.position.y + 3,
             copiedScene.position.z,
           ]}
           className="player-chat-bubble"
@@ -78,7 +86,7 @@ const RenderOtherUser = ({
         </Html>
       )}
       <Suspense fallback={null}>
-        <primitive object={copiedScene} rotation={rotation} />;
+        <primitive object={copiedScene} rotation={rotation} />
       </Suspense>
     </group>
   );

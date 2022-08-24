@@ -67,7 +67,7 @@ const RenderNPC = (props) => {
   return (
     <group>
       <RenderOtherUser
-        url="native-woman.glb"
+        url="giant.glb"
         messagesToRender={messageToRender}
         position={position}
         restPosition={restPosition}
