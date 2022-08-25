@@ -14,7 +14,7 @@ const RenderOtherUser = ({
   isWalking,
   messagesToRender,
 }) => {
-  const { scene, animations } = useGLTF(url);
+  const { scene, animations, materials } = useGLTF(url);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { nodes } = useGraph(clone);
   const copiedScene = nodes.Scene;
@@ -68,9 +68,28 @@ const RenderOtherUser = ({
     actions["Idle"]?.play();
   }, [animations, mixer]);
 
+  const materialChange = () => {
+    for (const material of Object.keys(materials)) {
+      materials[material].userData.originalColor =
+        "0x" + materials[material].color.getHexString();
+      materials[material].color.setHex(0x00ff00);
+    }
+  };
+
+  const clearMaterialChange = () => {
+    for (const material of Object.keys(materials))
+      materials[material].color.setHex(
+        materials[material].userData.originalColor
+      );
+  };
+
   const onClick = (e) => {
     e.stopPropagation();
-    setClickedOtherObject({...objRef});
+    materialChange();
+    setClickedOtherObject({ ...objRef });
+    setTimeout(() => {
+      clearMaterialChange();
+    }, 150);
   };
 
   return (
