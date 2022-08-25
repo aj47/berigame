@@ -11,11 +11,14 @@ import {
 import { useUserInputStore } from "../store";
 
 const GroundPlane = (props) => {
-  const [justClicked, setJustClicked] = useState(!false);
+  const [justClicked, setJustClicked] = useState(false);
   const { camera, gl, scene } = useThree();
-  const setClickedPointOnLand = useUserInputStore((state: any) => state.setClickedPointOnLand);
+  const setClickedPointOnLand = useUserInputStore(
+    (state: any) => state.setClickedPointOnLand
+  );
 
-  const landClicked = (e) => {
+  const landClickReleased = (e) => {
+    if (!justClicked) return;
     // Get clicked position on land
     const clickPosition = {
       x: (e.clientX * 2) / gl.domElement.clientWidth - 1,
@@ -41,6 +44,14 @@ const GroundPlane = (props) => {
       }
     }
   };
+
+  const landClicked = (e) => {
+    setJustClicked(true);
+    setTimeout(() => {
+      setJustClicked(false);
+    }, 200);
+  };
+
   return (
     <>
       <mesh
@@ -48,7 +59,8 @@ const GroundPlane = (props) => {
         scale={[50, 50, 1]}
         rotation={[Math.PI / 2, 0, 0]}
         position={[0, -0, 0]}
-        onClick={landClicked}
+        onPointerDown={landClicked}
+        onPointerUp={landClickReleased}
       >
         <planeBufferGeometry />
         <meshBasicMaterial color="#fff1a1" side={DoubleSide} />
