@@ -118,6 +118,7 @@ const PlayerController = (props) => {
 
   useEffect(() => {
     if (clickedOtherObject) {
+      walkTowardsOtherPlayer();
       setFollowingInterval(setInterval(walkTowardsOtherPlayer, 1000));
     }
     return () => clearInterval(followingInterval);
