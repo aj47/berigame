@@ -28,7 +28,8 @@ const RenderOtherUser = ({
   );
 
   useEffect(() => {
-    objRef.current.position.set(position[0], position[1], position[2]);
+    if (!isWalking)
+      objRef.current.position.set(position[0], position[1], position[2]);
   }, [position]);
 
   const isSameCoordinates = (a, b) => JSON.stringify(a) === JSON.stringify(b);
