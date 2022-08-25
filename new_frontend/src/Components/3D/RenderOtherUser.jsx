@@ -34,22 +34,24 @@ const RenderOtherUser = ({
 
   const isSameCoordinates = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   useEffect(() => {
+    const restPositionV3 = new Vector3(
+      restPosition[0],
+      restPosition[1],
+      restPosition[2]
+    );
     if (isWalking) {
       if (currentTween) TWEEN.remove(currentTween);
       if (isSameCoordinates(rotation, [0, 0, 0])) {
-        copiedScene.lookAt(restPosition[0], restPosition[1], restPosition[2]);
+        copiedScene.lookAt(restPositionV3);
       }
+      if (isSameCoordinates(objRef.current.position, restPositionV3)) return;
       actions["Idle"]?.stop();
       actions["Walk"]?.play();
       setCurrentTween(
         new TWEEN.Tween(objRef.current.position)
           .to(
-            { x: restPosition[0], y: restPosition[1], z: restPosition[2] },
-            objRef.current.position.distanceTo({
-              x: restPosition[0],
-              y: restPosition[1],
-              z: restPosition[2],
-            }) * 500
+            restPositionV3,
+            objRef.current.position.distanceTo(restPositionV3) * 500
           )
           .onComplete(() => {
             actions["Walk"]?.stop();

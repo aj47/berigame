@@ -65,6 +65,13 @@ const PlayerController = (props) => {
     );
   };
 
+  useEffect(() => {
+    if (!clickedOtherObject) return;
+    clearInterval(followingInterval);
+    setFollowingInterval(setInterval(walkTowardsOtherPlayer, 500));
+    return () => clearInterval(followingInterval);
+  }, [currentTween]);
+
   const walkTowardsOtherPlayer = () => {
     const separation = 1.5;
     const pointOnLand = clickedOtherObject.current.position;
@@ -119,7 +126,7 @@ const PlayerController = (props) => {
   useEffect(() => {
     if (clickedOtherObject) {
       walkTowardsOtherPlayer();
-      setFollowingInterval(setInterval(walkTowardsOtherPlayer, 1000));
+      setFollowingInterval(setInterval(walkTowardsOtherPlayer, 500));
     }
     return () => clearInterval(followingInterval);
   }, [clickedOtherObject]);
