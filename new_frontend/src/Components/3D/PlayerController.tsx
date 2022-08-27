@@ -9,7 +9,7 @@ import { Vector3 } from "three";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
-  const { scene: obj, animations } = useGLTF("island-man.glb") as any;
+  const { scene: obj, animations } = useGLTF("native-woman.glb") as any;
   const { actions, mixer } = useAnimations(animations, obj);
   const [currentTween, setCurrentTween] = useState<any>(null);
   const [followingInterval, setFollowingInterval] = useState<any>(null);
@@ -141,6 +141,17 @@ const PlayerController = (props) => {
 
   useEffect(() => {
     props.setPlayerRef(objRef);
+    if (objRef)
+      webSocketSendPosition(
+        {
+          position: objRef.current.position,
+          restPosition: objRef.current.position,
+          rotation: obj.rotation,
+          isWalking: false,
+        },
+        websocketConnection,
+        allConnections
+      );
   }, [objRef]);
 
   useEffect(() => {}, []);

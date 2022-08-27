@@ -20,6 +20,9 @@ const Api = (props) => {
   const setUserPositions = useUserPositionStore(
     (state: any) => state.setUserPositions
   );
+  const setUserPosition = useUserPositionStore(
+    (state: any) => state.setUserPosition
+  );
   const setUserConnectionId = useUserPositionStore(
     (state: any) => state.setUserConnectionId
   );
@@ -28,7 +31,6 @@ const Api = (props) => {
   //   url = "http://localhost:3000/dev/";
   //   wsUrl = "ws://localhost:3001";
   // }
-  const connectedUsers: any = {};
   let clientConnectionId = null;
   
   useEffect(() => {
@@ -38,8 +40,7 @@ const Api = (props) => {
 
   const updateUserPosition = (newData: any) => {
     newData.selfDestroyTime = new Date().getTime() + 5000;
-    connectedUsers[newData.userId] = newData;
-    setUserPositions(connectedUsers);
+    setUserPosition(newData);
     if (allConnections && allConnections.indexOf(newData.connectionId) === -1) {
       setAllConnections([...allConnections, newData.connectionId]);
     }

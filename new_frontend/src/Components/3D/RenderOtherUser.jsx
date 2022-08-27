@@ -7,7 +7,7 @@ import { BoxBufferGeometry, MeshBasicMaterial, Vector3 } from "three";
 import { useUserInputStore } from "../../store";
 
 const RenderOtherUser = ({
-  url = "island-man.glb",
+  url = "native-woman.glb",
   position,
   rotation,
   restPosition,
