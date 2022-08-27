@@ -73,6 +73,7 @@ const RenderNPC = (props) => {
         restPosition={restPosition}
         isWalking={isWalking}
         rotation={[0, 0, 0]}
+        isCombatable={props.isCombatable}
       />
     </group>
   );

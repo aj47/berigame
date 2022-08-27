@@ -13,6 +13,7 @@ const RenderOtherUser = ({
   restPosition,
   isWalking,
   messagesToRender,
+  isCombatable = false
 }) => {
   const { scene, animations, materials } = useGLTF(url);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
@@ -74,7 +75,10 @@ const RenderOtherUser = ({
     for (const material of Object.keys(materials)) {
       materials[material].userData.originalColor =
         "0x" + materials[material].color.getHexString();
-      materials[material].color.setHex(0x00ff00);
+      if (isCombatable)
+        materials[material].color.setHex(0xff0000);
+      else 
+        materials[material].color.setHex(0x00ff00);
     }
   };
 
