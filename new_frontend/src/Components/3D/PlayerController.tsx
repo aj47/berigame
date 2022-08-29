@@ -29,6 +29,7 @@ const PlayerController = (props) => {
   const walkToPointOnLand = (pointOnLand) => {
     if (followingInterval) clearInterval(followingInterval);
     actions["Walk"]?.play();
+    actions["RightHook"]?.stop();
     obj.lookAt(pointOnLand);
 
     // Smoothly transition position of character to clicked location
@@ -36,6 +37,7 @@ const PlayerController = (props) => {
     setCurrentTween(
       new TWEEN.Tween(objRef.current.position)
         .to(pointOnLand, objRef.current.position.distanceTo(pointOnLand) * 500)
+        .onUpdate(onPositionUpdate)
         .onComplete(() => {
           actions["Walk"]?.stop();
           actions["Idle"]?.play();
@@ -63,6 +65,22 @@ const PlayerController = (props) => {
       websocketConnection,
       allConnections
     );
+  };
+
+  const onPositionUpdate = (p) => {
+    // Check if in attack range and cna attack
+    if (!clickedOtherObject) return;
+    if (!clickedOtherObject.isCombatable) return;
+    const attackRange = 1.5;
+    const pointOnLand = clickedOtherObject.current.position;
+    const distance = objRef.current.position.distanceTo(pointOnLand);
+    if (distance < 2) {
+      actions["Walking"]?.stop();
+      actions["RightHook"]?.play();
+    } else {
+      actions["Walking"]?.play();
+      actions["RightHook"]?.stop();
+    }
   };
 
   useEffect(() => {
