@@ -25,7 +25,7 @@ const GameComponent = () => {
         resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}
       >
         <AlphaIsland/>
-        <RenderNPC isCombatable={true}/>
+        <RenderNPC isCombatable={false}/>
         <RenderOnlineUsers/>
         <PlayerController
           chatMessage={chatMessageSent}

@@ -42,6 +42,7 @@ const RenderOnlineUsers = (props) => {
         return (
           <group key={playerKey}>
             <RenderOtherUser
+              isCombatable={true}
               messagesToRender={messagesToRender[playerKey]?.message}
               position={[x, y, z]}
               rotation={[_x, _y, _z]}

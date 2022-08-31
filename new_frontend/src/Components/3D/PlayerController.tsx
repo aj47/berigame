@@ -67,17 +67,21 @@ const PlayerController = (props) => {
     );
   };
 
-  const onPositionUpdate = (p) => {
-    // Check if in attack range and cna attack
+  const onPositionUpdate = () => {
+    console.log(clickedOtherObject, "clickedOtherObject");
+    // if clicked enemy
     if (!clickedOtherObject) return;
     if (!clickedOtherObject.isCombatable) return;
-    const attackRange = 1.5;
-    const pointOnLand = clickedOtherObject.current.position;
-    const distance = objRef.current.position.distanceTo(pointOnLand);
+    // Check if in attack range and attack
+    const enemyLocation = clickedOtherObject.current.position;
+    const distance = objRef.current.position.distanceTo(enemyLocation);
+    // console.log(distance, "distance");
     if (distance < 2) {
+      // attack
       actions["Walking"]?.stop();
       actions["RightHook"]?.play();
     } else {
+      // stop attacking
       actions["Walking"]?.play();
       actions["RightHook"]?.stop();
     }
@@ -96,6 +100,7 @@ const PlayerController = (props) => {
     const distance =
       objRef.current.position.distanceTo(pointOnLand) - separation;
     if (distance < 1) {
+      onPositionUpdate();
       obj.lookAt(pointOnLand);
       webSocketSendPosition(
         {

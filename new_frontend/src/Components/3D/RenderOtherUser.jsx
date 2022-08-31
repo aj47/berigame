@@ -14,6 +14,7 @@ const RenderOtherUser = ({
   isWalking,
   messagesToRender,
   isCombatable = false,
+  inCombat = false,
 }) => {
   const { scene, animations, materials } = useGLTF(url);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
@@ -99,6 +100,19 @@ const RenderOtherUser = ({
   return (
     <group ref={objRef} onClick={onClick}>
       <mesh geometry={hitBox} material={hitBoxMaterial} />
+      {inCombat && (
+        <Html
+          center
+          position={[
+            copiedScene.position.x,
+            copiedScene.position.y + 4,
+            copiedScene.position.z,
+          ]}
+          className="player-chat-bubble"
+        >
+          in combat
+        </Html>
+      )}
       {messagesToRender && (
         <Html
           center
