@@ -15,6 +15,8 @@ const RenderOtherUser = ({
   messagesToRender,
   isCombatable = false,
   inCombat = false,
+  isAttacking = false,
+  connectionId = "NPC",
 }) => {
   const { scene, animations, materials } = useGLTF(url);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
@@ -29,6 +31,13 @@ const RenderOtherUser = ({
     (state) => state.setClickedOtherObject
   );
 
+  useEffect(() => {
+    if (isAttacking) {
+      actions["Idle"]?.stop();
+      actions["RightHook"]?.play();
+    }
+  }, [isAttacking]);
+  
   useEffect(() => {
     if (!isWalking)
       objRef.current.position.set(position[0], position[1], position[2]);
@@ -91,7 +100,7 @@ const RenderOtherUser = ({
   const onClick = (e) => {
     e.stopPropagation();
     materialChange();
-    setClickedOtherObject({ ...objRef, isCombatable });
+    setClickedOtherObject({ ...objRef, isCombatable, connectionId });
     setTimeout(() => {
       clearMaterialChange();
     }, 150);

@@ -4,7 +4,7 @@ import { Html, useAnimations, useGLTF } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useUserInputStore, useWebsocketStore } from "../../store";
-import { webSocketSendPosition } from "../../Api";
+import { webSocketSendAction, webSocketSendPosition } from "../../Api";
 import { Vector3 } from "three";
 
 const PlayerController = (props) => {
@@ -60,6 +60,7 @@ const PlayerController = (props) => {
         position: objRef.current.position,
         restPosition: pointOnLand,
         rotation: obj.rotation,
+        attackingPlayer: clickedOtherObject?.connectionId,
         isWalking: true,
       },
       websocketConnection,
@@ -68,14 +69,12 @@ const PlayerController = (props) => {
   };
 
   const onPositionUpdate = () => {
-    console.log(clickedOtherObject, "clickedOtherObject");
     // if clicked enemy
     if (!clickedOtherObject) return;
     if (!clickedOtherObject.isCombatable) return;
     // Check if in attack range and attack
     const enemyLocation = clickedOtherObject.current.position;
     const distance = objRef.current.position.distanceTo(enemyLocation);
-    // console.log(distance, "distance");
     if (distance < 2) {
       // attack
       actions["Walking"]?.stop();
@@ -107,6 +106,7 @@ const PlayerController = (props) => {
           position: objRef.current.position,
           restPosition: objRef.current.position,
           rotation: obj.rotation,
+          attackingPlayer: clickedOtherObject?.connectionId,
           isWalking: true,
         },
         websocketConnection,
@@ -136,6 +136,7 @@ const PlayerController = (props) => {
         restPosition: objRef.current.position,
         rotation: obj.rotation,
         isWalking: false,
+        attackingPlayer: clickedOtherObject?.connectionId,
       },
       websocketConnection,
       allConnections

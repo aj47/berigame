@@ -17,9 +17,6 @@ const Api = (props) => {
     (state: any) => state.allConnections
   );
   const addChatMessage = useChatStore((state: any) => state.addChatMessage);
-  const setUserPositions = useUserPositionStore(
-    (state: any) => state.setUserPositions
-  );
   const setUserPosition = useUserPositionStore(
     (state: any) => state.setUserPosition
   );
@@ -61,7 +58,7 @@ const Api = (props) => {
       if (messageObject.chatMessage) {
         addChatMessage(messageObject);
       }
-      if (messageObject.position && messageObject.userId) {
+      if (messageObject.attackingPlayer || messageObject.position && messageObject.userId) {
         updateUserPosition(messageObject);
       }
       if (messageObject.connections) {

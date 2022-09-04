@@ -42,6 +42,8 @@ const RenderOnlineUsers = (props) => {
         return (
           <group key={playerKey}>
             <RenderOtherUser
+              isAttacking={userPositions[playerKey].attackingPlayer}
+              connectionId={playerKey}
               isCombatable={true}
               messagesToRender={messagesToRender[playerKey]?.message}
               position={[x, y, z]}
