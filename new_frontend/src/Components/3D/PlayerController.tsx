@@ -6,6 +6,7 @@ import { useFrame } from "@react-three/fiber";
 import { useUserInputStore, useWebsocketStore } from "../../store";
 import { webSocketSendAction, webSocketSendPosition } from "../../Api";
 import { Vector3 } from "three";
+import HealthBar from "./HealthBar";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
@@ -178,19 +179,18 @@ const PlayerController = (props) => {
       );
   }, [objRef]);
 
-  useEffect(() => {}, []);
-
   return (
     <group ref={objRef}>
       {props.chatMessage && (
         <Html
           center
-          position={[obj.position.x, obj.position.y + 2, obj.position.z]}
+          position={[obj.position.x, obj.position.y + 2.5, obj.position.z]}
           className="player-chat-bubble"
         >
           {props.chatMessage}
         </Html>
       )}
+      {/* {true && <HealthBar playerPosition={obj.position} health={100}/>} */}
       <Suspense fallback={null}>
         <primitive object={obj} />;
       </Suspense>

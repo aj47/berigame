@@ -166,3 +166,16 @@ h2 {
 }
 
 /* end chatbox */
+
+
+.health-bar {
+  content: "";  
+  background-color: red;
+  width: 10rem;
+  height: 1rem;
+}
+
+.health-bar .fill{
+  background-color: green;
+  height: 100%;
+}
