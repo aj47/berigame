@@ -5,6 +5,7 @@ import { useFrame, useGraph } from "@react-three/fiber";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
 import { BoxBufferGeometry, MeshBasicMaterial, Vector3 } from "three";
 import { useUserInputStore } from "../../store";
+import ChatBubble from "./ChatBubble";
 
 const RenderOtherUser = ({
   url = "native-woman.glb",
@@ -37,7 +38,7 @@ const RenderOtherUser = ({
       actions["RightHook"]?.play();
     }
   }, [isAttacking]);
-  
+
   useEffect(() => {
     if (!isWalking)
       objRef.current.position.set(position[0], position[1], position[2]);
@@ -109,31 +110,12 @@ const RenderOtherUser = ({
   return (
     <group ref={objRef} onClick={onClick}>
       <mesh geometry={hitBox} material={hitBoxMaterial} />
-      {inCombat && (
-        <Html
-          center
-          position={[
-            copiedScene.position.x,
-            copiedScene.position.y + 4,
-            copiedScene.position.z,
-          ]}
-          className="player-chat-bubble"
-        >
-          in combat
-        </Html>
-      )}
       {messagesToRender && (
-        <Html
-          center
-          position={[
-            copiedScene.position.x,
-            copiedScene.position.y + 3,
-            copiedScene.position.z,
-          ]}
-          className="player-chat-bubble"
-        >
-          {messagesToRender}
-        </Html>
+        <ChatBubble
+          playerPosition={copiedScene.position}
+          yOffset={3.2}
+          chatMessage={messagesToRender}
+        />
       )}
       <Suspense fallback={null}>
         <primitive object={copiedScene} rotation={rotation} />

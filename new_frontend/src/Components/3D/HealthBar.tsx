@@ -5,7 +5,7 @@ import { Vector3 } from "three";
 const HealthBar = (props) => {
   const position = new Vector3(
     props.playerPosition.x,
-    props.playerPosition.y + 2,
+    props.playerPosition.y + props.yOffset,
     props.playerPosition.z
   );
 

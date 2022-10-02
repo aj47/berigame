@@ -7,6 +7,7 @@ import { useUserInputStore, useWebsocketStore } from "../../store";
 import { webSocketSendAction, webSocketSendPosition } from "../../Api";
 import { Vector3 } from "three";
 import HealthBar from "./HealthBar";
+import ChatBubble from "./ChatBubble";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
@@ -182,13 +183,11 @@ const PlayerController = (props) => {
   return (
     <group ref={objRef}>
       {props.chatMessage && (
-        <Html
-          center
-          position={[obj.position.x, obj.position.y + 2.5, obj.position.z]}
-          className="player-chat-bubble"
-        >
-          {props.chatMessage}
-        </Html>
+        <ChatBubble
+          playerPosition={obj.position}
+          yOffset={2.5}
+          chatMessage={props.chatMessage}
+        />
       )}
       {/* {true && <HealthBar playerPosition={obj.position} health={100}/>} */}
       <Suspense fallback={null}>
