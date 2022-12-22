@@ -6,8 +6,8 @@ import {
 } from "../store";
 
 const Api = (props) => {
-  let url = "https://rmwrulu837.execute-api.ap-southeast-2.amazonaws.com/dev/";
-  let wsUrl = "wss://ahftzn2xw8.execute-api.ap-southeast-2.amazonaws.com/dev/";
+  let url = "https://a8gb4xiydj.execute-api.ap-southeast-2.amazonaws.com/dev/";
+  let wsUrl = "wss://prylvmzsyg.execute-api.ap-southeast-2.amazonaws.com/dev";
   const setWebSocket = useWebsocketStore((state: any) => state.setWebSocket);
   const websocketConnection = useWebsocketStore((state: any) => state.websocketConnection);
   const setAllConnections = useWebsocketStore(
@@ -24,10 +24,10 @@ const Api = (props) => {
     (state: any) => state.setUserConnectionId
   );
 
-  if (process.env.NODE_ENV === 'development')  {
-    url = "http://localhost:3000/dev/";
-    wsUrl = "ws://localhost:3001";
-  }
+  // if (process.env.NODE_ENV === 'development')  {
+  //   url = "http://localhost:3000/dev/";
+  //   wsUrl = "ws://localhost:3001";
+  // }
   let clientConnectionId = null;
   
   useEffect(() => {
