@@ -1,14 +1,14 @@
 org: arash
-app:  chatchatbox-api
+app: cubespaced
 # For full config options, check the docs:
 #    docs.serverless.com
 
-service: chatchatbox-api
+service: cubespaced-api
 frameworkVersion: '2'
 
 provider:
   name: aws
-  profile: sub2me
+  profile: appricot
   runtime: nodejs12.x
   lambdaHashingVersion: 20201221
   stage: ${opt:stage, 'dev'}
