@@ -1,5 +1,5 @@
 Resources:
-  chatchatboxTable:
+  CubespacedTable:
     Type: 'AWS::DynamoDB::Table'
     DeletionPolicy: Delete
     #Data model: 
@@ -16,6 +16,10 @@ Resources:
         - AttributeName: "PK"
           AttributeType: "S"
         - AttributeName: "SK"
+          AttributeType: "S"
+        - AttributeName: "email"
+          AttributeType: "S"
+        - AttributeName: "handle"
           AttributeType: "S"
       KeySchema:
         - AttributeName: "PK"
