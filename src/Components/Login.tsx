@@ -32,9 +32,11 @@ const Login = ({ userData, setUserData }: LoginProps) => {
   const tryAuth = async () => {
     setLoading("Attempting Authentication...");
     const token = await auth.getToken();
+    console.log(token, "token");
     if (!token) return;
     try {
       const DID = await magic.auth.loginWithCredential(token);
+      console.log(DID, "DID");
       if (DID) initUserData();
     } catch (e) {
       console.error(e);
@@ -60,8 +62,9 @@ const Login = ({ userData, setUserData }: LoginProps) => {
   useEffect(() => {
     if (!magic) {
       setMagic(
-        new Magic(import.meta.env.VITE_MAGIC_API_KEY, { network: "ropsten" })
+        new Magic(import.meta.env.VITE_MAGIC_API_KEY)
       );
+      console.log(magic, "magic");
       return;
     }
     if (userData === null) checkAuth();

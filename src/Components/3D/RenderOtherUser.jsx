@@ -8,7 +8,7 @@ import { useUserInputStore } from "../../store";
 import ChatBubble from "./ChatBubble";
 
 const RenderOtherUser = ({
-  url = "giant.glb",
+  url = "native-woman.glb",
   position,
   rotation,
   restPosition,
