@@ -4,12 +4,14 @@ import { Html, useAnimations, useGLTF } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useUserInputStore, useWebsocketStore } from "../../store";
-import { webSocketSendPosition } from "../../Api";
+import { webSocketSendAction, webSocketSendPosition } from "../../Api";
 import { Vector3 } from "three";
+import HealthBar from "./HealthBar";
+import ChatBubble from "./ChatBubble";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
-  const { scene: obj, animations } = useGLTF("native-woman.glb") as any;
+  const { scene: obj, animations } = useGLTF("giant.glb") as any;
   const { actions, mixer } = useAnimations(animations, obj);
   const [currentTween, setCurrentTween] = useState<any>(null);
   const [followingInterval, setFollowingInterval] = useState<any>(null);
@@ -178,19 +180,16 @@ const PlayerController = (props) => {
       );
   }, [objRef]);
 
-  useEffect(() => {}, []);
-
   return (
     <group ref={objRef}>
       {props.chatMessage && (
-        <Html
-          center
-          position={[obj.position.x, obj.position.y + 2, obj.position.z]}
-          className="player-chat-bubble"
-        >
-          {props.chatMessage}
-        </Html>
+        <ChatBubble
+          playerPosition={obj.position}
+          yOffset={2.5}
+          chatMessage={props.chatMessage}
+        />
       )}
+      {/* {true && <HealthBar playerPosition={obj.position} health={100}/>} */}
       <Suspense fallback={null}>
         <primitive object={obj} />;
       </Suspense>

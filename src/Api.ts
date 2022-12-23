@@ -32,7 +32,7 @@ interface PositionMessage {
   isWalking: boolean;
 }
 
-export const webSocketSendPosition = async (message: any, ws: any, allConnections: any[]) => {
+export const webSocketSendPosition = async (message: PositionMessage, ws: any, allConnections: any[]) => {
   try {
     const payload = {
       message,
