@@ -107,7 +107,7 @@ h2 {
 #chatBox {
   z-index: 2;
   position: absolute;
-  top: 5px;
+  top: calc(100vh - 70px);
   left: 5px;
   width: calc(100vw - 10px);
   max-width: 1000px;
@@ -119,10 +119,12 @@ h2 {
   display: none;
 }
 #chatBox .chatLog {
+  position: absolute;
+  bottom: 50px;
   border-radius: 3px 3px 0 0;
   transition: max-height 0.15s ease-out;
-  max-width: 1000px;
-  height: 400px;
+  max-width: min(1000px, 95vw);
+  height: 200px;
   background-color: rgba(255, 233, 205, 0.14);
   word-wrap: break-word;
   overflow: hidden;
@@ -155,6 +157,10 @@ h2 {
   left : min(calc(100vw - 50px), 950px);
 }
 
+#chatBox .openChatButton.open  { 
+  bottom: 225px;
+  top: auto;
+}
 #chatBox .openChatButton  { 
   pointer-events: all;
   height: 50px;

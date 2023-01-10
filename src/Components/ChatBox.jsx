@@ -56,14 +56,14 @@ const ChatBox = memo(({ setChatMessageSent }) => {
           onKeyDown={keyDownHandler}
         />
 
-        <button
+        {/* <button
           onClick={(e) => {
             sendMessage(inputText);
             setInputText("");
           }}
         >
           Send
-        </button>
+        </button> */}
       </>
     );
   });
@@ -119,3 +119,4 @@ const ChatBox = memo(({ setChatMessageSent }) => {
 });
 
 export default ChatBox;
+  
