@@ -1,4 +1,4 @@
-import create from "zustand";
+import {create} from "zustand";
 
 // Log every time state is changed
 // usage: create(log((set) => ...

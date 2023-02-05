@@ -12,7 +12,6 @@ const RenderGLB = ({ url, onClick = null, position}) => {
         onClick={onClick}
         position={position}
       />
-      ;
     </Suspense>
   );
 };

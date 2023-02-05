@@ -191,7 +191,7 @@ const PlayerController = (props) => {
       )}
       {/* {true && <HealthBar playerPosition={obj.position} health={100}/>} */}
       <Suspense fallback={null}>
-        <primitive object={obj} />;
+        <primitive object={obj} />
       </Suspense>
     </group>
   );
