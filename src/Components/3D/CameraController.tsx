@@ -8,7 +8,7 @@ const CameraController = (props) => {
   useEffect(() => {
     controls.minDistance = 10;
     controls.maxDistance = 10;
-    controls.maxPolarAngle = Math.PI/2 - 0.1; 
+    // controls.maxPolarAngle = Math.PI/2 - 0.1; 
     camera.position.set(0, 2, 8);
     controls.update();
     return () => {
