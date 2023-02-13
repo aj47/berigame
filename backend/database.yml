@@ -1,5 +1,5 @@
 Resources:
-  chatchatboxTable:
+  CubespacedTable:
     Type: 'AWS::DynamoDB::Table'
     DeletionPolicy: Delete
     #Data model: 
@@ -21,10 +21,6 @@ Resources:
           AttributeType: "S"
         - AttributeName: "handle"
           AttributeType: "S"
-        - AttributeName: "chatroom"
-          AttributeType: "S"
-        - AttributeName: "created"
-          AttributeType: "N"
       KeySchema:
         - AttributeName: "PK"
           KeyType: "HASH" 

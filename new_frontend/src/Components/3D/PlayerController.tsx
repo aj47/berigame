@@ -11,7 +11,7 @@ import ChatBubble from "./ChatBubble";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
-  const { scene: obj, animations } = useGLTF("native-woman.glb") as any;
+  const { scene: obj, animations } = useGLTF("giant.glb") as any;
   const { actions, mixer } = useAnimations(animations, obj);
   const [currentTween, setCurrentTween] = useState<any>(null);
   const [followingInterval, setFollowingInterval] = useState<any>(null);
