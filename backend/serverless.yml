@@ -4,7 +4,7 @@ app:  chatchatbox-api
 #    docs.serverless.com
 
 service: chatchatbox-api
-frameworkVersion: '2'
+frameworkVersion: '3.26'
 
 provider:
   name: aws
