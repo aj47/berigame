@@ -5,7 +5,10 @@ import { CameraControls } from "@react-three/drei";
 const CameraController = (props) => {
 	const ref = useRef<CameraControls | null>(null);
 	useEffect(() => {
-		ref.current?.setFocalOffset(0, -2, 4);
+		if (ref.current) {
+			ref.current.setFocalOffset(0, -2, 4);
+			ref.current.maxPolarAngle = Math.PI/2 - 0.1; 
+		}
 	}, []);
 
 	useFrame(() => {
