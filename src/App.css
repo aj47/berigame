@@ -185,3 +185,8 @@ h2 {
   background-color: green;
   height: 100%;
 }
+
+/* this was added because html elements like chat would dissapear after some events (like submitting chat) */
+canvas {
+ position: static !important;  
+}

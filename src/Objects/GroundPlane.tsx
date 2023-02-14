@@ -62,7 +62,7 @@ const GroundPlane = (props) => {
         onPointerDown={landClicked}
         onPointerUp={landClickReleased}
       >
-        <planeBufferGeometry />
+        <planeGeometry />
         <meshBasicMaterial color="#fff1a1" side={DoubleSide} />
       </mesh>
       <mesh
@@ -71,7 +71,7 @@ const GroundPlane = (props) => {
         rotation={[Math.PI / 2, 0, 0]}
         position={[0, -0.1, 0]}
       >
-        <planeBufferGeometry />
+        <planeGeometry />
         <meshBasicMaterial color="#006994" side={DoubleSide} />
       </mesh>
     </>

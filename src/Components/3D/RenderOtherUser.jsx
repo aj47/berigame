@@ -3,7 +3,7 @@ import TWEEN from "@tweenjs/tween.js";
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useGraph } from "@react-three/fiber";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
-import { BoxBufferGeometry, MeshBasicMaterial, Vector3 } from "three";
+import { BoxBufferGeometry, BoxGeometry, MeshBasicMaterial, Vector3 } from "three";
 import { useUserInputStore } from "../../store";
 import ChatBubble from "./ChatBubble";
 
@@ -26,7 +26,7 @@ const RenderOtherUser = ({
   const { actions, mixer } = useAnimations(animations, copiedScene);
   const [currentTween, setCurrentTween] = useState(null);
   const objRef = new useRef();
-  const hitBox = new BoxBufferGeometry(1, 5.5, 1);
+  const hitBox = new BoxGeometry(1, 5.5, 1);
   const hitBoxMaterial = new MeshBasicMaterial({ visible: false });
   const setClickedOtherObject = useUserInputStore(
     (state) => state.setClickedOtherObject
