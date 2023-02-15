@@ -9,6 +9,8 @@ import RenderOnlineUsers from "./RenderOnlineUsers";
 import Api from "../Api";
 import RenderNPC from "./RenderNPC";
 import AlphaIsland from "./AlphaIsland";
+import ClickDropdown from "../ClickDropdown";
+import { useUserInputStore } from "../../store";
 
 // react three fiber docs
 // https://docs.pmnd.rs/react-three-fiber/api/objects
@@ -16,17 +18,21 @@ import AlphaIsland from "./AlphaIsland";
 const GameComponent = () => {
   const [playerRef, setPlayerRef] = useState<any>();
   const [chatMessageSent, setChatMessageSent] = useState();
+  const clickedOtherObject = useUserInputStore(
+    (state: any) => state.clickedOtherObject
+  );
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
-      <Api/>
+      <Api />
+      {clickedOtherObject && <ClickDropdown />}
       <ChatBox setChatMessageSent={setChatMessageSent} />
       <Canvas
         id="three-canvas"
         resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}
       >
-        <AlphaIsland/>
-        <RenderNPC isCombatable={false}/>
-        <RenderOnlineUsers/>
+        <AlphaIsland />
+        <RenderNPC isCombatable={false} />
+        <RenderOnlineUsers />
         <PlayerController
           chatMessage={chatMessageSent}
           setPlayerRef={setPlayerRef}

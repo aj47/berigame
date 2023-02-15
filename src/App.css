@@ -102,7 +102,6 @@ h2 {
   pointer-events: none;
 }
 
-
 /* chatbox */
 #chatBox {
   z-index: 2;
@@ -113,7 +112,6 @@ h2 {
   max-width: 1000px;
   pointer-events: none;
 }
-
 
 #chatBox .chatLog::-webkit-scrollbar {
   display: none;
@@ -130,14 +128,14 @@ h2 {
   overflow: hidden;
   overflow-x: hidden;
   overflow-y: scroll;
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
-#chatBox .chatInputBar { 
+#chatBox .chatInputBar {
   display: flex;
 }
-#chatBox .chatInputBar textarea{ 
+#chatBox .chatInputBar textarea {
   pointer-events: all;
   width: 100%;
   max-width: calc(1000px - 43px);
@@ -153,15 +151,15 @@ h2 {
   background-color: rgba(255, 233, 205, 0.377);
 }
 
-#chatBox .openChatButton.open { 
-  left : min(calc(100vw - 50px), 950px);
+#chatBox .openChatButton.open {
+  left: min(calc(100vw - 50px), 950px);
 }
 
-#chatBox .openChatButton.open  { 
+#chatBox .openChatButton.open {
   bottom: 225px;
   top: auto;
 }
-#chatBox .openChatButton  { 
+#chatBox .openChatButton {
   pointer-events: all;
   height: 50px;
   width: 50px;
@@ -173,20 +171,27 @@ h2 {
 
 /* end chatbox */
 
-
 .health-bar {
-  content: "";  
+  content: "";
   background-color: red;
   width: 10rem;
   height: 1rem;
 }
 
-.health-bar .fill{
+.health-bar .fill {
   background-color: green;
   height: 100%;
 }
 
-/* this was added because html elements like chat would dissapear after some events (like submitting chat) */
+.click-dropdown {
+  position: absolute;  
+  padding: 50px;
+  background-color: red;
+  z-index: 5;
+}
+
+/* this was added because three.js canvas gets position absolute
+applied to it on page scroll which then messes UI positions */
 canvas {
- position: static !important;  
+  position: static !important;
 }

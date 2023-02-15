@@ -101,7 +101,7 @@ const RenderOtherUser = ({
   const onClick = (e) => {
     e.stopPropagation();
     materialChange();
-    setClickedOtherObject({ ...objRef, isCombatable, connectionId });
+    setClickedOtherObject({ ...objRef, isCombatable, connectionId, e });
     setTimeout(() => {
       clearMaterialChange();
     }, 150);
