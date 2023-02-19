@@ -1,7 +1,6 @@
 import { useGLTF } from "@react-three/drei";
 import React from "react";
 import { Suspense, useMemo } from "react";
-interface 
 
 const RenderGLB = ({ url, onClick = null, position, ref}) => {
   const { scene } = useGLTF(url);

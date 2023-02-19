@@ -28,7 +28,6 @@ const GroundPlane = (props) => {
     raycaster.setFromCamera(clickPosition, camera);
     const intersects = raycaster.intersectObjects(scene.children, false);
     for (const intersect of intersects) {
-      console.log(intersects, "intersects");
       if (intersect.object.name === "land_mesh") {
         const sphere = new Mesh(
           new SphereGeometry(0.25, 32, 16),

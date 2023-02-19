@@ -3,7 +3,12 @@ import TWEEN from "@tweenjs/tween.js";
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useGraph } from "@react-three/fiber";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
-import { BoxBufferGeometry, BoxGeometry, MeshBasicMaterial, Vector3 } from "three";
+import {
+  BoxBufferGeometry,
+  BoxGeometry,
+  MeshBasicMaterial,
+  Vector3,
+} from "three";
 import { useUserInputStore } from "../../store";
 import ChatBubble from "./ChatBubble";
 
@@ -101,7 +106,18 @@ const RenderOtherUser = ({
   const onClick = (e) => {
     e.stopPropagation();
     materialChange();
-    setClickedOtherObject({ ...objRef, isCombatable, connectionId, e });
+    setClickedOtherObject({
+      ...objRef,
+      isCombatable,
+      connectionId,
+      e,
+      dropdownOptions: [
+        {
+          label: "Follow",
+        },
+        { label: "Talk to" },
+      ],
+    });
     setTimeout(() => {
       clearMaterialChange();
     }, 150);

@@ -21,9 +21,13 @@ const ClickDropdown = (props) => {
         transform: `translate(${translateVal})`,
       }}
     >
-      <button disabled> Actions: </button>
-      {[1, 1, 1, 1].map((e) => {
-        return <button> Option </button>;
+      <button disabled> Selected {clickedOtherObject.connectionId}: </button>
+      {clickedOtherObject.dropdownOptions.map((e) => {
+        return (
+          <button>
+            {e.label} <span  style={{color: "yellow", fontWeight: 600}}> {clickedOtherObject.connectionId} </span>{" "}
+          </button>
+        );
       })}
     </div>
   );
