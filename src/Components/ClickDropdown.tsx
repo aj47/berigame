@@ -21,7 +21,10 @@ const ClickDropdown = (props) => {
         transform: `translate(${translateVal})`,
       }}
     >
-      ---
+      <button disabled> Click here... </button>
+      {[1, 1, 1, 1].map((e) => {
+        return <button> Option </button>;
+      })}
     </div>
   );
 };
