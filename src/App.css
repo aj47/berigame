@@ -192,13 +192,25 @@ h2 {
   flex-direction: column;
   width: 200px;
 }
-.click-dropdown button:hover  {
+.click-dropdown button:hover:disabled  {
+  cursor: default;
+}
+.click-dropdown button:hover:enabled  {
   opacity: 1;
+}
+.click-dropdown button:first-child  {
+  border-radius: 5px 5px 0 0;
+}
+.click-dropdown button:last-child  {
+  border-radius: 0 0 5px 5px;
 }
 .click-dropdown button  {
   opacity: 0.6;
-  padding: 5;
-  border-radius: none;
+  padding: 5px;
+  background-color: black;
+  border-radius: 0;
+  color: white;
+  border-bottom: 1px solid #1e1e1e;
 }
 
 /* this was added because three.js canvas gets position absolute
