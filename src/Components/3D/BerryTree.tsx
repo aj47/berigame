@@ -16,7 +16,7 @@ const BerryTree = (props) => {
     // }, 150);
   };
 
-  return <RenderGLB ref={useRef} url={"/tree.glb"} position={[5, 0, 0]} />;
+  return <RenderGLB objRef={objRef} url={"/tree.glb"} position={[5, 0, 0]} />;
 };
 
 export default BerryTree;

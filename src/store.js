@@ -29,9 +29,10 @@ export const useWebsocketStore = create((set) => ({
     })),
 }));
 
-export const useUserPositionStore = create((set) => ({
+export const useUserStateStore = create((set) => ({
   userPositions: {},
   userConnectionId: null,
+  userFollowing: null,
   setUserConnectionId: (id) => set({ userConnectionId: id }),
   setUserPositions: (newUserPositions) =>
     set({ userPositions: { ...newUserPositions } }),
@@ -39,6 +40,8 @@ export const useUserPositionStore = create((set) => ({
     set((state) => ({
       userPositions: { ...state.userPositions, [newData.userId]: newData },
     })),
+  setUserFollowing: (newObject) =>
+    set({ userFollowing: newObject }),
 }));
 
 export const useUserInputStore = create((set) => ({

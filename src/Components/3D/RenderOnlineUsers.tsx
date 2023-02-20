@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from "react";
-import RenderGLB from "./RenderGLB";
 import RenderOtherUser from "./RenderOtherUser";
-import { Html } from "@react-three/drei";
-import { useChatStore, useUserPositionStore } from "../../store";
+import { useChatStore, useUserStateStore } from "../../store";
 
 const RenderOnlineUsers = (props) => {
   const [messagesToRender, setMessagesToRender] = useState<any>({});
   const chatMessages = useChatStore((state: any) => state.chatMessages);
-  const userPositions = useUserPositionStore(
+  const userPositions = useUserStateStore(
     (state: any) => state.userPositions
   );
-  const userConnectionId = useUserPositionStore(
+  const userConnectionId = useUserStateStore(
     (state: any) => state.userConnectionId
   );
 

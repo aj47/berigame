@@ -8,7 +8,7 @@ import {
   Raycaster,
   SphereGeometry,
 } from "three";
-import { useUserInputStore } from "../store";
+import { useUserInputStore, useUserStateStore } from "../store";
 
 const GroundPlane = (props) => {
   const [justClicked, setJustClicked] = useState(false);
@@ -16,6 +16,7 @@ const GroundPlane = (props) => {
   const setClickedPointOnLand = useUserInputStore(
     (state: any) => state.setClickedPointOnLand
   );
+  const setUserFollowing = useUserStateStore((state) => state.setUserFollowing);
 
   const landClickReleased = (e) => {
     if (!justClicked) return;
@@ -41,6 +42,7 @@ const GroundPlane = (props) => {
         }, 1000);
         // clicked position
         setClickedPointOnLand(intersect.point);
+        setUserFollowing(null);
       }
     }
   };

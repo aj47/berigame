@@ -9,7 +9,7 @@ import {
   MeshBasicMaterial,
   Vector3,
 } from "three";
-import { useUserInputStore } from "../../store";
+import { useUserInputStore, useUserStateStore } from "../../store";
 import ChatBubble from "./ChatBubble";
 
 const RenderOtherUser = ({
@@ -36,6 +36,7 @@ const RenderOtherUser = ({
   const setClickedOtherObject = useUserInputStore(
     (state) => state.setClickedOtherObject
   );
+  const setUserFollowing = useUserStateStore((state) => state.setUserFollowing);
 
   useEffect(() => {
     if (isAttacking) {
@@ -114,8 +115,11 @@ const RenderOtherUser = ({
       dropdownOptions: [
         {
           label: "Follow",
+          onClick: () => {
+            setUserFollowing(objRef);
+            setClickedOtherObject(null);
+          },
         },
-        { label: "Talk to" },
       ],
     });
     setTimeout(() => {

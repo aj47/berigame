@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import {
   useChatStore,
-  useUserPositionStore,
+  useUserStateStore,
   useWebsocketStore,
 } from "../store";
 
@@ -17,10 +17,10 @@ const Api = (props) => {
     (state: any) => state.allConnections
   );
   const addChatMessage = useChatStore((state: any) => state.addChatMessage);
-  const setUserPosition = useUserPositionStore(
+  const setUserPosition = useUserStateStore(
     (state: any) => state.setUserPosition
   );
-  const setUserConnectionId = useUserPositionStore(
+  const setUserConnectionId = useUserStateStore(
     (state: any) => state.setUserConnectionId
   );
 

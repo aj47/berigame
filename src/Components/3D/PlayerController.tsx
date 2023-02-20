@@ -3,7 +3,7 @@ import TWEEN from "@tweenjs/tween.js";
 import { Html, useAnimations, useGLTF } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useUserInputStore, useWebsocketStore } from "../../store";
+import { useUserInputStore, useUserStateStore, useWebsocketStore } from "../../store";
 import { webSocketSendAction, webSocketSendPosition } from "../../Api";
 import { Vector3 } from "three";
 import HealthBar from "./HealthBar";
@@ -26,6 +26,9 @@ const PlayerController = (props) => {
   );
   const clickedOtherObject = useUserInputStore(
     (state: any) => state.clickedOtherObject
+  );
+  const userFollowing = useUserStateStore(
+    (state: any) => state.userFollowing
   );
 
   const walkToPointOnLand = (pointOnLand) => {
@@ -89,7 +92,7 @@ const PlayerController = (props) => {
   };
 
   useEffect(() => {
-    if (!clickedOtherObject) return;
+    if (!userFollowing) return;
     clearInterval(followingInterval);
     setFollowingInterval(setInterval(walkTowardsOtherPlayer, 500));
     return () => clearInterval(followingInterval);
@@ -97,7 +100,7 @@ const PlayerController = (props) => {
 
   const walkTowardsOtherPlayer = () => {
     const separation = 1.5;
-    const pointOnLand = clickedOtherObject.current.position;
+    const pointOnLand = userFollowing.current.position;
     const distance =
       objRef.current.position.distanceTo(pointOnLand) - separation;
     if (distance < 1) {
@@ -108,7 +111,7 @@ const PlayerController = (props) => {
           position: objRef.current.position,
           restPosition: objRef.current.position,
           rotation: obj.rotation,
-          attackingPlayer: clickedOtherObject?.connectionId,
+          // attackingPlayer: userFollowing?.connectionId,
           isWalking: true,
         },
         websocketConnection,
@@ -119,7 +122,7 @@ const PlayerController = (props) => {
     const dirV = new Vector3();
     const distV = new Vector3();
     const direction = dirV
-      .subVectors(objRef.current.position, clickedOtherObject.current.position)
+      .subVectors(objRef.current.position, userFollowing.current.position)
       .normalize();
     // calculate vector that is towards clicked object but 1 unit away
     distV.addVectors(
@@ -150,12 +153,12 @@ const PlayerController = (props) => {
   }, [clickedPointOnLand]);
 
   useEffect(() => {
-    if (clickedOtherObject) {
+    if (userFollowing) {
       walkTowardsOtherPlayer();
       setFollowingInterval(setInterval(walkTowardsOtherPlayer, 500));
     }
     return () => clearInterval(followingInterval);
-  }, [clickedOtherObject]);
+  }, [userFollowing]);
 
   useFrame(() => {
     TWEEN.update();
