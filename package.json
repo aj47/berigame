@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "simple-zustand-devtools": "^1.1.0"
+  }
+}
