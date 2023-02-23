@@ -8,6 +8,10 @@ const CameraController = (props) => {
 		if (ref.current) {
 			ref.current.setFocalOffset(0, -2, 4);
 			ref.current.maxPolarAngle = Math.PI/2 - 0.1; 
+			ref.current.minDistance = 0;
+			ref.current.maxDistance = 8;
+			ref.current.dolly(4);
+			ref.current.zoomTo(0.40);
 		}
 	}, []);
 
@@ -18,7 +22,7 @@ const CameraController = (props) => {
 		}
 	});
 
-	return <CameraControls ref={ref} minDistance={10} />;
+	return <CameraControls ref={ref}/>;
 };
 
 export default CameraController;
