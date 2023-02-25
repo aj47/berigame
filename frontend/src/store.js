@@ -1,4 +1,4 @@
-import {create} from "zustand";
+import { create } from "zustand";
 
 // Log every time state is changed
 // usage: create(log((set) => ...
@@ -15,8 +15,16 @@ const log = (config) => (set, get, api) =>
 
 export const useChatStore = create((set) => ({
   chatMessages: [],
+  justSentMessage: null,
+  clearJustSent: () => 
+    set((state) => ({
+      chatMessages: null,
+    })),
   addChatMessage: (newChatMessage) =>
-    set((state) => ({ chatMessages: [...state.chatMessages, newChatMessage] })),
+    set((state) => ({
+      chatMessages: [...state.chatMessages, newChatMessage],
+      justSentMessage: newChatMessage,
+    })),
 }));
 
 export const useWebsocketStore = create((set) => ({
@@ -40,8 +48,7 @@ export const useUserStateStore = create((set) => ({
     set((state) => ({
       userPositions: { ...state.userPositions, [newData.userId]: newData },
     })),
-  setUserFollowing: (newObject) =>
-    set({ userFollowing: newObject }),
+  setUserFollowing: (newObject) => set({ userFollowing: newObject }),
 }));
 
 export const useUserInputStore = create((set) => ({

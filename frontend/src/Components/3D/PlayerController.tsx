@@ -3,7 +3,7 @@ import TWEEN from "@tweenjs/tween.js";
 import { Html, useAnimations, useGLTF } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useUserInputStore, useUserStateStore, useWebsocketStore } from "../../store";
+import { useChatStore, useUserInputStore, useUserStateStore, useWebsocketStore } from "../../store";
 import { webSocketSendAction, webSocketSendPosition } from "../../Api";
 import { Vector3 } from "three";
 import HealthBar from "./HealthBar";
@@ -29,6 +29,9 @@ const PlayerController = (props) => {
   );
   const userFollowing = useUserStateStore(
     (state: any) => state.userFollowing
+  );
+  const justSentMessage = useChatStore(
+    (state) => state.justSentMessage
   );
 
   const walkToPointOnLand = (pointOnLand) => {
@@ -185,11 +188,11 @@ const PlayerController = (props) => {
 
   return (
     <group ref={objRef}>
-      {props.chatMessage && (
+      {justSentMessage && (
         <ChatBubble
           playerPosition={obj.position}
           yOffset={2.5}
-          chatMessage={props.chatMessage}
+          chatMessage={justSentMessage.message}
         />
       )}
       {/* {true && <HealthBar playerPosition={obj.position} health={100}/>} */}

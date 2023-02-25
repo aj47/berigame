@@ -23,6 +23,9 @@ const Api = (props) => {
   const setUserConnectionId = useUserStateStore(
     (state: any) => state.setUserConnectionId
   );
+  const clearJustSent = useChatStore(
+    (state) => state.clearJustSent
+  );
 
   // if (process.env.NODE_ENV === 'development')  {
   //   url = "http://localhost:3000/dev/";
@@ -57,6 +60,9 @@ const Api = (props) => {
       const messageObject = JSON.parse(e.data);
       if (messageObject.chatMessage) {
         addChatMessage(messageObject);
+        setTimeout(() => {
+          clearJustSent();
+        }, 8000);
       }
       if (messageObject.attackingPlayer || messageObject.position && messageObject.userId) {
         updateUserPosition(messageObject);

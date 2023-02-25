@@ -9,10 +9,6 @@ const ChatBox = memo(({ setChatMessageSent }) => {
 
   const sendMessage = async (inputText) => {
     await webSocketSendMessage(inputText, websocketConnection);
-    setChatMessageSent(inputText);
-    setTimeout(() => {
-      setChatMessageSent(null);
-    }, 8000);
   };
 
   const keyDownHandler = (e) => {
