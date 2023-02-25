@@ -6,9 +6,14 @@ const ChatBox = memo(({ setChatMessageSent }) => {
   const websocketConnection = useWebsocketStore(
     (state) => state.websocketConnection
   );
+  const setJustSentMessage = useChatStore((state) => state.setJustSentMessage);
 
   const sendMessage = async (inputText) => {
     await webSocketSendMessage(inputText, websocketConnection);
+    setJustSentMessage(inputText);
+    setTimeout(() => {
+      setJustSentMessage(null);
+    }, 8000);
   };
 
   const keyDownHandler = (e) => {
@@ -26,8 +31,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
   }, []);
 
   useEffect(() => {
-    if (websocketConnection)
-      connectToChatRoom("", websocketConnection);
+    if (websocketConnection) connectToChatRoom("", websocketConnection);
   }, [websocketConnection]);
 
   const InputTextArea = memo(() => {
@@ -115,4 +119,3 @@ const ChatBox = memo(({ setChatMessageSent }) => {
 });
 
 export default ChatBox;
-  

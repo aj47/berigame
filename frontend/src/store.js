@@ -16,14 +16,13 @@ const log = (config) => (set, get, api) =>
 export const useChatStore = create((set) => ({
   chatMessages: [],
   justSentMessage: null,
-  clearJustSent: () => 
+  setJustSentMessage: (message) =>
     set((state) => ({
-      chatMessages: null,
+      justSentMessage: message,
     })),
   addChatMessage: (newChatMessage) =>
     set((state) => ({
       chatMessages: [...state.chatMessages, newChatMessage],
-      justSentMessage: newChatMessage,
     })),
 }));
 

@@ -1,15 +1,13 @@
 import React, { useEffect } from "react";
-import {
-  useChatStore,
-  useUserStateStore,
-  useWebsocketStore,
-} from "../store";
+import { useChatStore, useUserStateStore, useWebsocketStore } from "../store";
 
 const Api = (props) => {
   let url = "https://a8gb4xiydj.execute-api.ap-southeast-2.amazonaws.com/dev/";
   let wsUrl = "wss://prylvmzsyg.execute-api.ap-southeast-2.amazonaws.com/dev";
   const setWebSocket = useWebsocketStore((state: any) => state.setWebSocket);
-  const websocketConnection = useWebsocketStore((state: any) => state.websocketConnection);
+  const websocketConnection = useWebsocketStore(
+    (state: any) => state.websocketConnection
+  );
   const setAllConnections = useWebsocketStore(
     (state: any) => state.setAllConnections
   );
@@ -23,20 +21,17 @@ const Api = (props) => {
   const setUserConnectionId = useUserStateStore(
     (state: any) => state.setUserConnectionId
   );
-  const clearJustSent = useChatStore(
-    (state) => state.clearJustSent
-  );
 
   // if (process.env.NODE_ENV === 'development')  {
   //   url = "http://localhost:3000/dev/";
   //   wsUrl = "ws://localhost:3001";
   // }
   let clientConnectionId = null;
-  
+
   useEffect(() => {
     if (websocketConnection)
       websocketConnection.onmessage = _webSocketMessageReceived;
-  },[allConnections])
+  }, [allConnections]);
 
   const updateUserPosition = (newData: any) => {
     newData.selfDestroyTime = new Date().getTime() + 5000;
@@ -45,7 +40,6 @@ const Api = (props) => {
       setAllConnections([...allConnections, newData.connectionId]);
     }
   };
-  
 
   const updateConnections = (connections: any) => {
     const tempAllConnections = [];
@@ -60,16 +54,16 @@ const Api = (props) => {
       const messageObject = JSON.parse(e.data);
       if (messageObject.chatMessage) {
         addChatMessage(messageObject);
-        setTimeout(() => {
-          clearJustSent();
-        }, 8000);
       }
-      if (messageObject.attackingPlayer || messageObject.position && messageObject.userId) {
+      if (
+        messageObject.attackingPlayer ||
+        (messageObject.position && messageObject.userId)
+      ) {
         updateUserPosition(messageObject);
       }
       if (messageObject.connections) {
         updateConnections(messageObject.connections);
-        setUserConnectionId(messageObject.yourConnectionId)
+        setUserConnectionId(messageObject.yourConnectionId);
       }
     }
   };

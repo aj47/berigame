@@ -192,7 +192,7 @@ const PlayerController = (props) => {
         <ChatBubble
           playerPosition={obj.position}
           yOffset={2.5}
-          chatMessage={justSentMessage.message}
+          chatMessage={justSentMessage}
         />
       )}
       {/* {true && <HealthBar playerPosition={obj.position} health={100}/>} */}

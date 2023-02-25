@@ -20,9 +20,6 @@ const GameComponent = () => {
   const clickedOtherObject = useUserInputStore(
     (state: any) => state.clickedOtherObject
   );
-  const justSentMessage = useChatStore(
-    (state: any) => state.justSentMessage
-  );
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Api />
@@ -36,7 +33,6 @@ const GameComponent = () => {
         <RenderNPC isCombatable={false} />
         <RenderOnlineUsers />
         <PlayerController
-          chatMessage={justSentMessage}
           setPlayerRef={setPlayerRef}
         />
         <CameraController playerRef={playerRef} />
