@@ -1,13 +1,14 @@
-import React from "react"
+import React, { memo } from "react";
 import ChatBox from "./ChatBox";
+import Inventory from "./Inventory";
 
-const UIComponents = (props) => {
-	return (
-		<group>
+const UIComponents = memo((props) => {
+  return (
+    <>
       <ChatBox setChatMessageSent={() => {}} />
-			
-		</group>
-	)
-};
+      <Inventory />
+    </>
+  );
+});
 
 export default UIComponents;
