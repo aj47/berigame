@@ -5,7 +5,6 @@ const Inventory = memo((props) => {
 
   const keyDownHandler = (e) => {
     if (e.keyCode === 73) {
-      console.log(showInventory, "showInventory");
       setShowInventory(!showInventory);
     }
   };
@@ -20,7 +19,7 @@ const Inventory = memo((props) => {
   return (
     <>
       {showInventory && (
-        <div style={{ width: 50, height: 50, backgroundColor: "red" }}>+++</div>
+        <div className="inventory ui-window">+++</div>
       )}
     </>
   );

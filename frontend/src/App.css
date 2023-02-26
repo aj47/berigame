@@ -119,11 +119,10 @@ h2 {
 #chatBox .chatLog {
   position: absolute;
   bottom: 50px;
-  border-radius: 3px 3px 0 0;
   transition: max-height 0.15s ease-out;
+  width: 100%;
   max-width: min(1000px, 95vw);
   height: 200px;
-  background-color: rgba(255, 233, 205, 0.14);
   word-wrap: break-word;
   overflow: hidden;
   overflow-x: hidden;
@@ -184,7 +183,7 @@ h2 {
 }
 
 .click-dropdown {
-  position: absolute;  
+  position: absolute;
   padding: 5px;
   /* background-color: red; */
   z-index: 5;
@@ -192,19 +191,19 @@ h2 {
   flex-direction: column;
   width: 200px;
 }
-.click-dropdown button:hover:disabled  {
+.click-dropdown button:hover:disabled {
   cursor: default;
 }
-.click-dropdown button:hover:enabled  {
+.click-dropdown button:hover:enabled {
   opacity: 1;
 }
-.click-dropdown button:first-child  {
+.click-dropdown button:first-child {
   border-radius: 5px 5px 0 0;
 }
-.click-dropdown button:last-child  {
+.click-dropdown button:last-child {
   border-radius: 0 0 5px 5px;
 }
-.click-dropdown button  {
+.click-dropdown button {
   opacity: 0.6;
   padding: 5px;
   background-color: black;
@@ -217,4 +216,19 @@ h2 {
 applied to it on page scroll which then messes UI positions */
 canvas {
   position: static !important;
+}
+
+.inventory.ui-window {
+  position: absolute;
+  top: 50vh;
+  left: 50vw;
+  transform: translate(-50%, -50%);
+}
+
+.ui-window {
+  border: 1px solid #00000060;
+  border-radius: 5px;
+  padding: 15px;
+  background-color: #00000010;
+  z-index: 1;
 }

@@ -79,8 +79,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
     return (
       <div
         id="chat-log"
-        style={{ maxHeight: chatOpen ? "70vh" : 0, padding: chatOpen ? 5 : 0 }}
-        className="chatLog"
+        className="chatLog ui-window"
         ref={listRef}
       >
         {chatMessages.map((data, i) => {
@@ -99,11 +98,13 @@ const ChatBox = memo(({ setChatMessageSent }) => {
 
   return (
     <div id="chatBox">
-      <ChatLog />
       {chatOpen && (
-        <div className="chatInputBar">
-          <InputTextArea />
-        </div>
+        <>
+          <ChatLog />
+          <div className="chatInputBar">
+            <InputTextArea />
+          </div>
+        </>
       )}
       <button
         className={`openChatButton ${chatOpen && "open"}`}
