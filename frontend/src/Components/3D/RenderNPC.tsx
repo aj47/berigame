@@ -33,18 +33,18 @@ const RenderNPC = (props) => {
 
   const talkRandom = () => {
     const r = Math.floor(Math.random() * 11);
-    let newText: any = null;
-    if (r === 0) newText = "Hello! Welcome to the cubespaced alpha!";
+    let newText: any = null;src/Components
+    if (r === 0) newText = "Hello! Welcome to the berigame alpha!";
     else if (r === 1)
       newText = "I am the first NPC ever created in this metaverse";
     else if (r === 2)
       newText = "I can't wait until i have more friends to play with!";
     else if (r === 4) newText = "hello";
     else if (r === 5) newText = "haha";
-    else if (r === 6) newText = "what do you want to see in cubespaced?";
-    else if (r === 7) newText = "I've heard character creation is next!";
+    else if (r === 6) newText = "what do you want to see in berigame?";
+    // else if (r === 7) newText = "I've heard character creation is next!";
+    else if (r === 7) newText = "hehehe";
     else if (r === 8) newText = "I like playing the sims!";
-    else if (r === 8) newText = "hehehe";
     // else if (r === 3) newText = "sign up at cubespaced.com for whitelist!";
     else newText = "";
     setMessageToRender(newText);

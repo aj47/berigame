@@ -77,7 +77,7 @@ const Login = ({ userData, setUserData }: LoginProps) => {
   return (
     <div className="login">
       <img src="/logo.png" alt="logo" className="logo" />
-      <h2>cubespaced</h2>
+      <h2>Berigame</h2>
       <input
         placeholder="email@domain.com"
         type="email"
