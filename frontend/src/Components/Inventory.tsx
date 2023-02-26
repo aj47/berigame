@@ -1,10 +1,11 @@
 import React, { memo, useEffect, useState } from "react";
+import { useChatStore } from "../store";
 
 const Inventory = memo((props) => {
   const [showInventory, setShowInventory] = useState(false);
-
+  const focusedChat = useChatStore((state) => state.focusedChat);
   const keyDownHandler = (e) => {
-    if (e.keyCode === 73) {
+    if (e.keyCode === 73 && !focusedChat) {
       setShowInventory(!showInventory);
     }
   };
@@ -14,7 +15,7 @@ const Inventory = memo((props) => {
     return () => {
       window.removeEventListener("keydown", keyDownHandler);
     };
-  }, [showInventory]);
+  }, [showInventory, focusedChat]);
   
   return (
     <>

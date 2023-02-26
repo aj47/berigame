@@ -7,6 +7,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
     (state) => state.websocketConnection
   );
   const setJustSentMessage = useChatStore((state) => state.setJustSentMessage);
+  const setFocusedChat = useChatStore((state) => state.setFocusedChat);
 
   const sendMessage = async (inputText) => {
     await webSocketSendMessage(inputText, websocketConnection);
@@ -54,6 +55,8 @@ const ChatBox = memo(({ setChatMessageSent }) => {
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={keyDownHandler}
+          onFocus={() => {setFocusedChat(true)}}
+          onBlur={() => {setFocusedChat(false)}}
         />
 
         {/* <button

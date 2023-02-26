@@ -16,6 +16,11 @@ const log = (config) => (set, get, api) =>
 export const useChatStore = create((set) => ({
   chatMessages: [],
   justSentMessage: null,
+  focusedChat: false,
+  setFocusedChat: (isFocused) =>
+    set((state) => ({
+      focusedChat: isFocused,
+    })),
   setJustSentMessage: (message) =>
     set((state) => ({
       justSentMessage: message,
