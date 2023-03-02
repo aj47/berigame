@@ -32,14 +32,10 @@ const Login = ({ userData, setUserData }: LoginProps) => {
   const tryAuth = async () => {
     setLoading("Attempting Authentication...");
     const token = await auth.getToken();
-    console.log(token, "token");
-    if (!token) return;
     try {
       const DID = await magic.auth.loginWithCredential(token);
-      console.log(DID, "DID");
       if (DID) initUserData();
     } catch (e) {
-      console.error(e);
       setLoading("");
     }
   };
@@ -59,12 +55,12 @@ const Login = ({ userData, setUserData }: LoginProps) => {
     await magic.user.logout();
     window.location.href = window.location.origin;
   };
+
   useEffect(() => {
     if (!magic) {
       setMagic(
         new Magic(import.meta.env.VITE_MAGIC_API_KEY)
       );
-      console.log(magic, "magic");
       return;
     }
     if (userData === null) checkAuth();
@@ -76,7 +72,7 @@ const Login = ({ userData, setUserData }: LoginProps) => {
 
   return (
     <div className="login">
-      <img src="/logo.png" alt="logo" className="logo" />
+      {/* <img src="/logo.png" alt="logo" className="logo" /> */}
       <h2>Berigame</h2>
       <input
         placeholder="email@domain.com"

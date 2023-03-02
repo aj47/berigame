@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import GameComponent from "./Components/3D/GameComponent";
+import Login from "./Components/Login";
 
 function App() {
-  console.log("cubespaced alpha v1.1");
+  console.log("BeriGame alpha v1");
   const [userData, setUserData] = useState(null);
-
   return (
     <>
     <GameComponent />
-      {/* {userData && <GameComponent />}
-      <Login setUserData={setUserData} userData={userData} /> */}
+      {/* {userData && <GameComponent />} */}
+      {/* <Login setUserData={setUserData} userData={userData} /> */}
     </>
   );
 }
