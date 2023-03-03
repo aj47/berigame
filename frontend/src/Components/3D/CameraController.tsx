@@ -11,7 +11,7 @@ const CameraController = (props) => {
 			ref.current.minDistance = 0;
 			ref.current.maxDistance = 8;
 			ref.current.dolly(4);
-			ref.current.zoomTo(0.40);
+			// ref.current.zoomTo(0.40);
 		}
 	}, []);
 
