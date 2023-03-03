@@ -9,7 +9,12 @@ const ChatBubble = (props) => {
     props.playerPosition.z
   );
   return (
-    <Html center position={offsetPosition} className="player-chat-bubble">
+    <Html
+      zIndexRange={[4, 0]}
+      center
+      position={offsetPosition}
+      className="player-chat-bubble"
+    >
       {props.chatMessage}
     </Html>
   );

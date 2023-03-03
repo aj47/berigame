@@ -9,9 +9,17 @@ const HealthBar = (props) => {
     props.playerPosition.z
   );
 
-  return <Html center position={position} className="health-bar" >
-		<div className="fill" style={{width: props.health+"%"}}></div>
-	</Html>;
+  return (
+    <Html
+      zIndexRange={[4, 0]}
+      prepend
+      center
+      position={position}
+      className="health-bar"
+    >
+      <div className="fill" style={{ width: props.health + "%" }}></div>
+    </Html>
+  );
 };
 
 export default HealthBar;
