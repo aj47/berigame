@@ -9,7 +9,7 @@ import {
   useUserStateStore,
   useWebsocketStore,
 } from "../../store";
-import { webSocketSendAction, webSocketSendPosition } from "../../Api";
+import { webSocketSendAction, webSocketSendUpdate } from "../../Api";
 import { Vector3 } from "three";
 import HealthBar from "./HealthBar";
 import ChatBubble from "./ChatBubble";
@@ -33,6 +33,7 @@ const PlayerController = (props) => {
     (state: any) => state.clickedOtherObject
   );
   const userFollowing = useUserStateStore((state: any) => state.userFollowing);
+  const userAttacking = useUserStateStore((state: any) => state.userAttacking);
   const justSentMessage = useChatStore((state) => state.justSentMessage);
 
   const walkToPointOnLand = (pointOnLand) => {
@@ -50,7 +51,7 @@ const PlayerController = (props) => {
         .onComplete(() => {
           actions["Walk"]?.stop();
           actions["Idle"]?.play();
-          webSocketSendPosition(
+          webSocketSendUpdate(
             {
               position: objRef.current.position,
               restPosition: objRef.current.position,
@@ -64,12 +65,12 @@ const PlayerController = (props) => {
         .start()
     );
 
-    webSocketSendPosition(
+    webSocketSendUpdate(
       {
         position: objRef.current.position,
         restPosition: pointOnLand,
         rotation: obj.rotation,
-        attackingPlayer: clickedOtherObject?.connectionId,
+        attackingPlayer: userAttacking && clickedOtherObject?.connectionId,
         isWalking: true,
       },
       websocketConnection,
@@ -79,10 +80,10 @@ const PlayerController = (props) => {
 
   const onPositionUpdate = () => {
     // if clicked enemy
-    if (!clickedOtherObject) return;
-    if (!clickedOtherObject.isCombatable) return;
+    if (!userFollowing) return;
+    // if (!userFollowing.isCombatable) return;
     // Check if in attack range and attack
-    const enemyLocation = clickedOtherObject.current.position;
+    const enemyLocation = userFollowing.current.position;
     const distance = objRef.current.position.distanceTo(enemyLocation);
     if (distance < 2) {
       // attack
@@ -110,13 +111,13 @@ const PlayerController = (props) => {
     if (distance < 1) {
       onPositionUpdate();
       obj.lookAt(pointOnLand);
-      webSocketSendPosition(
+      webSocketSendUpdate(
         {
           position: objRef.current.position,
           restPosition: objRef.current.position,
           rotation: obj.rotation,
-          // attackingPlayer: userFollowing?.connectionId,
           isWalking: true,
+          attackingPlayer: userAttacking && userFollowing?.connectionId,
         },
         websocketConnection,
         allConnections
@@ -139,13 +140,13 @@ const PlayerController = (props) => {
   useEffect(() => {
     // broadcast position
     if (!allConnections || allConnections.length === 0) return;
-    webSocketSendPosition(
+    webSocketSendUpdate(
       {
         position: objRef.current.position,
         restPosition: objRef.current.position,
         rotation: obj.rotation,
         isWalking: false,
-        attackingPlayer: clickedOtherObject?.connectionId,
+        attackingPlayer: userAttacking && clickedOtherObject?.connectionId,
       },
       websocketConnection,
       allConnections
@@ -175,7 +176,7 @@ const PlayerController = (props) => {
   useEffect(() => {
     props.setPlayerRef(objRef);
     if (objRef)
-      webSocketSendPosition(
+      webSocketSendUpdate(
         {
           position: objRef.current.position,
           restPosition: objRef.current.position,
@@ -196,7 +197,9 @@ const PlayerController = (props) => {
           chatMessage={justSentMessage}
         />
       )}
-      {/* {true && <HealthBar playerPosition={obj.position} health={100}/>} */}
+      {true && (
+        <HealthBar playerPosition={obj.position} health={100} yOffset={2.5} />
+      )}
       <Suspense fallback={null}>
         <primitive object={obj} />
       </Suspense>

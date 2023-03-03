@@ -17,6 +17,7 @@ const GroundPlane = (props) => {
     (state: any) => state.setClickedPointOnLand
   );
   const setUserFollowing = useUserStateStore((state) => state.setUserFollowing);
+  const setUserAttacking = useUserStateStore((state) => state.setUserAttacking);
 
   const landClickReleased = (e) => {
     if (!justClicked) return;
@@ -42,7 +43,9 @@ const GroundPlane = (props) => {
         }, 1000);
         // clicked position
         setClickedPointOnLand(intersect.point);
+        //TODO: combine all deselctors into one helper method
         setUserFollowing(null);
+        setUserAttacking(null);
       }
     }
   };

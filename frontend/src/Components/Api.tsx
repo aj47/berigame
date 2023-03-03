@@ -22,10 +22,10 @@ const Api = (props) => {
     (state: any) => state.setUserConnectionId
   );
 
-  // if (process.env.NODE_ENV === 'development')  {
-  //   url = "http://localhost:3000/dev/";
-  //   wsUrl = "ws://localhost:3001";
-  // }
+  if (process.env.NODE_ENV === 'development')  {
+    url = "http://localhost:3000/dev/";
+    wsUrl = "ws://localhost:3001";
+  }
   let clientConnectionId = null;
 
   useEffect(() => {

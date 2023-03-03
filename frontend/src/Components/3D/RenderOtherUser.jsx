@@ -37,6 +37,7 @@ const RenderOtherUser = ({
     (state) => state.setClickedOtherObject
   );
   const setUserFollowing = useUserStateStore((state) => state.setUserFollowing);
+  const setUserAttacking = useUserStateStore((state) => state.setUserAttacking);
 
   useEffect(() => {
     if (isAttacking) {
@@ -117,6 +118,15 @@ const RenderOtherUser = ({
           label: "Follow",
           onClick: () => {
             setUserFollowing(objRef);
+            setUserAttacking(false);
+            setClickedOtherObject(null);
+          },
+        },
+        {
+          label: "Attack",
+          onClick: () => {
+            setUserFollowing(objRef);
+            setUserAttacking(true);
             setClickedOtherObject(null);
           },
         },

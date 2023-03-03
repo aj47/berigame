@@ -30,21 +30,22 @@ interface PositionMessage {
   rotation: string | number;
   restPosition: string | Vector3;
   isWalking: boolean;
+  attackingPlayer?: boolean;
 }
 
-export const webSocketSendPosition = async (message: PositionMessage, ws: any, allConnections: any[]) => {
+export const webSocketSendUpdate = async (message: PositionMessage, ws: any, allConnections: any[]) => {
   try {
     const payload = {
       message,
       connections: allConnections,
       chatRoomId: "CHATROOM#913a9780-ff43-11eb-aa45-277d189232f4", //The one chatroom for MVP
-      action: "sendPosition",
+      action: "sendUpdate",
     }
     ws?.send(JSON.stringify(payload));
   } catch (e) {
     console.error("webSocketSendMessage Error:", e);
     setTimeout(() => {
-      webSocketSendPosition(message, ws, allConnections);
+      webSocketSendUpdate(message, ws, allConnections);
     }, 500);
   }
 }

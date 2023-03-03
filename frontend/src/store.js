@@ -45,6 +45,7 @@ export const useUserStateStore = create((set) => ({
   userPositions: {},
   userConnectionId: null,
   userFollowing: null,
+  userAttacking: null,
   setUserConnectionId: (id) => set({ userConnectionId: id }),
   setUserPositions: (newUserPositions) =>
     set({ userPositions: { ...newUserPositions } }),
@@ -53,6 +54,7 @@ export const useUserStateStore = create((set) => ({
       userPositions: { ...state.userPositions, [newData.userId]: newData },
     })),
   setUserFollowing: (newObject) => set({ userFollowing: newObject }),
+  setUserAttacking: (newObject) => set({ userAttacking: newObject }),
 }));
 
 export const useUserInputStore = create((set) => ({
