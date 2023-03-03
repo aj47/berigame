@@ -41,29 +41,6 @@ connectionHandler:
     - websocket:
         route: sendMessagePublic
     - websocket:
-        route: sendPosition
+        route: sendUpdate
     - websocket:
         route: connectToChatRoom
-
-#-- Chat http functions
-# createChatRoom:
-#   handler: chat.createChatRoom
-#   events:
-#     - http:
-#         path: createChatRoom
-#         method: post
-#         cors: true
-# getChatRooms:
-#   handler: chat.getChatRooms
-#   events:
-#     - http:
-#         path: getChatRooms
-#         method: get
-#         cors: true
-# openChatRoom:
-#   handler: chat.openChatRoom
-#   events:
-#     - http:
-#         path: openChatRoom
-#         method: post
-#         cors: true
