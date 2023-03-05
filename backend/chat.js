@@ -135,10 +135,10 @@ exports.handler = async function (event, context) {
     case "sendPosition": //TODO: rename to send update
       try {
         //Send message to socket connections
+        console.log(bodyAsJSON, "bodyAsJSON");
         for (const otherConnectionId of bodyAsJSON.connections) {
           bodyAsJSON.message.connectionId = connectionId;
           bodyAsJSON.message.userId = senderId;
-
           try {
             await apig
               .postToConnection({

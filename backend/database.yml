@@ -1,5 +1,5 @@
 Resources:
-  CubespacedTable:
+  BeriGameTable:
     Type: 'AWS::DynamoDB::Table'
     DeletionPolicy: Delete
     #Data model: 

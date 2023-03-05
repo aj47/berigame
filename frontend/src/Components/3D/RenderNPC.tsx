@@ -33,7 +33,7 @@ const RenderNPC = (props) => {
 
   const talkRandom = () => {
     const r = Math.floor(Math.random() * 11);
-    let newText: any = null;src/Components
+    let newText: any = null;
     if (r === 0) newText = "Hello! Welcome to the berigame alpha!";
     else if (r === 1)
       newText = "I am the first NPC ever created in this metaverse";
