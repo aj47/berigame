@@ -133,13 +133,12 @@ exports.handler = async function (event, context) {
       break;
 
     case "sendUpdate": //TODO: rename to send update
-      console.log("----- CALLED -==");
       try {
         //Send message to socket connections
+        console.log(bodyAsJSON, "bodyAsJSON");
         for (const otherConnectionId of bodyAsJSON.connections) {
           bodyAsJSON.message.connectionId = connectionId;
           bodyAsJSON.message.userId = senderId;
-
           try {
             await apig
               .postToConnection({

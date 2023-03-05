@@ -1,5 +1,5 @@
 {
-  "name": "chatchatbox-backend",
+  "name": "berigame-backend",
   "version": "1.0.0",
   "description": "",
   "main": "handler.js",
@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aj47/chatchatbox.git"
+    "url": "git+https://github.com/aj47/berigame.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/aj47/chatchatbox/issues"
+    "url": "https://github.com/aj47/berigame/issues"
   },
-  "homepage": "https://github.com/aj47/chatchatbox#readme",
+  "homepage": "https://github.com/aj47/berigame#readme",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.0",
