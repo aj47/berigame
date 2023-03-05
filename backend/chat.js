@@ -18,7 +18,7 @@ const DB = process.env.DB;
 exports.handler = async function (event, context) {
   const {
     body,
-    requestContext: { connectionId, routeKey },
+    requestContext: { connectionId, routeKey, identity },
   } = event;
   const timestamp = new Date().getTime();
   let userPK = null,
@@ -56,6 +56,7 @@ exports.handler = async function (event, context) {
             SK,
             created: timestamp,
             ttl: Math.floor(new Date().getTime() / 1000) + 360, // 6 mins from now?
+            health: 30,
           },
         })
         .promise();
@@ -135,7 +136,17 @@ exports.handler = async function (event, context) {
     case "sendUpdate": //TODO: rename to send update
       try {
         //Send message to socket connections
-        console.log(bodyAsJSON, "bodyAsJSON");
+        //TODO VERIFY CAN ATTACK (SECURITY)
+        const attackingPlayer = bodyAsJSON.message.attackingPlayer;
+        let damage = 0;
+        if (attackingPlayer) {
+          damage = 1;
+          bodyAsJSON.message.damageGiven = {
+            receivingPlayer: attackingPlayer,
+            damage
+          };
+          //TODO reduce health in database
+        }
         for (const otherConnectionId of bodyAsJSON.connections) {
           bodyAsJSON.message.connectionId = connectionId;
           bodyAsJSON.message.userId = senderId;
