@@ -25,3 +25,6 @@ functions:
   auth: berigame-api-dev-auth (30 MB)
   connectionHandler: berigame-api-dev-connectionHandler (30 MB)
 ```
+
+# Known Issues
+some issues with serverless-offline and node versions, seems to work with node `16.17`

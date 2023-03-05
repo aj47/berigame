@@ -10,7 +10,7 @@ const CameraController = (props) => {
 			ref.current.maxPolarAngle = Math.PI/2 - 0.1; 
 			ref.current.minDistance = 0;
 			ref.current.maxDistance = 8;
-			ref.current.dolly(4);
+			ref.current.dolly(2);
 			// ref.current.zoomTo(0.40);
 		}
 	}, []);
