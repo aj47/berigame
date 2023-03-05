@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en" style="scroll-behavior: smooth">
+  <head>
+    <title>NFT Portfolio & Landing Page  </title>
+
+    <!-- <link rel="icon" href="favicon.ico" type="image/x-icon" /> -->
+    <!-- VENDOR CSS -->
+    <link
+      rel="stylesheet"
+      href="./assets/vendor/bootstrap/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="./assets/vendor/font-awesome/css/font-awesome.min.css"
+    />
+    <link rel="stylesheet" href="./assets/vendor/animate-css/vivify.min.css" />
+
+    <link
+      rel="stylesheet"
+      href="./assets/vendor/light-gallery/css/lightgallery.css"
+    />
+    
+    <!-- JSTree (Folder Stewart) -->
+	<link rel="stylesheet" href="./assets/vendor/jstree/dist/themes/default/style.min.css">
+
+    <!-- MAIN CSS -->
+    <link rel="stylesheet" href="./assets/css/site.min.css" />
+
+    <!-- for demo only -->
+    <style>
+      .card .body {
+        font-size: 15px;
+      }
+      .main_features li {
+        padding: 5px 0;
+      }
+      .prettyprint {
+        color: #ffffff;
+      }
+      #Credits li {
+        line-height: 30px;
+      }
+      .lightGallery img {
+        border: 1px solid #484a4e;
+      }
+      .sm-logo {
+        width: 25px;
+      }
+      #main-content {
+        padding: 1rem;
+        box-sizing: border-box;
+      }      
+      div#wrapper {
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body class="theme-green font-krub light_version">
+    <!-- Page Loader -->
+    <div class="page-loader-wrapper">
+      <div class="loader">
+        <div class="bar1"></div>
+        <div class="bar2"></div>
+        <div class="bar3"></div>
+        <div class="bar4"></div>
+        <div class="bar5"></div>
+      </div>
+    </div>
+
+    <!-- Theme Setting -->
+    <div class="themesetting">
+      <a href="javascript:void(0);" class="theme_btn"
+        ><i class="icon-magic-wand"></i
+      ></a>
+      <div class="card theme_color">
+        <div class="header">
+          <h2>Theme Color</h2>
+        </div>
+        <ul class="choose-skin list-unstyled mb-0">
+          <li data-theme="green"><div class="green"></div></li>
+          <li data-theme="orange"><div class="orange"></div></li>
+          <li data-theme="blush"><div class="blush"></div></li>
+          <li data-theme="cyan" class="active">
+            <div class="cyan"></div>
+          </li>
+          <li data-theme="indigo"><div class="indigo"></div></li>
+          <li data-theme="red"><div class="red"></div></li>
+        </ul>
+      </div>
+      <div class="card font_setting">
+        <div class="header">
+          <h2>Font Settings</h2>
+        </div>
+        <div>
+          <div class="fancy-radio mb-2">
+            <label
+              ><input name="font" value="font-krub" type="radio" checked /><span
+                ><i></i>Krub Google font</span
+              ></label
+            >
+          </div>
+          <div class="fancy-radio mb-2">
+            <label
+              ><input name="font" value="font-montserrat" type="radio" /><span
+                ><i></i>Montserrat Google font</span
+              ></label
+            >
+          </div>
+          <div class="fancy-radio">
+            <label
+              ><input name="font" value="font-roboto" type="radio" /><span
+                ><i></i>Robot Google font</span
+              ></label
+            >
+          </div>
+        </div>
+      </div>
+      <div class="card setting_switch">
+        <div class="header">
+          <h2>Settings</h2>
+        </div>
+        <ul class="list-group">
+          <li class="list-group-item">
+            Light Version
+            <div class="float-right">
+              <label class="switch">
+                <input type="checkbox" class="lv-btn" checked />
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </li>
+
+          <li class="list-group-item">
+            Mini Sidebar
+            <div class="float-right">
+              <label class="switch">
+                <input type="checkbox" class="mini-sidebar-btn" />
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="form-group">
+          <label class="d-block"
+            >Traffic this Month <span class="float-right">77%</span></label
+          >
+          <div class="progress progress-xxs">
+            <div
+              class="progress-bar progress-bar-success"
+              role="progressbar"
+              aria-valuenow="77"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              style="width: 77%"
+            ></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="d-block"
+            >Server Load <span class="float-right">50%</span></label
+          >
+          <div class="progress progress-xxs">
+            <div
+              class="progress-bar progress-bar-warning"
+              role="progressbar"
+              aria-valuenow="50"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              style="width: 50%"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overlay For Sidebars -->
+    <div class="overlay"></div>
+
+    <div id="wrapper">
+ 
+
+      <div id="left-sidebar" class="sidebar">
+        <div class="navbar-brand">
+            <!-- <a href="javascript:void(0);">
+                <img src="./assets/logo.png" alt="Neoh Logo" class="img-fluid sm-logo" /><span>Neoh</span>
+            </a> -->
+            <a href="javascript:void(0);" class="brand-logo d-flex align-items-center">
+             <img src="./assets/logo.png" alt="" >
+             <!-- <div style="    margin-left: 20px;
+              max-width: 120px;
+              margin-top: 5px;
+              font-size: 38px;
+              color: #000;     font-weight: bold;" class="brand-title">Neoh</div>
+            </a> -->
+          <button
+            type="button"
+            class="btn-toggle-offcanvas btn btn-sm float-right"
+          >
+            <i class="lnr lnr-menu fa fa-chevron-circle-left"></i>
+          </button>
+        </div>
+        <div class="sidebar-scroll">
+          <div class="user-account">
+           
+            <div class="dropdown">
+              <span>Welcome,</span>
+              <a
+                ><strong>Neoh</strong></a
+              >
+            </div>
+          </div>
+          <nav id="left-sidebar-nav" class="sidebar-nav">
+            <ul id="main-menu" class="metismenu">
+              <li class="active">
+                <a href="#documenter_cover"
+                  ><i class="icon-home"></i><span>Start</span></a
+                >
+              </li>
+              <li>
+                <a href="#features"
+                  ><i class="icon-star"></i><span>Features</span></a
+                >
+              </li>
+              <li>
+                <a href="#react_js"
+                  ><i class="icon-tag"></i><span>React.js</span></a
+                >
+              </li>
+              <li>
+                <a href="#main_content"
+                  ><i class="icon-arrow-right"></i><span>Main Content</span></a
+                >
+              </li>
+                <li>
+                    <a href="#create_page"><i class="icon-plus"></i><span>Create a Page</span></a>
+                </li>
+              <li>
+                <a href="#folder_structure"
+                  ><i class="icon-folder-alt"></i
+                  ><span>Folder Structure</span></a
+                >
+              </li>
+              <li>
+                <a href="#Credits"
+                  ><i class="icon-like"></i><span>Credits</span></a
+                >
+              </li>
+              <li>
+                <a href="#layout"
+                  ><i class="icon-star"></i><span>Layout</span></a
+                >
+              </li>
+
+              <li>
+                <a href="#thank_you"
+                  ><i class="icon-heart"></i><span>THANK YOU!</span></a
+                >
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+
+      <div id="main-content">
+        <div class="block-header">
+          <div class="row clearfix">
+            <div class="col-md-6 col-sm-12">
+              <h1>Documentation</h1>
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                  <li class="breadcrumb-item"><a href="#">Neoh </a></li>
+                  <li class="breadcrumb-item active" aria-current="page">
+                    Documentation
+                  </li>
+                </ol>
+              </nav>
+            </div>
+            <div class="col-md-6 col-sm-12 text-right hidden-xs">
+             <!--  <a
+                href="javascript:void(0);"
+                class="btn btn-sm btn-primary btn-round"
+                title=""
+                >Create Campaign</a
+              > -->
+            </div>
+          </div>
+        </div>
+        <div class="container-fluid">
+          <div class="row clearfix">
+            <div class="col-sm-12">
+              <div class="card" id="documenter_cover">
+                <div class="body">
+                  <h4 class="mb-3">
+                    NFT Portfolio & Landing Page  
+                  </h4>
+                  <p>
+                    Neoh is a one page style personal portfolio template that can be used to build your personal portfolio website. You can choose Neoh to build your online presence. It is very important to have a personal portfolio at current age. In your professional career you must need to have a personal portfolio. Neoh is a great template to build your personal portfolio using Neoh.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="card" id="features">
+                <div class="header">
+                  <h2>Main Features</h2>
+                  
+                </div>
+                <div class="body">
+					<div class="row">
+						<div class="col-lg-6 col-md-6">
+						 <ul class="main_features">
+              <li>Develop with <a href="https://nextjs.org/" target="_blank">NextJs</a></li> 
+               
+           
+           <li>Fully Responsive</li>
+         <li>Ready to used widget</li>
+       
+         
+         <li>Detailed Documentation</li>
+            </ul>
+						</div>
+					</div>
+				</div>
+              </div>
+            </div>
+
+            <div class="col-sm-12">
+              <div class="card" id="react_js">
+                <div class="header">
+                  <h2>
+                    React.JS Installation & Setup
+                    <small
+                      >A JavaScript library for building user interfaces.</small
+                    >
+                  </h2>
+                </div>
+                <div class="body">
+                  <p>
+                    <strong>Installing</strong><br />
+                    <p>Make sure if <code>NODEJS</code> is installed on your computer</p>
+                    Run <code>npm install -g create-react-app</code>
+                    command from your teminal to install React Globally.
+                  </p>
+                  <p>
+                    <strong>Install npm :-</strong><br /> Run
+                    <code>npm install</code> command from your project
+                    directory. It will create 'node_module' folder in this all
+                    dependency files will be install with this command.
+                  </p>
+                  <p>
+                    <strong>Run Project :-</strong><br /> Run
+                    <code>npm run dev</code> command from your project directory.
+                    With is command file will be compiled and it will be loaded
+                    on local server `http://localhost:3000`.
+                  </p>
+                  <p>
+                    <strong>Production Build :-</strong><br /> Run
+                    <code>npm run build</code> Builds the app for production to
+                    the `build` folder. It correctly bundles React in production
+                    mode and optimizes the build for the best performance.
+                  </p>
+                  <p>
+                    <strong>Further help :-</strong><br /> To get more help on the
+                    nextjs.js checkout
+                    <a href="https://nextjs.org/">nextjs</a>
+                  </p>
+                  <p>
+                    <strong>Note:</strong> You can learn more in the
+                    <a
+                      href="https://github.com/vercel/next.js"
+                      >Create Next App Documentation</a
+                    >. To learn Next, check out the
+                    <a href="https://nextjs.org/">Next Documentation</a>.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-12">
+              <div class="card" id="main_content">
+                <div class="header">
+                  <h2>Main Content</h2>
+                  
+                </div>
+                <h5>_app.js Structure</h5>
+                <div class="body">
+<pre class="prettyprint lang-html linenums">
+import Head from "next/head";
+import { Fragment } from "react";
+import "../styles/globals.css";
+
+function MyApp({ Component, pageProps }) {
+  return (
+    &lt;Fragment>
+      &lt;Head>
+        {/* &lt;!-- Google Fonts --> */}
+        &lt;link rel="preconnect" href="https://fonts.googleapis.com" />
+        &lt;link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin />
+        &lt;link
+          href="https://fonts.googleapis.com/css2?family=Heebo:wght@100;200;300;400;500;600;700;800;900&family=Nunito:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+          rel="stylesheet"
+        />
+        {/* &lt;!-- !Google Fonts --> */}
+
+        {/* &lt;!-- Styles --> */}
+        &lt;link type="text/css" rel="stylesheet" href="css/plugins.css" />
+        &lt;link type="text/css" rel="stylesheet" href="css/style.css?ver=1.1" />
+      &lt;/Head>
+      &lt;Component {...pageProps} />
+    &lt;/Fragment>
+  );
+}
+
+export default MyApp;
+  </pre>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-12">
+				<div class="card" id="create_page">
+						<div class="header">
+							<h2>Create a Page<h5>How to create a custom page</h5></h2>
+						</div>
+						<div class="body">
+							<p>1. Create page component <code>pages\MyPage.js</code></p>
+							<pre class="prettyprint lang-html linenums">
+import React from "react";
+
+export function MyPage() {
+  return(
+   &lt;h1&gt;Hello!&lt;/h1&gt;
+  ) 
+} 							
+						</pre>
+					</div>
+				</div>
+			</div>
+            <div class="col-sm-12">
+				<div class="card" id="folder_structure">
+					<div class="header"><h2>Folder Structure</h2>
+						<ul class="header-dropdown dropdown">
+							<li><a href="javascript:void(0);" class="full-screen"><i class="icon-frame"></i></a></li>
+							<li class="dropdown">
+								<a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" role="button"
+									aria-haspopup="true" aria-expanded="false">
+								</a>
+								<ul class="dropdown-menu">
+									<li><a href="javascript:void(0);">Action</a></li>
+									<li><a href="javascript:void(0);">Another Action</a></li>
+									<li><a href="javascript:void(0);">Something else</a></li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+					<h5>Folder Directories</h5>
+					<div class="body">
+					<!-- Folder Directories -->
+						<section class="app-brief">
+							<div class="left-align">
+								<div class="section-header">
+									<!-- <h2 class="dark-text">Folder Directories - </h2> -->
+								</div>
+								<div id="dz_tree" class="tree-demo">
+									<ul>
+										<li data-jstree='{ "opened" : true }'>public
+											<ul>
+                        
+												<li data-jstree='{ "selected" : false }'>css</li>
+												<li data-jstree='{ "selected" : false }'>img</li>
+												<li data-jstree='{ "selected" : false }'>svg</li>
+											
+											</ul>
+										</li>	
+										<li data-jstree='{ "opened" : true }'>src
+											<ul>
+												<li data-jstree='{ "selected" : false }'>components
+											
+												</li>
+												<li data-jstree='{ "selected" : true }'>layouts
+                          <ul>
+                             <li data-jstree='{ "type" : "file" }'>Footer.js</li>
+                             <li data-jstree='{ "type" : "file" }'>Header.js</li>
+                             <li data-jstree='{ "type" : "file" }'>Layout.js</li>
+                             <li data-jstree='{ "type" : "file" }'>PageBanner.js</li>
+                             <li data-jstree='{ "type" : "file" }'>ScrollTop.js</li>
+                            </ul>
+                        </li>
+											
+                      <li data-jstree='{ "type" : "file" }'>utils.js</li>
+                      </ul>
+                      
+										</li>
+                    <li data-jstree='{ "selected" : false }'>pages
+                    </li>
+										<li data-jstree='{ "type" : "file" }'>package.json</li>
+									</ul>
+								</div>
+							</div>
+						</section>
+					</div>
+				</div>
+			</div>
+            
+            
+            <div class="col-sm-12">
+              <div class="card" id="Credits">
+                <div class="header">
+                  <h2>Credits</h2>
+                  
+                </div>
+                <div class="body">
+                  <div class="row">
+                    <div class="col-lg-6 col-md-12">
+                      <ul>
+                       
+                        <li>
+                         Nextjs
+                          <a
+                            href="https://nextjs.org/"
+                            class="text-warning"
+                            >Click to See</a
+                          >
+                        </li>
+                        <li>
+                          Google fonts are used in the template.
+                          <a
+                            href="https://fonts.google.com/"
+                            class="text-warning"
+                            >Click to see</a
+                          >
+                        </li>
+                        <li>
+                          All Images are used:
+                          <a href="https://www.pexels.com/" class="text-warning"
+                            >Pexels.com</a
+                          >
+                        </li>
+                       
+                        
+                      </ul>
+                    </div>
+                    <div class="col-lg-6 col-md-12">
+                      <ul>
+                        <li>Swiper Slider
+                          <a href="https://swiperjs.com/swiper-api" target="_blank" class="text-warning"
+                            >Click to See</a
+                          >
+                        </li>
+                        <li>Waypoint
+                          <a href="https://www.npmjs.com/package/waypoints" target="_blank" class="text-warning"
+                            >Click to See</a
+                          >
+                        </li>
+                       
+                        
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-sm-12" id="layout">
+                <div class="card" >
+                    <div class="header">
+                        <h2>Layout 
+                            <small>Layout is controlled by settings object LayoutSettings inside src/context/ThemeContext.js</small>
+                        </h2>
+                    </div>
+                    <div class="body">
+                        <p>
+                            <strong>Layout.js</strong>
+                        </p> 
+<pre>
+import Head from "next/head";
+import { Fragment, useEffect } from "react";
+import VideoPopup from "../components/popup/VideoPopup";
+import {
+  animationText,
+  dataBgImg,
+  imgToSVG,
+  neoh_fn_moving_blog,
+  progressTotop,
+  stickyNav,
+} from "../utilits";
+import Footer from "./Footer";
+import Header from "./Header";
+import ScrollTop from "./ScrollTop";
+
+const Layout = ({ children, pageName }) => {
+  useEffect(() => {
+    animationText();
+    neoh_fn_moving_blog();
+    dataBgImg();
+    imgToSVG();
+    window.addEventListener("scroll", stickyNav);
+    window.addEventListener("scroll", progressTotop);
+  }, []);
+  return (
+    &lt;Fragment>
+      &lt;Head>
+        &lt;title>Neoh | {pageName}&lt;/title>
+      &lt;/Head>
+      &lt;VideoPopup />
+      &lt;div className="neoh_fn_main" data-footer-sticky="">
+        &lt;Header />
+        &lt;div className="neoh_fn_content">{children}&lt;/div>
+        &lt;Footer />
+        &lt;ScrollTop />
+      &lt;/div>
+
+      &lt;div className="neoh_fn_moving_box">&lt;/div>
+    &lt;/Fragment>
+  );
+};
+export default Layout;
+
+</pre>
+
+                    </div>
+                </div>    
+            </div>            
+            
+           
+         
+          
+            
+            <div class="col-sm-12">
+              <div class="card" id="thank_you">
+                <div class="header">
+                  <h2>Thank You!</h2>
+                  
+                </div>
+                <div class="body">
+                  <p>
+                    Once again, thank you so much for purchasing this template.
+                    As I said at the beginning, I&#39;d be glad to help you if
+                    you have any questions relating to this template.
+                  </p>
+                  <p>
+                    <strong>REGULAR SUPPORT</strong> : You have in template
+                    support if you face any issue with the usage of it then you
+                    can contact us on below Email ID.
+                  </p>
+                  <p>
+                    <strong>EXTENDED SUPPORT</strong> : Development it is
+                    chargeable according to your requirement. For that you need
+                    to mail us your requirement on below Email ID.
+                  </p>
+                  <p>
+                    <strong>COST OF SERVICE</strong> : Depends on the hours
+                    required. But as you are already using our template we have
+                    discounted rates for our template customer.
+                  </p>
+                  <p>
+                    <strong>EXTENDED LICENSE</strong> : With the Extended
+                    Support we also include Extended License. So you save much
+                    more with your investment than you will with purchasing
+                    Regular License and later buying Extended one + Development
+                    cost.
+                  </p>
+                  <p>
+                    You will get a quick reply from our team and feel free to
+                    contact us. We don’t charge for requirement discussion so
+                    don’t worry.
+                  </p>
+                  
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Javascript -->
+    <script src="./assets/bundles/libscripts.bundle.js"></script>
+    <script src="./assets/bundles/vendorscripts.bundle.js"></script>
+
+    <script src="./assets/bundles/lightgallery.bundle.js"></script>
+    <!-- Light Gallery Plugin Js -->
+
+    <script src="./assets/bundles/mainscripts.bundle.js"></script>
+    
+    <!-- Folder onClick -->
+	<script src="./assets/vendor/jstree/dist/jstree.min.js"></script>
+
+    <!-- <script>
+      <!-- $(".metismenu li").click(function () { -->
+        <!-- var $this = $(this); -->
+        <!-- if (!$this.is("active")) { -->
+          <!-- $(".metismenu li").removeClass("active").removeData("top"); -->
+          <!-- $this.addClass("active").data("top", $this.offset().top); -->
+        <!-- } -->
+      <!-- }); -->
+    </script> -->
+    <script>
+		// prettyPhoto
+		jQuery(document).ready(function(){
+			
+			$(".full-height").css("height", $(window).height());
+			
+			$("#dz_tree").jstree({
+				"core": {
+					"themes": {
+						"responsive": false
+					}
+				},
+				"types": {
+					"default": {
+						"icon": "fa fa-folder"
+					},
+					"file": {
+						"icon": "fa fa-file-text"
+					}
+				},
+				"plugins": ["types"]
+			});
+			$("#dz_tree_1").jstree({
+				"core": {
+					"themes": {
+						"responsive": false
+					}
+				},
+				"types": {
+					"default": {
+						"icon": "fa fa-folder"
+					},
+					"file": {
+						"icon": "fa fa-file-text"
+					}
+				},
+				"plugins": ["types"]
+			});
+		});
+	</script>
+  </body>
+</html>

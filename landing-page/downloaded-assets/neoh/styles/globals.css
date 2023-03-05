@@ -1,0 +1,13 @@
+a {
+  cursor: pointer;
+}
+html {
+  scroll-behavior: smooth;
+}
+.neoh_fn_content {
+  z-index: unset !important;
+}
+li.d-none {
+  display: none;
+}
+@import "swiper/css";
