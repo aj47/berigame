@@ -132,7 +132,7 @@ exports.handler = async function (event, context) {
       }
       break;
 
-    case "sendPosition": //TODO: rename to send update
+    case "sendUpdate": //TODO: rename to send update
       try {
         //Send message to socket connections
         console.log(bodyAsJSON, "bodyAsJSON");

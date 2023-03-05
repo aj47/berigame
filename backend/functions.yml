@@ -41,7 +41,7 @@ connectionHandler:
     - websocket:
         route: sendMessagePublic
     - websocket:
-        route: sendPosition
+        route: sendUpdate
     - websocket:
         route: connectToChatRoom
 

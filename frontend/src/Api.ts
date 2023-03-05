@@ -38,7 +38,7 @@ export const webSocketSendPosition = async (message: PositionMessage, ws: any, a
       message,
       connections: allConnections,
       chatRoomId: "CHATROOM#913a9780-ff43-11eb-aa45-277d189232f4", //The one chatroom for MVP
-      action: "sendPosition",
+      action: "sendUpdate",
     }
     ws?.send(JSON.stringify(payload));
   } catch (e) {
