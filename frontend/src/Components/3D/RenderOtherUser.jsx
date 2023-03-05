@@ -126,7 +126,7 @@ const RenderOtherUser = ({
           label: "Attack",
           onClick: () => {
             setUserFollowing(objRef);
-            setUserAttacking(true);
+            setUserAttacking(connectionId);
             setClickedOtherObject(null);
           },
         },
