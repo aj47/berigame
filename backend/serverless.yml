@@ -1,9 +1,9 @@
 org: arash
-app: cubespaced
+app: berigame
 # For full config options, check the docs:
 #    docs.serverless.com
 
-service: chatchatbox-api
+service: berigame-api
 frameworkVersion: '3.26'
 
 provider:
@@ -14,7 +14,7 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ap-southeast-2
   environment:
-    JWT_SECRET: "${self:custom.secrets.jwtSecret}"
+    JWT_SECRET: "${self:custom.secrets.JWT_SECRET}"
     MAGIC_API_KEY: "${self:custom.secrets.MAGIC_API_KEY}"
     DB: ${self:service}-${opt:stage, self:provider.stage}
     APIG_ENDPOINT:
