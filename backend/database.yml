@@ -8,8 +8,25 @@ Resources:
     # {pk: "USER#<user_ID>", sk: "CONNECTION#<Connection_ID>#<dateTime_created>"} - Websocket connection object
     # {pk: "USER#<user_ID>", sk: "CHATROOM#<chatroom_ID>"} - chatroom 
     # -------------------------------------------------------
-    # {pk: "CHATROOM#<chatroom_ID>", sk: "USER#<user_handle>#<dateTime_created>"} - User Chatroom ownership
-    # {pk: "CHATROOM#<chatroom_ID>", sk: "MESSAGE#<message_ID>#<dateTime_created>"} - Chatroom Message Object
+    # How positions are tracked in DB 
+    # through an "AreaID", each Area has an X Y Z space of <TODO: figure limit>
+    # {pk: "AREA#<area_ID>", sk: "PLAYER#<player_ID>"} - Environment Position Object
+    # -   Environment (tree, bush, items)
+    #     -   AreaID (partition key)
+    #     -   Position
+    #     -   Created
+    #     -   Type
+    #     -   Description
+    #     -   Quantity
+    #     -   Stats
+    # {pk: "AREA#<area_ID>", sk: "PLAYER#<player_ID>"} - Player Position Object
+    # -   Player
+    #     -   AreaID (partition key)
+    #     -   Stats (health)
+    #     -   Inventory
+    #     -   Position
+    #     -   Created
+    #     -   Name
     # https://stackoverflow.com/questions/67933217/dynamo-db-erd-for-chat-application
     Properties:
       AttributeDefinitions:
