@@ -86,7 +86,7 @@ const PlayerController = (props) => {
     // Check if in attack range and attack
     const enemyLocation = userFollowing.current.position;
     const distance = objRef.current.position.distanceTo(enemyLocation);
-    if (distance < 2) {
+    if (distance < 2 && userAttacking) {
       // attack
       actions["Walking"]?.stop();
       actions["RightHook"]?.play();
