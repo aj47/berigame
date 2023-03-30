@@ -5,7 +5,7 @@ import Inventory from "./Inventory";
 const UIComponents = memo((props) => {
   return (
     <>
-      <ChatBox setChatMessageSent={() => {}} />
+      <ChatBox/>
       <Inventory />
     </>
   );

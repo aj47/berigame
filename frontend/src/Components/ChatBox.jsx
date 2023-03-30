@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { connectToChatRoom, webSocketSendMessage } from "../Api";
 import { useChatStore, useWebsocketStore } from "../store";
-const ChatBox = memo(({ setChatMessageSent }) => {
+const ChatBox = memo(({}) => {
   const [chatOpen, setChatOpen] = useState(false);
   const websocketConnection = useWebsocketStore(
     (state) => state.websocketConnection
