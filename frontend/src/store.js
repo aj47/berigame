@@ -44,6 +44,13 @@ export const useWebsocketStore = create((set) => ({
 export const useOtherUsersStore = create((set) => ({
   userPositions: {},
   damageToRender: {},
+  removeDamageToRender: (connectionId) =>
+    set((state) => ({
+      damageToRender: {
+        ...state.damageToRender,
+        [connectionId]: null,
+      },
+    })),
   addDamageToRender: (newData) =>
     set((state) => ({
       damageToRender: {

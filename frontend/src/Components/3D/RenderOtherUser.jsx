@@ -11,6 +11,7 @@ import {
 } from "three";
 import { useOtherUsersStore, useUserInputStore, useUserStateStore } from "../../store";
 import ChatBubble from "./ChatBubble";
+import HealthBar from "./HealthBar";
 
 const RenderOtherUser = ({
   url = "native-woman.glb",
@@ -39,9 +40,15 @@ const RenderOtherUser = ({
   const setUserFollowing = useUserStateStore((state) => state.setUserFollowing);
   const setUserAttacking = useUserStateStore((state) => state.setUserAttacking);
   const damageToRender = useOtherUsersStore((state) => state.damageToRender);
+  const removeDamageToRender = useOtherUsersStore((state) => state.removeDamageToRender);
+  
+  const [health, setHealth] = useState(100);
   
   useEffect(() => {
-    console.log(damageToRender, "damageToRender");
+    if (damageToRender[connectionId]) {
+      setHealth(health - damageToRender[connectionId])
+      removeDamageToRender(connectionId);
+    }
   }, [damageToRender])
 
   useEffect(() => {
@@ -145,6 +152,9 @@ const RenderOtherUser = ({
   return (
     <group ref={objRef} onClick={onClick}>
       <mesh geometry={hitBox} material={hitBoxMaterial} />
+      {connectionId !== "NPC" && (
+        <HealthBar playerPosition={copiedScene.position} health={health} yOffset={2.5} />
+      )}
       {messagesToRender && (
         <ChatBubble
           playerPosition={copiedScene.position}
