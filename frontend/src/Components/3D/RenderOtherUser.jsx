@@ -9,7 +9,7 @@ import {
   MeshBasicMaterial,
   Vector3,
 } from "three";
-import { useUserInputStore, useUserStateStore } from "../../store";
+import { useOtherUsersStore, useUserInputStore, useUserStateStore } from "../../store";
 import ChatBubble from "./ChatBubble";
 
 const RenderOtherUser = ({
@@ -38,6 +38,11 @@ const RenderOtherUser = ({
   );
   const setUserFollowing = useUserStateStore((state) => state.setUserFollowing);
   const setUserAttacking = useUserStateStore((state) => state.setUserAttacking);
+  const damageToRender = useOtherUsersStore((state) => state.damageToRender);
+  
+  useEffect(() => {
+    console.log(damageToRender, "damageToRender");
+  }, [damageToRender])
 
   useEffect(() => {
     if (isAttacking) {
