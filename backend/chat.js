@@ -31,6 +31,25 @@ exports.handler = async function (event, context) {
     // userPK = jwt.decode(bodyAsJSON.token, process.env.JWT_SECRET).PK;
     senderId = connectionId;
   }
+  const dealDamage = (connectionId, damage, chatRoomId) => {
+    const rowParams = {
+      TableName: process.env.DB,
+      Key: {
+        PK: chatRoomId,
+        SK: "CONNECTION#"+connectionId,
+      },
+      UpdateExpression: 'SET health = health - :val',
+      ExpressionAttributeValues: {
+        ':val': damage
+      },
+    };
+    dynamodb.update(rowParams, (e,data) => {
+      if (e) {
+        console.error('Unable to update item. Error JSON:', JSON.stringify(e, null, 2));
+      } 
+    })
+  }
+
   switch (routeKey) {
     case "$connect":
       // console.log("connected", connectionId);
@@ -145,7 +164,7 @@ exports.handler = async function (event, context) {
             receivingPlayer: attackingPlayer,
             damage
           };
-          //TODO reduce health in database
+          dealDamage(attackingPlayer, damage, bodyAsJSON.chatRoomId);
         }
         for (const otherConnectionId of bodyAsJSON.connections) {
           bodyAsJSON.message.connectionId = connectionId;

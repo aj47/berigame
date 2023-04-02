@@ -41,18 +41,38 @@ export const useWebsocketStore = create((set) => ({
     })),
 }));
 
-export const useUserStateStore = create((set) => ({
+export const useOtherUsersStore = create((set) => ({
   userPositions: {},
-  userConnectionId: null,
-  userFollowing: null,
-  userAttacking: null,
-  setUserConnectionId: (id) => set({ userConnectionId: id }),
+  damageToRender: {},
+  removeDamageToRender: (connectionId) =>
+    set((state) => ({
+      damageToRender: {
+        ...state.damageToRender,
+        [connectionId]: null,
+      },
+    })),
+  addDamageToRender: (newData) =>
+    set((state) => ({
+      damageToRender: {
+        ...state.damageToRender,
+        [newData.receivingPlayer]: state.damageToRender[newData.receivingPlayer]
+          ? state.damageToRender[newData.receivingPlayer] + newData.damage
+          : newData.damage,
+      },
+    })),
   setUserPositions: (newUserPositions) =>
     set({ userPositions: { ...newUserPositions } }),
   setUserPosition: (newData) =>
     set((state) => ({
       userPositions: { ...state.userPositions, [newData.userId]: newData },
     })),
+}));
+
+export const useUserStateStore = create((set) => ({
+  userConnectionId: null,
+  userFollowing: null,
+  userAttacking: null,
+  setUserConnectionId: (id) => set({ userConnectionId: id }),
   setUserFollowing: (newObject) => set({ userFollowing: newObject }),
   setUserAttacking: (newObject) => set({ userAttacking: newObject }),
 }));

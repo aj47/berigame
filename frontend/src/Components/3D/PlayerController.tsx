@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   useChatStore,
+  useOtherUsersStore,
   useUserInputStore,
   useUserStateStore,
   useWebsocketStore,
@@ -34,7 +35,23 @@ const PlayerController = (props) => {
   );
   const userFollowing = useUserStateStore((state: any) => state.userFollowing);
   const userAttacking = useUserStateStore((state: any) => state.userAttacking);
+  const userConnectionId = useUserStateStore(
+    (state: any) => state.userConnectionId
+  );
   const justSentMessage = useChatStore((state) => state.justSentMessage);
+  const damageToRender = useOtherUsersStore((state) => state.damageToRender);
+  const removeDamageToRender = useOtherUsersStore(
+    (state) => state.removeDamageToRender
+  );
+
+  const [health, setHealth] = useState(100);
+
+  useEffect(() => {
+    if (damageToRender[userConnectionId]) {
+      setHealth(health - damageToRender[userConnectionId]);
+      removeDamageToRender(userConnectionId);
+    }
+  }, [damageToRender]);
 
   const walkToPointOnLand = (pointOnLand) => {
     if (followingInterval) clearInterval(followingInterval);
@@ -86,7 +103,7 @@ const PlayerController = (props) => {
     // Check if in attack range and attack
     const enemyLocation = userFollowing.current.position;
     const distance = objRef.current.position.distanceTo(enemyLocation);
-    if (distance < 2) {
+    if (distance < 2 && userAttacking) {
       // attack
       actions["Walking"]?.stop();
       actions["RightHook"]?.play();
@@ -199,7 +216,11 @@ const PlayerController = (props) => {
         />
       )}
       {true && (
-        <HealthBar playerPosition={obj.position} health={100} yOffset={2.5} />
+        <HealthBar
+          playerPosition={obj.position}
+          health={health}
+          yOffset={2.5}
+        />
       )}
       <Suspense fallback={null}>
         <primitive object={obj} />
