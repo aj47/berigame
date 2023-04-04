@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from "react";
 import RenderOtherUser from "./RenderOtherUser";
-import { useChatStore, useUserStateStore } from "../../store";
+import { useChatStore, useOtherUsersStore, useUserStateStore } from "../../store";
 
 const RenderOnlineUsers = (props) => {
   const [messagesToRender, setMessagesToRender] = useState<any>({});
   const chatMessages = useChatStore((state: any) => state.chatMessages);
-  const userPositions = useUserStateStore(
-    (state: any) => state.userPositions
-  );
+  const userPositions = useOtherUsersStore((state: any) => state.userPositions);
   const userConnectionId = useUserStateStore(
     (state: any) => state.userConnectionId
   );
@@ -34,20 +32,21 @@ const RenderOnlineUsers = (props) => {
     <>
       {Object.keys(userPositions).map((playerKey) => {
         if (playerKey == userConnectionId) return;
-        const { x, y, z } = userPositions[playerKey].position;
-        const { _x, _y, _z } = userPositions[playerKey].rotation;
-        const { x: rX, y: rY, z: rZ } = userPositions[playerKey].restPosition;
+        const currentPlayer = userPositions[playerKey];
+        const { x, y, z } = currentPlayer.position;
+        const { _x, _y, _z } = currentPlayer.rotation;
+        const { x: rX, y: rY, z: rZ } = currentPlayer.restPosition;
         return (
           <group key={playerKey}>
             <RenderOtherUser
-              isAttacking={userPositions[playerKey].attackingPlayer}
+              isAttacking={currentPlayer.attackingPlayer}
               connectionId={playerKey}
               isCombatable={true}
               messagesToRender={messagesToRender[playerKey]?.message}
               position={[x, y, z]}
               rotation={[_x, _y, _z]}
               restPosition={[rX, rY, rZ]}
-              isWalking={userPositions[playerKey].isWalking}
+              isWalking={currentPlayer.isWalking}
             />
           </group>
         );

@@ -1,5 +1,10 @@
 import React, { useEffect } from "react";
-import { useChatStore, useUserStateStore, useWebsocketStore } from "../store";
+import {
+  useChatStore,
+  useOtherUsersStore,
+  useUserStateStore,
+  useWebsocketStore,
+} from "../store";
 
 const Api = (props) => {
   let url = "https://3qzrz2p4f0.execute-api.ap-southeast-2.amazonaws.com/dev/";
@@ -15,14 +20,17 @@ const Api = (props) => {
     (state: any) => state.allConnections
   );
   const addChatMessage = useChatStore((state: any) => state.addChatMessage);
-  const setUserPosition = useUserStateStore(
+  const setUserPosition = useOtherUsersStore(
     (state: any) => state.setUserPosition
+  );
+  const addDamageToRender = useOtherUsersStore(
+    (state: any) => state.addDamageToRender
   );
   const setUserConnectionId = useUserStateStore(
     (state: any) => state.setUserConnectionId
   );
 
-  if (process.env.NODE_ENV === 'development')  {
+  if (process.env.NODE_ENV === "development") {
     url = "http://localhost:3000/dev/";
     wsUrl = "ws://localhost:3001";
   }
@@ -55,14 +63,14 @@ const Api = (props) => {
       if (messageObject.chatMessage) {
         addChatMessage(messageObject);
       }
-      if (
-        messageObject.attackingPlayer ||
-        (messageObject.position && messageObject.userId)
-      ) {
+      if (messageObject.position && messageObject.userId) {
         updateUserPosition(messageObject);
+        if(messageObject.attackingPlayer)
+          addDamageToRender(messageObject.damageGiven);
       }
       if (messageObject.connections) {
         updateConnections(messageObject.connections);
+        console.log("MY CID: ", messageObject.yourConnectionId);
         setUserConnectionId(messageObject.yourConnectionId);
       }
     }
