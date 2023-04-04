@@ -38,7 +38,7 @@ const ChatBox = memo(({ setChatMessageSent }) => {
   const InputTextArea = memo(() => {
     const [inputText, setInputText] = useState("");
     const keyDownHandler = (e) => {
-      if (e.code === "Enter") {
+      if (e.code === "Enter" || e.keyCode === 13) {
         e.preventDefault();
         if (!chatOpen) setChatOpen(true);
         if (inputText !== "") {
