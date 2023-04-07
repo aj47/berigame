@@ -14,6 +14,7 @@ import { webSocketSendAction, webSocketSendUpdate } from "../../Api";
 import { Vector3 } from "three";
 import HealthBar from "./HealthBar";
 import ChatBubble from "./ChatBubble";
+import DamageNumber from "./DamageNumber";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
@@ -44,14 +45,29 @@ const PlayerController = (props) => {
     (state) => state.removeDamageToRender
   );
 
-  const [health, setHealth] = useState(100);
+  const [health, setHealth] = useState(30);
+  const [damageQueue, setDamageQueue] = useState<any[]>([]);
+  const damageQueueRef = useRef(damageQueue);
 
   useEffect(() => {
     if (damageToRender[userConnectionId]) {
       setHealth(health - damageToRender[userConnectionId]);
+      setDamageQueue([
+        ...damageQueue,
+        { val: damageToRender[userConnectionId], key: Date.now() },
+      ]);
+      setTimeout(() => {
+        console.log(damageQueueRef.current.length, "damageQueueRef.current");
+        const [head, ...rest] = damageQueueRef.current;
+        setDamageQueue(rest);
+      }, 1500);
       removeDamageToRender(userConnectionId);
     }
   }, [damageToRender]);
+
+  useEffect(() => {
+    damageQueueRef.current = damageQueue;
+  }, [damageQueue]);
 
   const walkToPointOnLand = (pointOnLand) => {
     if (followingInterval) clearInterval(followingInterval);
@@ -117,7 +133,7 @@ const PlayerController = (props) => {
   useEffect(() => {
     if (!userFollowing) return;
     clearInterval(followingInterval);
-    setFollowingInterval(setInterval(walkTowardsOtherPlayer, 500));
+    setFollowingInterval(setInterval(walkTowardsOtherPlayer, 2000));
     return () => clearInterval(followingInterval);
   }, [currentTween]);
 
@@ -178,7 +194,7 @@ const PlayerController = (props) => {
   useEffect(() => {
     if (userFollowing) {
       walkTowardsOtherPlayer();
-      setFollowingInterval(setInterval(walkTowardsOtherPlayer, 1000));
+      setFollowingInterval(setInterval(walkTowardsOtherPlayer, 2000));
     }
     return () => clearInterval(followingInterval);
   }, [userFollowing]);
@@ -216,11 +232,24 @@ const PlayerController = (props) => {
         />
       )}
       {true && (
-        <HealthBar
-          playerPosition={obj.position}
-          health={health}
-          yOffset={2.5}
-        />
+        <>
+          <HealthBar
+            playerPosition={obj.position}
+            health={health}
+            maxHealth={30}
+            yOffset={2.5}
+          />
+          {damageQueue.map((element) => {
+            return (
+              <DamageNumber
+                key={element.key}
+                playerPosition={obj.position}
+                yOffset={1.5}
+                damageToRender={element.val}
+              />
+            );
+          })}
+        </>
       )}
       <Suspense fallback={null}>
         <primitive object={obj} />

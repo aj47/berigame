@@ -159,7 +159,7 @@ exports.handler = async function (event, context) {
         const attackingPlayer = bodyAsJSON.message.attackingPlayer;
         let damage = 0;
         if (attackingPlayer) {
-          damage = 1;
+          damage = Math.floor(Math.random() * 3) + 1;
           bodyAsJSON.message.damageGiven = {
             receivingPlayer: attackingPlayer,
             damage

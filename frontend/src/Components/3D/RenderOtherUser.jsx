@@ -9,7 +9,11 @@ import {
   MeshBasicMaterial,
   Vector3,
 } from "three";
-import { useOtherUsersStore, useUserInputStore, useUserStateStore } from "../../store";
+import {
+  useOtherUsersStore,
+  useUserInputStore,
+  useUserStateStore,
+} from "../../store";
 import ChatBubble from "./ChatBubble";
 import HealthBar from "./HealthBar";
 
@@ -40,16 +44,18 @@ const RenderOtherUser = ({
   const setUserFollowing = useUserStateStore((state) => state.setUserFollowing);
   const setUserAttacking = useUserStateStore((state) => state.setUserAttacking);
   const damageToRender = useOtherUsersStore((state) => state.damageToRender);
-  const removeDamageToRender = useOtherUsersStore((state) => state.removeDamageToRender);
-  
-  const [health, setHealth] = useState(100);
-  
+  const removeDamageToRender = useOtherUsersStore(
+    (state) => state.removeDamageToRender
+  );
+
+  const [health, setHealth] = useState(30);
+
   useEffect(() => {
     if (damageToRender[connectionId]) {
-      setHealth(health - damageToRender[connectionId])
+      setHealth(health - damageToRender[connectionId]);
       removeDamageToRender(connectionId);
     }
-  }, [damageToRender])
+  }, [damageToRender]);
 
   useEffect(() => {
     if (isAttacking) {
@@ -153,7 +159,12 @@ const RenderOtherUser = ({
     <group ref={objRef} onClick={onClick}>
       <mesh geometry={hitBox} material={hitBoxMaterial} />
       {connectionId !== "NPC" && (
-        <HealthBar playerPosition={copiedScene.position} health={health} yOffset={2.5} />
+        <HealthBar
+          playerPosition={copiedScene.position}
+          health={health}
+          maxHealth={30}
+          yOffset={2.5}
+        />
       )}
       {messagesToRender && (
         <ChatBubble

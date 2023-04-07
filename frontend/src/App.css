@@ -232,3 +232,45 @@ canvas {
   background-color: #00000010;
   z-index: 1;
 }
+
+.damage-number {
+  color: red;
+  font-weight: 700;
+  font-size: 24px;
+}
+
+.damage-number.animation1 {
+  animation: damageNumber1 1.5s;
+  animation-fill-mode: forwards;
+}
+
+.damage-number.animation2 {
+  animation: damageNumber2 1.5s;
+  animation-fill-mode: forwards;
+}
+
+@keyframes damageNumber1 {
+  from {
+    transform: rotate(0deg);
+    translate: 45px;
+    opacity: 1;
+  }
+  to {
+    transform: rotate(40deg);
+    translate: 85px;
+    opacity: 0;
+  }
+}
+
+@keyframes damageNumber2 {
+  from {
+    transform: rotate(0deg);
+    translate: -45px;
+    opacity: 1;
+  }
+  to {
+    transform: rotate(-40deg);
+    translate: -85px;
+    opacity: 0;
+  }
+}

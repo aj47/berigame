@@ -2,27 +2,24 @@ import { Html } from "@react-three/drei";
 import React from "react";
 import { Vector3 } from "three";
 
-const HealthBar = (props) => {
+const DamageNumber = (props) => {
   const position = new Vector3(
     props.playerPosition.x,
     props.playerPosition.y + props.yOffset,
     props.playerPosition.z
   );
-
+  const randBool = Math.random() < 0.5;
   return (
     <Html
-      zIndexRange={[4, 0]}
+      zIndexRange={[6, 4]}
       prepend
       center
       position={position}
-      className="health-bar"
+      className={"damage-number" + (randBool ? " animation1" : " animation2")}
     >
-      <div
-        className="fill"
-        style={{ width: (props.health / props.maxHealth) * 100 + "%" }}
-      ></div>
+      {props.damageToRender}
     </Html>
   );
 };
 
-export default HealthBar;
+export default DamageNumber;
