@@ -16,6 +16,7 @@ import {
 } from "../../store";
 import ChatBubble from "./ChatBubble";
 import HealthBar from "./HealthBar";
+import DamageNumber from "./DamageNumber";
 
 const RenderOtherUser = ({
   url = "native-woman.glb",
@@ -49,10 +50,18 @@ const RenderOtherUser = ({
   );
 
   const [health, setHealth] = useState(30);
+  const [currentDamage, setCurrentDamage] = useState(null);
 
   useEffect(() => {
-    if (damageToRender[connectionId]) {
-      setHealth(health - damageToRender[connectionId]);
+    // Check expired damage number
+    if (currentDamage?.timestamp < Date.now() - 1400) setCurrentDamage(null);
+  });
+
+  useEffect(() => {
+    const userDamage = damageToRender[connectionId];
+    if (userDamage) {
+      setHealth(health - userDamage);
+      setCurrentDamage({ val: userDamage, timestamp: Date.now() });
       removeDamageToRender(connectionId);
     }
   }, [damageToRender]);
@@ -159,12 +168,22 @@ const RenderOtherUser = ({
     <group ref={objRef} onClick={onClick}>
       <mesh geometry={hitBox} material={hitBoxMaterial} />
       {connectionId !== "NPC" && (
-        <HealthBar
-          playerPosition={copiedScene.position}
-          health={health}
-          maxHealth={30}
-          yOffset={2.5}
-        />
+        <>
+          <HealthBar
+            playerPosition={copiedScene.position}
+            health={health}
+            maxHealth={30}
+            yOffset={2.5}
+          />
+          {currentDamage && (
+            <DamageNumber
+              key={currentDamage.timestamp}
+              playerPosition={copiedScene.position}
+              yOffset={1.5}
+              damageToRender={currentDamage.val}
+            />
+          )}
+        </>
       )}
       {messagesToRender && (
         <ChatBubble

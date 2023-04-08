@@ -1,6 +1,6 @@
 import React, { Suspense, useState } from "react";
 import TWEEN from "@tweenjs/tween.js";
-import { Html, useAnimations, useGLTF } from "@react-three/drei";
+import { useAnimations, useGLTF } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
@@ -10,7 +10,7 @@ import {
   useUserStateStore,
   useWebsocketStore,
 } from "../../store";
-import { webSocketSendAction, webSocketSendUpdate } from "../../Api";
+import { webSocketSendUpdate } from "../../Api";
 import { Vector3 } from "three";
 import HealthBar from "./HealthBar";
 import ChatBubble from "./ChatBubble";
