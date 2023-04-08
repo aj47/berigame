@@ -46,28 +46,22 @@ const PlayerController = (props) => {
   );
 
   const [health, setHealth] = useState(30);
-  const [damageQueue, setDamageQueue] = useState<any[]>([]);
-  const damageQueueRef = useRef(damageQueue);
+  const [currentDamage, setCurrentDamage] = useState<any>(null);
 
   useEffect(() => {
-    if (damageToRender[userConnectionId]) {
-      setHealth(health - damageToRender[userConnectionId]);
-      setDamageQueue([
-        ...damageQueue,
-        { val: damageToRender[userConnectionId], key: Date.now() },
-      ]);
-      setTimeout(() => {
-        console.log(damageQueueRef.current.length, "damageQueueRef.current");
-        const [head, ...rest] = damageQueueRef.current;
-        setDamageQueue(rest);
-      }, 1500);
+    // Check expired damage number
+    if (currentDamage?.timestamp < Date.now() - 1400)
+      setCurrentDamage(null);
+  });
+  useEffect(() => {
+    // Set damage to render variables
+    const userDamage = damageToRender[userConnectionId];
+    if (userDamage) {
+      setHealth(health - userDamage);
+      setCurrentDamage({ val: userDamage, timestamp: Date.now() });
       removeDamageToRender(userConnectionId);
     }
   }, [damageToRender]);
-
-  useEffect(() => {
-    damageQueueRef.current = damageQueue;
-  }, [damageQueue]);
 
   const walkToPointOnLand = (pointOnLand) => {
     if (followingInterval) clearInterval(followingInterval);
@@ -133,7 +127,7 @@ const PlayerController = (props) => {
   useEffect(() => {
     if (!userFollowing) return;
     clearInterval(followingInterval);
-    setFollowingInterval(setInterval(walkTowardsOtherPlayer, 2000));
+    setFollowingInterval(setInterval(walkTowardsOtherPlayer, 500));
     return () => clearInterval(followingInterval);
   }, [currentTween]);
 
@@ -194,7 +188,7 @@ const PlayerController = (props) => {
   useEffect(() => {
     if (userFollowing) {
       walkTowardsOtherPlayer();
-      setFollowingInterval(setInterval(walkTowardsOtherPlayer, 2000));
+      setFollowingInterval(setInterval(walkTowardsOtherPlayer, 1000));
     }
     return () => clearInterval(followingInterval);
   }, [userFollowing]);
@@ -239,16 +233,14 @@ const PlayerController = (props) => {
             maxHealth={30}
             yOffset={2.5}
           />
-          {damageQueue.map((element) => {
-            return (
-              <DamageNumber
-                key={element.key}
-                playerPosition={obj.position}
-                yOffset={1.5}
-                damageToRender={element.val}
-              />
-            );
-          })}
+          {currentDamage && (
+            <DamageNumber
+              key={currentDamage.timestamp}
+              playerPosition={obj.position}
+              yOffset={1.5}
+              damageToRender={currentDamage.val}
+            />
+          )}
         </>
       )}
       <Suspense fallback={null}>
