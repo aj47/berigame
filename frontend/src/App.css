@@ -107,7 +107,7 @@ h2 {
   z-index: 2;
   position: absolute;
   top: 85vh;
-  left: 5px;
+  right: 5px; /* Changed from 'left' to 'right' to move the chatbox to the right side of the screen */
   width: calc(100vw - 10px);
   max-width: 1000px;
   pointer-events: none;
@@ -149,9 +149,8 @@ h2 {
   color: rgba(0, 0, 0, 0.477);
   background-color: rgba(255, 233, 205, 0.377);
 }
-
 #chatBox .openChatButton.open {
-  left: min(calc(100vw - 50px), 950px);
+  left: min(calc(100vw - 75px), 950px); /* Increased width from 50px to 75px */
 }
 
 #chatBox .openChatButton.open {
@@ -160,12 +159,14 @@ h2 {
 }
 #chatBox .openChatButton {
   pointer-events: all;
-  height: 50px;
-  width: 50px;
+  height: 75px; /* Increased height from 50px to 75px */
+  width: 75px; /* Increased width from 50px to 75px */
   background-color: rgba(255, 233, 205, 0.1);
   border-radius: 0 0 3px 3px;
   position: absolute;
-  top: 5px;
+  /* top: 5px; */
+  right: 5px;
+  border: 2px solid black; /* Added border */
 }
 
 /* end chatbox */
@@ -221,8 +222,8 @@ canvas {
 .inventory.ui-window {
   position: absolute;
   top: 50vh;
-  left: 50vw;
-  transform: translate(-50%, -50%);
+  left: 100vw;
+  transform: translate(-100%, -50%)
 }
 
 .ui-window {
