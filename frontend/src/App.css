@@ -133,7 +133,6 @@ h2 {
 #chatBox .chatInputBar textarea {
   pointer-events: all;
   width: 100%;
-  max-width: calc(1000px - 43px);
   border: 0px;
   padding: 5px;
   margin-top: auto;
