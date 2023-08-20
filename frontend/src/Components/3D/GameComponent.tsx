@@ -17,6 +17,7 @@ import UIComponents from "../UIComponents";
 
 const GameComponent = () => {
   const [playerRef, setPlayerRef] = useState<any>();
+  
   const clickedOtherObject = useUserInputStore(
     (state: any) => state.clickedOtherObject
   );

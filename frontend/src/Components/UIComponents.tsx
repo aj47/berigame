@@ -1,13 +1,18 @@
 import React, { memo, useState } from "react";
 import ChatBox from "./ChatBox";
 import Inventory from "./Inventory";
+import Modal from "./Modal";
 
 const UIComponents = memo((props) => {
-const [showInventory, setShowInventory] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
   return (
     <div className="ui-group">
-      <ChatBox/>
-      <Inventory setShowInventory={setShowInventory} showInventory={showInventory}/>
+      {/* <Modal /> */}
+      <ChatBox />
+      <Inventory
+        setShowInventory={setShowInventory}
+        showInventory={showInventory}
+      />
     </div>
   );
 });

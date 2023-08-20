@@ -211,6 +211,7 @@ canvas {
   max-width: 200px;
   right: 0;
 }
+
 .ui-group {
   width: calc(100vw - 30px);
   pointer-events: none;
@@ -223,6 +224,19 @@ canvas {
   align-items: end;
   flex-direction: column-reverse;
   padding: 15px;
+}
+
+.ui-group .modal {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 500px;
+  height: 500px;
+  translate: -50% -50%;
+  left: 50vw;
+  top: 50vh;
 }
 
 .ui-element {
