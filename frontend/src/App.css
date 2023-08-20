@@ -40,6 +40,7 @@ input {
 
 button {
   cursor: pointer;
+  max-width: 200px;
   /* padding: 5px 50px; */
   font-size: 1rem;
   border-radius: 5px;
@@ -104,11 +105,7 @@ h2 {
 
 /* chatbox */
 #chatBox {
-  z-index: 2;
-  position: absolute;
-  top: 85vh;
-  right: 5px; /* Changed from 'left' to 'right' to move the chatbox to the right side of the screen */
-  width: calc(100vw - 10px);
+  width: calc(100% - 30px);
   max-width: 1000px;
   pointer-events: none;
 }
@@ -117,11 +114,10 @@ h2 {
   display: none;
 }
 #chatBox .chatLog {
-  position: absolute;
   bottom: 50px;
   transition: max-height 0.15s ease-out;
-  width: 100%;
-  max-width: min(1000px, 95vw);
+  /* width: 100%;
+  max-width: min(1000px, 95vw); */
   height: 200px;
   word-wrap: break-word;
   overflow: hidden;
@@ -157,18 +153,11 @@ h2 {
   bottom: 225px;
   top: auto;
 }
-#chatBox .openChatButton {
-  pointer-events: all;
-  height: 75px; /* Increased height from 50px to 75px */
-  width: 75px; /* Increased width from 50px to 75px */
-  background-color: rgba(255, 233, 205, 0.1);
-  border-radius: 0 0 3px 3px;
-  position: absolute;
-  /* top: 5px; */
-  right: 5px;
-  border: 2px solid black; /* Added border */
-}
 
+.ui-group button {
+  width: 100%;
+  pointer-events: all;
+}
 /* end chatbox */
 
 .health-bar {
@@ -219,14 +208,25 @@ canvas {
   position: static !important;
 }
 
-.inventory.ui-window {
+.inventory.ui-element {
+  max-width: 200px;
+  right: 0;
+}
+.ui-group {
+  width: calc(100vw - 30px);
+  pointer-events: none;
+  z-index: 2;
   position: absolute;
-  top: 50vh;
-  left: 100vw;
-  transform: translate(-100%, -50%)
+  height: 100%;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: end;
+  flex-direction: column-reverse;
+  padding: 15px;
 }
 
-.ui-window {
+.ui-element {
   border: 1px solid #00000060;
   border-radius: 5px;
   padding: 15px;

@@ -55,8 +55,12 @@ const ChatBox = memo(({}) => {
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={keyDownHandler}
-          onFocus={() => {setFocusedChat(true)}}
-          onBlur={() => {setFocusedChat(false)}}
+          onFocus={() => {
+            setFocusedChat(true);
+          }}
+          onBlur={() => {
+            setFocusedChat(false);
+          }}
         />
 
         {/* <button
@@ -80,11 +84,7 @@ const ChatBox = memo(({}) => {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }, [chatMessages]);
     return (
-      <div
-        id="chat-log"
-        className="chatLog ui-window"
-        ref={listRef}
-      >
+      <div id="chat-log" className="chatLog ui-element" ref={listRef}>
         {chatMessages.map((data, i) => {
           return (
             <div key={i}>
@@ -100,25 +100,26 @@ const ChatBox = memo(({}) => {
   });
 
   return (
-    <div id="chatBox">
-      {chatOpen && (
-        <>
-          <ChatLog />
-          <div className="chatInputBar">
-            <InputTextArea />
-          </div>
-        </>
-      )}
+    <>
       <button
-        className={`openChatButton ${chatOpen && "open"}`}
+        className={`openChatButton ui-element ${chatOpen && "open"}`}
         onClick={(e) => {
           e.stopPropagation();
           setChatOpen(!chatOpen);
         }}
       >
-        {!chatOpen ? "Chat" : "X"}
+        {!chatOpen ? "Chat" : "Close Chat"}
       </button>
-    </div>
+
+      {chatOpen && (
+        <div id="chatBox">
+          <ChatLog />
+          <div className="chatInputBar">
+            <InputTextArea />
+          </div>
+        </div>
+      )}
+    </>
   );
 });
 

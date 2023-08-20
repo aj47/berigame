@@ -22,8 +22,8 @@ const GameComponent = () => {
   );
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
-      <Api />
       <UIComponents/>
+      <Api />
       {clickedOtherObject && <ClickDropdown />}
       <Canvas
         id="three-canvas"
