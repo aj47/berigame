@@ -288,3 +288,11 @@ canvas {
     opacity: 0;
   }
 }
+.ui-element.modal {
+  color: white;
+  z-index: 5;
+  background-color: #00000096;
+}
+.ui-element.modal button {
+  background-color: rgb(48, 169, 0);
+}
