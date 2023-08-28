@@ -7,7 +7,7 @@ const UIComponents = memo((props) => {
   const [showInventory, setShowInventory] = useState(false);
   return (
     <div className="ui-group">
-      <Modal />
+      {/* <Modal /> */}
       <ChatBox />
       <Inventory
         setShowInventory={setShowInventory}

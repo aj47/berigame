@@ -36,19 +36,54 @@ exports.handler = async function (event, context) {
       TableName: process.env.DB,
       Key: {
         PK: chatRoomId,
-        SK: "CONNECTION#"+connectionId,
+        SK: "CONNECTION#" + connectionId,
       },
-      UpdateExpression: 'SET health = health - :val',
+      UpdateExpression: "SET health = health - :val",
       ExpressionAttributeValues: {
-        ':val': damage
+        ":val": damage,
       },
     };
-    dynamodb.update(rowParams, (e,data) => {
+    dynamodb.update(rowParams, (e, data) => {
       if (e) {
-        console.error('Unable to update item. Error JSON:', JSON.stringify(e, null, 2));
-      } 
-    })
-  }
+        console.error(
+          "Unable to update item. Error JSON:",
+          JSON.stringify(e, null, 2)
+        );
+      }
+    });
+    // Check for 0 health (death)
+    dynamodb.get(rowParams, (err, data) => {
+      if (err) {
+        console.error("Couldn't get user item after deal damage");
+      } else {
+        if (data.Item?.health <= 0) {
+          // Do death mechanics
+          // 1. drop items of player on ground --- TBD
+          
+          // 2. reset player who died's position
+          //    a. post to connections.
+          
+          // 3. reset players health to full
+          const resetHealthParams = {
+            TableName: process.env.DB,
+            Key: {
+              PK: chatRoomId,
+              SK: "CONNECTION#" + connectionId,
+            },
+            UpdateExpression: "SET health = 30",
+          };
+          dynamodb.update(resetHealthParams, (e, data) => {
+            if (e) {
+              console.error(
+                "Unable to update item. Error JSON:",
+                JSON.stringify(e, null, 2)
+              );
+            }
+          });
+        }
+      }
+    });
+  };
 
   switch (routeKey) {
     case "$connect":
@@ -162,7 +197,7 @@ exports.handler = async function (event, context) {
           damage = Math.floor(Math.random() * 3) + 1;
           bodyAsJSON.message.damageGiven = {
             receivingPlayer: attackingPlayer,
-            damage
+            damage,
           };
           dealDamage(attackingPlayer, damage, bodyAsJSON.chatRoomId);
         }
