@@ -36,7 +36,7 @@ const BerryTree = (props) => {
       onClick={onClick}
       objRef={objRef}
       url={"/tree.glb"}
-      position={[5, 0, 0]}
+      position={props.position || [5, 0, 0]}
     />
   );
 };
