@@ -40,6 +40,7 @@ input {
 
 button {
   cursor: pointer;
+  max-width: 200px;
   /* padding: 5px 50px; */
   font-size: 1rem;
   border-radius: 5px;
@@ -104,11 +105,7 @@ h2 {
 
 /* chatbox */
 #chatBox {
-  z-index: 2;
-  position: absolute;
-  top: 85vh;
-  left: 5px;
-  width: calc(100vw - 10px);
+  width: calc(100% - 30px);
   max-width: 1000px;
   pointer-events: none;
 }
@@ -117,11 +114,10 @@ h2 {
   display: none;
 }
 #chatBox .chatLog {
-  position: absolute;
   bottom: 50px;
   transition: max-height 0.15s ease-out;
-  width: 100%;
-  max-width: min(1000px, 95vw);
+  /* width: 100%;
+  max-width: min(1000px, 95vw); */
   height: 200px;
   word-wrap: break-word;
   overflow: hidden;
@@ -137,7 +133,6 @@ h2 {
 #chatBox .chatInputBar textarea {
   pointer-events: all;
   width: 100%;
-  max-width: calc(1000px - 43px);
   border: 0px;
   padding: 5px;
   margin-top: auto;
@@ -149,25 +144,19 @@ h2 {
   color: rgba(0, 0, 0, 0.477);
   background-color: rgba(255, 233, 205, 0.377);
 }
-
 #chatBox .openChatButton.open {
-  left: min(calc(100vw - 50px), 950px);
+  left: min(calc(100vw - 75px), 950px); /* Increased width from 50px to 75px */
 }
 
 #chatBox .openChatButton.open {
   bottom: 225px;
   top: auto;
 }
-#chatBox .openChatButton {
-  pointer-events: all;
-  height: 50px;
-  width: 50px;
-  background-color: rgba(255, 233, 205, 0.1);
-  border-radius: 0 0 3px 3px;
-  position: absolute;
-  top: 5px;
-}
 
+.ui-group button {
+  width: 100%;
+  pointer-events: all;
+}
 /* end chatbox */
 
 .health-bar {
@@ -218,14 +207,39 @@ canvas {
   position: static !important;
 }
 
-.inventory.ui-window {
-  position: absolute;
-  top: 50vh;
-  left: 50vw;
-  transform: translate(-50%, -50%);
+.inventory.ui-element {
+  max-width: 200px;
+  right: 0;
 }
 
-.ui-window {
+.ui-group {
+  width: calc(100vw - 30px);
+  pointer-events: none;
+  z-index: 2;
+  position: absolute;
+  height: 100%;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: end;
+  flex-direction: column-reverse;
+  padding: 15px;
+}
+
+.ui-group .modal {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 500px;
+  height: 500px;
+  translate: -50% -50%;
+  left: 50vw;
+  top: 50vh;
+}
+
+.ui-element {
   border: 1px solid #00000060;
   border-radius: 5px;
   padding: 15px;
@@ -273,4 +287,12 @@ canvas {
     translate: -85px;
     opacity: 0;
   }
+}
+.ui-element.modal {
+  color: white;
+  z-index: 5;
+  background-color: #00000096;
+}
+.ui-element.modal button {
+  background-color: rgb(48, 169, 0);
 }

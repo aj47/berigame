@@ -1,7 +1,6 @@
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useState, useEffect, useRef } from "react";
 import TWEEN from "@tweenjs/tween.js";
 import { useAnimations, useGLTF } from "@react-three/drei";
-import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import {
   useChatStore,
@@ -11,7 +10,7 @@ import {
   useWebsocketStore,
 } from "../../store";
 import { webSocketSendUpdate } from "../../Api";
-import { Vector3 } from "three";
+import { RawShaderMaterial, Vector3, cloneUniformsGroups } from "three";
 import HealthBar from "./HealthBar";
 import ChatBubble from "./ChatBubble";
 import DamageNumber from "./DamageNumber";
@@ -47,12 +46,12 @@ const PlayerController = (props) => {
   );
 
   const [health, setHealth] = useState(30);
+
   const [currentDamage, setCurrentDamage] = useState<any>(null);
 
   useEffect(() => {
     // Check expired damage number
-    if (currentDamage?.timestamp < Date.now() - 1400)
-      setCurrentDamage(null);
+    if (currentDamage?.timestamp < Date.now() - 1400) setCurrentDamage(null);
   });
   useEffect(() => {
     // Set damage to render variables
@@ -233,24 +232,22 @@ const PlayerController = (props) => {
           chatMessage={justSentMessage}
         />
       )}
-      {true && (
-        <>
-          <HealthBar
+      <>
+        <HealthBar
+          playerPosition={obj.position}
+          health={health}
+          maxHealth={30}
+          yOffset={2.5}
+        />
+        {currentDamage && (
+          <DamageNumber
+            key={currentDamage.timestamp}
             playerPosition={obj.position}
-            health={health}
-            maxHealth={30}
-            yOffset={2.5}
+            yOffset={1.5}
+            damageToRender={currentDamage.val}
           />
-          {currentDamage && (
-            <DamageNumber
-              key={currentDamage.timestamp}
-              playerPosition={obj.position}
-              yOffset={1.5}
-              damageToRender={currentDamage.val}
-            />
-          )}
-        </>
-      )}
+        )}
+      </>
       <Suspense fallback={null}>
         <primitive object={obj} />
       </Suspense>

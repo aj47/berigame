@@ -11,6 +11,7 @@ import AlphaIsland from "./AlphaIsland";
 import ClickDropdown from "../ClickDropdown";
 import { useChatStore, useUserInputStore } from "../../store";
 import UIComponents from "../UIComponents";
+import BerryTree from "./BerryTree";
 
 // react three fiber docs
 // https://docs.pmnd.rs/react-three-fiber/api/objects
@@ -30,6 +31,7 @@ const GameComponent = () => {
         resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}
       >
         <AlphaIsland />
+        <BerryTree position={[10, 0, 0]} />
         <RenderNPC isCombatable={false} />
         <RenderOnlineUsers />
         <PlayerController
