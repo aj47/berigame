@@ -31,6 +31,7 @@ interface PositionMessage {
   restPosition: string | Vector3;
   isWalking: boolean;
   attackingPlayer?: boolean;
+  harvestingPlayer?: boolean;
 }
 
 export const webSocketSendUpdate = async (message: PositionMessage, ws: any, allConnections: any[]) => {

@@ -35,7 +35,7 @@ const PlayerController = (props) => {
   );
   const userFollowing = useUserStateStore((state: any) => state.userFollowing);
   const userAttacking = useUserStateStore((state: any) => state.userAttacking);
-+ const userHarvesting = useUserStateStore((state: any) => state.userHarvesting);
+  const userHarvesting = useUserStateStore((state: any) => state.userHarvesting);
   const userConnectionId = useUserStateStore(
     (state: any) => state.userConnectionId
   );
@@ -150,7 +150,7 @@ const PlayerController = (props) => {
           rotation: obj.rotation,
           isWalking: true,
           attackingPlayer: userAttacking,
-+         harvestingPlayer: userHarvesting,
+          harvestingPlayer: userHarvesting,
         },
         websocketConnection,
         allConnections
@@ -180,7 +180,7 @@ const PlayerController = (props) => {
         rotation: obj.rotation,
         isWalking: false,
         attackingPlayer: userAttacking,
-+       harvestingPlayer: userHarvesting,
+        harvestingPlayer: userHarvesting,
       },
       websocketConnection,
       allConnections
@@ -216,7 +216,7 @@ const PlayerController = (props) => {
           restPosition: objRef.current.position,
           rotation: obj.rotation,
           isWalking: false,
-+         harvestingPlayer: userHarvesting,
+          harvestingPlayer: userHarvesting,
         },
         websocketConnection,
         allConnections
