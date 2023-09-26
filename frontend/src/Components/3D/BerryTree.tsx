@@ -2,7 +2,6 @@ import React, { useRef } from "react";
 import {
   useUserInputStore,
   useUserStateStore,
-  setUserHarvesting,
 } from "../../store";
 import RenderGLB from "./RenderGLB";
 
@@ -12,6 +11,7 @@ const BerryTree = (props) => {
     (state) => state.setClickedOtherObject,
   );
   const setUserFollowing = useUserStateStore((state) => state.setUserFollowing);
+  const setUserHarvesting = useUserStateStore((state) => state.setUserHarvesting);
   const onClick = (e) => {
     e.stopPropagation();
     // materialChange();
