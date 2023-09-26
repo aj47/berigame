@@ -22,26 +22,29 @@ const PlayerController = (props) => {
   const [currentTween, setCurrentTween] = useState<any>(null);
   const [followingInterval, setFollowingInterval] = useState<any>(null);
   const websocketConnection = useWebsocketStore(
-    (state: any) => state.websocketConnection
+    (state: any) => state.websocketConnection,
   );
   const allConnections = useWebsocketStore(
-    (state: any) => state.allConnections
+    (state: any) => state.allConnections,
   );
   const clickedPointOnLand = useUserInputStore(
-    (state: any) => state.clickedPointOnLand
+    (state: any) => state.clickedPointOnLand,
   );
   const clickedOtherObject = useUserInputStore(
-    (state: any) => state.clickedOtherObject
+    (state: any) => state.clickedOtherObject,
   );
   const userFollowing = useUserStateStore((state: any) => state.userFollowing);
   const userAttacking = useUserStateStore((state: any) => state.userAttacking);
+  const userHarvesting = useUserStateStore(
+    (state: any) => state.userHarvesting,
+  );
   const userConnectionId = useUserStateStore(
-    (state: any) => state.userConnectionId
+    (state: any) => state.userConnectionId,
   );
   const justSentMessage = useChatStore((state) => state.justSentMessage);
   const damageToRender = useOtherUsersStore((state) => state.damageToRender);
   const removeDamageToRender = useOtherUsersStore(
-    (state) => state.removeDamageToRender
+    (state) => state.removeDamageToRender,
   );
 
   const [health, setHealth] = useState(30);
@@ -86,10 +89,10 @@ const PlayerController = (props) => {
               isWalking: false,
             },
             websocketConnection,
-            allConnections
+            allConnections,
           );
         })
-        .start()
+        .start(),
     );
 
     webSocketSendUpdate(
@@ -101,7 +104,7 @@ const PlayerController = (props) => {
         isWalking: true,
       },
       websocketConnection,
-      allConnections
+      allConnections,
     );
   };
 
@@ -116,8 +119,12 @@ const PlayerController = (props) => {
       // attack
       actions["Walking"]?.stop();
       actions["RightHook"]?.play();
+    } else if (distance < 2 && userHarvesting) {
+      // harvest
+      actions["Walking"]?.stop();
+      actions["RightHook"]?.play();
     } else {
-      // stop attacking
+      // stop attacking/harvesting
       actions["Walking"]?.play();
       actions["RightHook"]?.stop();
     }
@@ -147,7 +154,7 @@ const PlayerController = (props) => {
           attackingPlayer: userAttacking,
         },
         websocketConnection,
-        allConnections
+        allConnections,
       );
       return;
     }
@@ -159,7 +166,7 @@ const PlayerController = (props) => {
     // calculate vector that is towards clicked object but 1 unit away
     distV.addVectors(
       objRef.current.position,
-      direction.multiplyScalar(-1 * distance)
+      direction.multiplyScalar(-1 * distance),
     );
     walkToPointOnLand(distV);
   };
@@ -176,7 +183,7 @@ const PlayerController = (props) => {
         attackingPlayer: userAttacking,
       },
       websocketConnection,
-      allConnections
+      allConnections,
     );
   }, [allConnections]);
 
@@ -211,7 +218,7 @@ const PlayerController = (props) => {
           isWalking: false,
         },
         websocketConnection,
-        allConnections
+        allConnections,
       );
   }, [objRef]);
 
