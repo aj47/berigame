@@ -8,6 +8,7 @@ const BerryTree = (props) => {
     (state) => state.setClickedOtherObject
   );
   const setUserFollowing = useUserStateStore((state) => state.setUserFollowing);
+  const setUserHarvesting = useUserStateStore((state) => state.setUserHarvesting);
   const onClick = (e) => {
     e.stopPropagation();
     // materialChange();
@@ -21,6 +22,7 @@ const BerryTree = (props) => {
           label: "Harvest",
           onClick: () => {
             setUserFollowing(objRef);
+            setUserHarvesting(true);
             setClickedOtherObject(null);
           },
         },

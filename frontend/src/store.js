@@ -72,9 +72,11 @@ export const useUserStateStore = create((set) => ({
   userConnectionId: null,
   userFollowing: null,
   userAttacking: null,
+  userHarvesting: null,
   setUserConnectionId: (id) => set({ userConnectionId: id }),
   setUserFollowing: (newObject) => set({ userFollowing: newObject }),
   setUserAttacking: (newObject) => set({ userAttacking: newObject }),
+  setUserHarvesting: (newObject) => set({ userHarvesting: newObject }),
 }));
 
 export const useUserInputStore = create((set) => ({
