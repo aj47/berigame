@@ -2,7 +2,7 @@ import { Html } from "@react-three/drei";
 import React from "react";
 import { Vector3 } from "three";
 
-const ChatBubble = (props) => {
+const TextOverHead = (props) => {
   const offsetPosition = new Vector3(
     props.playerPosition.x,
     props.playerPosition.y + props.yOffset,
@@ -11,6 +11,7 @@ const ChatBubble = (props) => {
   return (
     <Html
       zIndexRange={[4, 0]}
+      style={{ color: props.color ? props.color : "yellow" }}
       center
       position={offsetPosition}
       className="player-chat-bubble"
@@ -20,4 +21,4 @@ const ChatBubble = (props) => {
   );
 };
 
-export default ChatBubble;
+export default TextOverHead;

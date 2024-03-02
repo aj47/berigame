@@ -51,7 +51,7 @@ const RenderNPC = (props) => {
     if (newText)
       addChatMessage({
         message: newText,
-        senderId: "XGIatezNSwMCEAI+",
+        senderId: "Big-Giant",
         chatMessage: true,
         timestamp: new Date().getTime(),
       });
@@ -68,6 +68,7 @@ const RenderNPC = (props) => {
     <group>
       <RenderOtherUser
         url="giant.glb"
+        userName={"Big-Giant"}
         messagesToRender={messageToRender}
         position={position}
         restPosition={restPosition}

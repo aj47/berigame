@@ -14,7 +14,7 @@ import {
   useUserInputStore,
   useUserStateStore,
 } from "../../store";
-import ChatBubble from "./ChatBubble";
+import TextOverHead from "./TextOverHead";
 import HealthBar from "./HealthBar";
 import DamageNumber from "./DamageNumber";
 
@@ -28,6 +28,7 @@ const RenderOtherUser = ({
   isCombatable = false,
   inCombat = false,
   isAttacking = false,
+  userName = "",
   connectionId = "NPC",
 }) => {
   const { scene, animations, materials } = useGLTF(url);
@@ -185,8 +186,16 @@ const RenderOtherUser = ({
           )}
         </>
       )}
+      {userName && (
+        <TextOverHead
+          playerPosition={copiedScene.position}
+          yOffset={2.8}
+          color="white"
+          chatMessage={userName}
+        />
+      )}
       {messagesToRender && (
-        <ChatBubble
+        <TextOverHead
           playerPosition={copiedScene.position}
           yOffset={3.2}
           chatMessage={messagesToRender}

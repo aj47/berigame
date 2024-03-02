@@ -12,7 +12,7 @@ import {
 import { webSocketSendUpdate } from "../../Api";
 import { RawShaderMaterial, Vector3, cloneUniformsGroups } from "three";
 import HealthBar from "./HealthBar";
-import ChatBubble from "./ChatBubble";
+import TextOverHead from "./TextOverHead";
 import DamageNumber from "./DamageNumber";
 
 const PlayerController = (props) => {
@@ -218,7 +218,7 @@ const PlayerController = (props) => {
   return (
     <group ref={objRef}>
       {justSentMessage && (
-        <ChatBubble
+        <TextOverHead
           playerPosition={obj.position}
           yOffset={2}
           chatMessage={justSentMessage}
