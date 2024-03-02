@@ -4,6 +4,7 @@ import React, { Suspense, useEffect, useMemo, useState } from "react";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
 import { useChatStore } from "../../store";
 import RenderOtherUser from "./RenderOtherUser";
+import { createLLMResponse } from "../../Api";
 
 const RenderNPC = (props) => {
   const [restPosition, setRestPosition] = useState([1, 0, 0]);
@@ -31,37 +32,54 @@ const RenderNPC = (props) => {
     }
   };
 
-  const talkRandom = () => {
-    const r = Math.floor(Math.random() * 11);
-    let newText: any = null;
-    if (r === 0) newText = "Hello! Welcome to the berigame alpha!";
-    else if (r === 1)
-      newText = "I am the first NPC ever created in this metaverse";
-    else if (r === 2)
-      newText = "I can't wait until i have more friends to play with!";
-    else if (r === 4) newText = "hello";
-    else if (r === 5) newText = "haha";
-    else if (r === 6) newText = "what do you want to see in berigame?";
-    // else if (r === 7) newText = "I've heard character creation is next!";
-    else if (r === 7) newText = "hehehe";
-    else if (r === 8) newText = "I like playing the sims!";
-    // else if (r === 3) newText = "sign up at cubespaced.com for whitelist!";
-    else newText = "";
-    setMessageToRender(newText);
-    if (newText)
-      addChatMessage({
-        message: newText,
-        senderId: "Big-Giant",
-        chatMessage: true,
-        timestamp: new Date().getTime(),
-      });
-    setTimeout(talkRandom, 9000);
+  const talkRandom = async () => {
+    // OpenAI Call goes here.
+    const response = await createLLMResponse([
+      {
+        role: "system",
+        content:
+          "you are a big aggressive giant in a game.\
+          you are on an island surrounded by female characters. \
+          you have a sense of humour. \
+          be brief, less than 9 words.",
+      },
+      { role: "user",
+        content: "hello"
+      }
+    ]);
+    console.log(response.responseText)
+    setMessageToRender(response.responseText);
+    // const r = Math.floor(Math.random() * 11);
+    // let newText: any = null;
+    // if (r === 0) newText = "Hello! Welcome to the berigame alpha!";
+    // else if (r === 1)
+    //   newText = "I am the first NPC ever created in this metaverse";
+    // else if (r === 2)
+    //   newText = "I can't wait until i have more friends to play with!";
+    // else if (r === 4) newText = "hello";
+    // else if (r === 5) newText = "haha";
+    // else if (r === 6) newText = "what do you want to see in berigame?";
+    // // else if (r === 7) newText = "I've heard character creation is next!";
+    // else if (r === 7) newText = "hehehe";
+    // else if (r === 8) newText = "I like playing the sims!";
+    // // else if (r === 3) newText = "sign up at cubespaced.com for whitelist!";
+    // else newText = "";
+    // setMessageToRender(newText);
+    // if (newText)
+    //   addChatMessage({
+    //     message: newText,
+    //     senderId: "Big-Giant",
+    //     chatMessage: true,
+    //     timestamp: new Date().getTime(),
+    //   });
+    // setTimeout(talkRandom, 9000);
   };
 
   //npc ai
   useEffect(() => {
     walkRandom();
-    setTimeout(talkRandom, 9000);
+    talkRandom();
+    // setTimeout(talkRandom, 9000);
   }, []);
 
   return (

@@ -1,9 +1,9 @@
 org: arash
-app: berigame
+app: npcsim
 # For full config options, check the docs:
 #    docs.serverless.com
 
-service: berigame-api
+service: npcsim-api
 frameworkVersion: '3.26'
 
 provider:
@@ -16,6 +16,7 @@ provider:
   environment:
     JWT_SECRET: "${self:custom.secrets.JWT_SECRET}"
     MAGIC_API_KEY: "${self:custom.secrets.MAGIC_API_KEY}"
+    OPENAI_KEY: "${self:custom.secrets.OPENAI_KEY}"
     DB: ${self:service}-${opt:stage, self:provider.stage}
     APIG_ENDPOINT:
       Fn::Join:

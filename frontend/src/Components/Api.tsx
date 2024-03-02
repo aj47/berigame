@@ -30,7 +30,7 @@ const Api = (props) => {
     (state: any) => state.setUserConnectionId
   );
 
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === "sls") {
     url = "http://localhost:3000/dev/";
     wsUrl = "ws://localhost:3001";
   }
@@ -65,7 +65,7 @@ const Api = (props) => {
       }
       if (messageObject.position && messageObject.userId) {
         updateUserPosition(messageObject);
-        if(messageObject.attackingPlayer)
+        if (messageObject.attackingPlayer)
           addDamageToRender(messageObject.damageGiven);
       }
       if (messageObject.connections) {

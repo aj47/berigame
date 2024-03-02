@@ -25,6 +25,14 @@ auth:
         path: auth
         method: post
         cors: true
+createLLMResponse:
+  handler: llm.create
+  events:
+    - http:
+        path: create
+        method: post
+        cors: true
+  
 
 #-- Chat Websocket handler
 connectionHandler:
