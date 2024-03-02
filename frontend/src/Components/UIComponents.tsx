@@ -9,10 +9,10 @@ const UIComponents = memo((props) => {
     <div className="ui-group">
       {/* <Modal /> */}
       <ChatBox />
-      <Inventory
+      {/* <Inventory
         setShowInventory={setShowInventory}
         showInventory={showInventory}
-      />
+      /> */}
     </div>
   );
 });
