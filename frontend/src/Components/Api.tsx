@@ -7,8 +7,8 @@ import {
 } from "../store";
 
 const Api = (props) => {
-  let url = "https://3qzrz2p4f0.execute-api.ap-southeast-2.amazonaws.com/dev/";
-  let wsUrl = "wss://r5ou09euoa.execute-api.ap-southeast-2.amazonaws.com/dev";
+  let url = "https://k7vwap4vfc.execute-api.ap-southeast-2.amazonaws.com/dev/";
+  let wsUrl = "wss://l7v8avcq5k.execute-api.ap-southeast-2.amazonaws.com/dev";
   const setWebSocket = useWebsocketStore((state: any) => state.setWebSocket);
   const websocketConnection = useWebsocketStore(
     (state: any) => state.websocketConnection

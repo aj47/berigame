@@ -1,15 +1,14 @@
 org: arash
-app: npcsim
+app: npc-sim
 # For full config options, check the docs:
 #    docs.serverless.com
 
-service: npcsim-api
-frameworkVersion: '3.26'
+service: npc-sim
 
 provider:
   name: aws
-  profile: appricot
-  runtime: nodejs12.x
+  profile: appricot2
+  runtime: nodejs16.x
   lambdaHashingVersion: 20201221
   stage: ${opt:stage, 'dev'}
   region: ap-southeast-2
