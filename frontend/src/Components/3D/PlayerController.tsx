@@ -43,17 +43,20 @@ const PlayerController = (props) => {
   const removeDamageToRender = useOtherUsersStore(
     (state) => state.removeDamageToRender
   );
-
   const [health, setHealth] = useState(30);
-
   const [currentDamage, setCurrentDamage] = useState<any>(null);
 
+  /**
+   * Check if the current damage number has expired.
+   */
   useEffect(() => {
-    // Check expired damage number
     if (currentDamage?.timestamp < Date.now() - 1400) setCurrentDamage(null);
   });
+
+  /**
+   * Set the damage to render variables.
+   */
   useEffect(() => {
-    // Set damage to render variables
     const userDamage = damageToRender[userConnectionId];
     if (userDamage) {
       setHealth(health - userDamage);
@@ -62,13 +65,15 @@ const PlayerController = (props) => {
     }
   }, [damageToRender]);
 
+  /**
+   * Walk the character to a specific point on the land.
+   * @param {Vector3} pointOnLand - The point on the land to walk to.
+   */
   const walkToPointOnLand = (pointOnLand) => {
     if (followingInterval) clearInterval(followingInterval);
     actions["Walk"]?.play();
     actions["RightHook"]?.stop();
     obj.lookAt(pointOnLand);
-
-    // Smoothly transition position of character to clicked location
     if (currentTween) TWEEN.remove(currentTween);
     setCurrentTween(
       new TWEEN.Tween(objRef.current.position)
@@ -91,7 +96,6 @@ const PlayerController = (props) => {
         })
         .start()
     );
-
     webSocketSendUpdate(
       {
         position: objRef.current.position,
@@ -105,24 +109,25 @@ const PlayerController = (props) => {
     );
   };
 
+  /**
+   * Update the character's position and attack state.
+   */
   const onPositionUpdate = () => {
-    // if clicked enemy
     if (!userFollowing) return;
-    // if (!userFollowing.isCombatable) return;
-    // Check if in attack range and attack
     const enemyLocation = userFollowing.current.position;
     const distance = objRef.current.position.distanceTo(enemyLocation);
     if (distance < 2 && userAttacking) {
-      // attack
       actions["Walking"]?.stop();
       actions["RightHook"]?.play();
     } else {
-      // stop attacking
       actions["Walking"]?.play();
       actions["RightHook"]?.stop();
     }
   };
 
+  /**
+   * Set up an interval to walk towards the other player.
+   */
   useEffect(() => {
     if (!userFollowing) return;
     clearInterval(followingInterval);
@@ -130,6 +135,9 @@ const PlayerController = (props) => {
     return () => clearInterval(followingInterval);
   }, [currentTween]);
 
+  /**
+   * Walk towards the other player.
+   */
   const walkTowardsOtherPlayer = () => {
     const separation = 1.5;
     const pointOnLand = userFollowing.current.position;
@@ -156,7 +164,6 @@ const PlayerController = (props) => {
     const direction = dirV
       .subVectors(objRef.current.position, userFollowing.current.position)
       .normalize();
-    // calculate vector that is towards clicked object but 1 unit away
     distV.addVectors(
       objRef.current.position,
       direction.multiplyScalar(-1 * distance)
@@ -164,8 +171,10 @@ const PlayerController = (props) => {
     walkToPointOnLand(distV);
   };
 
+  /**
+   * Broadcast the character's position to other connections.
+   */
   useEffect(() => {
-    // broadcast position
     if (!allConnections || allConnections.length === 0) return;
     webSocketSendUpdate(
       {
@@ -180,10 +189,16 @@ const PlayerController = (props) => {
     );
   }, [allConnections]);
 
+  /**
+   * Walk to the clicked point on the land.
+   */
   useEffect(() => {
     if (clickedPointOnLand) walkToPointOnLand(clickedPointOnLand);
   }, [clickedPointOnLand]);
 
+  /**
+   * Set up an interval to walk towards the other player when following.
+   */
   useEffect(() => {
     if (userFollowing) {
       walkTowardsOtherPlayer();
@@ -192,14 +207,23 @@ const PlayerController = (props) => {
     return () => clearInterval(followingInterval);
   }, [userFollowing]);
 
+  /**
+   * Update the TWEEN animations on each frame.
+   */
   useFrame(() => {
     TWEEN.update();
   });
 
+  /**
+   * Play the idle animation when the animations and mixer are ready.
+   */
   useEffect(() => {
     actions["Idle"]?.play();
   }, [animations, mixer]);
 
+  /**
+   * Set the player reference and send the initial position update.
+   */
   useEffect(() => {
     props.setPlayerRef(objRef);
     if (objRef)
