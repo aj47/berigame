@@ -58,7 +58,7 @@ const RenderNPC = (props) => {
   };
 
   useEffect(() => {
-    replyToMessage(chatMessages[chatMessages.length - 1].message);
+    replyToMessage(chatMessages[chatMessages.length - 1 ]?.message);
   }, [chatMessages]);
 
   useEffect(() => {
