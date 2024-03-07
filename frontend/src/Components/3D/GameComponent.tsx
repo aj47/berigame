@@ -13,6 +13,12 @@ import { useChatStore, useUserInputStore } from "../../store";
 import UIComponents from "../UIComponents";
 import BerryTree from "./BerryTree";
 
+const giantSystemPrompt =
+  "you are a big aggressive giant in a game.\
+          you are on an island surrounded by female characters. \
+          you have a sense of humour. \
+          be brief, less than 9 words.";
+
 // react three fiber docs
 // https://docs.pmnd.rs/react-three-fiber/api/objects
 
@@ -24,7 +30,7 @@ const GameComponent = () => {
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Api />
-      <UIComponents/>
+      <UIComponents />
       {clickedOtherObject && <ClickDropdown />}
       <Canvas
         id="three-canvas"
@@ -32,11 +38,9 @@ const GameComponent = () => {
       >
         <AlphaIsland />
         <BerryTree position={[10, 0, 0]} />
-        <RenderNPC isCombatable={false} />
+        <RenderNPC isCombatable={false} systemPrompt={giantSystemPrompt}/>
         <RenderOnlineUsers />
-        <PlayerController
-          setPlayerRef={setPlayerRef}
-        />
+        <PlayerController setPlayerRef={setPlayerRef} />
         <CameraController playerRef={playerRef} />
       </Canvas>
     </div>
