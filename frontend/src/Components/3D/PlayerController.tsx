@@ -17,7 +17,7 @@ import DamageNumber from "./DamageNumber";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
-  const { scene: obj, animations } = useGLTF("native-woman.glb") as any;
+  const { scene: obj, animations } = useGLTF("boy.glb") as any;
   const { actions, mixer } = useAnimations(animations, obj);
   const [currentTween, setCurrentTween] = useState<any>(null);
   const [followingInterval, setFollowingInterval] = useState<any>(null);
@@ -64,7 +64,7 @@ const PlayerController = (props) => {
 
   const walkToPointOnLand = (pointOnLand) => {
     if (followingInterval) clearInterval(followingInterval);
-    actions["Walk"]?.play();
+    actions["walking"]?.play();
     actions["RightHook"]?.stop();
     obj.lookAt(pointOnLand);
 
@@ -75,8 +75,8 @@ const PlayerController = (props) => {
         .to(pointOnLand, objRef.current.position.distanceTo(pointOnLand) * 500)
         .onUpdate(onPositionUpdate)
         .onComplete(() => {
-          actions["Walk"]?.stop();
-          actions["Idle"]?.play();
+          actions["walking"]?.stop();
+          actions["idle"]?.play();
           webSocketSendUpdate(
             {
               position: objRef.current.position,
@@ -114,11 +114,11 @@ const PlayerController = (props) => {
     const distance = objRef.current.position.distanceTo(enemyLocation);
     if (distance < 2 && userAttacking) {
       // attack
-      actions["Walking"]?.stop();
+      actions["walking"]?.stop();
       actions["RightHook"]?.play();
     } else {
       // stop attacking
-      actions["Walking"]?.play();
+      actions["walking"]?.play();
       actions["RightHook"]?.stop();
     }
   };
@@ -197,7 +197,7 @@ const PlayerController = (props) => {
   });
 
   useEffect(() => {
-    actions["Idle"]?.play();
+    actions["idle"]?.play();
   }, [animations, mixer]);
 
   useEffect(() => {
