@@ -4,3 +4,4 @@ dist
 dist-ssr
 *.local
 new_frontend/.env
+.aider*
