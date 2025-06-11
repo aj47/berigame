@@ -85,3 +85,21 @@ export const useUserInputStore = create((set) => ({
   setClickedOtherObject: (newObject) =>
     set({ clickedOtherObject: newObject, clickedPointOnLand: null }),
 }));
+
+export const useSkillsStore = create((set) => ({
+  shieldActive: false,
+  shieldButtonDisabled: false,
+  activateShield: () =>
+    set((state) => ({
+      shieldActive: true,
+      shieldButtonDisabled: true,
+    })),
+  deactivateShield: () =>
+    set((state) => ({
+      shieldActive: false,
+    })),
+  enableShieldButton: () =>
+    set((state) => ({
+      shieldButtonDisabled: false,
+    })),
+}));

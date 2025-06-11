@@ -8,12 +8,14 @@ import {
   useUserInputStore,
   useUserStateStore,
   useWebsocketStore,
+  useSkillsStore,
 } from "../../store";
 import { webSocketSendUpdate } from "../../Api";
 import { RawShaderMaterial, Vector3, cloneUniformsGroups } from "three";
 import HealthBar from "./HealthBar";
 import ChatBubble from "./ChatBubble";
 import DamageNumber from "./DamageNumber";
+import Shield from "./Shield";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
@@ -43,6 +45,7 @@ const PlayerController = (props) => {
   const removeDamageToRender = useOtherUsersStore(
     (state) => state.removeDamageToRender
   );
+  const shieldActive = useSkillsStore((state) => state.shieldActive);
 
   const [health, setHealth] = useState(30);
 
@@ -240,6 +243,7 @@ const PlayerController = (props) => {
           />
         )}
       </>
+      {shieldActive && <Shield />}
       <Suspense fallback={null}>
         <primitive object={obj} />
       </Suspense>
