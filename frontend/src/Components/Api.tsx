@@ -9,8 +9,8 @@ import {
 } from "../store";
 
 const Api = (props) => {
-  let url = "https://3qzrz2p4f0.execute-api.ap-southeast-2.amazonaws.com/dev/";
-  let wsUrl = "wss://r5ou09euoa.execute-api.ap-southeast-2.amazonaws.com/dev";
+  let url = "https://dm465kqzfi.execute-api.ap-southeast-2.amazonaws.com/dev/";
+  let wsUrl = "wss://w6et9cl8r6.execute-api.ap-southeast-2.amazonaws.com/dev/";
   const setWebSocket = useWebsocketStore((state: any) => state.setWebSocket);
   const websocketConnection = useWebsocketStore(
     (state: any) => state.websocketConnection
@@ -39,10 +39,14 @@ const Api = (props) => {
   );
 
   const startHarvest = useHarvestStore((state: any) => state.startHarvest);
-  const completeHarvest = useHarvestStore((state: any) => state.completeHarvest);
+  const completeHarvest = useHarvestStore(
+    (state: any) => state.completeHarvest
+  );
   const addItem = useInventoryStore((state: any) => state.addItem);
   const setIsDead = useUserStateStore((state: any) => state.setIsDead);
-  const setIsRespawning = useUserStateStore((state: any) => state.setIsRespawning);
+  const setIsRespawning = useUserStateStore(
+    (state: any) => state.setIsRespawning
+  );
   const setHealth = useUserStateStore((state: any) => state.setHealth);
 
   if (process.env.NODE_ENV === "development") {
@@ -82,7 +86,7 @@ const Api = (props) => {
 
       if (messageObject.position && messageObject.userId) {
         updateUserPosition(messageObject);
-        if(messageObject.attackingPlayer)
+        if (messageObject.attackingPlayer)
           addDamageToRender(messageObject.damageGiven);
       }
 
@@ -93,16 +97,20 @@ const Api = (props) => {
       }
       // Handle harvest-related messages
       if (messageObject.harvestStarted) {
-        startHarvest(messageObject.treeId, messageObject.playerId, messageObject.duration);
+        startHarvest(
+          messageObject.treeId,
+          messageObject.playerId,
+          messageObject.duration
+        );
       }
       if (messageObject.harvestCompleted) {
         completeHarvest(messageObject.treeId);
         if (messageObject.playerId === userConnectionId) {
           // Add berry to inventory for the harvesting player
           addItem({
-            type: 'berry',
-            name: 'Berry',
-            icon: '/berry.svg',
+            type: "berry",
+            name: "Berry",
+            icon: "/berry.svg",
             quantity: 1,
           });
         }
@@ -133,7 +141,9 @@ const Api = (props) => {
         } else {
           // Update health for other players when they respawn
           setPlayerHealth(messageObject.playerId, messageObject.health);
-          console.log(`Other player ${messageObject.playerId} respawned with health ${messageObject.health}`);
+          console.log(
+            `Other player ${messageObject.playerId} respawned with health ${messageObject.health}`
+          );
         }
       }
     }

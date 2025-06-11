@@ -1,8 +1,8 @@
 import { Vector3 } from 'three';
 import { auth } from './Auth'
 
-let url = "https://rmwrulu837.execute-api.ap-southeast-2.amazonaws.com/dev/"
-let wsUrl = "wss://ahftzn2xw8.execute-api.ap-southeast-2.amazonaws.com/dev/"
+let url = "https://dm465kqzfi.execute-api.ap-southeast-2.amazonaws.com/dev/"
+let wsUrl = "wss://w6et9cl8r6.execute-api.ap-southeast-2.amazonaws.com/dev/"
 // if (process.env.NODE_ENV === 'development')  {
 //   url = "http://localhost:3000/dev/";
 //   wsUrl = "ws://localhost:3001";
