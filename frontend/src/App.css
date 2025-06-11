@@ -212,6 +212,19 @@ canvas {
   right: 0;
 }
 
+.inventory-item {
+  transition: all 0.2s ease;
+}
+
+.inventory-item:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.inventory-item:active {
+  transform: scale(0.95);
+}
+
 .ui-group {
   width: calc(100vw - 30px);
   pointer-events: none;

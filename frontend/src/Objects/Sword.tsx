@@ -19,8 +19,8 @@ interface SwordProps {
  */
 const Sword: React.FC<SwordProps> = ({ 
   position = [0, 0, 0], 
-  rotation = [0, 0, 0],
-  scale = [1, 1, 1]
+  rotation = [0, 0, 10],
+  scale = [50, 50, 50]
 }) => {
   return (
     <mesh position={position} rotation={rotation} scale={scale}>
