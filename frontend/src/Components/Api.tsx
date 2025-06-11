@@ -105,6 +105,7 @@ const Api = (props) => {
             icon: '/berry.svg',
             quantity: 1,
           });
+        }
       }
 
       // Handle death event
