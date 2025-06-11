@@ -7,6 +7,7 @@ import {
   useHarvestStore,
   useInventoryStore,
 } from "../store";
+import { connectToChatRoom } from "../Api";
 
 const Api = (props) => {
   let url = "https://dm465kqzfi.execute-api.ap-southeast-2.amazonaws.com/dev/";
@@ -49,10 +50,10 @@ const Api = (props) => {
   );
   const setHealth = useUserStateStore((state: any) => state.setHealth);
 
-  if (process.env.NODE_ENV === "development") {
-    url = "http://localhost:3000/dev/";
-    wsUrl = "ws://localhost:3001";
-  }
+  // if (process.env.NODE_ENV === "development") {
+  //   url = "http://localhost:3000/dev/";
+  //   wsUrl = "ws://localhost:3001";
+  // }
   let clientConnectionId = null;
 
   useEffect(() => {
@@ -151,19 +152,56 @@ const Api = (props) => {
 
   const _webSocketError = (e: Event) => {
     console.error("Websocket error:", e);
+    console.error("WebSocket URL:", wsUrl);
+    console.error("Error details:", {
+      type: e.type,
+      target: e.target,
+      timeStamp: e.timeStamp
+    });
   };
 
-  const _webSocketClose = (e: Event) => {
+  const _webSocketClose = (e: CloseEvent) => {
     console.log("Websocket close:", e);
+    console.log("Close details:", {
+      code: e.code,
+      reason: e.reason,
+      wasClean: e.wasClean
+    });
+
+    // Attempt to reconnect after 3 seconds
+    setTimeout(() => {
+      console.log("Attempting to reconnect WebSocket...");
+      initializeWebSocket();
+    }, 3000);
+  };
+
+  const _webSocketOpen = (e: Event) => {
+    console.log("WebSocket connected successfully:", e);
+    // Connect to chat room once connection is established
+    setTimeout(() => {
+      connectToChatRoom("", websocketConnection);
+    }, 1000);
+  };
+
+  const initializeWebSocket = () => {
+    try {
+      console.log("Initializing WebSocket connection to:", wsUrl);
+      const webSocketConnection = new WebSocket(wsUrl);
+
+      webSocketConnection.onopen = _webSocketOpen;
+      webSocketConnection.onerror = _webSocketError;
+      webSocketConnection.onclose = _webSocketClose;
+      webSocketConnection.onmessage = _webSocketMessageReceived;
+
+      setWebSocket(webSocketConnection);
+    } catch (error) {
+      console.error("Failed to create WebSocket connection:", error);
+    }
   };
 
   //Initialize Websocket
   useEffect(() => {
-    const webSocketConnection = new WebSocket(wsUrl);
-    webSocketConnection.onerror = _webSocketError;
-    webSocketConnection.onclose = _webSocketClose;
-    webSocketConnection.onmessage = _webSocketMessageReceived;
-    setWebSocket(webSocketConnection);
+    initializeWebSocket();
   }, []);
 
   return <div> </div>;
