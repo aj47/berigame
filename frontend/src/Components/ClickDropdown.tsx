@@ -24,7 +24,15 @@ const ClickDropdown = (props) => {
       <button disabled> Selected {clickedOtherObject.connectionId}: </button>
       {clickedOtherObject.dropdownOptions.map((e,i) => {
         return (
-          <button key={i} onClick={e.onClick}>
+          <button
+            key={i}
+            onClick={e.onClick}
+            disabled={e.disabled}
+            style={{
+              opacity: e.disabled ? 0.5 : 1,
+              cursor: e.disabled ? 'not-allowed' : 'pointer'
+            }}
+          >
             {e.label}{" "}
             <span style={{ color: "yellow", fontWeight: 600 }}>
               {clickedOtherObject.connectionId}

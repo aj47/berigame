@@ -4,6 +4,8 @@ import {
   useOtherUsersStore,
   useUserStateStore,
   useWebsocketStore,
+  useHarvestStore,
+  useInventoryStore,
 } from "../store";
 
 const Api = (props) => {
@@ -29,6 +31,12 @@ const Api = (props) => {
   const setUserConnectionId = useUserStateStore(
     (state: any) => state.setUserConnectionId
   );
+  const userConnectionId = useUserStateStore(
+    (state: any) => state.userConnectionId
+  );
+  const startHarvest = useHarvestStore((state: any) => state.startHarvest);
+  const completeHarvest = useHarvestStore((state: any) => state.completeHarvest);
+  const addItem = useInventoryStore((state: any) => state.addItem);
 
   if (process.env.NODE_ENV === "development") {
     url = "http://localhost:3000/dev/";
@@ -72,6 +80,22 @@ const Api = (props) => {
         updateConnections(messageObject.connections);
         console.log("MY CID: ", messageObject.yourConnectionId);
         setUserConnectionId(messageObject.yourConnectionId);
+      }
+      // Handle harvest-related messages
+      if (messageObject.harvestStarted) {
+        startHarvest(messageObject.treeId, messageObject.playerId, messageObject.duration);
+      }
+      if (messageObject.harvestCompleted) {
+        completeHarvest(messageObject.treeId);
+        if (messageObject.playerId === userConnectionId) {
+          // Add berry to inventory for the harvesting player
+          addItem({
+            type: 'berry',
+            name: 'Berry',
+            icon: '/berry.svg',
+            quantity: 1,
+          });
+        }
       }
     }
   };

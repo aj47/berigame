@@ -79,6 +79,32 @@ export const connectToChatRoom = async (chatRoomId: string = "", ws: any) => {
   }
 }
 
+export const webSocketStartHarvest = async (treeId: string, ws: any) => {
+  try {
+    const payload = {
+      treeId,
+      chatRoomId: "CHATROOM#913a9780-ff43-11eb-aa45-277d189232f4",
+      action: "startHarvest",
+    }
+    ws?.send(JSON.stringify(payload));
+  } catch (e) {
+    console.error("webSocketStartHarvest Error:", e);
+  }
+}
+
+export const webSocketCompleteHarvest = async (treeId: string, ws: any) => {
+  try {
+    const payload = {
+      treeId,
+      chatRoomId: "CHATROOM#913a9780-ff43-11eb-aa45-277d189232f4",
+      action: "completeHarvest",
+    }
+    ws?.send(JSON.stringify(payload));
+  } catch (e) {
+    console.error("webSocketCompleteHarvest Error:", e);
+  }
+}
+
 export const deleteUserPosition = (userId: string) => {
   delete connectedUsers[userId];
 }
