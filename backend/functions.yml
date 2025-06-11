@@ -44,3 +44,7 @@ connectionHandler:
         route: sendUpdate
     - websocket:
         route: connectToChatRoom
+    - websocket:
+        route: startHarvest
+    - websocket:
+        route: completeHarvest

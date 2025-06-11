@@ -183,6 +183,8 @@ exports.handler = async function (event, context) {
             SK,
             created: timestamp,
             ttl: Math.floor(new Date().getTime() / 1000) + 360, // 6 mins from now?
+            health: 30,
+            berries: 0, // Initialize berry count
             health: MAX_HEALTH,
           },
         })
@@ -291,6 +293,136 @@ exports.handler = async function (event, context) {
       } catch (e) {
         console.error(e);
       }
+      break;
+
+    case "startHarvest":
+      try {
+        const treeId = bodyAsJSON.treeId;
+        const harvestDuration = Math.floor(Math.random() * 8) + 3; // 3-10 seconds
+
+        // Store harvest start time in database
+        await dynamodb
+          .put({
+            TableName: DB,
+            Item: {
+              PK: bodyAsJSON.chatRoomId,
+              SK: `HARVEST#${treeId}#${connectionId}`,
+              treeId,
+              playerId: connectionId,
+              startTime: timestamp,
+              duration: harvestDuration,
+              ttl: Math.floor(new Date().getTime() / 1000) + 600, // 10 mins from now
+            },
+          })
+          .promise();
+
+        // Get all connections to broadcast harvest start
+        const usersParams = {
+          TableName: DB,
+          KeyConditionExpression: "PK = :pk and begins_with(SK, :sk)",
+          ExpressionAttributeValues: {
+            ":pk": bodyAsJSON.chatRoomId,
+            ":sk": "CONNECTION#",
+          },
+        };
+        const getConnections = await dynamodb.query(usersParams).promise();
+
+        // Broadcast harvest started to all players
+        for (const connection of getConnections.Items) {
+          const targetConnectionId = connection.SK.split("#")[1];
+          try {
+            await apig
+              .postToConnection({
+                ConnectionId: targetConnectionId,
+                Data: JSON.stringify({
+                  harvestStarted: true,
+                  treeId,
+                  playerId: connectionId,
+                  duration: harvestDuration,
+                  timestamp: Date.now(),
+                }),
+              })
+              .promise();
+          } catch (e) {
+            console.log("couldn't send harvest start message to " + targetConnectionId, e);
+          }
+        }
+
+        // Schedule harvest completion
+        setTimeout(async () => {
+          try {
+            // Check if harvest is still active (not cancelled)
+            const harvestCheck = await dynamodb
+              .get({
+                TableName: DB,
+                Key: {
+                  PK: bodyAsJSON.chatRoomId,
+                  SK: `HARVEST#${treeId}#${connectionId}`,
+                },
+              })
+              .promise();
+
+            if (harvestCheck.Item) {
+              // Remove harvest record
+              await dynamodb
+                .delete({
+                  TableName: DB,
+                  Key: {
+                    PK: bodyAsJSON.chatRoomId,
+                    SK: `HARVEST#${treeId}#${connectionId}`,
+                  },
+                })
+                .promise();
+
+              // Add berry to player's inventory
+              await dynamodb
+                .update({
+                  TableName: DB,
+                  Key: {
+                    PK: bodyAsJSON.chatRoomId,
+                    SK: "CONNECTION#" + connectionId,
+                  },
+                  UpdateExpression: "ADD berries :val",
+                  ExpressionAttributeValues: {
+                    ":val": 1,
+                  },
+                })
+                .promise();
+
+              // Broadcast harvest completion
+              const getConnectionsForCompletion = await dynamodb.query(usersParams).promise();
+              for (const connection of getConnectionsForCompletion.Items) {
+                const targetConnectionId = connection.SK.split("#")[1];
+                try {
+                  await apig
+                    .postToConnection({
+                      ConnectionId: targetConnectionId,
+                      Data: JSON.stringify({
+                        harvestCompleted: true,
+                        treeId,
+                        playerId: connectionId,
+                        timestamp: Date.now(),
+                      }),
+                    })
+                    .promise();
+                } catch (e) {
+                  console.log("couldn't send harvest completion message to " + targetConnectionId, e);
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error completing harvest:", e);
+          }
+        }, harvestDuration * 1000);
+
+      } catch (e) {
+        console.error("Error starting harvest:", e);
+      }
+      break;
+
+    case "completeHarvest":
+      // This case is handled by the setTimeout in startHarvest
+      // But we can add manual completion logic here if needed
       break;
   }
 

@@ -8,7 +8,7 @@ const AlphaIsland = (props) => {
       <pointLight position={[10, 30, 0]} intensity={0.5} />
       <hemisphereLight intensity={0.4} /> 
       <GroundPlane />
-      <BerryTree />
+      <BerryTree position={[5, 0, 0]} treeId="tree_island" />
     </>
   );
 };

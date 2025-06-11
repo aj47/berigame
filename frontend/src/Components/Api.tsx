@@ -4,6 +4,8 @@ import {
   useOtherUsersStore,
   useUserStateStore,
   useWebsocketStore,
+  useHarvestStore,
+  useInventoryStore,
 } from "../store";
 
 const Api = (props) => {
@@ -35,6 +37,10 @@ const Api = (props) => {
   const userConnectionId = useUserStateStore(
     (state: any) => state.userConnectionId
   );
+
+  const startHarvest = useHarvestStore((state: any) => state.startHarvest);
+  const completeHarvest = useHarvestStore((state: any) => state.completeHarvest);
+  const addItem = useInventoryStore((state: any) => state.addItem);
   const setIsDead = useUserStateStore((state: any) => state.setIsDead);
   const setIsRespawning = useUserStateStore((state: any) => state.setIsRespawning);
   const setHealth = useUserStateStore((state: any) => state.setHealth);
@@ -84,6 +90,21 @@ const Api = (props) => {
         updateConnections(messageObject.connections);
         console.log("MY CID: ", messageObject.yourConnectionId);
         setUserConnectionId(messageObject.yourConnectionId);
+      }
+      // Handle harvest-related messages
+      if (messageObject.harvestStarted) {
+        startHarvest(messageObject.treeId, messageObject.playerId, messageObject.duration);
+      }
+      if (messageObject.harvestCompleted) {
+        completeHarvest(messageObject.treeId);
+        if (messageObject.playerId === userConnectionId) {
+          // Add berry to inventory for the harvesting player
+          addItem({
+            type: 'berry',
+            name: 'Berry',
+            icon: '/berry.svg',
+            quantity: 1,
+          });
       }
 
       // Handle death event
