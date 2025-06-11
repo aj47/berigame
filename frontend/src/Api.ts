@@ -33,6 +33,25 @@ interface PositionMessage {
   attackingPlayer?: boolean;
 }
 
+interface DeathMessage {
+  type: "playerDeath";
+  deadPlayerId: string;
+  respawnLocation: {
+    position: { x: number; y: number; z: number };
+    rotation: { x: number; y: number; z: number };
+  };
+  timestamp: number;
+}
+
+interface RespawnMessage {
+  type: "playerRespawn";
+  playerId: string;
+  health: number;
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number };
+  timestamp: number;
+}
+
 export const webSocketSendUpdate = async (message: PositionMessage, ws: any, allConnections: any[]) => {
   try {
     const payload = {

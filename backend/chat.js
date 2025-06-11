@@ -31,6 +31,97 @@ exports.handler = async function (event, context) {
     // userPK = jwt.decode(bodyAsJSON.token, process.env.JWT_SECRET).PK;
     senderId = connectionId;
   }
+  // Default spawn location - center of the island
+  const SPAWN_LOCATION = {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 }
+  };
+
+  const MAX_HEALTH = 30;
+
+  const handlePlayerDeath = async (connectionId, chatRoomId) => {
+    console.log(`Player ${connectionId} has died, initiating respawn...`);
+
+    try {
+      // 1. Reset player's health and position to spawn location
+      const respawnParams = {
+        TableName: process.env.DB,
+        Key: {
+          PK: chatRoomId,
+          SK: "CONNECTION#" + connectionId,
+        },
+        UpdateExpression: "SET health = :health, #pos = :position, #rot = :rotation",
+        ExpressionAttributeNames: {
+          "#pos": "position",
+          "#rot": "rotation"
+        },
+        ExpressionAttributeValues: {
+          ":health": MAX_HEALTH,
+          ":position": SPAWN_LOCATION.position,
+          ":rotation": SPAWN_LOCATION.rotation,
+        },
+      };
+
+      await dynamodb.update(respawnParams).promise();
+      console.log(`Player ${connectionId} respawned successfully`);
+
+      // 2. Get all connections to broadcast death/respawn event
+      const usersParams = {
+        TableName: process.env.DB,
+        KeyConditionExpression: "PK = :pk and begins_with(SK, :sk)",
+        ExpressionAttributeValues: {
+          ":pk": chatRoomId,
+          ":sk": "CONNECTION#",
+        },
+      };
+
+      const getConnections = await dynamodb.query(usersParams).promise();
+
+      // 3. Broadcast death/respawn event to all connected players
+      const deathMessage = {
+        type: "playerDeath",
+        deadPlayerId: connectionId,
+        respawnLocation: SPAWN_LOCATION,
+        timestamp: Date.now(),
+      };
+
+      const respawnMessage = {
+        type: "playerRespawn",
+        playerId: connectionId,
+        health: MAX_HEALTH,
+        position: SPAWN_LOCATION.position,
+        rotation: SPAWN_LOCATION.rotation,
+        timestamp: Date.now(),
+      };
+
+      // Send death event to all players
+      for (const connection of getConnections.Items) {
+        const targetConnectionId = connection.SK.split("#")[1];
+        try {
+          await apig
+            .postToConnection({
+              ConnectionId: targetConnectionId,
+              Data: JSON.stringify(deathMessage),
+            })
+            .promise();
+
+          // Send respawn event immediately after death event
+          await apig
+            .postToConnection({
+              ConnectionId: targetConnectionId,
+              Data: JSON.stringify(respawnMessage),
+            })
+            .promise();
+        } catch (e) {
+          console.log(`Couldn't send death/respawn message to ${targetConnectionId}:`, e);
+        }
+      }
+
+    } catch (error) {
+      console.error(`Error handling player death for ${connectionId}:`, error);
+    }
+  };
+
   const dealDamage = (connectionId, damage, chatRoomId) => {
     const rowParams = {
       TableName: process.env.DB,
@@ -43,45 +134,27 @@ exports.handler = async function (event, context) {
         ":val": damage,
       },
     };
+
     dynamodb.update(rowParams, (e, data) => {
       if (e) {
         console.error(
           "Unable to update item. Error JSON:",
           JSON.stringify(e, null, 2)
         );
+        return;
       }
-    });
-    // Check for 0 health (death)
-    dynamodb.get(rowParams, (err, data) => {
-      if (err) {
-        console.error("Couldn't get user item after deal damage");
-      } else {
-        if (data.Item?.health <= 0) {
-          // Do death mechanics
-          // 1. drop items of player on ground --- TBD
-          
-          // 2. reset player who died's position
-          //    a. post to connections.
-          
-          // 3. reset players health to full
-          const resetHealthParams = {
-            TableName: process.env.DB,
-            Key: {
-              PK: chatRoomId,
-              SK: "CONNECTION#" + connectionId,
-            },
-            UpdateExpression: "SET health = 30",
-          };
-          dynamodb.update(resetHealthParams, (e, data) => {
-            if (e) {
-              console.error(
-                "Unable to update item. Error JSON:",
-                JSON.stringify(e, null, 2)
-              );
-            }
-          });
+
+      // Check for death after dealing damage
+      dynamodb.get(rowParams, async (err, data) => {
+        if (err) {
+          console.error("Couldn't get user item after deal damage:", err);
+        } else {
+          if (data.Item?.health <= 0) {
+            console.log(`Player ${connectionId} health dropped to ${data.Item.health}, triggering death`);
+            await handlePlayerDeath(connectionId, chatRoomId);
+          }
         }
-      }
+      });
     });
   };
 
@@ -112,6 +185,7 @@ exports.handler = async function (event, context) {
             ttl: Math.floor(new Date().getTime() / 1000) + 360, // 6 mins from now?
             health: 30,
             berries: 0, // Initialize berry count
+            health: MAX_HEALTH,
           },
         })
         .promise();
