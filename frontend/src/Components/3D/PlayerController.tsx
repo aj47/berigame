@@ -8,6 +8,8 @@ import {
   useUserInputStore,
   useUserStateStore,
   useWebsocketStore,
+  useEquipmentStore,
+  EquipmentSlot,
 } from "../../store";
 import { webSocketSendUpdate } from "../../Api";
 import { RawShaderMaterial, Vector3, cloneUniformsGroups } from "three";
@@ -49,9 +51,14 @@ const PlayerController = (props) => {
   const [health, setHealth] = useState(30);
   const [currentDamage, setCurrentDamage] = useState<any>(null);
 
-  // Weapon system state
-  const [weaponEquipped, setWeaponEquipped] = useState(true); // Start with sword equipped for testing
-  const [currentWeaponType, setCurrentWeaponType] = useState<WeaponType>(WeaponType.SWORD);
+  // Equipment store
+  const equippedItems = useEquipmentStore((state) => state.equippedItems);
+  const getEquippedItem = useEquipmentStore((state) => state.getEquippedItem);
+
+  // Weapon system state - now derived from equipment store
+  const equippedWeapon = getEquippedItem(EquipmentSlot.WEAPON);
+  const weaponEquipped = equippedWeapon !== null;
+  const currentWeaponType = WeaponType.SWORD; // Default to sword for now
 
   useEffect(() => {
     // Check expired damage number
