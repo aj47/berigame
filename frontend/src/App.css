@@ -296,3 +296,60 @@ canvas {
 .ui-element.modal button {
   background-color: rgb(48, 169, 0);
 }
+
+/* Skills UI */
+.skills-ui {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.skill-button {
+  pointer-events: all;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 2px solid #00aaff;
+  background-color: rgba(0, 170, 255, 0.2);
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.skill-button:hover:not(.disabled) {
+  background-color: rgba(0, 170, 255, 0.4);
+  border-color: #00ccff;
+  transform: scale(1.05);
+}
+
+.skill-button:active:not(.disabled) {
+  transform: scale(0.95);
+  background-color: rgba(0, 170, 255, 0.6);
+}
+
+.skill-button.active {
+  background-color: rgba(0, 170, 255, 0.8);
+  border-color: #00ffff;
+  box-shadow: 0 0 15px rgba(0, 170, 255, 0.5);
+  animation: shield-pulse 0.5s ease-in-out;
+}
+
+.skill-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: rgba(100, 100, 100, 0.2);
+  border-color: #666;
+}
+
+@keyframes shield-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
