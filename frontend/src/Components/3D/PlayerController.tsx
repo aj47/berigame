@@ -14,6 +14,8 @@ import { RawShaderMaterial, Vector3, cloneUniformsGroups } from "three";
 import HealthBar from "./HealthBar";
 import ChatBubble from "./ChatBubble";
 import DamageNumber from "./DamageNumber";
+import WeaponAttachment from "./WeaponSystem/WeaponAttachment";
+import { WeaponType } from "./WeaponSystem/Weapon";
 
 const PlayerController = (props) => {
   const objRef = useRef(null) as any;
@@ -45,8 +47,11 @@ const PlayerController = (props) => {
   );
 
   const [health, setHealth] = useState(30);
-
   const [currentDamage, setCurrentDamage] = useState<any>(null);
+
+  // Weapon system state
+  const [weaponEquipped, setWeaponEquipped] = useState(true); // Start with sword equipped for testing
+  const [currentWeaponType, setCurrentWeaponType] = useState<WeaponType>(WeaponType.SWORD);
 
   useEffect(() => {
     // Check expired damage number
@@ -242,6 +247,14 @@ const PlayerController = (props) => {
       </>
       <Suspense fallback={null}>
         <primitive object={obj} />
+        {/* Weapon System - Attach weapon to character */}
+        {weaponEquipped && (
+          <WeaponAttachment
+            characterScene={obj}
+            weaponType={currentWeaponType}
+            enabled={weaponEquipped}
+          />
+        )}
       </Suspense>
     </group>
   );

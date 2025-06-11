@@ -17,6 +17,8 @@ import {
 import ChatBubble from "./ChatBubble";
 import HealthBar from "./HealthBar";
 import DamageNumber from "./DamageNumber";
+import WeaponAttachment from "./WeaponSystem/WeaponAttachment";
+import { WeaponType } from "./WeaponSystem/Weapon";
 
 const RenderOtherUser = ({
   url = "native-woman.glb",
@@ -29,6 +31,9 @@ const RenderOtherUser = ({
   inCombat = false,
   isAttacking = false,
   connectionId = "NPC",
+  // Weapon system props
+  weaponEquipped = true,
+  weaponType = WeaponType.SWORD,
 }) => {
   const { scene, animations, materials } = useGLTF(url);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
@@ -194,6 +199,14 @@ const RenderOtherUser = ({
       )}
       <Suspense fallback={null}>
         <primitive object={copiedScene} rotation={rotation} />
+        {/* Weapon System - Attach weapon to character */}
+        {weaponEquipped && (
+          <WeaponAttachment
+            characterScene={copiedScene}
+            weaponType={weaponType}
+            enabled={weaponEquipped}
+          />
+        )}
       </Suspense>
     </group>
   );
