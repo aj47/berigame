@@ -38,29 +38,95 @@ const PlayerController = (props) => {
   const userConnectionId = useUserStateStore(
     (state: any) => state.userConnectionId
   );
+  const isDead = useUserStateStore((state: any) => state.isDead);
+  const isRespawning = useUserStateStore((state: any) => state.isRespawning);
+  const health = useUserStateStore((state: any) => state.health);
+  const setHealth = useUserStateStore((state: any) => state.setHealth);
+  const setIsDead = useUserStateStore((state: any) => state.setIsDead);
   const justSentMessage = useChatStore((state) => state.justSentMessage);
   const damageToRender = useOtherUsersStore((state) => state.damageToRender);
   const removeDamageToRender = useOtherUsersStore(
     (state) => state.removeDamageToRender
   );
 
-  const [health, setHealth] = useState(30);
+  const [localHealth, setLocalHealth] = useState(30);
+  const [isPlayingDeathAnimation, setIsPlayingDeathAnimation] = useState(false);
 
   const [currentDamage, setCurrentDamage] = useState<any>(null);
+
+  // Spawn location - center of the island
+  const SPAWN_LOCATION = { x: 0, y: 0, z: 0 };
 
   useEffect(() => {
     // Check expired damage number
     if (currentDamage?.timestamp < Date.now() - 1400) setCurrentDamage(null);
   });
+
   useEffect(() => {
     // Set damage to render variables
     const userDamage = damageToRender[userConnectionId];
     if (userDamage) {
-      setHealth(health - userDamage);
+      const newHealth = localHealth - userDamage;
+      setLocalHealth(newHealth);
+      setHealth(newHealth);
       setCurrentDamage({ val: userDamage, timestamp: Date.now() });
       removeDamageToRender(userConnectionId);
+
+      // Check for death on frontend (backup check)
+      if (newHealth <= 0 && !isDead) {
+        console.log("Player health reached 0, triggering death state");
+        setIsDead(true);
+        setIsPlayingDeathAnimation(true);
+      }
     }
   }, [damageToRender]);
+
+  // Handle death state changes
+  useEffect(() => {
+    if (isDead && !isPlayingDeathAnimation) {
+      setIsPlayingDeathAnimation(true);
+      console.log("Playing death animation placeholder");
+
+      // TODO: Replace with actual death animation when available
+      // For now, just stop all current animations
+      actions["Walk"]?.stop();
+      actions["RightHook"]?.stop();
+      actions["Idle"]?.stop();
+
+      // Placeholder death animation - could be a fade out or collapse
+      console.log("DEATH ANIMATION PLACEHOLDER: Player has died!");
+    }
+  }, [isDead]);
+
+  // Handle respawn
+  useEffect(() => {
+    if (isRespawning) {
+      console.log("Respawning player to spawn location");
+      setIsPlayingDeathAnimation(false);
+      setLocalHealth(health);
+
+      // Move player to spawn location
+      if (objRef.current) {
+        objRef.current.position.set(SPAWN_LOCATION.x, SPAWN_LOCATION.y, SPAWN_LOCATION.z);
+        obj.rotation.set(0, 0, 0);
+
+        // Restart idle animation
+        actions["Idle"]?.play();
+
+        // Broadcast new position to other players
+        webSocketSendUpdate(
+          {
+            position: objRef.current.position,
+            restPosition: objRef.current.position,
+            rotation: obj.rotation,
+            isWalking: false,
+          },
+          websocketConnection,
+          allConnections
+        );
+      }
+    }
+  }, [isRespawning]);
 
   const walkToPointOnLand = (pointOnLand) => {
     if (followingInterval) clearInterval(followingInterval);
@@ -227,7 +293,7 @@ const PlayerController = (props) => {
       <>
         <HealthBar
           playerPosition={obj.position}
-          health={health}
+          health={Math.max(0, localHealth)}
           maxHealth={30}
           yOffset={2.5}
         />
@@ -239,9 +305,28 @@ const PlayerController = (props) => {
             damageToRender={currentDamage.val}
           />
         )}
+        {isDead && (
+          <ChatBubble
+            playerPosition={obj.position}
+            yOffset={3}
+            chatMessage="💀 DEAD - Respawning..."
+          />
+        )}
+        {isRespawning && (
+          <ChatBubble
+            playerPosition={obj.position}
+            yOffset={3}
+            chatMessage="✨ Respawning..."
+          />
+        )}
       </>
       <Suspense fallback={null}>
-        <primitive object={obj} />
+        <primitive
+          object={obj}
+          // Add visual feedback for death state
+          scale={isDead ? [1, 1, 1] : [1, 1, 1]}
+          // TODO: Add death animation effects here when available
+        />
       </Suspense>
     </group>
   );

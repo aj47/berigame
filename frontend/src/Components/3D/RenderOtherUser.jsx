@@ -48,9 +48,14 @@ const RenderOtherUser = ({
   const removeDamageToRender = useOtherUsersStore(
     (state) => state.removeDamageToRender
   );
+  const playerHealths = useOtherUsersStore((state) => state.playerHealths);
+  const setPlayerHealth = useOtherUsersStore((state) => state.setPlayerHealth);
 
-  const [health, setHealth] = useState(30);
+  const [localHealth, setLocalHealth] = useState(30);
   const [currentDamage, setCurrentDamage] = useState(null);
+
+  // Use centralized health if available, otherwise use local health
+  const currentHealth = playerHealths[connectionId] !== undefined ? playerHealths[connectionId] : localHealth;
 
   useEffect(() => {
     // Check expired damage number
@@ -60,11 +65,34 @@ const RenderOtherUser = ({
   useEffect(() => {
     const userDamage = damageToRender[connectionId];
     if (userDamage) {
-      setHealth(health - userDamage);
+      const newHealth = currentHealth - userDamage;
+      setLocalHealth(newHealth);
+      setPlayerHealth(connectionId, newHealth);
       setCurrentDamage({ val: userDamage, timestamp: Date.now() });
       removeDamageToRender(connectionId);
+
+      // Check for death (visual feedback only - backend handles the actual death logic)
+      if (newHealth <= 0) {
+        console.log(`Other player ${connectionId} appears to have died`);
+        // Stop animations for dead player
+        actions["Walk"]?.stop();
+        actions["RightHook"]?.stop();
+        actions["Idle"]?.stop();
+      }
     }
   }, [damageToRender]);
+
+  // Update local health when centralized health changes (e.g., on respawn)
+  useEffect(() => {
+    if (playerHealths[connectionId] !== undefined) {
+      setLocalHealth(playerHealths[connectionId]);
+
+      // If player respawned (health restored), restart idle animation
+      if (playerHealths[connectionId] > 0) {
+        actions["Idle"]?.play();
+      }
+    }
+  }, [playerHealths[connectionId]]);
 
   useEffect(() => {
     if (isAttacking) {
@@ -171,7 +199,7 @@ const RenderOtherUser = ({
         <>
           <HealthBar
             playerPosition={copiedScene.position}
-            health={health}
+            health={Math.max(0, currentHealth)}
             maxHealth={30}
             yOffset={2.5}
           />
@@ -181,6 +209,13 @@ const RenderOtherUser = ({
               playerPosition={copiedScene.position}
               yOffset={1.5}
               damageToRender={currentDamage.val}
+            />
+          )}
+          {currentHealth <= 0 && (
+            <ChatBubble
+              playerPosition={copiedScene.position}
+              yOffset={3.5}
+              chatMessage="💀 DEAD"
             />
           )}
         </>

@@ -44,6 +44,7 @@ export const useWebsocketStore = create((set) => ({
 export const useOtherUsersStore = create((set) => ({
   userPositions: {},
   damageToRender: {},
+  playerHealths: {},
   removeDamageToRender: (connectionId) =>
     set((state) => ({
       damageToRender: {
@@ -60,6 +61,13 @@ export const useOtherUsersStore = create((set) => ({
           : newData.damage,
       },
     })),
+  setPlayerHealth: (playerId, health) =>
+    set((state) => ({
+      playerHealths: {
+        ...state.playerHealths,
+        [playerId]: health,
+      },
+    })),
   setUserPositions: (newUserPositions) =>
     set({ userPositions: { ...newUserPositions } }),
   setUserPosition: (newData) =>
@@ -72,9 +80,17 @@ export const useUserStateStore = create((set) => ({
   userConnectionId: null,
   userFollowing: null,
   userAttacking: null,
+  isDead: false,
+  isRespawning: false,
+  health: 30,
+  maxHealth: 30,
   setUserConnectionId: (id) => set({ userConnectionId: id }),
   setUserFollowing: (newObject) => set({ userFollowing: newObject }),
   setUserAttacking: (newObject) => set({ userAttacking: newObject }),
+  setIsDead: (isDead) => set({ isDead }),
+  setIsRespawning: (isRespawning) => set({ isRespawning }),
+  setHealth: (health) => set({ health }),
+  setMaxHealth: (maxHealth) => set({ maxHealth }),
 }));
 
 export const useUserInputStore = create((set) => ({

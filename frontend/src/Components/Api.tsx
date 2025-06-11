@@ -26,9 +26,18 @@ const Api = (props) => {
   const addDamageToRender = useOtherUsersStore(
     (state: any) => state.addDamageToRender
   );
+  const setPlayerHealth = useOtherUsersStore(
+    (state: any) => state.setPlayerHealth
+  );
   const setUserConnectionId = useUserStateStore(
     (state: any) => state.setUserConnectionId
   );
+  const userConnectionId = useUserStateStore(
+    (state: any) => state.userConnectionId
+  );
+  const setIsDead = useUserStateStore((state: any) => state.setIsDead);
+  const setIsRespawning = useUserStateStore((state: any) => state.setIsRespawning);
+  const setHealth = useUserStateStore((state: any) => state.setHealth);
 
   if (process.env.NODE_ENV === "development") {
     url = "http://localhost:3000/dev/";
@@ -60,18 +69,50 @@ const Api = (props) => {
   const _webSocketMessageReceived = (e) => {
     if (e.data) {
       const messageObject = JSON.parse(e.data);
+
       if (messageObject.chatMessage) {
         addChatMessage(messageObject);
       }
+
       if (messageObject.position && messageObject.userId) {
         updateUserPosition(messageObject);
         if(messageObject.attackingPlayer)
           addDamageToRender(messageObject.damageGiven);
       }
+
       if (messageObject.connections) {
         updateConnections(messageObject.connections);
         console.log("MY CID: ", messageObject.yourConnectionId);
         setUserConnectionId(messageObject.yourConnectionId);
+      }
+
+      // Handle death event
+      if (messageObject.type === "playerDeath") {
+        console.log("Player death event received:", messageObject);
+        if (messageObject.deadPlayerId === userConnectionId) {
+          setIsDead(true);
+          console.log("Current player has died");
+        }
+      }
+
+      // Handle respawn event
+      if (messageObject.type === "playerRespawn") {
+        console.log("Player respawn event received:", messageObject);
+        if (messageObject.playerId === userConnectionId) {
+          setIsDead(false);
+          setIsRespawning(true);
+          setHealth(messageObject.health);
+          console.log("Current player is respawning");
+
+          // Reset respawning flag after a short delay
+          setTimeout(() => {
+            setIsRespawning(false);
+          }, 1000);
+        } else {
+          // Update health for other players when they respawn
+          setPlayerHealth(messageObject.playerId, messageObject.health);
+          console.log(`Other player ${messageObject.playerId} respawned with health ${messageObject.health}`);
+        }
       }
     }
   };
