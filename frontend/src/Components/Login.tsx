@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { auth } from "../Auth";
-import { Magic } from "magic-sdk";
 import Logout from "./Logout";
 
 interface LoginProps {
@@ -8,78 +7,132 @@ interface LoginProps {
   userData: any;
 }
 
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
 const Login = ({ userData, setUserData }: LoginProps) => {
-  const [magic, setMagic] = useState<any>(null);
   const [loading, setLoading] = useState("Loading...");
-  const [email, setEmail] = useState("");
 
-  const initUserData = async () => {
-    setLoading("Authenticating user...")
-    const userMetadata = await magic.user.getMetadata();
-    setLoading("Logging in...");
-    const DID = await magic.user.getIdToken();
-    auth.setToken(DID);
-    setUserData({ ...userMetadata, DID });
-    setLoading("");
-  };
-
-  const submitAuth = async () => {
-    const redirectURI = `${window.location.origin}/callback`;
-    const DID = await magic.auth.loginWithMagicLink({ email, redirectURI });
-    if (DID) initUserData();
-  };
-
-  const tryAuth = async () => {
-    setLoading("Attempting Authentication...");
-    const token = await auth.getToken();
+  const handleGoogleSignIn = async (response: any) => {
     try {
-      const DID = await magic.auth.loginWithCredential(token);
-      if (DID) initUserData();
-    } catch (e) {
+      setLoading("Authenticating with Google...");
+
+      // Send the Google token to our backend
+      const apiResponse = await fetch(`${import.meta.env.VITE_API_URL || 'https://dm465kqzfi.execute-api.ap-southeast-2.amazonaws.com/dev'}/google-auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          googleToken: response.credential,
+        }),
+      });
+
+      const result = await apiResponse.json();
+
+      if (result.success) {
+        auth.setToken(result.data.token);
+        setUserData(result.data.user);
+        setLoading("");
+      } else {
+        console.error('Authentication failed:', result.message);
+        setLoading("");
+      }
+    } catch (error) {
+      console.error('Google Sign-In error:', error);
       setLoading("");
     }
   };
 
-  const checkAuth = async () => {
-    setLoading("Attempting Authentication...");
-    const isLoggedIn = await magic.user.isLoggedIn();
-    if (isLoggedIn) {
-      initUserData();
-    } else {
-      tryAuth();
+  const checkExistingAuth = async () => {
+    setLoading("Checking authentication...");
+    const token = await auth.getToken();
+
+    if (token) {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://dm465kqzfi.execute-api.ap-southeast-2.amazonaws.com/dev'}/auth`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token,
+          },
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          setUserData(result.data.user);
+          setLoading("");
+          return;
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      }
     }
+
+    setLoading("");
   };
 
   const logout = async () => {
     setLoading("Logging out...");
-    await magic.user.logout();
-    window.location.href = window.location.origin;
+    auth.removeToken();
+    setUserData(null);
+    setLoading("");
   };
 
   useEffect(() => {
-    if (!magic) {
-      setMagic(
-        new Magic(import.meta.env.VITE_MAGIC_API_KEY)
-      );
-      return;
+    // Load Google Identity Services
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    script.onload = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          callback: handleGoogleSignIn,
+        });
+      }
+    };
+
+    if (userData === null) {
+      checkExistingAuth();
+    } else {
+      setLoading("");
     }
-    if (userData === null) checkAuth();
-    else setLoading("");
-  }, [userData, magic]);
+
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!loading && !userData && window.google) {
+      window.google.accounts.id.renderButton(
+        document.getElementById('google-signin-button'),
+        {
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          shape: 'rectangular',
+        }
+      );
+    }
+  }, [loading, userData]);
 
   if (loading) return <div className="login">{loading}</div>;
   if (userData) return <Logout logout={logout} />;
 
   return (
     <div className="login">
-      {/* <img src="/logo.png" alt="logo" className="logo" /> */}
       <h2>Berigame</h2>
-      <input
-        placeholder="email@domain.com"
-        type="email"
-        onChange={(e) => setEmail(e.target.value)}
-      ></input>
-      <button onClick={submitAuth}>Login</button>
+      <p>Sign in with your Google account to play</p>
+      <div id="google-signin-button"></div>
     </div>
   );
 };

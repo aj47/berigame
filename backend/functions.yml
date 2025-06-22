@@ -4,18 +4,11 @@ hello:
     - http:
         path: hello
         method: get
-signup:
-  handler: userAuth.signup
+googleAuth:
+  handler: userAuth.googleAuth
   events:
     - http:
-        path: signup
-        method: post
-        cors: true
-login:
-  handler: userAuth.login
-  events:
-    - http:
-        path: login
+        path: google-auth
         method: post
         cors: true
 auth:

@@ -36,7 +36,7 @@ Resources:
           AttributeType: "S"
         - AttributeName: "email"
           AttributeType: "S"
-        - AttributeName: "handle"
+        - AttributeName: "googleId"
           AttributeType: "S"
       KeySchema:
         - AttributeName: "PK"
@@ -47,9 +47,9 @@ Resources:
         ReadCapacityUnits:  2
         WriteCapacityUnits: 2
       GlobalSecondaryIndexes:
-        - IndexName: HandleIndex
+        - IndexName: EmailIndex
           KeySchema:
-            - AttributeName: handle
+            - AttributeName: email
               KeyType: "HASH"
             - AttributeName: SK
               KeyType: "RANGE"
@@ -58,9 +58,9 @@ Resources:
           ProvisionedThroughput:
               ReadCapacityUnits: 1
               WriteCapacityUnits: 1
-        - IndexName: EmailIndex
+        - IndexName: GoogleIdIndex
           KeySchema:
-            - AttributeName: email
+            - AttributeName: googleId
               KeyType: "HASH"
             - AttributeName: SK
               KeyType: "RANGE"

@@ -1,17 +1,28 @@
-export const auth =  {
+export const auth = {
   isAuthenticated: null,
   jwtToken: null,
+
   async getToken() {
-    if (this.jwtToken)
+    if (this.jwtToken) {
       return this.jwtToken;
-    else
-      this.jwtToken = await window.localStorage.getItem('cubespacedapi');
+    } else {
+      this.jwtToken = await window.localStorage.getItem('berigame-auth-token');
       return this.jwtToken;
+    }
   },
-  async setToken(token) {
-    window.localStorage.setItem('cubespacedapi', token);
+
+  async setToken(token: string) {
+    this.jwtToken = token;
+    window.localStorage.setItem('berigame-auth-token', token);
   },
+
   removeToken() {
-    window.localStorage.removeItem('cubespacedapi');
-}
+    this.jwtToken = null;
+    window.localStorage.removeItem('berigame-auth-token');
+  },
+
+  async isLoggedIn() {
+    const token = await this.getToken();
+    return !!token;
+  }
 }

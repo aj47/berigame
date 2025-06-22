@@ -8,9 +8,8 @@ function App() {
   const [userData, setUserData] = useState(null);
   return (
     <>
-    <GameComponent />
-      {/* {userData && <GameComponent />} */}
-      {/* <Login setUserData={setUserData} userData={userData} /> */}
+      {userData && <GameComponent />}
+      <Login setUserData={setUserData} userData={userData} />
     </>
   );
 }

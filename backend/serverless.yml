@@ -15,7 +15,7 @@ provider:
   region: ap-southeast-2
   environment:
     JWT_SECRET: "${self:custom.secrets.JWT_SECRET}"
-    MAGIC_API_KEY: "${self:custom.secrets.MAGIC_API_KEY}"
+    GOOGLE_CLIENT_ID: "${self:custom.secrets.GOOGLE_CLIENT_ID}"
     DB: ${self:service}-${opt:stage, self:provider.stage}
     APIG_ENDPOINT:
       Fn::Join:

@@ -18,7 +18,7 @@
   "homepage": "https://github.com/aj47/berigame#readme",
   "dependencies": {
     "aws-sdk": "^2.1692.0",
-    "bcryptjs": "^2.4.3",
+    "google-auth-library": "^10.1.0",
     "jsonwebtoken": "^9.0.0",
     "serverless": "^4.17.0",
     "uuid": "^8.3.2"
