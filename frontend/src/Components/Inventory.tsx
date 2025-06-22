@@ -83,6 +83,12 @@ const Inventory = memo((props: InventoryProps) => {
               return (
                 <div
                   key={i}
+                  draggable={item && item.type === 'berry'}
+                  onDragStart={(e) => {
+                    if (item && item.type === 'berry') {
+                      e.dataTransfer.setData('application/json', JSON.stringify(item));
+                    }
+                  }}
                   style={{
                     width: "40px",
                     height: "40px",
@@ -93,9 +99,9 @@ const Inventory = memo((props: InventoryProps) => {
                     alignItems: "center",
                     justifyContent: "center",
                     position: "relative",
-                    cursor: item ? "pointer" : "default",
+                    cursor: item ? (item.type === 'berry' ? "grab" : "pointer") : "default",
                   }}
-                  title={item ? `${item.name} (${item.quantity || 1})${item.type === 'berry' ? ' - Click to eat' : ''}` : "Empty slot"}
+                  title={item ? `${item.name} (${item.quantity || 1})${item.type === 'berry' ? ' - Click to eat or drag to HUD' : ''}` : "Empty slot"}
                   onClick={() => item && item.type === 'berry' && consumeBerry(item)}
                 >
                   {item && (
