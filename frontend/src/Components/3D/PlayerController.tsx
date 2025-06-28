@@ -48,7 +48,11 @@ const PlayerController = (props) => {
   const setPosition = useUserStateStore((state: any) => state.setPosition);
   const positionCorrection = useUserStateStore((state: any) => state.positionCorrection);
   const clearPositionCorrection = useUserStateStore((state: any) => state.clearPositionCorrection);
+  const clearFollowingAndAttacking = useUserStateStore((state: any) => state.clearFollowingAndAttacking);
   const justSentMessage = useChatStore((state) => state.justSentMessage);
+
+  // Get combat store functions
+  const { getPlayerDeathState } = useCombatStore();
 
   const [isPlayingDeathAnimation, setIsPlayingDeathAnimation] = useState(false);
 
@@ -163,6 +167,28 @@ const PlayerController = (props) => {
       console.log("DEATH ANIMATION PLACEHOLDER: Player has died!");
     }
   }, [combatState.isDead]);
+
+  // Handle when target player dies - stop following/attacking them
+  useEffect(() => {
+    // Check if we're attacking someone
+    if (userAttacking) {
+      const targetDeathState = getPlayerDeathState(userAttacking);
+      if (targetDeathState.isDead) {
+        console.log(`🎯 Target player ${userAttacking} died, stopping attack`);
+        clearFollowingAndAttacking();
+      }
+    }
+
+    // Check if we're following someone
+    if (userFollowing && userFollowing.current && userFollowing.current.userData && userFollowing.current.userData.connectionId) {
+      const followTargetId = userFollowing.current.userData.connectionId;
+      const targetDeathState = getPlayerDeathState(followTargetId);
+      if (targetDeathState.isDead) {
+        console.log(`🎯 Follow target player ${followTargetId} died, stopping follow`);
+        clearFollowingAndAttacking();
+      }
+    }
+  }, [userAttacking, userFollowing, getPlayerDeathState, clearFollowingAndAttacking]);
 
   // Handle respawn
   useEffect(() => {

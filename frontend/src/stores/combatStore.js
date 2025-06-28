@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useUserStateStore } from '../store';
 
 /**
  * Unified Combat State Store
@@ -52,6 +53,11 @@ export const useCombatStore = create((set, get) => ({
           deathTime: timestamp,
         };
         console.log(`💀 Combat Store: Player ${playerId} died`);
+
+        // Clear any targeting of this dead player
+        const { clearTargetingPlayer } = useUserStateStore.getState();
+        clearTargetingPlayer(playerId);
+        console.log(`🎯 Cleared targeting of dead player ${playerId}`);
       } else if (health > 0 && state.deathStates[playerId]?.isDead) {
         newDeathStates[playerId] = {
           isDead: false,
@@ -186,6 +192,11 @@ export const useCombatStore = create((set, get) => ({
           deathTime: timestamp,
         };
         console.log(`💀 Combat Store: Player ${targetId} died from damage`);
+
+        // Clear any targeting of this dead player
+        const { clearTargetingPlayer } = useUserStateStore.getState();
+        clearTargetingPlayer(targetId);
+        console.log(`🎯 Cleared targeting of dead player ${targetId}`);
       }
 
       // Update combat states
@@ -351,7 +362,14 @@ export const useCombatStore = create((set, get) => ({
     set((state) => {
       const timestamp = Date.now();
       console.log(`💀 Combat Store: Setting death state for ${playerId}: dead=${isDead}, respawning=${isRespawning}`);
-      
+
+      // Clear any targeting of this player if they died
+      if (isDead && (!state.deathStates[playerId] || !state.deathStates[playerId].isDead)) {
+        const { clearTargetingPlayer } = useUserStateStore.getState();
+        clearTargetingPlayer(playerId);
+        console.log(`🎯 Cleared targeting of dead player ${playerId}`);
+      }
+
       return {
         deathStates: {
           ...state.deathStates,
