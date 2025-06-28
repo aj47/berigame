@@ -149,9 +149,24 @@ export const useInventoryStore = create((set, get) => ({
       return { items: newItems };
     }),
 
-  removeItem: (itemId) =>
+  removeItem: (itemId, quantityToRemove = 1) =>
     set((state) => ({
-      items: state.items.map(item => item && item.id === itemId ? null : item),
+      items: state.items.map(item => {
+        if (!item || item.id !== itemId) return item;
+
+        const currentQuantity = item.quantity || 1;
+
+        // For stackable items (like berries), decrement quantity
+        if (item.type === 'berry' && currentQuantity > quantityToRemove) {
+          return {
+            ...item,
+            quantity: currentQuantity - quantityToRemove
+          };
+        }
+
+        // For non-stackable items or when quantity reaches 0 or below, remove entirely
+        return null;
+      }),
     })),
 
   clearInventory: () =>

@@ -52,6 +52,10 @@ const Inventory = memo((props: InventoryProps) => {
         itemId: item.id
       };
       websocketConnection.send(JSON.stringify(payload));
+
+      // Optimistically remove 1 berry from frontend inventory
+      // Backend will validate and sync if there's a mismatch
+      removeItem(item.id, 1);
     }
   };
 
