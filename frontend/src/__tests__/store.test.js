@@ -145,14 +145,54 @@ describe('Inventory Store Drag and Drop', () => {
     let state = useInventoryStore.getState();
     const item1Id = state.items[0].id;
 
-    // Remove first item to create null slot
-    store.removeItem(item1Id);
+    // Remove 1 berry from the stack (new quantity-aware behavior)
+    store.removeItem(item1Id, 1);
 
     state = useInventoryStore.getState();
     const blueberryCount = store.getItemCount('berry', 'blueberry');
     const strawberryCount = store.getItemCount('berry', 'strawberry');
-    expect(blueberryCount).toBe(0); // Blueberry was removed
-    expect(strawberryCount).toBe(2); // Strawberry should remain
+    expect(blueberryCount).toBe(2); // 3 - 1 = 2 blueberries remaining
+    expect(strawberryCount).toBe(2); // Strawberry should remain unchanged
+
+    // Remove all remaining blueberries to test complete removal
+    store.removeItem(item1Id, 2);
+
+    state = useInventoryStore.getState();
+    const blueberryCountAfter = store.getItemCount('berry', 'blueberry');
+    expect(blueberryCountAfter).toBe(0); // All blueberries removed
+    expect(state.items[0]).toBeNull(); // Slot should be null when quantity reaches 0
+  });
+
+  it('should handle berry consumption correctly (quantity-aware removal)', () => {
+    // Test the specific berry consumption behavior
+    const berryStack = { type: 'berry', subType: 'blueberry', name: 'Blueberry', quantity: 5 };
+
+    store.addItem(berryStack);
+
+    let state = useInventoryStore.getState();
+    const berryId = state.items[0].id;
+
+    // Consume 1 berry (like eating)
+    store.removeItem(berryId, 1);
+
+    state = useInventoryStore.getState();
+    expect(state.items[0]).not.toBeNull(); // Item should still exist
+    expect(state.items[0].quantity).toBe(4); // Quantity should be reduced by 1
+    expect(store.getItemCount('berry', 'blueberry')).toBe(4);
+
+    // Consume another berry
+    store.removeItem(berryId, 1);
+
+    state = useInventoryStore.getState();
+    expect(state.items[0].quantity).toBe(3); // Quantity should be reduced by 1 again
+    expect(store.getItemCount('berry', 'blueberry')).toBe(3);
+
+    // Consume all remaining berries at once
+    store.removeItem(berryId, 3);
+
+    state = useInventoryStore.getState();
+    expect(state.items[0]).toBeNull(); // Item should be completely removed
+    expect(store.getItemCount('berry', 'blueberry')).toBe(0);
   });
 
   it('should initialize with exactly 28 slots', () => {
