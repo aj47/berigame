@@ -494,7 +494,7 @@ exports.handler = async function (event, context) {
           PK: chatRoomId,
           SK: "CONNECTION#" + connectionId,
         },
-        UpdateExpression: "SET health = :health, #pos = :position, #rot = :rotation, inventory = :emptyInventory",
+        UpdateExpression: "SET health = :health, #pos = :position, #rot = :rotation, inventory = :emptyInventory, lastValidPosition = :lastValidPosition, lastPositionUpdate = :timestamp",
         ExpressionAttributeNames: {
           "#pos": "position",
           "#rot": "rotation"
@@ -504,6 +504,8 @@ exports.handler = async function (event, context) {
           ":position": SPAWN_LOCATION.position,
           ":rotation": SPAWN_LOCATION.rotation,
           ":emptyInventory": [], // Empty slot-based inventory
+          ":lastValidPosition": SPAWN_LOCATION.position, // Critical: Update position validator's reference
+          ":timestamp": Date.now(), // Update position timestamp for validator
         },
       };
 
