@@ -67,6 +67,23 @@ export const useUserStateStore = create((set) => ({
   setPosition: (position) => set({ position }), // Add position setter
   setPositionCorrection: (correction) => set({ positionCorrection: correction }),
   clearPositionCorrection: () => set({ positionCorrection: null }),
+  // Clear following/attacking states
+  clearFollowing: () => set({ userFollowing: null }),
+  clearAttacking: () => set({ userAttacking: null }),
+  clearFollowingAndAttacking: () => set({ userFollowing: null, userAttacking: null }),
+  // Clear following/attacking if targeting specific player
+  clearTargetingPlayer: (targetConnectionId) => set((state) => {
+    const updates = {};
+    if (state.userAttacking === targetConnectionId) {
+      updates.userAttacking = null;
+    }
+    if (state.userFollowing && state.userFollowing.current &&
+        state.userFollowing.current.userData &&
+        state.userFollowing.current.userData.connectionId === targetConnectionId) {
+      updates.userFollowing = null;
+    }
+    return updates;
+  }),
 }));
 
 export const useUserInputStore = create((set) => ({

@@ -190,7 +190,12 @@ const RenderOtherUser = ({
   useEffect(() => {
     // Initialize with idle animation using centralized system
     playAnimation('idle');
-  }, [animations, mixer]);
+
+    // Store connectionId in objRef userData for targeting identification
+    if (objRef.current) {
+      objRef.current.userData = { ...objRef.current.userData, connectionId };
+    }
+  }, [animations, mixer, connectionId]);
 
   const materialChange = () => {
     for (const material of Object.keys(materials)) {
