@@ -1,55 +1,31 @@
-import { Html } from "@react-three/drei";
-import React from "react";
-import { Vector3 } from "three";
+import { Html } from '@react-three/drei';
+import React from 'react';
+import { Vector3 } from 'three';
+import { EventKind } from '@sim';
 
 interface DamageNumberProps {
   playerPosition: { x: number; y: number; z: number };
   yOffset: number;
-  damageToRender: number | string;
+  kind: number;
+  text: string;
 }
 
+const KIND_CLASS: Record<number, string> = {
+  [EventKind.Hit]: 'normal-damage',
+  [EventKind.Counter]: 'counter-damage',
+  [EventKind.Clash]: 'clash',
+  [EventKind.Eat]: 'heal',
+  [EventKind.Death]: 'death',
+  [EventKind.HarvestDone]: 'harvest',
+};
+
 const DamageNumber = React.memo<DamageNumberProps>((props) => {
-  const position = new Vector3(
-    props.playerPosition.x,
-    props.playerPosition.y + props.yOffset,
-    props.playerPosition.z
-  );
+  const position = new Vector3(props.playerPosition.x, props.playerPosition.y + props.yOffset, props.playerPosition.z);
   const randBool = Math.random() < 0.5;
-
-  // Determine damage type and styling
-  const damageValue = props.damageToRender;
-  const isBlocked = damageValue === 'BLOCKED';
-  const isZeroDamage = damageValue === 0;
-  const isNormalDamage = typeof damageValue === 'number' && damageValue > 0;
-
-  // Build CSS classes based on damage type
-  let className = "damage-number";
-  if (isBlocked) {
-    className += " blocked-attack";
-  } else if (isZeroDamage) {
-    className += " zero-damage";
-  } else if (isNormalDamage) {
-    className += " normal-damage";
-  }
-  className += (randBool ? " animation1" : " animation2");
-
-  // Determine display text
-  let displayText = damageValue;
-  if (isBlocked) {
-    displayText = "BLOCKED";
-  }
-
-
-
+  const className = `damage-number ${KIND_CLASS[props.kind] ?? ''} ${randBool ? 'animation1' : 'animation2'}`;
   return (
-    <Html
-      zIndexRange={[6, 4]}
-      prepend
-      center
-      position={position}
-      className={className}
-    >
-      {displayText}
+    <Html zIndexRange={[6, 4]} prepend center position={position} className={className}>
+      {props.text}
     </Html>
   );
 });

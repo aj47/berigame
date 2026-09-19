@@ -1,5 +1,5 @@
 {
-	"name": "virtualify.space",
+	"name": "berigame-frontend",
 	"private": true,
 	"version": "0.0.0",
 	"scripts": {
@@ -7,22 +7,19 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"test": "vitest",
-		"test:ui": "vitest --ui"
+		"test:ui": "vitest --ui",
+		"stdb:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path ../spacetimedb",
+		"smoke": "tsx scripts/smoke.ts"
 	},
 	"dependencies": {
 		"@react-three/drei": "^9.56.22",
 		"@react-three/fiber": "^8.11.0",
-		"@tweenjs/tween.js": "^18.6.4",
 		"@types/node": "^18.14.6",
 		"@types/three": "^0.149.0",
-		"dotenv": "^16.0.3",
-		"magic-sdk": "^8.1.1",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",
-		"react-scripts": "^2.1.8",
 		"spacetimedb": "^2.10.1",
 		"three": "^0.149.0",
-		"usehooks-ts": "^2.9.1",
 		"zustand": "^4.3.2"
 	},
 	"devDependencies": {

@@ -32,7 +32,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   }
   ctx.db.player.insert({
     identity: ctx.sender,
-    name: 'Player-' + hex(ctx.sender).slice(0, 4),
+    name: 'Player-' + hex(ctx.sender).slice(4, 8),
     online: true,
     connections: 1,
     lastSeenAt: ctx.timestamp,

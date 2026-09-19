@@ -1,54 +1,35 @@
-import React, { useEffect, useState } from "react";
-import RenderOtherUser from "./RenderOtherUser";
-import { useChatStore, useOtherUsersStore, useUserStateStore } from "../../store";
+import React, { useMemo } from 'react';
+import PlayerAvatar from './PlayerAvatar';
+import { useChatMessages, useMyIdentityHex, usePlayers, useTick } from '../../spacetime/hooks';
+import { CHAT_BUBBLE_TICKS } from '@sim';
 
-const RenderOnlineUsers = (props) => {
-  const [messagesToRender, setMessagesToRender] = useState<any>({});
-  const chatMessages = useChatStore((state: any) => state.chatMessages);
-  const userPositions = useOtherUsersStore((state: any) => state.userPositions);
-  const userConnectionId = useUserStateStore(
-    (state: any) => state.userConnectionId
-  );
+/** Latest chat line per sender that is still fresh enough to float above a head. */
+export function useRecentChatBySender(): Map<string, { text: string; tick: number }> {
+  const messages = useChatMessages();
+  const tick = useTick();
+  return useMemo(() => {
+    const m = new Map<string, { text: string; tick: number }>();
+    for (const msg of messages) {
+      if (tick - msg.tick <= CHAT_BUBBLE_TICKS) m.set(msg.sender.toHexString(), { text: msg.text, tick: msg.tick });
+    }
+    return m;
+  }, [messages, tick]);
+}
 
-  const updateMessages = () => {
-    const selectedMessage = chatMessages[chatMessages.length - 1];
-    setMessagesToRender({
-      ...messagesToRender,
-      [selectedMessage.senderId]: selectedMessage,
-    });
-    setTimeout(() => {
-      const key: string = selectedMessage.senderId;
-      setMessagesToRender(
-        ({ [key]: value, ...otherMessages }) => otherMessages
-      );
-    }, 8000);
-  };
-
-  useEffect(() => {
-    if (chatMessages.length > 0) updateMessages();
-  }, [chatMessages]);
+const RenderOnlineUsers = () => {
+  const players = usePlayers();
+  const me = useMyIdentityHex();
+  const tick = useTick();
+  const chat = useRecentChatBySender();
 
   return (
     <>
-      {Object.keys(userPositions).map((playerKey) => {
-        if (playerKey == userConnectionId) return;
-        const currentPlayer = userPositions[playerKey];
-        const { x, y, z } = currentPlayer.position;
-        const { _x, _y, _z } = currentPlayer.rotation;
-        const { x: rX, y: rY, z: rZ } = currentPlayer.restPosition;
+      {players.map((p) => {
+        const hex = p.identity.toHexString();
+        if (hex === me || !p.online) return null;
+        const bubble = chat.get(hex);
         return (
-          <group key={playerKey}>
-            <RenderOtherUser
-              isAttacking={currentPlayer.attackingPlayer}
-              connectionId={playerKey}
-              isCombatable={true}
-              messagesToRender={messagesToRender[playerKey]?.message}
-              position={[x, y, z]}
-              rotation={[_x, _y, _z]}
-              restPosition={[rX, rY, rZ]}
-              isWalking={currentPlayer.isWalking}
-            />
-          </group>
+          <PlayerAvatar key={hex} row={p} isSelf={false} currentTick={tick} chatText={bubble?.text} chatTick={bubble?.tick} />
         );
       })}
     </>

@@ -1,17 +1,13 @@
-import React, { useEffect, useState } from "react";
-import "./App.css";
-import GameComponent from "./Components/3D/GameComponent";
-import Login from "./Components/Login";
+import React from 'react';
+import './App.css';
+import GameComponent from './Components/3D/GameComponent';
+import SpacetimeProvider from './spacetime/SpacetimeProvider';
 
 function App() {
-  console.log("BeriGame alpha v1");
-  const [userData, setUserData] = useState(null);
   return (
-    <>
-    <GameComponent />
-      {/* {userData && <GameComponent />} */}
-      {/* <Login setUserData={setUserData} userData={userData} /> */}
-    </>
+    <SpacetimeProvider>
+      <GameComponent />
+    </SpacetimeProvider>
   );
 }
 

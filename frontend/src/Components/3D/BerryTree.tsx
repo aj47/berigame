@@ -1,144 +1,74 @@
-import React, { useRef, useEffect, useState, useMemo } from "react";
-import { useUserInputStore, useUserStateStore, useHarvestStore, useWebsocketStore, useLoadingStore } from "../../store";
-import { webSocketStartHarvest } from "../../Api";
-import { Html, useGLTF } from "@react-three/drei";
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Html, useGLTF } from '@react-three/drei';
+import { HARVEST_TICKS, TICK_MS, getItemDef, tileToWorld } from '@sim';
+import type { Player, Tree } from '../../module_bindings/types';
+import { useGameActions } from '../../spacetime/actions';
+import { useLoadingStore, useUserInputStore } from '../../store';
 
-// Berry type configurations
-const BERRY_TYPES = {
-  blueberry: { color: '#4F46E5', name: 'Blueberry', icon: '/blueberry.svg' },
-  strawberry: { color: '#EF4444', name: 'Strawberry', icon: '/strawberry.svg' },
-  greenberry: { color: '#22C55E', name: 'Greenberry', icon: '/greenberry.svg' },
-  goldberry: { color: '#F59E0B', name: 'Goldberry', icon: '/goldberry.svg' },
-};
+const MODEL_URL = '/tree.glb';
 
-const BerryTree = (props) => {
-  const objRef = useRef(null);
-  const treeId = props.treeId || `tree_${props.position?.join('_') || 'default'}`;
-  const berryType = props.berryType || 'blueberry';
-  const berryConfig = BERRY_TYPES[berryType];
-  const { addLoadedAsset } = useLoadingStore();
+interface Props {
+  tree: Tree;
+  tick: number;
+  harvester: Player | null;
+}
 
-  // Load the tree model
-  const { scene } = useGLTF("/tree.glb");
+const BerryTree = ({ tree, tick, harvester }: Props) => {
+  const objRef = useRef<any>(null);
+  const { scene } = useGLTF(MODEL_URL) as any;
   const copiedScene = useMemo(() => scene.clone(), [scene]);
+  const addLoadedAsset = useLoadingStore((s) => s.addLoadedAsset);
+  const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
+  const { startHarvest } = useGameActions();
+  const def = getItemDef(tree.itemId);
+  const [wx, wy, wz] = tileToWorld(tree);
 
-  const setClickedOtherObject = useUserInputStore(
-    (state) => state.setClickedOtherObject
-  );
-  const setUserFollowing = useUserStateStore((state) => state.setUserFollowing);
-  const websocketConnection = useWebsocketStore((state) => state.websocketConnection);
-
-  // Harvest store selectors
-  const isTreeHarvestable = useHarvestStore((state) => state.isTreeHarvestable(treeId));
-  const getHarvestProgress = useHarvestStore((state) => state.getHarvestProgress(treeId));
-  const updateTreeCooldown = useHarvestStore((state) => state.updateTreeCooldown);
-
-  const [harvestProgress, setHarvestProgress] = useState(null);
-
-  // Update harvest progress and tree cooldown periodically
   useEffect(() => {
-    const interval = setInterval(() => {
-      const progress = getHarvestProgress(useHarvestStore.getState());
-      setHarvestProgress(progress);
-      updateTreeCooldown(treeId);
+    addLoadedAsset('tree.glb');
+  }, [addLoadedAsset]);
 
-      // Check if harvest is complete and send completion message
-      if (progress && progress.isComplete && websocketConnection) {
-        // Send completion message to backend
-        const payload = {
-          treeId,
-          chatRoomId: "CHATROOM#913a9780-ff43-11eb-aa45-277d189232f4",
-          action: "completeHarvest",
-        };
-        websocketConnection.send(JSON.stringify(payload));
-      }
-    }, 100);
+  const regrowTicks = Math.max(0, tree.cooldownUntilTick - tick);
+  const busy = tree.harvester !== undefined;
+  const progress = harvester && harvester.harvestEndTick > 0
+    ? Math.min(1, Math.max(0, 1 - (harvester.harvestEndTick - tick) / HARVEST_TICKS))
+    : 0;
 
-    return () => clearInterval(interval);
-  }, [treeId, getHarvestProgress, updateTreeCooldown, websocketConnection]);
+  let label = `Harvest ${def?.name ?? 'berries'}`;
+  let disabled = false;
+  if (busy) { label = `${harvester?.name ?? 'Someone'} is harvesting`; disabled = true; }
+  else if (regrowTicks > 0) { label = `Regrowing (${Math.ceil((regrowTicks * TICK_MS) / 1000)}s)`; disabled = true; }
 
-  const startHarvest = () => {
-    if (!isTreeHarvestable || !websocketConnection) return;
-
-    // Move player to tree first
-    setUserFollowing(objRef);
-
-    // Start harvest after a short delay to allow player to reach tree
-    setTimeout(() => {
-      webSocketStartHarvest(treeId, websocketConnection, berryType);
-    }, 1000);
-
-    setClickedOtherObject(null);
-  };
-
-  const onClick = (e) => {
+  const onClick = (e: any) => {
     e.stopPropagation();
-
-    const harvestLabel = isTreeHarvestable ? `Harvest ${berryConfig.name}` : `Harvesting ${berryConfig.name}...`;
-    const isDisabled = !isTreeHarvestable;
-
     setClickedOtherObject({
-      ...objRef,
-      isCombatable: false,
-      connectionId: "TREE",
+      connectionId: def?.name ?? 'Tree',
       e,
       dropdownOptions: [
-        {
-          label: harvestLabel,
-          onClick: isDisabled ? () => {} : startHarvest,
-          disabled: isDisabled,
-        },
+        { label, disabled, onClick: () => { if (!disabled) startHarvest(tree.id); setClickedOtherObject(null); } },
       ],
     });
   };
 
-  // Mark tree model as loaded when component mounts
-  useEffect(() => {
-    addLoadedAsset("tree.glb");
-  }, [addLoadedAsset]);
-
   return (
-    <group>
-      <primitive
-        ref={objRef}
-        object={copiedScene}
-        onClick={onClick}
-        position={props.position || [5, 0, 0]}
-      />
-
-      {harvestProgress && (
-        <Html position={[props.position?.[0] || 5, (props.position?.[1] || 0) + 3, props.position?.[2] || 0]}>
-          <div className="harvest-progress ui-element" style={{
-            background: 'rgba(0, 0, 0, 0.8)',
-            color: 'white',
-            padding: '8px 12px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            whiteSpace: 'nowrap',
-            textAlign: 'center',
-            minWidth: '120px'
-          }}>
-            <div>Harvesting {berryConfig.name}...</div>
-            <div style={{
-              background: '#333',
-              height: '4px',
-              borderRadius: '2px',
-              margin: '4px 0',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                background: berryConfig.color,
-                height: '100%',
-                width: `${((harvestProgress as any)?.progress * 100) || 0}%`,
-                transition: 'width 0.1s ease'
-              }} />
-            </div>
-            <div>{Math.round(((harvestProgress as any)?.progress * 100) || 0)}%</div>
+    <group position={[wx, wy, wz]}>
+      <primitive ref={objRef} object={copiedScene} onClick={onClick} />
+      {busy && (
+        <Html position={[0, 3, 0]} center>
+          <div className="harvest-progress ui-element">
+            <div>{harvester?.name ?? 'Harvesting'}: {def?.name}</div>
+            <div className="harvest-bar"><div className="harvest-fill" style={{ width: `${progress * 100}%`, background: def?.color }} /></div>
           </div>
+        </Html>
+      )}
+      {!busy && regrowTicks > 0 && (
+        <Html position={[0, 3, 0]} center>
+          <div className="harvest-progress ui-element dim">Regrowing {Math.ceil((regrowTicks * TICK_MS) / 1000)}s</div>
         </Html>
       )}
     </group>
   );
 };
+
+useGLTF.preload(MODEL_URL);
 
 export default BerryTree;
