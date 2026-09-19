@@ -47,22 +47,30 @@ backend/           Legacy AWS Lambda / DynamoDB backend. No longer used by the g
 ### Run locally
 
 ```bash
-# 1. Install dependencies
+git checkout claude/elegant-babbage-l1je9i
+npm run play
+```
+
+`npm run play` installs dependencies on first run, starts a local SpacetimeDB
+if none is listening on port 3000, publishes the module, regenerates the client
+bindings and starts the client at http://127.0.0.1:5173. Open it in two
+windows (one incognito) to get two players. Ctrl-C stops everything it started.
+
+<details>
+<summary>Manual steps (what the script does)</summary>
+
+```bash
 (cd shared && npm install)
 (cd spacetimedb && npm install)
 (cd frontend && npm install)
 
-# 2. Start a local SpacetimeDB and publish the module
-spacetime start                       # terminal 1, listens on :3000
-cd spacetimedb
-spacetime publish berigame --server local --yes    # terminal 2 (re-run after module changes)
-
-# 3. Regenerate client bindings whenever the module schema or reducers change
-cd ../frontend && npm run stdb:generate
-
-# 4. Start the client
-npm run dev                           # http://localhost:5173
+spacetime start                                    # terminal 1, listens on :3000
+cd spacetimedb && spacetime publish berigame --server local --yes   # terminal 2
+cd ../frontend && npm run stdb:generate            # after any module change
+npm run dev                                        # http://localhost:5173
 ```
+
+</details>
 
 The client connects to `ws://localhost:3000` and database `berigame` by default.
 Override with `VITE_SPACETIME_URI` and `VITE_SPACETIME_DB` (for example a
