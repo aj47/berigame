@@ -1,0 +1,21 @@
+{
+  "name": "@berigame/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "sim/index.ts",
+  "types": "sim/index.ts",
+  "exports": {
+    ".": "./sim/index.ts",
+    "./sim": "./sim/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^3.2.3"
+  }
+}

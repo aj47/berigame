@@ -1,18 +1,13 @@
-import React from "react";
-import GroundPlane from "../../Objects/GroundPlane";
-import BerryTree from "./BerryTree";
+import React from 'react';
+import GroundPlane from '../../Objects/GroundPlane';
 
-const AlphaIsland = (props) => {
-  return (
-    <>
-      <pointLight position={[10, 30, 0]} intensity={0.5} />
-      <hemisphereLight intensity={0.4} />
-      <GroundPlane />
-      <BerryTree position={[5, 0, 0]} treeId="tree_island" berryType="blueberry" />
-      <BerryTree position={[-10, 0, -5]} treeId="tree_island_strawberry" berryType="strawberry" />
-      <BerryTree position={[0, 0, -10]} treeId="tree_island_greenberry" berryType="greenberry" />
-    </>
-  );
-};
+/** Lights and the ground. Trees now come from the server's `tree` table. */
+const AlphaIsland = () => (
+  <>
+    <pointLight position={[10, 30, 0]} intensity={0.5} />
+    <hemisphereLight intensity={0.4} />
+    <GroundPlane />
+  </>
+);
 
 export default AlphaIsland;

@@ -1,5 +1,8 @@
 {
-  "dependencies": {
-    "simple-zustand-devtools": "^1.1.0"
+  "name": "berigame",
+  "private": true,
+  "scripts": {
+    "play": "bash scripts/play.sh",
+    "test": "npm test --prefix shared -- --run && npm test --prefix frontend -- --run"
   }
 }
