@@ -1,0 +1,281 @@
+{
+  "qualification": "Desktop Chrome mouse and CDP touch gestures; not physical-device qualification.",
+  "checks": [
+    {
+      "name": "one-finger camera orbit works without walking",
+      "pass": true,
+      "detail": {
+        "before": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 25,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            8.978142967435483,
+            12.855195273309555,
+            16.834018063941535
+          ]
+        },
+        "after": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 25,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            -5.885431135651329,
+            17.44845470772463,
+            13.789964780955321
+          ]
+        }
+      }
+    },
+    {
+      "name": "two-moving-finger pinch zoom works without walking",
+      "pass": true,
+      "detail": {
+        "before": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 25,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            -5.885431135651329,
+            17.44845470772463,
+            13.789964780955321
+          ]
+        },
+        "after": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 25,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            -4.207426413016061,
+            12.249233666220775,
+            9.85828577663439
+          ]
+        }
+      }
+    },
+    {
+      "name": "anchored pinch zoom works without walking",
+      "pass": true,
+      "detail": {
+        "before": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 25,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            -4.207426413016061,
+            12.249233666220775,
+            9.85828577663439
+          ]
+        },
+        "after": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 25,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            -3.4977312315798033,
+            10.050275540177813,
+            8.195421777098927
+          ]
+        }
+      }
+    },
+    {
+      "name": "cancelled touch gesture does not issue movement",
+      "pass": true,
+      "detail": {
+        "before": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 25,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            -3.4977312315798033,
+            10.050275540177813,
+            8.195421777098927
+          ]
+        },
+        "after": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 25,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            -5.2065199395350374,
+            10.980642238092093,
+            5.72055473399778
+          ]
+        }
+      }
+    },
+    {
+      "name": "tap-to-move still works after drag, pinch, touch cancellation and Reset view",
+      "pass": true
+    },
+    {
+      "name": "mouse camera drag works without walking",
+      "pass": true,
+      "detail": {
+        "before": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 27,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            5.660651582076209,
+            12.444932115882509,
+            13.718733895021376
+          ]
+        },
+        "after": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 27,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            -5.677667699494331,
+            15.857409358354683,
+            8.368410942745768
+          ]
+        }
+      }
+    },
+    {
+      "name": "mouse wheel zoom works without walking",
+      "pass": true,
+      "detail": {
+        "before": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 27,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            -5.677667699494331,
+            15.857409358354683,
+            8.368410942745768
+          ]
+        },
+        "after": {
+          "me": {
+            "hex": "c200320b148d7d32856fb4a797511f4751965d9ea77bc2d6e8a4c958513b35ff",
+            "x": 25,
+            "z": 27,
+            "hp": 30,
+            "stance": 0,
+            "fightState": 0,
+            "state": 0,
+            "name": "Player-320b",
+            "target": null,
+            "hostile": false
+          },
+          "camera": [
+            -9.862414637358718,
+            28.365628790819915,
+            13.062272859689399
+          ]
+        }
+      }
+    },
+    {
+      "name": "no page errors",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "errors": [],
+  "status": "passed",
+  "browserClosed": true
+}

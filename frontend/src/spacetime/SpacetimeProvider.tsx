@@ -1,12 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { SpacetimeDBProvider, useTable } from 'spacetimedb/react';
 import { tables } from '../module_bindings';
 import { buildConnection } from './connection';
 import { onWorldTick } from './tickClock';
+import { startWorldLivenessMonitor } from './worldLivenessMonitor';
 import { useCombatFxStore } from './stores/combatFxStore';
 
 /** Feeds the tick clock and the combat FX store from table updates. */
 const TableSync = () => {
+  useEffect(startWorldLivenessMonitor, []);
   useTable(tables.world, {
     onInsert: (row) => onWorldTick(row.tick),
     onUpdate: (_old, row) => onWorldTick(row.tick),

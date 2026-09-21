@@ -1,6 +1,6 @@
 import type { Identity } from 'spacetimedb';
 import { GROUND_ITEM_TTL_TICKS, INVENTORY_SIZE, addItem, emptySlots, type Slot, type Tile } from '../../../shared/sim';
-import type { Ctx, InventorySlotRow } from './types';
+import type { Ctx, GroundItemRow, InventorySlotRow } from './types';
 
 export interface SlotSnapshot {
   slots: Slot[];
@@ -61,11 +61,26 @@ export function dropOnGround(
   });
 }
 
-/** Add to inventory; whatever does not fit lands on the ground at `at`. */
-export function giveItem(ctx: Ctx, owner: Identity, itemId: string, quantity: number, at: Tile, tick: number): number {
+/** Add only what fits. The caller owns the source and handles its remainder. */
+function addToInventory(ctx: Ctx, owner: Identity, itemId: string, quantity: number): number {
   const snap = readSlots(ctx, owner);
   const { slots, remaining } = addItem(snap.slots, itemId, quantity);
   writeSlots(ctx, owner, snap, slots);
-  if (remaining > 0) dropOnGround(ctx, owner, itemId, remaining, at, tick);
   return quantity - remaining;
+}
+
+/** A harvested reward is new, so overflow needs a new ground pile. */
+export function giveItem(ctx: Ctx, owner: Identity, itemId: string, quantity: number, at: Tile, tick: number): number {
+  const taken = addToInventory(ctx, owner, itemId, quantity);
+  const remaining = quantity - taken;
+  if (remaining > 0) dropOnGround(ctx, owner, itemId, remaining, at, tick);
+  return taken;
+}
+
+/** Transfer an existing pile; its remainder must stay in that same pile. */
+export function takeGroundItem(ctx: Ctx, owner: Identity, item: GroundItemRow): number {
+  const taken = addToInventory(ctx, owner, item.itemId, item.quantity);
+  if (taken >= item.quantity) ctx.db.groundItem.id.delete(item.id);
+  else if (taken > 0) ctx.db.groundItem.id.update({ ...item, quantity: item.quantity - taken });
+  return taken;
 }

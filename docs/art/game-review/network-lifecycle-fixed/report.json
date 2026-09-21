@@ -1,0 +1,524 @@
+{
+  "at": "2026-09-21T03:41:26.570Z",
+  "qualification": "Desktop Chrome touch viewport; browser offline, CDP freeze and buffered own-client messages emulate lifecycle/network failure. Not physical phone evidence.",
+  "checks": [
+    {
+      "name": "offline immediately warns and offers Rejoin",
+      "passed": true
+    },
+    {
+      "name": "offline recovery needs an advancing tick and preserves identity/inventory",
+      "passed": true
+    },
+    {
+      "name": "offline keyboard inputs were not queued",
+      "passed": true
+    },
+    {
+      "name": "fresh input works after recovery",
+      "passed": true
+    },
+    {
+      "name": "lifecycle request/resume preserves identity/inventory and advancing ticks",
+      "passed": true
+    },
+    {
+      "name": "resume grace avoids a false interruption",
+      "passed": true
+    },
+    {
+      "name": "silent open-socket stall warns and offers Rejoin",
+      "passed": true
+    },
+    {
+      "name": "stalled keyboard inputs send zero reducer frames",
+      "passed": true
+    },
+    {
+      "name": "online event alone cannot dismiss the warning",
+      "passed": true
+    },
+    {
+      "name": "stream recovery needs advancing ticks and preserves identity/inventory",
+      "passed": true
+    },
+    {
+      "name": "stalled keyboard inputs were not replayed",
+      "passed": true
+    },
+    {
+      "name": "post-stall input reaches authoritative state",
+      "passed": true
+    },
+    {
+      "name": "Rejoin during stalled delivery preserves identity/inventory",
+      "passed": true
+    }
+  ],
+  "details": {
+    "baseline": {
+      "tick": 8080,
+      "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+      "stance": 0,
+      "online": true,
+      "warning": null,
+      "sockets": [
+        1
+      ],
+      "closeEvents": [],
+      "pageHeartbeat": 59,
+      "inventory": [
+        "Slot 1: Goldberry, 1"
+      ],
+      "events": [
+        {
+          "event": "pageshow",
+          "at": 264.8999999985099
+        }
+      ],
+      "transitions": [
+        {
+          "visible": true,
+          "at": 281.0999999977648
+        },
+        {
+          "visible": false,
+          "at": 384.29999999701977
+        }
+      ]
+    },
+    "offline": {
+      "offline": {
+        "tick": 8080,
+        "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+        "stance": 0,
+        "online": false,
+        "warning": "THE FIRST ISLAND\nBeriGame\n\nFind your footing. Pick your battles.\n\nConnection interrupted\n\nLive updates have stopped. Controls are paused, but the world keeps running. Rejoin to reconnect with your character.\n\nWaiting for fresh world updates.\n\nRejoin island\n\nStrike beats Grab. Grab beats Guard. Guard beats Strike.\n\nTap the ground to move. Tap a tree to gather. Open Help anytime.",
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 77,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 264.8999999985099
+          },
+          {
+            "event": "offline",
+            "at": 5927.099999997765
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 281.0999999977648
+          },
+          {
+            "visible": false,
+            "at": 384.29999999701977
+          },
+          {
+            "visible": true,
+            "at": 5927.79999999702
+          }
+        ]
+      },
+      "restored": {
+        "tick": 8083,
+        "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+        "stance": 0,
+        "online": true,
+        "warning": null,
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 77,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 264.8999999985099
+          },
+          {
+            "event": "offline",
+            "at": 5927.099999997765
+          },
+          {
+            "event": "online",
+            "at": 7786.599999997765
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 281.0999999977648
+          },
+          {
+            "visible": false,
+            "at": 384.29999999701977
+          },
+          {
+            "visible": true,
+            "at": 5927.79999999702
+          },
+          {
+            "visible": false,
+            "at": 7787.599999997765
+          }
+        ]
+      }
+    },
+    "freezeTimerSuspensionVerified": false,
+    "freeze": {
+      "before": {
+        "tick": 8083,
+        "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+        "stance": 0,
+        "online": true,
+        "warning": null,
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 79,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 264.8999999985099
+          },
+          {
+            "event": "offline",
+            "at": 5927.099999997765
+          },
+          {
+            "event": "online",
+            "at": 7786.599999997765
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 281.0999999977648
+          },
+          {
+            "visible": false,
+            "at": 384.29999999701977
+          },
+          {
+            "visible": true,
+            "at": 5927.79999999702
+          },
+          {
+            "visible": false,
+            "at": 7787.599999997765
+          }
+        ]
+      },
+      "after": {
+        "tick": 8096,
+        "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+        "stance": 0,
+        "online": true,
+        "warning": null,
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 155,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 264.8999999985099
+          },
+          {
+            "event": "offline",
+            "at": 5927.099999997765
+          },
+          {
+            "event": "online",
+            "at": 7786.599999997765
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 281.0999999977648
+          },
+          {
+            "visible": false,
+            "at": 384.29999999701977
+          },
+          {
+            "visible": true,
+            "at": 5927.79999999702
+          },
+          {
+            "visible": false,
+            "at": 7787.599999997765
+          }
+        ]
+      }
+    },
+    "stall": {
+      "before": {
+        "tick": 8096,
+        "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+        "stance": 0,
+        "online": true,
+        "warning": null,
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 2,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 48.19999999925494
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 55.30000000074506
+          },
+          {
+            "visible": false,
+            "at": 152.5
+          }
+        ]
+      },
+      "stalled": {
+        "tick": 8096,
+        "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+        "stance": 0,
+        "online": true,
+        "warning": "THE FIRST ISLAND\nBeriGame\n\nFind your footing. Pick your battles.\n\nConnection interrupted\n\nLive updates have stopped. Controls are paused, but the world keeps running. Rejoin to reconnect with your character.\n\nWaiting for fresh world updates.\n\nRejoin island\n\nStrike beats Grab. Grab beats Guard. Guard beats Strike.\n\nTap the ground to move. Tap a tree to gather. Open Help anytime.",
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 71,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 48.19999999925494
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 55.30000000074506
+          },
+          {
+            "visible": false,
+            "at": 152.5
+          },
+          {
+            "visible": true,
+            "at": 7055.300000000745
+          }
+        ]
+      },
+      "withheld": 13,
+      "restored": {
+        "tick": 8109,
+        "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+        "stance": 0,
+        "online": true,
+        "warning": null,
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 81,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 48.19999999925494
+          },
+          {
+            "event": "offline",
+            "at": 7640.699999999255
+          },
+          {
+            "event": "online",
+            "at": 7641.300000000745
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 55.30000000074506
+          },
+          {
+            "visible": false,
+            "at": 152.5
+          },
+          {
+            "visible": true,
+            "at": 7055.300000000745
+          },
+          {
+            "visible": false,
+            "at": 8160.199999999255
+          }
+        ]
+      }
+    },
+    "rejoin": {
+      "before": {
+        "tick": 8109,
+        "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+        "stance": 0,
+        "online": true,
+        "warning": "THE FIRST ISLAND\nBeriGame\n\nFind your footing. Pick your battles.\n\nConnection interrupted\n\nLive updates have stopped. Controls are paused, but the world keeps running. Rejoin to reconnect with your character.\n\nWaiting for fresh world updates.\n\nRejoin island\n\nStrike beats Grab. Grab beats Guard. Guard beats Strike.\n\nTap the ground to move. Tap a tree to gather. Open Help anytime.",
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 152,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 48.19999999925494
+          },
+          {
+            "event": "offline",
+            "at": 7640.699999999255
+          },
+          {
+            "event": "online",
+            "at": 7641.300000000745
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 55.30000000074506
+          },
+          {
+            "visible": false,
+            "at": 152.5
+          },
+          {
+            "visible": true,
+            "at": 7055.300000000745
+          },
+          {
+            "visible": false,
+            "at": 8160.199999999255
+          },
+          {
+            "visible": true,
+            "at": 15055.60000000149
+          }
+        ]
+      },
+      "after": {
+        "tick": 8121,
+        "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+        "stance": 0,
+        "online": true,
+        "warning": null,
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 2,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 55.69999999925494
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 62.19999999925494
+          },
+          {
+            "visible": false,
+            "at": 137.60000000149012
+          }
+        ]
+      }
+    }
+  },
+  "errors": [],
+  "expectedConsole": [
+    "SpacetimeDB disconnected"
+  ],
+  "freezeLimitation": "CDP freeze did not suspend this foreground headless tab. This run does not verify physical or actual background freezing.",
+  "status": "failed",
+  "failure": "page.waitForFunction: Timeout 15000ms exceeded.\n    at /Users/ajjoobandi/Development/personal/berigame/frontend/scripts/network-liveness-regression.mjs:37:289",
+  "lastState": {
+    "tick": 8152,
+    "identity": "c200828659782e2ad1cffda43e9414b98f17d995bb54ed7d3c8c28b99e9053ec",
+    "stance": 0,
+    "online": true,
+    "warning": null,
+    "sockets": [
+      1,
+      1
+    ],
+    "closeEvents": [],
+    "pageHeartbeat": 187,
+    "inventory": [
+      "Slot 1: Goldberry, 1"
+    ],
+    "events": [
+      {
+        "event": "pageshow",
+        "at": 55.69999999925494
+      }
+    ],
+    "transitions": [
+      {
+        "visible": true,
+        "at": 62.19999999925494
+      },
+      {
+        "visible": false,
+        "at": 137.60000000149012
+      },
+      {
+        "visible": true,
+        "at": 274.30000000074506
+      },
+      {
+        "visible": false,
+        "at": 1333.699999999255
+      }
+    ]
+  },
+  "browserClosed": true
+}

@@ -1,0 +1,21 @@
+{
+  "applicationChecksPassed": 13,
+  "rawHarnessStatus": "failed",
+  "diagnosticLimitations": [
+    "CDP freeze did not suspend foreground headless timers. Actual background/frozen-device behavior remains unverified.",
+    "Playwright routed WebSocket exposed OPEN on the old proxy and did not deliver its addEventListener close diagnostic; that assertion timed out."
+  ],
+  "observedAfterProxiedClose": {
+    "sdkDisconnectCallbacks": 1,
+    "socketsBefore": 1,
+    "socketsAfter": 2,
+    "tickBefore": 8121,
+    "tickAfter": 8152,
+    "sameIdentity": true,
+    "sameInventory": true,
+    "warningAtEnd": null
+  },
+  "browserClosed": true,
+  "productionFilesFrozen": true,
+  "reusableHarnessNote": "The final close diagnostic now checks the SDK disconnect callback plus a new socket and fresh authoritative state, instead of unsupported native proxy events. This diagnostic adjustment was not rerun after the recorded raw failure."
+}

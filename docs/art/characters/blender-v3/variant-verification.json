@@ -1,0 +1,71 @@
+{
+  "tousled": {
+    "sha256": "895d259eadd7ed2cae96c7201b8887e4a31007c0eb30acc9c174fbdde1366985",
+    "animation_data_hash": "27ec0968433ff2e4e53ea516f60dc59fccf2b3ccc254aaaf34a7701c5e85a722",
+    "non_hair_vertex_data_hash": "3f2c0dbe3d33aaf78efff91b0fe475a111618bb8b18838936189493a4f1237bc",
+    "non_hair_vertex_count": 3698,
+    "triangles": 1970,
+    "materials": 1,
+    "skin_joints": 26,
+    "animation_names": [
+      "Defeat",
+      "Grab",
+      "GrabReady",
+      "Guard",
+      "Hit",
+      "Idle",
+      "Run",
+      "Stagger",
+      "Stop",
+      "Strike",
+      "Turn",
+      "Walk"
+    ]
+  },
+  "cropped": {
+    "sha256": "c63fa935cc8ff8af7e0651c7c32a78f297648880c5fd68b6afe66115e1bc6435",
+    "animation_data_hash": "27ec0968433ff2e4e53ea516f60dc59fccf2b3ccc254aaaf34a7701c5e85a722",
+    "non_hair_vertex_data_hash": "3f2c0dbe3d33aaf78efff91b0fe475a111618bb8b18838936189493a4f1237bc",
+    "non_hair_vertex_count": 3698,
+    "triangles": 1984,
+    "materials": 1,
+    "skin_joints": 26,
+    "animation_names": [
+      "Defeat",
+      "Grab",
+      "GrabReady",
+      "Guard",
+      "Hit",
+      "Idle",
+      "Run",
+      "Stagger",
+      "Stop",
+      "Strike",
+      "Turn",
+      "Walk"
+    ]
+  },
+  "topknot": {
+    "sha256": "86f01381bad64c7b4a9c1a5b0ba8ad3cf0298b5633135df9c65fba9308d2839d",
+    "animation_data_hash": "27ec0968433ff2e4e53ea516f60dc59fccf2b3ccc254aaaf34a7701c5e85a722",
+    "non_hair_vertex_data_hash": "3f2c0dbe3d33aaf78efff91b0fe475a111618bb8b18838936189493a4f1237bc",
+    "non_hair_vertex_count": 3698,
+    "triangles": 2088,
+    "materials": 1,
+    "skin_joints": 26,
+    "animation_names": [
+      "Defeat",
+      "Grab",
+      "GrabReady",
+      "Guard",
+      "Hit",
+      "Idle",
+      "Run",
+      "Stagger",
+      "Stop",
+      "Strike",
+      "Turn",
+      "Walk"
+    ]
+  }
+}

@@ -1,0 +1,293 @@
+{
+  "at": "2026-09-21T03:26:44.838Z",
+  "qualification": "Own fresh browser identity; local server remains running. Browser offline emulation and CDP lifecycle freezing are proxies, not a physical network/phone test. Silent stall buffers only this client’s server messages and later releases them in order.",
+  "cases": [
+    {
+      "name": "browser offline→online",
+      "durationOfflineMs": 5000,
+      "offline": {
+        "tick": 6610,
+        "identity": "c2001b733ad3ac514d227f0c8b5822495dfafa5e38a58b282122ea67990659b7",
+        "stance": 0,
+        "online": false,
+        "visibility": "visible",
+        "warning": null,
+        "rejoinVisible": false,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "time": 1789961205943,
+            "online": true,
+            "visibility": "visible"
+          },
+          {
+            "event": "offline",
+            "time": 1789961211625,
+            "online": false,
+            "visibility": "visible"
+          }
+        ]
+      },
+      "streamActuallyStopped": true,
+      "recovery": {
+        "path": "automatic",
+        "state": {
+          "tick": 6610,
+          "identity": "c2001b733ad3ac514d227f0c8b5822495dfafa5e38a58b282122ea67990659b7",
+          "stance": 0,
+          "online": true,
+          "visibility": "visible",
+          "warning": null,
+          "rejoinVisible": false,
+          "inventory": [
+            "Slot 1: Goldberry, 1"
+          ],
+          "events": [
+            {
+              "event": "pageshow",
+              "time": 1789961205943,
+              "online": true,
+              "visibility": "visible"
+            },
+            {
+              "event": "offline",
+              "time": 1789961211625,
+              "online": false,
+              "visibility": "visible"
+            },
+            {
+              "event": "online",
+              "time": 1789961216670,
+              "online": true,
+              "visibility": "visible"
+            }
+          ]
+        },
+        "sameIdentity": true,
+        "sameInventory": true
+      }
+    },
+    {
+      "name": "frozen tab→resume",
+      "durationFrozenMs": 6000,
+      "beforeFreeze": {
+        "tick": 6618,
+        "identity": "c2001b733ad3ac514d227f0c8b5822495dfafa5e38a58b282122ea67990659b7",
+        "stance": 0,
+        "online": true,
+        "visibility": "visible",
+        "warning": null,
+        "rejoinVisible": false,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "time": 1789961205943,
+            "online": true,
+            "visibility": "visible"
+          },
+          {
+            "event": "offline",
+            "time": 1789961211625,
+            "online": false,
+            "visibility": "visible"
+          },
+          {
+            "event": "online",
+            "time": 1789961216670,
+            "online": true,
+            "visibility": "visible"
+          }
+        ]
+      },
+      "recovery": {
+        "path": "automatic",
+        "state": {
+          "tick": 6631,
+          "identity": "c2001b733ad3ac514d227f0c8b5822495dfafa5e38a58b282122ea67990659b7",
+          "stance": 0,
+          "online": true,
+          "visibility": "visible",
+          "warning": null,
+          "rejoinVisible": false,
+          "inventory": [
+            "Slot 1: Goldberry, 1"
+          ],
+          "events": [
+            {
+              "event": "pageshow",
+              "time": 1789961205943,
+              "online": true,
+              "visibility": "visible"
+            },
+            {
+              "event": "offline",
+              "time": 1789961211625,
+              "online": false,
+              "visibility": "visible"
+            },
+            {
+              "event": "online",
+              "time": 1789961216670,
+              "online": true,
+              "visibility": "visible"
+            }
+          ]
+        },
+        "sameIdentity": true,
+        "sameInventory": true
+      },
+      "tickAdvanced": true
+    },
+    {
+      "name": "silent server-update stall",
+      "durationStalledMs": 11000,
+      "beforeStall": {
+        "tick": 6632,
+        "identity": "c2001b733ad3ac514d227f0c8b5822495dfafa5e38a58b282122ea67990659b7",
+        "stance": 0,
+        "online": true,
+        "visibility": "visible",
+        "warning": null,
+        "rejoinVisible": false,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "time": 1789961224364,
+            "online": true,
+            "visibility": "visible"
+          }
+        ]
+      },
+      "stalled": {
+        "tick": 6632,
+        "identity": "c2001b733ad3ac514d227f0c8b5822495dfafa5e38a58b282122ea67990659b7",
+        "stance": 0,
+        "online": true,
+        "visibility": "visible",
+        "warning": null,
+        "rejoinVisible": false,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "time": 1789961224364,
+            "online": true,
+            "visibility": "visible"
+          }
+        ]
+      },
+      "withheldServerMessages": 18,
+      "warningShown": false,
+      "rejoinActionable": false,
+      "recovery": {
+        "path": "automatic",
+        "state": {
+          "tick": 6653,
+          "identity": "c2001b733ad3ac514d227f0c8b5822495dfafa5e38a58b282122ea67990659b7",
+          "stance": 0,
+          "online": true,
+          "visibility": "visible",
+          "warning": null,
+          "rejoinVisible": false,
+          "inventory": [
+            "Slot 1: Goldberry, 1"
+          ],
+          "events": [
+            {
+              "event": "pageshow",
+              "time": 1789961224364,
+              "online": true,
+              "visibility": "visible"
+            }
+          ]
+        },
+        "sameIdentity": true,
+        "sameInventory": true
+      }
+    },
+    {
+      "name": "socket closed while frozen→resume",
+      "durationFrozenMs": 3500,
+      "beforeClosedFreeze": {
+        "tick": 6653,
+        "identity": "c2001b733ad3ac514d227f0c8b5822495dfafa5e38a58b282122ea67990659b7",
+        "stance": 0,
+        "online": true,
+        "visibility": "visible",
+        "warning": null,
+        "rejoinVisible": false,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "time": 1789961224364,
+            "online": true,
+            "visibility": "visible"
+          }
+        ]
+      },
+      "recovery": {
+        "path": "automatic",
+        "state": {
+          "tick": 6659,
+          "identity": "c2001b733ad3ac514d227f0c8b5822495dfafa5e38a58b282122ea67990659b7",
+          "stance": 0,
+          "online": true,
+          "visibility": "visible",
+          "warning": null,
+          "rejoinVisible": false,
+          "inventory": [
+            "Slot 1: Goldberry, 1"
+          ],
+          "events": [
+            {
+              "event": "pageshow",
+              "time": 1789961224364,
+              "online": true,
+              "visibility": "visible"
+            }
+          ]
+        },
+        "sameIdentity": true,
+        "sameInventory": true
+      }
+    }
+  ],
+  "pageErrors": [],
+  "consoleMessages": [],
+  "baseline": {
+    "tick": 6610,
+    "identity": "c2001b733ad3ac514d227f0c8b5822495dfafa5e38a58b282122ea67990659b7",
+    "stance": 0,
+    "online": true,
+    "visibility": "visible",
+    "warning": null,
+    "rejoinVisible": false,
+    "inventory": [
+      "Slot 1: Goldberry, 1"
+    ],
+    "events": [
+      {
+        "event": "pageshow",
+        "time": 1789961205943,
+        "online": true,
+        "visibility": "visible"
+      }
+    ]
+  },
+  "status": "identity/inventory recovery passed",
+  "browserClosed": true
+}

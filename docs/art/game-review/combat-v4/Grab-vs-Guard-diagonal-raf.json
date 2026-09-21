@@ -1,0 +1,3478 @@
+[
+  {
+    "at": 0.9000000022351742,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853980806853678
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 17.600000002234992,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853980972277839
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 34.300000002235265,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981104617167
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 50.800000002235265,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.785398121048863
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 67.50000000223508,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.78539812951858
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 84.20000000223536,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981362943536
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 100.90000000223517,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981417149726
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 117.60000000223499,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981460514677
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 134.30000000223527,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981495206639
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 150.90000000223517,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981522960207
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 167.50000000223508,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981545163062
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 184.20000000223536,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981562925346
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 200.90000000223517,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981577135174
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 217.50000000223508,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981588503036
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 234.30000000223527,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981597597326
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 250.90000000223517,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981604872757
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 267.5000000022351,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981610693103
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 284.20000000223536,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981615349379
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 300.9000000022352,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981619074399
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 317.600000002235,
+    "cueElapsed": null,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.7853981622054416
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": 0
+      }
+    ]
+  },
+  {
+    "at": 334.20000000223536,
+    "cueElapsed": 0,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.47123889708486355
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -0.47123889803846897
+      }
+    ]
+  },
+  {
+    "at": 350.80000000223527,
+    "cueElapsed": 16.59999999999991,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.21991148498840118
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -0.8482300164692442
+      }
+    ]
+  },
+  {
+    "at": 367.5000000022351,
+    "cueElapsed": 33.29999999999973,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": -0.01884955531123128
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -1.1498229112138643
+      }
+    ]
+  },
+  {
+    "at": 384.20000000223536,
+    "cueElapsed": 50,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.14199998843050465
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -1.3910972270095603
+      }
+    ]
+  },
+  {
+    "at": 400.80000000223527,
+    "cueElapsed": 66.59999999999991,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.2706796234238934
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -1.5841166796461172
+      }
+    ]
+  },
+  {
+    "at": 417.5000000022351,
+    "cueElapsed": 83.29999999999973,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.3736233314186044
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -1.7385322417553628
+      }
+    ]
+  },
+  {
+    "at": 434.20000000223536,
+    "cueElapsed": 100,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.45597829781437316
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -1.8620646914427592
+      }
+    ]
+  },
+  {
+    "at": 450.80000000223527,
+    "cueElapsed": 116.59999999999991,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.5218622709309881
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -1.9608906511926762
+      }
+    ]
+  },
+  {
+    "at": 467.5000000022351,
+    "cueElapsed": 133.29999999999973,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.5745694494242801
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.03995141899261
+      }
+    ]
+  },
+  {
+    "at": 484.20000000223536,
+    "cueElapsed": 150,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.6167351922189137
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.103200033232557
+      }
+    ]
+  },
+  {
+    "at": 500.9000000022352,
+    "cueElapsed": 166.69999999999982,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.6504677864546207
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.1537989246245144
+      }
+    ]
+  },
+  {
+    "at": 517.5000000022351,
+    "cueElapsed": 183.29999999999973,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.6774538618431862
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.1942780377380804
+      }
+    ]
+  },
+  {
+    "at": 534.2000000022354,
+    "cueElapsed": 200,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.6990427221540386
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Block",
+        "cue": "2:action",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.2266613282289334
+      }
+    ]
+  },
+  {
+    "at": 550.8000000022353,
+    "cueElapsed": 216.5999999999999,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7163138104027206
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.2525679606216156
+      }
+    ]
+  },
+  {
+    "at": 567.600000002235,
+    "cueElapsed": 233.39999999999964,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7301306810016661
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.2732932665357612
+      }
+    ]
+  },
+  {
+    "at": 584.2000000022354,
+    "cueElapsed": 250,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7411841774808225
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.289873511267078
+      }
+    ]
+  },
+  {
+    "at": 600.9000000022352,
+    "cueElapsed": 266.6999999999998,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7500269746641477
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3031377070521315
+      }
+    ]
+  },
+  {
+    "at": 617.600000002235,
+    "cueElapsed": 283.39999999999964,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7571012124108079
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.313749063680174
+      }
+    ]
+  },
+  {
+    "at": 634.2000000022354,
+    "cueElapsed": 300,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7627606026081359
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.322238148982608
+      }
+    ]
+  },
+  {
+    "at": 650.9000000022352,
+    "cueElapsed": 316.6999999999998,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7672881147659985
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3290294172245556
+      }
+    ]
+  },
+  {
+    "at": 667.5000000022351,
+    "cueElapsed": 333.2999999999997,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7709101244922885
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3344624318181135
+      }
+    ]
+  },
+  {
+    "at": 684.2000000022354,
+    "cueElapsed": 350,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7738077322733204
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3388088434929597
+      }
+    ]
+  },
+  {
+    "at": 700.9000000022352,
+    "cueElapsed": 366.6999999999998,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.776125818498146
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.342285972832837
+      }
+    ]
+  },
+  {
+    "at": 717.600000002235,
+    "cueElapsed": 383.39999999999964,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7779802874780064
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3450676763047387
+      }
+    ]
+  },
+  {
+    "at": 734.2000000022354,
+    "cueElapsed": 400,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7794638626618948
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3472930390822597
+      }
+    ]
+  },
+  {
+    "at": 750.8000000022353,
+    "cueElapsed": 416.5999999999999,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7806507228090055
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.349073329304277
+      }
+    ]
+  },
+  {
+    "at": 767.600000002235,
+    "cueElapsed": 433.39999999999964,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7816002109266941
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3504975614818906
+      }
+    ]
+  },
+  {
+    "at": 784.2000000022354,
+    "cueElapsed": 450,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7823598014208449
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3516369472239815
+      }
+    ]
+  },
+  {
+    "at": 800.9000000022352,
+    "cueElapsed": 466.6999999999998,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7829674738161656
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3525484558176544
+      }
+    ]
+  },
+  {
+    "at": 817.5000000022351,
+    "cueElapsed": 483.2999999999997,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7834536117324221
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3532776626925926
+      }
+    ]
+  },
+  {
+    "at": 834.100000002235,
+    "cueElapsed": 499.89999999999964,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7838425220654274
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.353861028192543
+      }
+    ]
+  },
+  {
+    "at": 850.8000000022353,
+    "cueElapsed": 516.5999999999999,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7841536503318316
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3543277205925035
+      }
+    ]
+  },
+  {
+    "at": 867.5000000022351,
+    "cueElapsed": 533.2999999999997,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.784402552944955
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3547010745124717
+      }
+    ]
+  },
+  {
+    "at": 884.2000000022354,
+    "cueElapsed": 550,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7846016750354536
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3549997576484465
+      }
+    ]
+  },
+  {
+    "at": 900.9000000022352,
+    "cueElapsed": 566.6999999999998,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7847609727078526
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3552387041572262
+      }
+    ]
+  },
+  {
+    "at": 917.5000000022351,
+    "cueElapsed": 583.2999999999997,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7848884108457718
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.35542986136425
+      }
+    ]
+  },
+  {
+    "at": 934.100000002235,
+    "cueElapsed": 599.8999999999996,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7849903613561071
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.355582787129869
+      }
+    ]
+  },
+  {
+    "at": 950.8000000022353,
+    "cueElapsed": 616.5999999999999,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7850719217643753
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.355705127742364
+      }
+    ]
+  },
+  {
+    "at": 967.5000000022351,
+    "cueElapsed": 633.2999999999997,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7851371700909899
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3558030002323602
+      }
+    ]
+  },
+  {
+    "at": 984.2000000022354,
+    "cueElapsed": 650,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7851893687522816
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3558812982243573
+      }
+    ]
+  },
+  {
+    "at": 1000.9000000022352,
+    "cueElapsed": 666.6999999999998,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.785231127681315
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3559439366179546
+      }
+    ]
+  },
+  {
+    "at": 1017.5000000022351,
+    "cueElapsed": 683.2999999999997,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grab",
+        "cue": "2:action",
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7852645348245416
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3559940473328327
+      }
+    ]
+  },
+  {
+    "at": 1034.2000000022354,
+    "cueElapsed": 700,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7852912605391229
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Grabbed",
+        "cue": "2:reaction",
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.356034135904735
+      }
+    ]
+  },
+  {
+    "at": 1050.8000000022353,
+    "cueElapsed": 716.5999999999999,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.785312641110788
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3560662067622573
+      }
+    ]
+  },
+  {
+    "at": 1067.500000002235,
+    "cueElapsed": 733.2999999999997,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853297455681201
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.356091863448275
+      }
+    ]
+  },
+  {
+    "at": 1084.100000002235,
+    "cueElapsed": 749.8999999999996,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853434291339857
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3561123887970887
+      }
+    ]
+  },
+  {
+    "at": 1100.9000000022352,
+    "cueElapsed": 766.6999999999998,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853543759866782
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.35612880907614
+      }
+    ]
+  },
+  {
+    "at": 1117.5000000022355,
+    "cueElapsed": 783.3000000000002,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853631334688322
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.356141945299381
+      }
+    ]
+  },
+  {
+    "at": 1134.2000000022354,
+    "cueElapsed": 800,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853701394545555
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3561524542779737
+      }
+    ]
+  },
+  {
+    "at": 1150.9000000022352,
+    "cueElapsed": 816.6999999999998,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.785375744243134
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.356160861460848
+      }
+    ]
+  },
+  {
+    "at": 1167.5000000022355,
+    "cueElapsed": 833.3000000000002,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853802280739969
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3561675872071475
+      }
+    ]
+  },
+  {
+    "at": 1184.100000002235,
+    "cueElapsed": 849.8999999999996,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853838151386872
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.356172967804187
+      }
+    ]
+  },
+  {
+    "at": 1200.9000000022352,
+    "cueElapsed": 866.6999999999998,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853866847904394
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3561772722818186
+      }
+    ]
+  },
+  {
+    "at": 1217.5000000022355,
+    "cueElapsed": 883.3000000000002,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853889805118411
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.356180715863924
+      }
+    ]
+  },
+  {
+    "at": 1234.2000000022354,
+    "cueElapsed": 900,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853908170889625
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.356183470729608
+      }
+    ]
+  },
+  {
+    "at": 1250.8000000022348,
+    "cueElapsed": 916.5999999999995,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853922863506597
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3561856746221554
+      }
+    ]
+  },
+  {
+    "at": 1267.600000002235,
+    "cueElapsed": 933.3999999999996,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853934617600175
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.3561874377361933
+      }
+    ]
+  },
+  {
+    "at": 1284.2000000022354,
+    "cueElapsed": 950,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853944020875037
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.356188848227424
+      }
+    ]
+  },
+  {
+    "at": 1300.9000000022352,
+    "cueElapsed": 966.6999999999998,
+    "actors": [
+      {
+        "identity": "c2005e297e7913056a74b9fb220157f99987715fb3f4ef0cad4797e1df93c170",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "GrabReady",
+        "cue": null,
+        "position": [
+          -1,
+          0,
+          2
+        ],
+        "yaw": 0.7853951543494926
+      },
+      {
+        "identity": "c200c00a6c4646574e097617239a4d87ac18b3025f6c5ae3d004503aae023f5a",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb",
+        "clip": "Guard",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          3
+        ],
+        "yaw": -2.356189976620408
+      }
+    ]
+  }
+]

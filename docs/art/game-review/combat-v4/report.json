@@ -1,0 +1,926 @@
+{
+  "createdAt": "2026-09-21T04:06:44.767Z",
+  "url": "http://127.0.0.1:5173/",
+  "database": "berigame-graphics-review",
+  "qualification": "Real local authoritative events and rendered Chrome RAF observations. Clip routing is measured; screenshots/video still require visual contact review. This is desktop Chrome, not physical-phone evidence.",
+  "sourceStart": {
+    "frontend/public/models/starter-adventurer.glb": "475be7edfb2400797d5c515f1f7b8d73435ef988a99a8a96ff1e10f4a0a6d227",
+    "frontend/src/animation/combatPresentation.ts": "1d439edcadd4b759d09a20dff2f42b19a03bb912ca6b8cf178c8f729b69ad813",
+    "frontend/src/Components/3D/AdventurerModel.tsx": "d81338864d1e5eb23c2e8ab4b1913ea90b4b3b0935e2dd79576a4a8535d98b6e",
+    "frontend/src/hooks/useTileMotion.ts": "80c1e73f0691285ca1a82dad49ae815860f17f4dbde3017c03c6bee9cdd1594c",
+    "spacetimedb/src/reducers/tick.ts": "a428e77a1c2f5f09ec0e3c3f76d5218f8e1fdbdf8488c9259a3a190f1100d2f1",
+    "shared/sim/constants.ts": "26d11ae301f49ac66dc75108d52ff8fb2d30dd452fa57df120f7098369d8bf31"
+  },
+  "cases": [
+    {
+      "label": "Grab-vs-Guard-diagonal",
+      "expected": {
+        "a": 1,
+        "b": 2,
+        "kind": 0,
+        "clips": [
+          "Grab",
+          "Block"
+        ],
+        "reaction": [
+          null,
+          "Grabbed"
+        ],
+        "impact": 224,
+        "diagonal": true
+      },
+      "initial": [
+        {
+          "x": 24,
+          "z": 27,
+          "hp": 30,
+          "stance": 1
+        },
+        {
+          "x": 25,
+          "z": 28,
+          "hp": 30,
+          "stance": 2
+        }
+      ],
+      "event": {
+        "tick": 10606,
+        "kind": 0,
+        "attackerStance": 1,
+        "defenderStance": 2,
+        "damage": 4
+      },
+      "sequences": [
+        [
+          {
+            "atMs": 0,
+            "clip": "Grab",
+            "cue": "2:action",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": -0.47123889708486355
+          },
+          {
+            "atMs": 700,
+            "clip": "GrabReady",
+            "cue": null,
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 0.7852912605391229
+          }
+        ],
+        [
+          {
+            "atMs": 0,
+            "clip": "Block",
+            "cue": "2:action",
+            "position": [
+              0,
+              0,
+              3
+            ],
+            "yaw": -0.47123889803846897
+          },
+          {
+            "atMs": 216.5999999999999,
+            "clip": "Grabbed",
+            "cue": "2:reaction",
+            "position": [
+              0,
+              0,
+              3
+            ],
+            "yaw": -2.2525679606216156
+          },
+          {
+            "atMs": 716.5999999999999,
+            "clip": "Guard",
+            "cue": null,
+            "position": [
+              0,
+              0,
+              3
+            ],
+            "yaw": -2.3560662067622573
+          }
+        ]
+      ],
+      "screenshot": "/Users/ajjoobandi/Development/personal/berigame/docs/art/game-review/combat-v4/Grab-vs-Guard-diagonal-contact.png",
+      "screenshotRequestedAtMs": 200,
+      "frames": 59
+    },
+    {
+      "label": "Strike-vs-Strike",
+      "expected": {
+        "a": 0,
+        "b": 0,
+        "kind": 1,
+        "clips": [
+          "Strike",
+          "Strike"
+        ],
+        "reaction": [
+          null,
+          null
+        ],
+        "impact": 160
+      },
+      "initial": [
+        {
+          "x": 24,
+          "z": 27,
+          "hp": 30,
+          "stance": 0
+        },
+        {
+          "x": 25,
+          "z": 27,
+          "hp": 26,
+          "stance": 0
+        }
+      ],
+      "event": {
+        "tick": 10610,
+        "kind": 1,
+        "attackerStance": 0,
+        "defenderStance": 0,
+        "damage": 0
+      },
+      "sequences": [
+        [
+          {
+            "atMs": 0,
+            "clip": "Strike",
+            "cue": "4:action",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 0.942477796076924
+          },
+          {
+            "atMs": 500,
+            "clip": "Idle",
+            "cue": null,
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5700185061282959
+          }
+        ],
+        [
+          {
+            "atMs": 0,
+            "clip": "Strike",
+            "cue": "4:action",
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -2.8274333220611285
+          },
+          {
+            "atMs": 500,
+            "clip": "Idle",
+            "cue": null,
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.572351968046184
+          }
+        ]
+      ],
+      "screenshot": "/Users/ajjoobandi/Development/personal/berigame/docs/art/game-review/combat-v4/Strike-vs-Strike-contact.png",
+      "screenshotRequestedAtMs": 150,
+      "frames": 59
+    },
+    {
+      "label": "Strike-vs-Grab",
+      "expected": {
+        "a": 0,
+        "b": 1,
+        "kind": 0,
+        "clips": [
+          "Strike",
+          "Grab"
+        ],
+        "reaction": [
+          null,
+          "Hit"
+        ],
+        "impact": 160
+      },
+      "initial": [
+        {
+          "x": 24,
+          "z": 27,
+          "hp": 30,
+          "stance": 0
+        },
+        {
+          "x": 25,
+          "z": 27,
+          "hp": 26,
+          "stance": 1
+        }
+      ],
+      "event": {
+        "tick": 10614,
+        "kind": 0,
+        "attackerStance": 0,
+        "defenderStance": 1,
+        "damage": 6
+      },
+      "sequences": [
+        [
+          {
+            "atMs": 0,
+            "clip": "Strike",
+            "cue": "7:action",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948895
+          },
+          {
+            "atMs": 499.90000000000055,
+            "clip": "Idle",
+            "cue": null,
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          }
+        ],
+        [
+          {
+            "atMs": 0,
+            "clip": "Grab",
+            "cue": "7:action",
+            "position": [
+              0.03212556259050944,
+              0,
+              2
+            ],
+            "yaw": -2.199114857512869
+          },
+          {
+            "atMs": 149.90000000000055,
+            "clip": "Hit",
+            "cue": "7:reaction",
+            "position": [
+              0.5330835543504112,
+              0,
+              2
+            ],
+            "yaw": -4.375063037771642
+          },
+          {
+            "atMs": 549.9000000000005,
+            "clip": "GrabReady",
+            "cue": null,
+            "position": [
+              1,
+              0,
+              2
+            ],
+            "yaw": -1.9908607783360115
+          }
+        ]
+      ],
+      "screenshot": "/Users/ajjoobandi/Development/personal/berigame/docs/art/game-review/combat-v4/Strike-vs-Grab-contact.png",
+      "screenshotRequestedAtMs": 149.90000000000055,
+      "frames": 59
+    },
+    {
+      "label": "Strike-vs-Guard",
+      "expected": {
+        "a": 0,
+        "b": 2,
+        "kind": 2,
+        "clips": [
+          "Strike",
+          "BlockCounter"
+        ],
+        "reaction": [
+          "Stagger",
+          null
+        ],
+        "impact": 288
+      },
+      "initial": [
+        {
+          "x": 24,
+          "z": 27,
+          "hp": 30,
+          "stance": 0
+        },
+        {
+          "x": 25,
+          "z": 27,
+          "hp": 20,
+          "stance": 2
+        }
+      ],
+      "event": {
+        "tick": 10618,
+        "kind": 2,
+        "attackerStance": 0,
+        "defenderStance": 2,
+        "damage": 2
+      },
+      "sequences": [
+        [
+          {
+            "atMs": 0,
+            "clip": "Strike",
+            "cue": "10:action",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          },
+          {
+            "atMs": 283.2999999999993,
+            "clip": "Stagger",
+            "cue": "10:reaction",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          },
+          {
+            "atMs": 783.3999999999996,
+            "clip": "Idle",
+            "cue": null,
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          }
+        ],
+        [
+          {
+            "atMs": 0,
+            "clip": "BlockCounter",
+            "cue": "10:action",
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.5707963268022467
+          },
+          {
+            "atMs": 600,
+            "clip": "Guard",
+            "cue": null,
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794899
+          }
+        ]
+      ],
+      "screenshot": "/Users/ajjoobandi/Development/personal/berigame/docs/art/game-review/combat-v4/Strike-vs-Guard-contact.png",
+      "screenshotRequestedAtMs": 266.7000000000007,
+      "frames": 59
+    },
+    {
+      "label": "Grab-vs-Strike",
+      "expected": {
+        "a": 1,
+        "b": 0,
+        "kind": 2,
+        "clips": [
+          "Grab",
+          "Strike"
+        ],
+        "reaction": [
+          "Hit",
+          null
+        ],
+        "impact": 160
+      },
+      "initial": [
+        {
+          "x": 24,
+          "z": 27,
+          "hp": 28,
+          "stance": 1
+        },
+        {
+          "x": 25,
+          "z": 27,
+          "hp": 20,
+          "stance": 0
+        }
+      ],
+      "event": {
+        "tick": 10622,
+        "kind": 2,
+        "attackerStance": 1,
+        "defenderStance": 0,
+        "damage": 2
+      },
+      "sequences": [
+        [
+          {
+            "atMs": 0,
+            "clip": "Grab",
+            "cue": "12:action",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          },
+          {
+            "atMs": 150,
+            "clip": "Hit",
+            "cue": "12:reaction",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          },
+          {
+            "atMs": 550,
+            "clip": "GrabReady",
+            "cue": null,
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          }
+        ],
+        [
+          {
+            "atMs": 0,
+            "clip": "Strike",
+            "cue": "12:action",
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          },
+          {
+            "atMs": 500,
+            "clip": "Idle",
+            "cue": null,
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          }
+        ]
+      ],
+      "screenshot": "/Users/ajjoobandi/Development/personal/berigame/docs/art/game-review/combat-v4/Grab-vs-Strike-contact.png",
+      "screenshotRequestedAtMs": 150,
+      "frames": 59
+    },
+    {
+      "label": "Grab-vs-Grab",
+      "expected": {
+        "a": 1,
+        "b": 1,
+        "kind": 1,
+        "clips": [
+          "GrabReady",
+          "GrabReady"
+        ],
+        "reaction": [
+          null,
+          null
+        ],
+        "impact": 160
+      },
+      "initial": [
+        {
+          "x": 24,
+          "z": 27,
+          "hp": 26,
+          "stance": 1
+        },
+        {
+          "x": 25,
+          "z": 27,
+          "hp": 20,
+          "stance": 1
+        }
+      ],
+      "event": {
+        "tick": 10626,
+        "kind": 1,
+        "attackerStance": 1,
+        "defenderStance": 1,
+        "damage": 0
+      },
+      "sequences": [
+        [
+          {
+            "atMs": 0,
+            "clip": "GrabReady",
+            "cue": "14:action",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          },
+          {
+            "atMs": 500,
+            "clip": "GrabReady",
+            "cue": null,
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          }
+        ],
+        [
+          {
+            "atMs": 0,
+            "clip": "GrabReady",
+            "cue": "14:action",
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          },
+          {
+            "atMs": 500,
+            "clip": "GrabReady",
+            "cue": null,
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          }
+        ]
+      ],
+      "screenshot": "/Users/ajjoobandi/Development/personal/berigame/docs/art/game-review/combat-v4/Grab-vs-Grab-contact.png",
+      "screenshotRequestedAtMs": 150.10000000000036,
+      "frames": 59
+    },
+    {
+      "label": "Guard-vs-Strike",
+      "expected": {
+        "a": 2,
+        "b": 0,
+        "kind": 0,
+        "clips": [
+          "BlockCounter",
+          "Strike"
+        ],
+        "reaction": [
+          null,
+          "Stagger"
+        ],
+        "impact": 288
+      },
+      "initial": [
+        {
+          "x": 24,
+          "z": 27,
+          "hp": 26,
+          "stance": 2
+        },
+        {
+          "x": 25,
+          "z": 27,
+          "hp": 20,
+          "stance": 0
+        }
+      ],
+      "event": {
+        "tick": 10630,
+        "kind": 0,
+        "attackerStance": 2,
+        "defenderStance": 0,
+        "damage": 3
+      },
+      "sequences": [
+        [
+          {
+            "atMs": 0,
+            "clip": "BlockCounter",
+            "cue": "16:action",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          },
+          {
+            "atMs": 600,
+            "clip": "Guard",
+            "cue": null,
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          }
+        ],
+        [
+          {
+            "atMs": 0,
+            "clip": "Strike",
+            "cue": "16:action",
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          },
+          {
+            "atMs": 283.2999999999993,
+            "clip": "Stagger",
+            "cue": "16:reaction",
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          },
+          {
+            "atMs": 783.2000000000007,
+            "clip": "Idle",
+            "cue": null,
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          }
+        ]
+      ],
+      "screenshot": "/Users/ajjoobandi/Development/personal/berigame/docs/art/game-review/combat-v4/Guard-vs-Strike-contact.png",
+      "screenshotRequestedAtMs": 266.6000000000022,
+      "frames": 59
+    },
+    {
+      "label": "Guard-vs-Grab",
+      "expected": {
+        "a": 2,
+        "b": 1,
+        "kind": 2,
+        "clips": [
+          "Block",
+          "Grab"
+        ],
+        "reaction": [
+          "Grabbed",
+          null
+        ],
+        "impact": 224
+      },
+      "initial": [
+        {
+          "x": 24,
+          "z": 27,
+          "hp": 26,
+          "stance": 2
+        },
+        {
+          "x": 25,
+          "z": 27,
+          "hp": 17,
+          "stance": 1
+        }
+      ],
+      "event": {
+        "tick": 10634,
+        "kind": 2,
+        "attackerStance": 2,
+        "defenderStance": 1,
+        "damage": 2
+      },
+      "sequences": [
+        [
+          {
+            "atMs": 0,
+            "clip": "Block",
+            "cue": "18:action",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          },
+          {
+            "atMs": 216.70000000000073,
+            "clip": "Grabbed",
+            "cue": "18:reaction",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          },
+          {
+            "atMs": 716.7000000000007,
+            "clip": "Guard",
+            "cue": null,
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          }
+        ],
+        [
+          {
+            "atMs": 0,
+            "clip": "Grab",
+            "cue": "18:action",
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          },
+          {
+            "atMs": 700,
+            "clip": "GrabReady",
+            "cue": null,
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          }
+        ]
+      ],
+      "screenshot": "/Users/ajjoobandi/Development/personal/berigame/docs/art/game-review/combat-v4/Guard-vs-Grab-contact.png",
+      "screenshotRequestedAtMs": 200,
+      "frames": 59
+    },
+    {
+      "label": "Guard-vs-Guard",
+      "expected": {
+        "a": 2,
+        "b": 2,
+        "kind": 1,
+        "clips": [
+          "Block",
+          "Block"
+        ],
+        "reaction": [
+          null,
+          null
+        ],
+        "impact": 160
+      },
+      "initial": [
+        {
+          "x": 24,
+          "z": 27,
+          "hp": 24,
+          "stance": 2
+        },
+        {
+          "x": 25,
+          "z": 27,
+          "hp": 17,
+          "stance": 2
+        }
+      ],
+      "event": {
+        "tick": 10638,
+        "kind": 1,
+        "attackerStance": 2,
+        "defenderStance": 2,
+        "damage": 0
+      },
+      "sequences": [
+        [
+          {
+            "atMs": 0,
+            "clip": "Block",
+            "cue": "20:action",
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          },
+          {
+            "atMs": 500.09999999999854,
+            "clip": "Guard",
+            "cue": null,
+            "position": [
+              -1,
+              0,
+              2
+            ],
+            "yaw": 1.5707963267948961
+          }
+        ],
+        [
+          {
+            "atMs": 0,
+            "clip": "Block",
+            "cue": "20:action",
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          },
+          {
+            "atMs": 500.09999999999854,
+            "clip": "Guard",
+            "cue": null,
+            "position": [
+              0,
+              0,
+              2
+            ],
+            "yaw": -1.570796326794897
+          }
+        ]
+      ],
+      "screenshot": "/Users/ajjoobandi/Development/personal/berigame/docs/art/game-review/combat-v4/Guard-vs-Guard-contact.png",
+      "screenshotRequestedAtMs": 150.09999999999854,
+      "frames": 59
+    }
+  ],
+  "errors": [],
+  "failures": [],
+  "cleanup": {
+    "sdkConnectionsClosed": 2,
+    "browserContextClosed": true,
+    "fixtureOfflineVerifiedBySql": true,
+    "fixtureOfflineVerification": "After process exit0, a read-only local SELECT of online identities contained neither of the two fixture identities recorded in the RAF traces."
+  },
+  "sourceEnd": {
+    "frontend/public/models/starter-adventurer.glb": "475be7edfb2400797d5c515f1f7b8d73435ef988a99a8a96ff1e10f4a0a6d227",
+    "frontend/src/animation/combatPresentation.ts": "1d439edcadd4b759d09a20dff2f42b19a03bb912ca6b8cf178c8f729b69ad813",
+    "frontend/src/Components/3D/AdventurerModel.tsx": "d81338864d1e5eb23c2e8ab4b1913ea90b4b3b0935e2dd79576a4a8535d98b6e",
+    "frontend/src/hooks/useTileMotion.ts": "80c1e73f0691285ca1a82dad49ae815860f17f4dbde3017c03c6bee9cdd1594c",
+    "spacetimedb/src/reducers/tick.ts": "a428e77a1c2f5f09ec0e3c3f76d5218f8e1fdbdf8488c9259a3a190f1100d2f1",
+    "shared/sim/constants.ts": "26d11ae301f49ac66dc75108d52ff8fb2d30dd452fa57df120f7098369d8bf31"
+  },
+  "videos": [
+    "301fc8f0a34ad03b1209e8e14f33bbd7.webm"
+  ],
+  "assertionsPassed": 36,
+  "visualReview": {
+    "diagonalGrabContact": "Viewed the contact screenshot: the two actors face each other and extended hands/upper bodies visually overlap; no obvious air gap in this camera. This does not prove hand attachment at every angle/frame.",
+    "screenshotTiming": "Screenshot was requested 200ms after the first RAF observing both cues; capture itself occurs after that request, so this is a near-contact still, not a certified exact224ms frame."
+  }
+}

@@ -14,6 +14,8 @@ export const SPAWN_TILE = { x: 25, z: 25 } as const;
 // ---- Time -------------------------------------------------------------------
 /** Authoritative server tick length. RuneScape uses 600ms; so do we. */
 export const TICK_MS = 600;
+/** Grounded grid steps per tick; combat and harvesting keep the 600ms clock. */
+export const MOVEMENT_STEPS_PER_TICK = 2;
 
 // ---- Vitals -----------------------------------------------------------------
 export const MAX_HP = 30;

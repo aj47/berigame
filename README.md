@@ -7,14 +7,15 @@ A multiplayer 3D web game built with React Three Fiber on top of a SpacetimeDB g
 BeriGame is a real-time multiplayer game built around an authoritative
 600ms server tick (RuneScape cadence):
 
-- Tile-based click-to-move on a 50x50 island; the server paths one tile per tick and clients interpolate one tick behind.
+- Tile-based click-to-move on a 50x50 island; the server paths up to two collision-checked tiles per tick, with clients interpolating along the confirmed route.
 - Rock-paper-scissors melee in the Smash Bros mould: **Strike > Grab > Guard > Strike**. Your stance is visible above your head and switchable any time with keys 1/2/3; the stance you hold when a swing resolves is what counts.
 - Fighting-game states: winning an exchange puts you in **Advantage** and your opponent in **Disadvantage**. Advantage hits do 6 and knock the target back a tile, neutral hits do 4, escape hits do 3, and a countered swing costs the attacker 2. States decay to Neutral after 8 ticks without an exchange.
 - Exchanges alternate like a tennis rally: each attacker swings every 4 ticks, and a retaliating player's swings are offset by 2 ticks.
 - Berries heal (blueberry 5, strawberry 3, greenberry 2, goldberry 10). Eating has a 3-tick cooldown and delays your next swing by 3 ticks.
 - Harvesting a tree takes 5 ticks, one player at a time, and the tree regrows for 50 ticks. Moving, taking damage or dying interrupts it.
 - Death drops your inventory on the ground and respawns you at the island centre after 5 ticks.
-- Anonymous but stable identity: a token in localStorage keeps your HP and inventory across refreshes.
+- Character style: three hair meshes and skin, hair, robe and wrap palettes. Preview changes locally, then save to share them with other players. All variants use the same body, collision size, stats and animations.
+- Anonymous but stable identity: a token scoped to the server/world in localStorage keeps your character and inventory across refreshes. Sign-in recovery preserves a local backup before explicitly creating a new character.
 
 All tunable numbers live in `shared/sim/constants.ts`.
 
@@ -47,7 +48,6 @@ backend/           Legacy AWS Lambda / DynamoDB backend. No longer used by the g
 ### Run locally
 
 ```bash
-git checkout claude/elegant-babbage-l1je9i
 npm run play
 ```
 
@@ -72,7 +72,7 @@ npm run dev                                        # http://localhost:5173
 
 </details>
 
-The client connects to `ws://localhost:3000` and database `berigame` by default.
+The client connects to port 3000 on the page hostname (`ws`, or `wss` for an HTTPS page) and database `berigame` by default.
 Override with `VITE_SPACETIME_URI` and `VITE_SPACETIME_DB` (for example a
 Maincloud deployment: `VITE_SPACETIME_URI=wss://maincloud.spacetimedb.com`).
 
@@ -90,7 +90,7 @@ cd frontend && npm run smoke       # drives two SDK clients through every reduce
 
 `frontend/scripts/browser-check.mjs` runs a two-browser Playwright pass
 against the Vite dev server (movement, stances, combat, harvest, eat, chat,
-refresh persistence).
+refresh persistence and death/respawn). `mobile-check.mjs` covers touch interactions, `cross-browser-check.mjs` covers installed WebKit/Firefox engines, and `render-check.ts` records rendering/resource measurements. See [graphics progress and verification](docs/PLAYABLE_GRAPHICS_PROGRESS.md) for local-runtime details and qualification limits.
 
 ## Deployment
 

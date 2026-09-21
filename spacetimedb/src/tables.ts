@@ -145,3 +145,16 @@ export const combatEvent = table(
     defenderHp: t.u8(),
   }
 );
+
+/** Cosmetic-only data. Absent rows render the default starter appearance. */
+export const appearance = table(
+  { name: 'appearance', public: true },
+  {
+    identity: t.identity().primaryKey(),
+    hairStyle: t.u8(),
+    skinTone: t.u8(),
+    hairColor: t.u8(),
+    robeColor: t.u8(),
+    wrapColor: t.u8(),
+  }
+);

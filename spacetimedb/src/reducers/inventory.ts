@@ -6,7 +6,7 @@ import {
 } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
 import { emitEvent } from '../lib/events';
-import { dropOnGround, giveItem, readSlots, writeSlots } from '../lib/inventory';
+import { dropOnGround, readSlots, takeGroundItem, writeSlots } from '../lib/inventory';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
 
 export const eatBerry = spacetimedb.reducer(
@@ -27,9 +27,9 @@ export const eatBerry = spacetimedb.reducer(
     const before = p.hp;
     p.hp = Math.min(p.maxHp, p.hp + def.healthRestore);
     p.eatCooldownUntilTick = T + EAT_COOLDOWN_TICKS;
-    if (p.combatTarget && p.hostile) {
-      p.nextSwingTick = Math.max(p.nextSwingTick, T) + EAT_SWING_DELAY_TICKS;
-    }
+    // Eating occupies the hands even if the player cancels combat first.
+    // Otherwise cancel -> eat -> attack would avoid the recovery penalty.
+    p.nextSwingTick = Math.max(p.nextSwingTick, T) + EAT_SWING_DELAY_TICKS;
     emitEvent(ctx, { tick: T, kind: EventKind.Eat, attacker: p.identity, defender: p.identity, damage: p.hp - before, defenderHp: p.hp });
     savePlayer(ctx, p);
   }
@@ -75,9 +75,7 @@ export const pickupItem = spacetimedb.reducer(
     touchInput(p, T);
     clearInteractions(ctx, p);
     if (chebyshev(p, item) <= MELEE_RANGE) {
-      const taken = giveItem(ctx, p.identity, item.itemId, item.quantity, p, T);
-      if (taken >= item.quantity) ctx.db.groundItem.id.delete(item.id);
-      else if (taken > 0) ctx.db.groundItem.id.update({ ...item, quantity: item.quantity - taken });
+      takeGroundItem(ctx, p.identity, item);
     } else {
       p.pending = Pending.Pickup;
       p.pendingId = item.id;

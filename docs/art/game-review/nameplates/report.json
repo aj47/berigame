@@ -1,0 +1,144 @@
+{
+  "version": "153.0.8010.48",
+  "checks": [
+    {
+      "name": "shared spawn preserves You and hides overlapping ambient names",
+      "pass": true,
+      "detail": [
+        {
+          "id": "c2000e6a424721014dbb82907f3cd16bec1928778de37daefa9406c4ebff165f",
+          "text": "Player-0e6a",
+          "visibility": "hidden",
+          "rect": {
+            "x": 159.2734375,
+            "y": 278.4634094238281,
+            "width": 71.453125,
+            "height": 16,
+            "top": 278.4634094238281,
+            "right": 230.7265625,
+            "bottom": 294.4634094238281,
+            "left": 159.2734375
+          }
+        },
+        {
+          "id": "c2004cc10ce21158caa4e5a80137dae561ca7166c0b95db1a369951d52e9e839",
+          "text": "You",
+          "visibility": "visible",
+          "rect": {
+            "x": 180.7109375,
+            "y": 278.4634094238281,
+            "width": 28.578125,
+            "height": 16,
+            "top": 278.4634094238281,
+            "right": 209.2890625,
+            "bottom": 294.4634094238281,
+            "left": 180.7109375
+          }
+        },
+        {
+          "id": "c20035d831643be5c2041c5a2a91fa7f8a84740cdc9aa50cabf1df7e2922e04c",
+          "text": "Player-35d8",
+          "visibility": "hidden",
+          "rect": {
+            "x": 158.6953125,
+            "y": 278.4634094238281,
+            "width": 72.609375,
+            "height": 16,
+            "top": 278.4634094238281,
+            "right": 231.3046875,
+            "bottom": 294.4634094238281,
+            "left": 158.6953125
+          }
+        },
+        {
+          "id": "c200ecfe254aeb6481d6f9cce370d782f36ed6b90126dd644860c87cf663741b",
+          "text": "Player-ecfe",
+          "visibility": "hidden",
+          "rect": {
+            "x": 161.0546875,
+            "y": 278.4634094238281,
+            "width": 67.890625,
+            "height": 16,
+            "top": 278.4634094238281,
+            "right": 228.9453125,
+            "bottom": 294.4634094238281,
+            "left": 161.0546875
+          }
+        }
+      ]
+    },
+    {
+      "name": "target label wins ambient collision",
+      "pass": true,
+      "detail": [
+        {
+          "id": "c2000e6a424721014dbb82907f3cd16bec1928778de37daefa9406c4ebff165f",
+          "text": "Player-0e6a · Target",
+          "visibility": "visible",
+          "rect": {
+            "x": 186.68606567382812,
+            "y": 235.59408569335938,
+            "width": 112.703125,
+            "height": 16,
+            "top": 235.59408569335938,
+            "right": 299.3891906738281,
+            "bottom": 251.59408569335938,
+            "left": 186.68606567382812
+          }
+        },
+        {
+          "id": "c2004cc10ce21158caa4e5a80137dae561ca7166c0b95db1a369951d52e9e839",
+          "text": "You",
+          "visibility": "visible",
+          "rect": {
+            "x": 170.80699157714844,
+            "y": 287.302734375,
+            "width": 28.578125,
+            "height": 16,
+            "top": 287.302734375,
+            "right": 199.38511657714844,
+            "bottom": 303.302734375,
+            "left": 170.80699157714844
+          }
+        },
+        {
+          "id": "c20035d831643be5c2041c5a2a91fa7f8a84740cdc9aa50cabf1df7e2922e04c",
+          "text": "Player-35d8",
+          "visibility": "hidden",
+          "rect": {
+            "x": 206.73294067382812,
+            "y": 235.59408569335938,
+            "width": 72.609375,
+            "height": 16,
+            "top": 235.59408569335938,
+            "right": 279.3423156738281,
+            "bottom": 251.59408569335938,
+            "left": 206.73294067382812
+          }
+        },
+        {
+          "id": "c200ecfe254aeb6481d6f9cce370d782f36ed6b90126dd644860c87cf663741b",
+          "text": "Player-ecfe",
+          "visibility": "hidden",
+          "rect": {
+            "x": 209.09231567382812,
+            "y": 235.59408569335938,
+            "width": 67.890625,
+            "height": 16,
+            "top": 235.59408569335938,
+            "right": 276.9829406738281,
+            "bottom": 251.59408569335938,
+            "left": 209.09231567382812
+          }
+        }
+      ]
+    },
+    {
+      "name": "no page errors",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "errors": [],
+  "status": "passed"
+}

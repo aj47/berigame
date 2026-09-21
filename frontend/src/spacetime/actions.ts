@@ -1,8 +1,10 @@
+import type { Appearance } from '@sim';
 import { useCallback } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import type { Identity } from 'spacetimedb';
 import type { DbConnection } from '../module_bindings';
 import { useToastStore } from './stores/toastStore';
+import { useLoadingStore } from '../store';
 
 /**
  * Typed wrappers around the module's reducers. Every rejected call surfaces
@@ -14,17 +16,24 @@ export function useGameActions() {
 
   const run = useCallback(
     async (label: string, fn: (conn: DbConnection) => Promise<unknown>) => {
+      const loading = useLoadingStore.getState();
+      if (!navigator.onLine || loading.worldUpdatesStalled || !loading.websocketConnected || !loading.gameDataLoaded) {
+        show('Waiting for live world updates');
+        return false;
+      }
       const conn = getConnection();
       if (!conn) {
         show('Not connected');
-        return;
+        return false;
       }
       try {
         await fn(conn);
+        return true;
       } catch (e: any) {
         const msg = String(e?.message ?? e ?? 'rejected');
         console.warn(`${label} rejected:`, msg);
         show(msg);
+        return false;
       }
     },
     [getConnection, show]
@@ -42,6 +51,7 @@ export function useGameActions() {
     dropItem: (slot: number, quantity: number) => run('dropItem', (c) => c.reducers.dropItem({ slot, quantity })),
     pickupItem: (id: bigint) => run('pickupItem', (c) => c.reducers.pickupItem({ id })),
     sendChat: (text: string) => run('sendChat', (c) => c.reducers.sendChat({ text })),
+    setAppearance: (appearance: Appearance) => run('setAppearance', (c) => c.reducers.setAppearance(appearance)),
     setName: (name: string) => run('setName', (c) => c.reducers.setName({ name })),
   };
 }

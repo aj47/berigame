@@ -1,0 +1,13 @@
+{
+  "version": "153.0.8010.48",
+  "samples": 407,
+  "movingClips": {
+    "Run": 102,
+    "RunGrab": 108,
+    "RunGuard": 128
+  },
+  "idleWhileMoving": [],
+  "backwardsFacingFrames": 0,
+  "stopClip": "Guard",
+  "errors": []
+}

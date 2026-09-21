@@ -1,0 +1,87 @@
+{
+  "hair_id": "topknot",
+  "blender": "5.2.1 LTS",
+  "triangles": 2088,
+  "mesh_vertices": 1418,
+  "materials": 1,
+  "mesh_objects": 1,
+  "bones": 26,
+  "atlas": [
+    64,
+    64
+  ],
+  "max_vertex_influences": 2,
+  "clips": {
+    "Idle": {
+      "seconds": 2.0,
+      "loop": true
+    },
+    "Run": {
+      "seconds": 0.6666666666666666,
+      "loop": true
+    },
+    "RunGrab": {
+      "seconds": 0.6666666666666666,
+      "loop": true
+    },
+    "RunGuard": {
+      "seconds": 0.6666666666666666,
+      "loop": true
+    },
+    "Walk": {
+      "seconds": 0.9333333333333333,
+      "loop": true
+    },
+    "Stop": {
+      "seconds": 0.5,
+      "loop": false
+    },
+    "Turn": {
+      "seconds": 0.6,
+      "loop": false
+    },
+    "Strike": {
+      "seconds": 0.5,
+      "loop": false
+    },
+    "Grab": {
+      "seconds": 0.7,
+      "loop": false
+    },
+    "GrabReady": {
+      "seconds": 2.0,
+      "loop": true
+    },
+    "Guard": {
+      "seconds": 2.0,
+      "loop": true
+    },
+    "Block": {
+      "seconds": 0.4,
+      "loop": false
+    },
+    "BlockCounter": {
+      "seconds": 0.6,
+      "loop": false
+    },
+    "Grabbed": {
+      "seconds": 0.5,
+      "loop": false
+    },
+    "Hit": {
+      "seconds": 0.4,
+      "loop": false
+    },
+    "Stagger": {
+      "seconds": 0.5,
+      "loop": false
+    },
+    "Defeat": {
+      "seconds": 1.2,
+      "loop": false
+    }
+  },
+  "glb_bytes": 536988,
+  "orientation": "Blender -Y forward, Z up; glTF +Z forward, Y up",
+  "status": "Asset build only; integration and device qualification tracked in docs/PLAYABLE_GRAPHICS_PROGRESS.md"
+}

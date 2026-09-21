@@ -1,0 +1,43 @@
+{
+  "version": "153.0.8010.48",
+  "checks": [
+    {
+      "name": "failed optional hair shows starter model and explanatory toast",
+      "pass": true
+    },
+    {
+      "name": "Cancel clears preview and stance controls remain playable",
+      "pass": true
+    },
+    {
+      "name": "required model failure shows recoverable graphics message",
+      "pass": true
+    },
+    {
+      "name": "Rejoin succeeds after model network failure resolves",
+      "pass": true
+    },
+    {
+      "name": "no unexpected page/request failures",
+      "pass": true
+    }
+  ],
+  "expectedErrors": [
+    "http://127.0.0.1:5173/models/starter-adventurer-cropped.glb:net::ERR_FAILED",
+    "Could not load /models/starter-adventurer-cropped.glb: Failed to fetch)",
+    "Could not load /models/starter-adventurer-cropped.glb: Failed to fetch)",
+    "http://127.0.0.1:5173/models/starter-adventurer.glb:net::ERR_FAILED",
+    "Could not load /models/starter-adventurer.glb: Failed to fetch)",
+    "Could not load /models/starter-adventurer.glb: Failed to fetch)",
+    "Could not load /models/starter-adventurer.glb: Failed to fetch)",
+    "Could not load /models/starter-adventurer.glb: Failed to fetch)",
+    "Could not load /models/starter-adventurer.glb: Failed to fetch)",
+    "Could not load /models/starter-adventurer.glb: Failed to fetch)",
+    "Could not load /models/starter-adventurer.glb: Failed to fetch)",
+    "Could not load /models/starter-adventurer.glb: Failed to fetch)",
+    "Could not load /models/starter-adventurer.glb: Failed to fetch)",
+    "Could not load /models/starter-adventurer.glb: Failed to fetch)"
+  ],
+  "unexpectedErrors": [],
+  "status": "passed"
+}

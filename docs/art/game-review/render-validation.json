@@ -1,0 +1,341 @@
+{
+  "createdAt": "2026-09-21T02:34:42.519Z",
+  "url": "http://127.0.0.1:5173/",
+  "database": "berigame-graphics-review",
+  "host": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "cpu": "Apple M1 Pro"
+  },
+  "qualification": "Local development build, headless desktop Chrome. Phone profile emulates viewport, touch, and device pixel ratio on the same computer; it is not physical-phone performance evidence. Frame data includes browser and machine scheduling noise.",
+  "sourceSha256": "380bde5fe8b601cf8ce80463bbd39ddae478e2cedf08ea22e2608ac4e1b65395",
+  "modelSha256": "895d259eadd7ed2cae96c7201b8887e4a31007c0eb30acc9c174fbdde1366985",
+  "targetOnlinePlayers": 32,
+  "samples": [
+    {
+      "label": "desktop baseline",
+      "onlinePlayers": 1,
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "devicePixelRatio": 1
+      },
+      "frames": {
+        "count": 361,
+        "averageMs": 16.67,
+        "estimatedFps": 60,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0
+      },
+      "renderer": {
+        "calls": {
+          "min": 56,
+          "max": 56
+        },
+        "triangles": {
+          "min": 6000,
+          "max": 6000
+        },
+        "geometries": {
+          "min": 60,
+          "max": 60
+        },
+        "textures": {
+          "min": 2,
+          "max": 2
+        },
+        "pixelRatio": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)"
+    },
+    {
+      "label": "desktop crowd idle",
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "devicePixelRatio": 1
+      },
+      "frames": {
+        "count": 360,
+        "averageMs": 16.67,
+        "estimatedFps": 60,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0
+      },
+      "renderer": {
+        "calls": {
+          "min": 149,
+          "max": 149
+        },
+        "triangles": {
+          "min": 69054,
+          "max": 69054
+        },
+        "geometries": {
+          "min": 122,
+          "max": 122
+        },
+        "textures": {
+          "min": 33,
+          "max": 33
+        },
+        "pixelRatio": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)"
+    },
+    {
+      "label": "desktop crowd moving",
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "devicePixelRatio": 1
+      },
+      "frames": {
+        "count": 354,
+        "averageMs": 16.95,
+        "estimatedFps": 59,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 33.3,
+        "maxMs": 50,
+        "over33ms": 1
+      },
+      "renderer": {
+        "calls": {
+          "min": 149,
+          "max": 149
+        },
+        "triangles": {
+          "min": 69054,
+          "max": 69054
+        },
+        "geometries": {
+          "min": 122,
+          "max": 122
+        },
+        "textures": {
+          "min": 33,
+          "max": 33
+        },
+        "pixelRatio": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)"
+    },
+    {
+      "label": "390px phone emulation crowd idle",
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "devicePixelRatio": 3
+      },
+      "frames": {
+        "count": 360,
+        "averageMs": 16.67,
+        "estimatedFps": 60,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0
+      },
+      "renderer": {
+        "calls": {
+          "min": 131,
+          "max": 131
+        },
+        "triangles": {
+          "min": 68696,
+          "max": 68696
+        },
+        "geometries": {
+          "min": 100,
+          "max": 100
+        },
+        "textures": {
+          "min": 33,
+          "max": 33
+        },
+        "pixelRatio": {
+          "min": 1.5,
+          "max": 1.5
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)"
+    },
+    {
+      "label": "390px phone emulation crowd moving",
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "devicePixelRatio": 3
+      },
+      "frames": {
+        "count": 351,
+        "averageMs": 17.09,
+        "estimatedFps": 58.5,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 33.4,
+        "maxMs": 49.9,
+        "over33ms": 2
+      },
+      "renderer": {
+        "calls": {
+          "min": 131,
+          "max": 131
+        },
+        "triangles": {
+          "min": 68696,
+          "max": 68696
+        },
+        "geometries": {
+          "min": 100,
+          "max": 100
+        },
+        "textures": {
+          "min": 33,
+          "max": 33
+        },
+        "pixelRatio": {
+          "min": 1.5,
+          "max": 1.5
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)"
+    },
+    {
+      "label": "390px phone emulation after crowd disconnected",
+      "onlinePlayers": 1,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "devicePixelRatio": 3
+      },
+      "frames": {
+        "count": 360,
+        "averageMs": 16.67,
+        "estimatedFps": 60,
+        "p50Ms": 16.7,
+        "p95Ms": 16.7,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0
+      },
+      "renderer": {
+        "calls": {
+          "min": 38,
+          "max": 38
+        },
+        "triangles": {
+          "min": 5642,
+          "max": 5642
+        },
+        "geometries": {
+          "min": 38,
+          "max": 38
+        },
+        "textures": {
+          "min": 2,
+          "max": 2
+        },
+        "pixelRatio": {
+          "min": 1.5,
+          "max": 1.5
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)"
+    }
+  ],
+  "movementClicks": {
+    "count": 24,
+    "initialTile": {
+      "x": 25,
+      "z": 31
+    },
+    "finalTile": {
+      "x": 26,
+      "z": 31
+    },
+    "before": {
+      "calls": 159,
+      "triangles": 69248,
+      "geometries": 129,
+      "textures": 33,
+      "pixelRatio": 1,
+      "camera": [
+        7.0652479232710235,
+        9.971813625143414,
+        19.229790987371352
+      ]
+    },
+    "after": {
+      "calls": 159,
+      "triangles": 69248,
+      "geometries": 129,
+      "textures": 33,
+      "pixelRatio": 1,
+      "camera": [
+        8.055395187647958,
+        9.971813625143414,
+        19.229791003733858
+      ]
+    },
+    "geometryCounts": [
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129,
+      129
+    ]
+  },
+  "cleanup": {
+    "sdkFixturesOffline": true,
+    "fixtureCount": 31,
+    "disconnectCalledForAllFixtures": true,
+    "browserClosed": true
+  },
+  "browserVersion": "153.0.8010.48",
+  "fixtureCount": 31,
+  "finishedAt": "2026-09-21T02:35:41.632Z",
+  "finalSourceSha256": "380bde5fe8b601cf8ce80463bbd39ddae478e2cedf08ea22e2608ac4e1b65395",
+  "errors": [],
+  "failures": []
+}

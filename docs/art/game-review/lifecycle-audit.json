@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-09-21T02:45:53.625Z",
+  "findings": [
+    {
+      "name": "Enter on focused Strike button",
+      "stance": 2,
+      "chatOpened": true,
+      "expected": "stance 0, no chat panel"
+    },
+    {
+      "name": "invalid persisted token survives Rejoin and prevents play",
+      "before": {
+        "connected": false,
+        "tokenStillInvalid": true
+      },
+      "after": {
+        "connected": false,
+        "tokenStillInvalid": true
+      },
+      "errorCount": 12,
+      "visibleMessage": "Cannot reach the game server. Rejoin to try again."
+    }
+  ],
+  "checks": [
+    {
+      "name": "same-origin second tab preserves identity",
+      "pass": true
+    },
+    {
+      "name": "closing second tab keeps first tab connected and actionable",
+      "pass": true
+    },
+    {
+      "name": "socket loss shows reconnect overlay",
+      "pass": true
+    },
+    {
+      "name": "Rejoin after socket loss preserves identity",
+      "pass": true
+    },
+    {
+      "name": "typing shortcuts in chat does not change stance",
+      "pass": true
+    }
+  ]
+}

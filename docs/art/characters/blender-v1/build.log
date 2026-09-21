@@ -1,0 +1,23 @@
+/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v1/build_character.py:160: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat=bpy.data.materials.new('Beri_OneAtlas');mat.use_nodes=True
+INFO Draco is available, use library at /Applications/Blender.app/Contents/Resources/5.2/scripts/addons_core/io_scene_gltf2/libbf_intern_draco_bridge.dylib
+INFO MeshOptimizer is available, use library at /Applications/Blender.app/Contents/Resources/5.2/scripts/addons_core/io_scene_gltf2/libbf_intern_meshopt_bridge.dylib
+18:46:39 | INFO: Starting glTF 2.0 export
+18:46:39 | INFO: Extracting primitive: StarterAdventurerMesh
+18:46:39 | INFO: Primitives created: 1
+18:46:40 | INFO: Finished glTF 2.0 export in 0.564298152923584 s
+/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v1/build_character.py:261: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world=bpy.data.worlds.new('WarmStudio');world.use_nodes=True;scene.world=world
+/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v1/build_character.py:267: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  gm=bpy.data.materials.new('StudioSand');gm.diffuse_color=(.68,.63,.52,1);gm.use_nodes=True;gs=next(n for n in gm.node_tree.nodes if n.type=='BSDF_PRINCIPLED');gs.inputs['Base Color'].default_value=(.68,.63,.52,1);gs.inputs['Roughness'].default_value=1;ground.data.materials.append(gm)
+00:04.863  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v1/idle-preview.png'
+00:07.861  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v1/strike-preview.png'
+00:10.840  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v1/grab-preview.png'
+00:13.783  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v1/guard-preview.png'
+
+ASSET_METRICS {"blender": "5.2.1 LTS", "triangles": 2102, "mesh_vertices": 1184, "materials": 1, "mesh_objects": 1, "bones": 24, "atlas": [64, 64], "max_vertex_influences": 2, "clips": {"Idle": {"seconds": 2.0, "loop": true}, "Run": {"seconds": 0.8, "loop": true}, "Walk": {"seconds": 1.2, "loop": true}, "Stop": {"seconds": 0.5, "loop": false}, "Turn": {"seconds": 0.6, "loop": false}, "Strike": {"seconds": 0.9, "loop": false}, "Grab": {"seconds": 0.9, "loop": false}, "Guard": {"seconds": 1.0, "loop": true}, "Hit": {"seconds": 0.5, "loop": false}, "Stagger": {"seconds": 0.8, "loop": false}, "Defeat": {"seconds": 1.2, "loop": false}}, "glb_bytes": 436300, "orientation": "Blender -Y forward, Z up; glTF +Z forward, Y up", "status": "Prototype asset; not integrated or smartphone benchmarked"}
+Info: Saved as "starter-adventurer-v1.blend"
+BUILD_COMPLETE /Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v1
+Blender 5.2.1 LTS (hash 9e2066aef7ef built 2026-08-25 01:35:57)
+
+Blender quit

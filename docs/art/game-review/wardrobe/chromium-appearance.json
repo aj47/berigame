@@ -1,0 +1,163 @@
+{
+  "engine": "chromium",
+  "version": "153.0.8010.48",
+  "checks": [
+    {
+      "label": "unsaved preview affects only the local actor",
+      "pass": true,
+      "detail": {
+        "identity": "c200fd9dd200f371de01980a0d3332004205134a850c3d886dfe7986d94b4b63",
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "modelUrl": "/models/starter-adventurer.glb"
+      }
+    },
+    {
+      "label": "Cancel restores the saved hair and robe choices",
+      "pass": true
+    },
+    {
+      "label": "portrait actor is above the wardrobe sheet",
+      "pass": true,
+      "detail": {
+        "feet": {
+          "x": 195,
+          "y": 287.64094057906976
+        },
+        "head": {
+          "x": 195,
+          "y": 165.610457647723
+        },
+        "panelTop": 351.28125,
+        "hudTop": 685.953125,
+        "buttons": [
+          {
+            "label": "Cancel",
+            "x": 26,
+            "y": 601,
+            "width": 132,
+            "height": 44,
+            "top": 601,
+            "right": 158,
+            "bottom": 645,
+            "left": 26
+          },
+          {
+            "label": "Save style",
+            "x": 166,
+            "y": 601,
+            "width": 198,
+            "height": 44,
+            "top": 601,
+            "right": 364,
+            "bottom": 645,
+            "left": 166
+          }
+        ]
+      }
+    },
+    {
+      "label": "portrait Save and Cancel stay above the combat HUD",
+      "pass": true,
+      "detail": {
+        "feet": {
+          "x": 195,
+          "y": 287.64094057906976
+        },
+        "head": {
+          "x": 195,
+          "y": 165.610457647723
+        },
+        "panelTop": 351.28125,
+        "hudTop": 685.953125,
+        "buttons": [
+          {
+            "label": "Cancel",
+            "x": 26,
+            "y": 601,
+            "width": 132,
+            "height": 44,
+            "top": 601,
+            "right": 158,
+            "bottom": 645,
+            "left": 26
+          },
+          {
+            "label": "Save style",
+            "x": 166,
+            "y": 601,
+            "width": 198,
+            "height": 44,
+            "top": 601,
+            "right": 364,
+            "bottom": 645,
+            "left": 166
+          }
+        ]
+      }
+    },
+    {
+      "label": "saved full appearance reaches another client renderer",
+      "pass": true,
+      "detail": {
+        "identity": "c200fd9dd200f371de01980a0d3332004205134a850c3d886dfe7986d94b4b63",
+        "appearance": {
+          "hairStyle": 2,
+          "skinTone": 4,
+          "hairColor": 3,
+          "robeColor": 3,
+          "wrapColor": 2
+        },
+        "modelUrl": "/models/starter-adventurer-topknot.glb"
+      }
+    },
+    {
+      "label": "saved Topknot persists after reload",
+      "pass": true
+    },
+    {
+      "label": "saved Skin tone: Brown persists after reload",
+      "pass": true
+    },
+    {
+      "label": "saved Hair color: Silver persists after reload",
+      "pass": true
+    },
+    {
+      "label": "saved Robe: Plum persists after reload",
+      "pass": true
+    },
+    {
+      "label": "saved Wraps: Slate persists after reload",
+      "pass": true
+    },
+    {
+      "label": "360px toolbar clears brand and full actor clears sheet",
+      "pass": true,
+      "detail": {
+        "headerRight": 99.640625,
+        "toolbarLeft": 149.453125,
+        "feet": {
+          "x": 179.98501885633627,
+          "y": 252.28204304080057
+        },
+        "panelTop": 286.8125
+      }
+    },
+    {
+      "label": "landscape wardrobe actions fit",
+      "pass": true
+    },
+    {
+      "label": "no page errors",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "status": "passed"
+}

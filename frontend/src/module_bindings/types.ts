@@ -10,6 +10,16 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const Appearance = __t.object("Appearance", {
+  identity: __t.identity(),
+  hairStyle: __t.u8(),
+  skinTone: __t.u8(),
+  hairColor: __t.u8(),
+  robeColor: __t.u8(),
+  wrapColor: __t.u8(),
+});
+export type Appearance = __Infer<typeof Appearance>;
+
 export const ChatMessage = __t.object("ChatMessage", {
   id: __t.u64(),
   sender: __t.identity(),

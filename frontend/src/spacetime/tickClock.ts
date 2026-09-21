@@ -1,4 +1,5 @@
 import { TICK_MS } from '@sim';
+import { observeWorldDelivery } from './worldLivenessMonitor';
 
 /**
  * Client-side view of the server tick, fed by updates to the `world` row.
@@ -12,6 +13,7 @@ export const tickClock = {
 };
 
 export function onWorldTick(tick: number): void {
+  observeWorldDelivery(tick);
   const now = performance.now();
   if (tickClock.arrivedAt > 0 && tick > tickClock.tick) {
     const observed = (now - tickClock.arrivedAt) / (tick - tickClock.tick);

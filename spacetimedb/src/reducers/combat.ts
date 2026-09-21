@@ -10,6 +10,7 @@ export const setStance = spacetimedb.reducer(
     if (stance > 2) throw new SenderError('unknown stance');
     const p = requireAlivePlayer(ctx);
     if (p.stance === stance) return;
+    touchInput(p, currentTick(ctx));
     p.stance = stance;
     savePlayer(ctx, p);
   }
@@ -25,12 +26,22 @@ export const attack = spacetimedb.reducer(
     if (!tgt || !tgt.online || tgt.state !== PlayerState.Alive) throw new SenderError('target unavailable');
     const T = currentTick(ctx);
     touchInput(p, T);
+    // Re-selecting the current opponent must not reset or postpone the rally.
+    if (p.hostile && sameId(p.combatTarget, target)) {
+      savePlayer(ctx, p);
+      return;
+    }
+    const readyAt = p.nextSwingTick;
     clearInteractions(ctx, p);
     p.combatTarget = target;
     p.hostile = true;
     p.outOfRangeTicks = 0;
-    // If they are already swinging at us, slot our swings between theirs (the rally).
-    if (tgt.hostile && tgt.combatTarget && sameId(tgt.combatTarget, p.identity)) {
+    // Cooldowns belong to the attacker, not the target. Preserve a swing or
+    // eating delay across cancel, movement, following, and target changes.
+    if (readyAt > T) {
+      p.nextSwingTick = readyAt;
+    } else if (tgt.hostile && tgt.combatTarget && sameId(tgt.combatTarget, p.identity)) {
+      // A fresh retaliator starts between the opponent's swings (the rally).
       p.nextSwingTick = retaliationSwingTick(T, tgt.nextSwingTick);
     } else {
       p.nextSwingTick = T + 1;

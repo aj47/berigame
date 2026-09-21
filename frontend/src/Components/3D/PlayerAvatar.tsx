@@ -1,24 +1,30 @@
-import { useAnimations, useGLTF } from '@react-three/drei';
-import { useFrame, useGraph } from '@react-three/fiber';
-import React, { Suspense, useEffect, useMemo, useRef } from 'react';
-import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
-import { BoxGeometry, MeshBasicMaterial } from 'three';
-import { CHAT_BUBBLE_TICKS, PlayerState } from '@sim';
+import { Html } from '@react-three/drei';
+import React, { Suspense, useEffect, useRef } from 'react';
+import { CHAT_BUBBLE_TICKS, DEFAULT_APPEARANCE, PlayerState } from '@sim';
 import type { Player } from '../../module_bindings/types';
 import { useTileMotion } from '../../hooks/useTileMotion';
 import { useCombatFxStore } from '../../spacetime/stores/combatFxStore';
 import { useGameActions } from '../../spacetime/actions';
-import { useLoadingStore, useUserInputStore } from '../../store';
+import { useAppearanceRows, useMyPlayer } from '../../spacetime/hooks';
+import { useUserInputStore } from '../../store';
 import ChatBubble from './ChatBubble';
+import { useNameplateVisibility } from './useNameplateVisibility';
 import DamageNumber from './DamageNumber';
 import HealthBar from './HealthBar';
 import StanceBadge from './StanceBadge';
 
-const ATTACK_ANIM_MS = 900;
-const MODEL_URL = 'native-woman.glb';
+import AdventurerModel, { BASE_MODEL_URL, modelUrl } from './AdventurerModel';
+import { useAppearancePreview } from '../../appearance/store';
+import { useToastStore } from '../../spacetime/stores/toastStore';
+import type { AnimationCue } from '../../animation/combatPresentation';
+import { identityHex } from '../../spacetime/identity';
 
-type Clip = 'Idle' | 'Walk' | 'RightHook' | null;
-
+class HairBoundary extends React.Component<{ children:React.ReactNode; fallback:React.ReactNode }, { failed:boolean }> {
+  state={failed:false};
+  static getDerivedStateFromError(){return {failed:true};}
+  componentDidCatch(){useToastStore.getState().show('That hairstyle could not load. Showing the starter style.');}
+  render(){return this.state.failed?this.props.fallback:this.props.children;}
+}
 interface Props {
   row: Player;
   isSelf: boolean;
@@ -28,91 +34,60 @@ interface Props {
   setPlayerRef?: (ref: React.MutableRefObject<any>) => void;
 }
 
-/** One component for every player, including yourself. */
+/** One shared rig and mechanically identical silhouette for every adventurer. */
 const PlayerAvatar = ({ row, isSelf, chatText, chatTick, currentTick, setPlayerRef }: Props) => {
   const groupRef = useRef<any>(null);
-  const { scene, animations, materials } = useGLTF(MODEL_URL) as any;
-  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
-  const { nodes } = useGraph(clone);
-  const model = nodes.Scene ?? clone;
-  const { actions } = useAnimations(animations, model);
-  const addLoadedAsset = useLoadingStore((s) => s.addLoadedAsset);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const actionsApi = useGameActions();
-
-  const hex = row.identity.toHexString();
+  const me = useMyPlayer();
+  const hex = identityHex(row.identity);
+  const saved = useAppearanceRows().find((value) => value.identity.__identity__ === row.identity.__identity__) ?? DEFAULT_APPEARANCE;
+  const preview = useAppearancePreview((value) => isSelf ? value.draft : null);
+  const chosen = isSelf && preview ? preview : saved;
+  const appearance = { hairStyle:chosen.hairStyle, skinTone:chosen.skinTone, hairColor:chosen.hairColor, robeColor:chosen.robeColor, wrapColor:chosen.wrapColor };
+  const url = modelUrl(appearance.hairStyle);
+  const targeted = me?.hostile && me.combatTarget?.__identity__ === row.identity.__identity__;
+  const nameRef = useNameplateVisibility(hex, isSelf ? 3 : targeted ? 2 : 1);
   const motion = useTileMotion(row.x, row.z, row.facing, groupRef);
-  const attackSeq = useCombatFxStore((s) => s.attackSeq[hex] ?? 0);
+  const cue = useCombatFxStore((s) => s.cues[hex]);
   const floating = useCombatFxStore((s) => s.numbers[hex]);
-  const attackUntil = useRef(0);
-  const currentClip = useRef<Clip>(null);
-  const hitBox = useMemo(() => new BoxGeometry(1, 5.5, 1), []);
-  const hitBoxMaterial = useMemo(() => new MeshBasicMaterial({ visible: false }), []);
-
-  useEffect(() => {
-    addLoadedAsset(MODEL_URL);
-  }, [addLoadedAsset]);
-
-  useEffect(() => {
-    if (isSelf && setPlayerRef) setPlayerRef(groupRef);
-  }, [isSelf, setPlayerRef]);
-
-  useEffect(() => {
-    if (attackSeq > 0) attackUntil.current = performance.now() + ATTACK_ANIM_MS;
-  }, [attackSeq]);
-
+  const transient = useRef<AnimationCue | null>(null);
+  transient.current = cue ?? null;
   const dead = row.state === PlayerState.Dead;
-
-  useFrame(() => {
-    let desired: Clip;
-    if (dead) desired = null;
-    else if (performance.now() < attackUntil.current) desired = 'RightHook';
-    else if (motion.current.moving) desired = 'Walk';
-    else desired = 'Idle';
-    if (desired === currentClip.current) return;
-    const prev = currentClip.current ? actions[currentClip.current] : null;
-    prev?.fadeOut(0.15);
-    if (desired) actions[desired]?.reset().fadeIn(0.15).play();
-    currentClip.current = desired;
-  });
+  useEffect(() => { if (isSelf && setPlayerRef) setPlayerRef(groupRef); }, [isSelf, setPlayerRef]);
 
   const onClick = (e: any) => {
-    if (isSelf) return;
+    if (isSelf || dead || e.delta > 5) return;
     e.stopPropagation();
-    setClickedOtherObject({
-      connectionId: row.name,
-      e,
-      dropdownOptions: [
-        { label: 'Attack', onClick: () => { actionsApi.attack(row.identity); setClickedOtherObject(null); } },
-        { label: 'Follow', onClick: () => { actionsApi.follow(row.identity); setClickedOtherObject(null); } },
-      ],
-    });
+    setClickedOtherObject({ connectionId: row.name, e, dropdownOptions: [
+      { label: 'Attack', onClick: () => { actionsApi.attack(row.identity); setClickedOtherObject(null); } },
+      { label: 'Follow', onClick: () => { actionsApi.follow(row.identity); setClickedOtherObject(null); } },
+    ] });
   };
-
   const showChat = chatText && chatTick !== undefined && currentTick - chatTick <= CHAT_BUBBLE_TICKS;
   const origin = { x: 0, y: 0, z: 0 };
-
   return (
     <group ref={groupRef} onClick={onClick}>
-      <mesh geometry={hitBox} material={hitBoxMaterial} position={[0, 2.5, 0]} />
-      <HealthBar playerPosition={origin} health={row.hp} maxHealth={row.maxHp} yOffset={2.5} isOwnPlayer={isSelf} />
-      {!dead && <StanceBadge stance={row.stance} fightState={row.fightState} yOffset={2.9} />}
-      {floating && (
-        <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.5} kind={floating.kind} text={floating.text} />
-      )}
-      {showChat && <ChatBubble playerPosition={origin} yOffset={3.4} chatMessage={chatText} />}
-      {dead && <ChatBubble playerPosition={origin} yOffset={1} chatMessage="💀" />}
-      <Suspense fallback={null}>
-        <primitive object={model} visible={!dead} />
+      <mesh position={[0, 1.05, 0]} visible={false}><boxGeometry args={[0.9, 2.1, 0.8]} /><meshBasicMaterial /></mesh>
+      {!dead && <HealthBar playerPosition={origin} health={row.hp} maxHealth={row.maxHp} yOffset={2.45} isOwnPlayer={isSelf} />}
+      {!dead && <StanceBadge stance={row.stance} fightState={row.fightState} yOffset={3.05} />}
+      <Html zIndexRange={[3,0]} center position={[0,2.63,0]} style={{ pointerEvents:'none' }}>
+        <span ref={nameRef} data-player-name={hex} className={`adventurer-name ${isSelf ? 'self' : targeted ? 'targeted' : ''}`}>{isSelf ? 'You' : row.name}{targeted ? ' · Target' : ''}</span>
+      </Html>
+      {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} appearAt={floating.at + floating.delayMs} />}
+      {showChat && <ChatBubble playerPosition={origin} yOffset={3.65} chatMessage={chatText} />}
+      <Suspense fallback={<mesh position={[0,1,0]}><capsuleGeometry args={[.25,1,4,6]} /><meshStandardMaterial color="#42699c" /></mesh>}>
+        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} stance={row.stance} motion={motion} transient={transient} />}>
+          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} stance={row.stance} motion={motion} transient={transient} />
+        </HairBoundary>
       </Suspense>
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.45, 0.55, 24]} />
-        <meshBasicMaterial color={isSelf ? '#ffffff' : '#000000'} transparent opacity={0.35} />
+      <mesh position={[0, 0.016, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[1, 0.65, 1]}>
+        <circleGeometry args={[0.55, 16]} /><meshBasicMaterial color="#233c2a" transparent opacity={0.19} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.48, 0.58, 24]} /><meshBasicMaterial color={isSelf ? '#fff2c9' : targeted ? '#e67855' : '#a7c1d0'} transparent opacity={isSelf || targeted ? 1 : 0.35} depthWrite={false} />
       </mesh>
     </group>
   );
 };
-
-useGLTF.preload(MODEL_URL);
-
 export default PlayerAvatar;

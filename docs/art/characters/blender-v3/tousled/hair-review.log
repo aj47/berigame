@@ -1,0 +1,13 @@
+00:00.631  blend            | Read blend: "/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/tousled/starter-adventurer-v3-tousled.blend"
+00:03.430  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/tousled/hair-front.png'
+00:05.952  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/tousled/hair-side.png'
+00:08.446  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/tousled/hair-back.png'
+00:12.068  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/tousled/hair-overhead.png'
+BlenderMCP: cannot start server in background mode (blender -b) - commands would never execute
+BlenderMCP: run Blender with a GUI, or use a virtual display: xvfb-run -a blender
+BlenderMCP addon registered
+BlenderMCP server stopped
+BlenderMCP addon unregistered
+Blender 5.2.1 LTS (hash 9e2066aef7ef built 2026-08-25 01:35:57)
+
+Blender quit

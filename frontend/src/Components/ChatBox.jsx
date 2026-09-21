@@ -1,96 +1,104 @@
-import { memo, useEffect, useRef, useState } from 'react';
-import { useGameActions } from '../spacetime/actions';
-import { useChatMessages, usePlayersByHex } from '../spacetime/hooks';
-import { useChatStore } from '../store';
+import React, { memo, useEffect, useRef, useState } from "react";
+import { useGameActions } from "../spacetime/actions";
+import { useChatMessages, usePlayersByHex } from "../spacetime/hooks";
+import { useChatStore } from "../store";
 
-const ChatBox = memo(() => {
-  const [chatOpen, setChatOpen] = useState(false);
+const ChatBox = memo(({ open, onClose }) => {
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const messages = useChatMessages();
+  const players = usePlayersByHex();
+  const listRef = useRef(null);
   const setFocusedChat = useChatStore((state) => state.setFocusedChat);
   const { sendChat, setName } = useGameActions();
-
-  const sendMessage = (inputText) => {
-    const text = inputText.trim();
-    if (text.startsWith('/name ')) setName(text.slice(6));
-    else if (text.length > 0) sendChat(text);
-  };
-
   useEffect(() => {
-    const keyDownHandler = (e) => {
-      if (e.key === 'Enter' && !chatOpen) {
-        e.preventDefault();
-        setChatOpen(true);
-      }
-    };
-    document.addEventListener('keydown', keyDownHandler, false);
-    return () => document.removeEventListener('keydown', keyDownHandler, false);
-  }, [chatOpen]);
-
-  const InputTextArea = () => {
-    const [inputText, setInputText] = useState('');
-    const keyDownHandler = (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (inputText !== '') {
-          sendMessage(inputText);
-          setInputText('');
-        }
-      }
-    };
-    return (
-      <textarea
-        placeholder="Type a message... (/name YourName to rename)"
-        autoFocus={true}
-        value={inputText}
-        onChange={(e) => setInputText(e.target.value)}
-        onKeyDown={keyDownHandler}
-        onFocus={() => setFocusedChat(true)}
-        onBlur={() => setFocusedChat(false)}
-      />
-    );
-  };
-
-  const ChatLog = () => {
-    const messages = useChatMessages();
-    const players = usePlayersByHex();
-    const listRef = useRef(null);
-    useEffect(() => {
-      if (!listRef.current) return;
-      listRef.current.style.scrollBehavior = 'smooth';
+    if (open && listRef.current)
       listRef.current.scrollTop = listRef.current.scrollHeight;
-    }, [messages]);
-    return (
-      <div id="chat-log" className="chatLog ui-element" ref={listRef}>
-        {messages.map((m) => {
-          const hex = m.sender.toHexString();
-          const name = players.get(hex)?.name ?? `Player-${hex.slice(4, 8)}`;
-          return (
-            <div key={m.id.toString()}>
-              <p><strong>{name}: </strong>{m.text}</p>
-            </div>
-          );
-        })}
-      </div>
-    );
+  }, [messages, open]);
+  useEffect(() => {
+    if (!open) setFocusedChat(false);
+    return () => setFocusedChat(false);
+  }, [open, setFocusedChat]);
+  if (!open) return null;
+  const submit = async (event) => {
+    event.preventDefault();
+    const text = input.trim();
+    if (!text || sending) return;
+    setSending(true);
+    try {
+      const accepted = text.startsWith("/name ") ? await setName(text.slice(6)) : await sendChat(text);
+      if (accepted) setInput("");
+    } finally {
+      setSending(false);
+    }
   };
-
   return (
-    <>
-      <button
-        className={`openChatButton ui-element ${chatOpen && 'open'}`}
-        onClick={(e) => { e.stopPropagation(); setChatOpen(!chatOpen); }}
-      >
-        {!chatOpen ? 'Chat' : 'Close Chat'}
-      </button>
-      {chatOpen && (
-        <div id="chatBox">
-          <ChatLog />
-          <div className="chatInputBar">
-            <InputTextArea />
-          </div>
+    <section className="game-panel chat-panel" aria-label="Chat">
+      <header className="panel-heading">
+        <div>
+          <span className="eyebrow">Around the island</span>
+          <h2>Chat</h2>
         </div>
-      )}
-    </>
+        <button
+          className="close-button"
+          onClick={onClose}
+          aria-label="Close chat"
+        >
+          ×
+        </button>
+      </header>
+      <div
+        id="chat-log"
+        className="chat-log"
+        ref={listRef}
+        role="log"
+        aria-label="Chat messages"
+        aria-live="polite"
+        tabIndex={0}
+      >
+        {messages.length ? (
+          messages.map((message) => {
+            const hex = message.sender.toHexString();
+            return (
+              <p key={message.id.toString()}>
+                <strong>
+                  {players.get(hex)?.name ?? `Player-${hex.slice(4, 8)}`}
+                </strong>
+                <span>{message.text}</span>
+              </p>
+            );
+          })
+        ) : (
+          <p className="empty-state">
+            A quiet island. Say hello to the other adventurers.
+          </p>
+        )}
+      </div>
+      <form className="chat-input-bar" onSubmit={submit}>
+        <label className="sr-only" htmlFor="chat-message">
+          Message
+        </label>
+        <input
+          id="chat-message"
+          autoFocus
+          value={input}
+          maxLength={200}
+          placeholder="Say something…"
+          onChange={(event) => setInput(event.target.value)}
+          onFocus={() => setFocusedChat(true)}
+          onBlur={() => setFocusedChat(false)}
+          autoComplete="off"
+        />
+        <button
+          className="primary-button"
+          disabled={!input.trim() || sending}
+          type="submit"
+        >
+          Send
+        </button>
+      </form>
+      <p className="fine-print">Make a name for yourself: /name YourName</p>
+    </section>
   );
 });
-
 export default ChatBox;
