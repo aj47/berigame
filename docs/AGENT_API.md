@@ -175,8 +175,13 @@ persistent counter because reducer errors roll back their transactions.
 provides a single-origin HTTPS example with request and connection limits on
 both services, overwritten client IP headers, and logs that omit query strings.
 It is a deployment template, not an enabled or deployment-validated config;
-replace its domain, certificate paths and frontend root and run `nginx -t` on
-the target host. Keep both upstream ports private. Its WebSocket limits cover
+replace its domain, certificate paths, frontend root and database name in the
+WebSocket allowlist, then run `nginx -t` on the target host. Keep both upstream
+ports private. Only identity creation and that world's subscription endpoint
+are public; publish and administer databases over loopback or an SSH tunnel.
+Do not proxy all SpacetimeDB routes: standalone servers otherwise allow remote
+database creation. See the [SpacetimeDB self-hosting guide](https://spacetimedb.com/docs/how-to/deploy/self-hosting/).
+Its WebSocket limits cover
 handshakes and connection counts, not messages within an established socket.
 The directives follow nginx's [request limiting](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html),
 [connection limiting](https://nginx.org/en/docs/http/ngx_http_limit_conn_module.html),

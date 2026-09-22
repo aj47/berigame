@@ -1,4 +1,5 @@
-# Include inside nginx's http {} block. Replace the domain, TLS paths and root.
+# Include inside nginx's http {} block. Replace the domain, TLS paths, root and
+# berigame-agents database name in the WebSocket allowlist below.
 # Example only: run nginx -t in your deployment before enabling it.
 # API and SpacetimeDB must bind to loopback or be firewalled from the internet.
 # Set BERIGAME_AGENT_ORIGIN=https://game.example.com and
@@ -57,9 +58,12 @@ server {
         proxy_pass http://127.0.0.1:3001;
     }
 
-    # Raw game connections need limits too. These bound HTTP/WS handshakes and
-    # open connections; they do not rate-limit messages inside an open WebSocket.
-    location /v1/ {
+    # Allow only identity creation and this world's SDK WebSocket endpoint.
+    # Never proxy all /v1/ routes: standalone servers allow database creation.
+    # Publish/administer through loopback on the host (or an SSH tunnel).
+    # These limits bound HTTP/WS handshakes and open connections; they do not
+    # rate-limit messages inside an open WebSocket.
+    location ~ ^/v1/(identity|database/berigame-agents/subscribe)$ {
         limit_req zone=berigame_db_ip burst=30 nodelay;
         limit_req zone=berigame_db_global burst=200 nodelay;
         client_max_body_size 16k;
@@ -72,6 +76,9 @@ server {
         proxy_read_timeout 75s;
         proxy_buffering off;
         proxy_pass http://127.0.0.1:3000;
+    }
+    location /v1/ {
+        return 404;
     }
 
     location = /agent.md {
