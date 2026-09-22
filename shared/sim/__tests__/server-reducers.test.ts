@@ -50,9 +50,12 @@ function harness() {
   const appearances = new Map<string, any>();
   const ground = new Map<bigint, any>();
   const trees = new Map<number, any>();
+  const grants = new Map<string, any>();
   const ctx = {
-    sender: A, identity: A, timestamp: {},
+    sender: A, identity: A, timestamp: { microsSinceUnixEpoch: 100_000_000n },
     db: {
+      accessPolicy: { id: { find: () => ({ id: 0, owner: A, gateway: B, requireAdmission: false }) } },
+      playerGrant: { identity: { find: (id: typeof A) => grants.get(id.toHexString()) } },
       appearance: { insert: (row: any) => appearances.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => appearances.get(id.toHexString()), update: (row: any) => appearances.set(row.identity.toHexString(), row) } },
       world: { id: { find: () => ({ id: 0, tick: now }), update: (row: any) => { now = row.tick; } } },
       player: { iter: () => players.values(), identity: {
@@ -73,11 +76,35 @@ function harness() {
       combatEvent: { insert: vi.fn() },
     },
   };
-  return { ctx, inventory, ground, trees, appearances, tick: (value: number) => { now = value; }, me: () => players.get('a'), other: () => players.get('b') };
+  return { ctx, inventory, ground, trees, appearances, grants, tick: (value: number) => { now = value; }, me: () => players.get('a'), other: () => players.get('b') };
 }
 
 let h: ReturnType<typeof harness>;
 beforeEach(() => { h = harness(); });
+
+describe('agent permits at the authoritative boundary', () => {
+  it('rejects direct SDK combat when the actor or the target lacks combat access', () => {
+    h.grants.set('a', { identity: A, issuer: B, agent: true, expiresAtMicros: 200_000_000n, combat: false, chat: false });
+    expect(() => attack(h.ctx, { target: B })).toThrow('combat is not enabled');
+    h.grants.get('a').combat = true;
+    h.grants.set('b', { identity: B, issuer: B, agent: true, expiresAtMicros: 200_000_000n, combat: false, chat: false });
+    expect(() => attack(h.ctx, { target: B })).toThrow('combat is not enabled');
+    expect(h.me().hostile).toBe(false);
+  });
+
+  it('rejects expired permits and stops an already queued harvest on the next tick', () => {
+    h.grants.set('a', { identity: A, issuer: B, agent: true, expiresAtMicros: 99_000_000n, combat: true, chat: false });
+    Object.assign(h.me(), { targetX: 30, targetZ: 25, harvestTreeId: 1, harvestEndTick: 11 });
+    h.trees.set(1, { id: 1, x: 26, z: 25, itemId: 'berry_goldberry', harvester: A, cooldownUntilTick: 0 });
+    expect(() => move(h.ctx, { x: 26, z: 25 })).toThrow('access required or expired');
+    scheduledTick(h.ctx);
+    expect(h.me().online).toBe(false);
+    expect(h.me().targetX).toBeUndefined();
+    expect(h.me().harvestEndTick).toBe(0);
+    expect(h.trees.get(1).harvester).toBeUndefined();
+    expect(h.inventory.size).toBe(1);
+  });
+});
 
 describe('authoritative attack timing', () => {
   it('starts a fresh attack next tick and a fresh retaliation halfway through the rally', () => {

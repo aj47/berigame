@@ -98,6 +98,9 @@ const UIComponents = memo(() => {
         >
           Help <kbd>?</kbd>
         </button>
+        <a className="agent-entry-link" href="/agent" target="_blank" rel="noreferrer" aria-label="Open BeriGame's agent onboarding page in a new tab">
+          Agent
+        </a>
       </nav>
       <GatherShortcut
         visible={panel === null}
@@ -171,6 +174,9 @@ const UIComponents = memo(() => {
             stops, I opens your bag, Enter opens chat. Every action also has an
             on-screen control.
           </p>
+          <a className="agent-help-link" href="/agent" target="_blank" rel="noreferrer">
+            Open the agent-ready game page ↗
+          </a>
         </section>
       )}
       <StanceHud />

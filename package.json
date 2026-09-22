@@ -3,6 +3,10 @@
   "private": true,
   "scripts": {
     "play": "bash scripts/play.sh",
-    "test": "npm test --prefix shared -- --run && npm test --prefix frontend -- --run"
+    "test": "npm test --prefix shared -- --run && npm test --prefix frontend -- --run && npm run agent:test --prefix frontend",
+    "agent:serve": "npm run agent:serve --prefix frontend --",
+    "agent:setup": "npm run agent:setup --prefix frontend --",
+    "agent:invite": "npm run agent:invite --prefix frontend --",
+    "agent:revoke": "npm run agent:revoke --prefix frontend --"
   }
 }

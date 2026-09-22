@@ -2,6 +2,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { PlayerState, retaliationSwingTick } from '../../../shared/sim';
 import { clearInteractions, currentTick, findPlayer, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
+import { requireCapability } from '../lib/access';
 
 /** Strike / Grab / Guard. Takes effect at the next swing that resolves. */
 export const setStance = spacetimedb.reducer(
@@ -20,6 +21,8 @@ export const setStance = spacetimedb.reducer(
 export const attack = spacetimedb.reducer(
   { target: t.identity() },
   (ctx, { target }) => {
+    requireCapability(ctx, ctx.sender, 'combat');
+    requireCapability(ctx, target, 'combat');
     const p = requireAlivePlayer(ctx);
     if (sameId(target, p.identity)) throw new SenderError('cannot attack yourself');
     const tgt = findPlayer(ctx, target);

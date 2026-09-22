@@ -36,11 +36,15 @@ import {
 // Import all reducer arg schemas
 import AttackReducer from "./attack_reducer";
 import CancelReducer from "./cancel_reducer";
+import ConfigureAccessReducer from "./configure_access_reducer";
 import DropItemReducer from "./drop_item_reducer";
 import EatBerryReducer from "./eat_berry_reducer";
 import FollowReducer from "./follow_reducer";
+import GrantAgentReducer from "./grant_agent_reducer";
+import GrantPlayerReducer from "./grant_player_reducer";
 import MoveItemReducer from "./move_item_reducer";
 import PickupItemReducer from "./pickup_item_reducer";
+import RevokePlayerReducer from "./revoke_player_reducer";
 import SendChatReducer from "./send_chat_reducer";
 import SetAppearanceReducer from "./set_appearance_reducer";
 import SetNameReducer from "./set_name_reducer";
@@ -51,6 +55,7 @@ import StartHarvestReducer from "./start_harvest_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import AccessPolicyRow from "./access_policy_table";
 import AppearanceRow from "./appearance_table";
 import ChatMessageRow from "./chat_message_table";
 import CombatEventRow from "./combat_event_table";
@@ -64,6 +69,17 @@ import WorldRow from "./world_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  accessPolicy: __table({
+    name: 'access_policy',
+    indexes: [
+      { accessor: 'id', name: 'access_policy_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'access_policy_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, AccessPolicyRow),
   appearance: __table({
     name: 'appearance',
     indexes: [
@@ -162,11 +178,15 @@ const tablesSchema = __schema({
 const reducersSchema = __reducers(
   __reducerSchema("attack", AttackReducer),
   __reducerSchema("cancel", CancelReducer),
+  __reducerSchema("configure_access", ConfigureAccessReducer),
   __reducerSchema("drop_item", DropItemReducer),
   __reducerSchema("eat_berry", EatBerryReducer),
   __reducerSchema("follow", FollowReducer),
+  __reducerSchema("grant_agent", GrantAgentReducer),
+  __reducerSchema("grant_player", GrantPlayerReducer),
   __reducerSchema("move_item", MoveItemReducer),
   __reducerSchema("pickup_item", PickupItemReducer),
+  __reducerSchema("revoke_player", RevokePlayerReducer),
   __reducerSchema("send_chat", SendChatReducer),
   __reducerSchema("set_appearance", SetAppearanceReducer),
   __reducerSchema("set_name", SetNameReducer),

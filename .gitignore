@@ -6,3 +6,4 @@ dist-ssr
 new_frontend/.env
 .aider*
 .spacetime-data/
+.agent-api-data/

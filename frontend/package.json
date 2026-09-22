@@ -9,7 +9,14 @@
 		"test": "vitest",
 		"test:ui": "vitest --ui",
 		"stdb:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path ../spacetimedb",
-		"smoke": "tsx scripts/smoke.ts"
+		"smoke": "tsx scripts/smoke.ts",
+		"agent:serve": "tsx agent-api/main.ts",
+		"agent:setup": "tsx agent-api/cli.ts setup",
+		"agent:invite": "tsx agent-api/cli.ts invite",
+		"agent:revoke": "tsx agent-api/cli.ts revoke",
+		"agent:test": "tsx --test agent-api/*.test.ts",
+		"agent:integration": "tsx agent-api/integration.ts",
+		"agent:typecheck": "../spacetimedb/node_modules/.bin/tsc -p agent-api/tsconfig.json"
 	},
 	"dependencies": {
 		"@react-three/drei": "^9.56.22",

@@ -1,5 +1,23 @@
 import { table, t } from 'spacetimedb/server';
 
+/** Public configuration, never credentials. The publisher is captured by init. */
+export const accessPolicy = table({ name: 'access_policy', public: true }, {
+  id: t.u8().primaryKey(),
+  owner: t.identity(),
+  gateway: t.option(t.identity()),
+  requireAdmission: t.bool(),
+});
+
+/** Server-enforced permits. Clients cannot read or write these rows. */
+export const playerGrant = table({ name: 'player_grant' }, {
+  identity: t.identity().primaryKey(),
+  issuer: t.identity(),
+  agent: t.bool(),
+  expiresAtMicros: t.u64(),
+  combat: t.bool(),
+  chat: t.bool(),
+});
+
 /** Singleton (id = 0). Written every tick; clients use its updates as the tick heartbeat. */
 export const world = table(
   { name: 'world', public: true },

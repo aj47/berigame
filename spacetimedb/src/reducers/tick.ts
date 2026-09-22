@@ -9,7 +9,8 @@ import {
 } from '../../../shared/sim';
 import { emitEvent } from '../lib/events';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
-import { hex, sameId } from '../lib/players';
+import { clearInteractions, hex, sameId } from '../lib/players';
+import { canPlay } from '../lib/access';
 import type { Ctx, PlayerRow, TreeRow } from '../lib/types';
 
 interface TickState {
@@ -318,6 +319,16 @@ export const tick = spacetimedb.reducer(
     const world = ctx.db.world.id.find(0);
     if (!world) return;
     const T = world.tick + 1;
+
+    // Expiry/revocation stops queued movement, harvesting and combat even if a
+    // client keeps its WebSocket open and sends no further requests.
+    for (const player of ctx.db.player.iter()) {
+      if (player.online && !canPlay(ctx, player.identity)) {
+        const p = { ...player, online: false };
+        clearInteractions(ctx, p);
+        ctx.db.player.identity.update(p);
+      }
+    }
 
     const players = new Map<string, PlayerRow>();
     for (const p of ctx.db.player.iter()) players.set(hex(p.identity), { ...p });

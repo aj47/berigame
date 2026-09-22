@@ -28,6 +28,8 @@ spacetimedb/       SpacetimeDB TypeScript module: tables, the scheduled `tick`
                    reducer, and every input reducer. This is the whole game server.
 frontend/          Vite + React + React Three Fiber client. Subscribes to tables via
                    the SpacetimeDB SDK (frontend/src/spacetime) and renders them.
+frontend/agent-api/ Browser-independent HTTP API, invite issuance, scoped player
+                   sessions and abuse controls. Reuses the generated SDK bindings.
 backend/           Legacy AWS Lambda / DynamoDB backend. No longer used by the game;
                    kept until its auth pieces are migrated. Will be removed.
 ```
@@ -75,6 +77,22 @@ npm run dev                                        # http://localhost:5173
 The client connects to port 3000 on the page hostname (`ws`, or `wss` for an HTTPS page) and database `berigame` by default.
 Override with `VITE_SPACETIME_URI` and `VITE_SPACETIME_DB` (for example a
 Maincloud deployment: `VITE_SPACETIME_URI=wss://maincloud.spacetimedb.com`).
+
+### Agent play
+
+Share `/agent` on the game origin (locally `http://127.0.0.1:5173/agent`) and give
+the agent a single-use invite code privately. The page explains how to join and
+play through the HTTP API; `/agent.md` and `/api/agent/v1/openapi.json` provide
+machine-readable instructions. Reading the guide does not create a character.
+
+Invites allow gathering by default. Combat and chat require explicit opt-ins.
+Sessions expire, requests are throttled, and action retries use idempotency keys.
+The API requires server-enforced admission so direct SDK clients cannot bypass
+invites. See [Agent API setup and limits](docs/AGENT_API.md) for new-world setup,
+owner configuration, issuance, revocation, and deployment requirements.
+
+The regular game view also registers WebMCP tools when the browser supports it.
+Those browser tools use the current browser's character and the same server rules.
 
 Handy while developing: `spacetime logs berigame -f`, and
 `spacetime sql berigame "SELECT tick FROM world"`.

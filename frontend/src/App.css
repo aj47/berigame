@@ -134,6 +134,140 @@ canvas {
   line-height: 1.45;
   margin: 10px 0 0;
 }
+.agent-entry-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  background: var(--wood);
+  box-shadow: 0 2px 5px #23180d25, inset 0 -3px 0 #00000012;
+  font-size: 13px;
+  font-weight: bold;
+  text-decoration: none;
+}
+.agent-entry-link:hover { background: #f3e5c9; }
+.agent-entry-link:focus-visible { outline: 3px solid #ffdd73; outline-offset: 3px; }
+.agent-guide-panel {
+  position: fixed;
+  z-index: 120;
+  top: max(76px, calc(env(safe-area-inset-top) + 68px));
+  right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  width: min(368px, calc(100vw - 28px));
+  max-height: calc(100dvh - max(88px, env(safe-area-inset-top) + 80px) - 16px);
+  overflow-y: auto;
+  padding: 17px 18px 15px;
+  color: #282219;
+  background: #f7f1e8f5;
+  border: 1px solid #8e704f;
+  border-radius: 9px;
+  box-shadow: 0 14px 40px #1d2a3540, inset 0 0 0 3px #ead8b9;
+  scrollbar-width: thin;
+}
+.agent-guide-topline { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+.agent-guide-topline .eyebrow { flex: 1; margin: 0; }
+.agent-guide-mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #766043;
+  border-radius: 50%;
+  color: #f8f0de;
+  background: #3b594c;
+  font: bold 17px Georgia, serif;
+}
+.agent-guide-panel h1 {
+  margin: 8px 0 7px;
+  color: #2d261e;
+  font: 700 27px/1.06 Georgia, serif;
+  letter-spacing: -.7px;
+}
+.agent-guide-intro { margin: 0 0 13px; color: #665745; font-size: 13px; line-height: 1.45; }
+.agent-tool-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 15px;
+  padding: 9px 10px;
+  border: 1px solid #b7a382;
+  border-radius: 5px;
+  color: #564b3b;
+  background: #eee5d4;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.agent-tool-status.ready { color: #214a3b; background: #e2eddf; border-color: #809c79; }
+.agent-tool-status.unsupported, .agent-tool-status.error { color: #6c4822; background: #f5e7ce; border-color: #c29b59; }
+.agent-status-dot { flex: 0 0 8px; width: 8px; height: 8px; margin-top: 3px; border-radius: 50%; background: #b58b43; }
+.agent-tool-status.ready .agent-status-dot { background: #397a56; }
+.agent-tool-status.unsupported .agent-status-dot, .agent-tool-status.error .agent-status-dot { background: #aa6f27; }
+.agent-guide-section { padding: 0 0 13px; border-bottom: 1px solid #c7b79a; }
+.agent-guide-section .eyebrow { margin-bottom: 8px; }
+.agent-steps { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; counter-reset: agent-step; }
+.agent-steps li { display: grid; grid-template-columns: 1fr; gap: 2px; counter-increment: agent-step; }
+.agent-steps li::before { content: "0" counter(agent-step); float: left; color: #8a6d45; font: bold 10px/1.4 "Trebuchet MS", sans-serif; letter-spacing: .8px; }
+.agent-steps code, .agent-guide-boundary code { color: #304c40; font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.agent-steps span { padding-left: 21px; color: #655746; font-size: 11px; line-height: 1.35; }
+.agent-steps span code { font-size: 10px; }
+.agent-guide-rule { display: grid; gap: 3px; padding: 12px 0 10px; }
+.agent-guide-rule strong { color: #3b5141; font: bold 13px Georgia, serif; }
+.agent-guide-rule span { color: #6a5b48; font-size: 11px; }
+.agent-guide-boundary { margin: 0 0 13px; padding: 9px 10px; border-left: 3px solid #a27c45; color: #5e4d39; background: #f0e5d2; font-size: 11px; line-height: 1.45; }
+.agent-guide-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.agent-guide-actions .primary-button { min-height: 40px; font-size: 12px; }
+.agent-guide-play-link { color: #3c5d4d; font-size: 11px; font-weight: bold; text-underline-offset: 3px; }
+.agent-guide-footnote { margin: 10px 0 0; color: #82715b; font-size: 10px; line-height: 1.4; }
+.agent-help-link { display: inline-block; margin-top: 12px; color: #365b48; font-size: 12px; font-weight: bold; text-underline-offset: 3px; }
+.agent-field-guide { position: fixed; inset: 0; overflow-y: auto; color: #302b24; background: #f5efe4; font: 15px/1.6 "Trebuchet MS", sans-serif; }
+.agent-field-guide * { box-sizing: border-box; }
+.agent-field-header { display: flex; justify-content: space-between; align-items: center; padding: 19px max(24px, calc((100% - 1100px) / 2)); border-bottom: 1px solid #d3c7b5; }
+.agent-field-guide a { color: #345b48; text-underline-offset: 4px; }
+.agent-field-header > a { font-size: 13px; font-weight: bold; }
+.agent-field-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.agent-field-content { max-width: 1100px; margin: 0 auto; padding: 48px 24px 24px; }
+.agent-field-intro { max-width: 660px; }
+.agent-field-intro h1 { font: 700 clamp(38px, 5vw, 62px)/1.06 Georgia, serif; letter-spacing: -1.5px; margin: 15px 0 20px; color: #2f483a; }
+.agent-field-intro > p:not(.eyebrow) { font-size: 18px; max-width: 580px; color: #615749; }
+.agent-field-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin: 25px 0 20px; }
+.agent-field-actions button { min-height: 44px; padding: 9px 16px; font-size: 14px; cursor: pointer; }
+.agent-field-actions a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
+.agent-field-status { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: #655949; max-width: 580px; }
+.agent-field-status .agent-status-dot { margin-top: 7px; }
+.agent-field-status.ready .agent-status-dot { background: #3d7b58; }
+.agent-field-status button { flex-shrink: 0; min-height: 44px; padding: 4px 12px; color: #345b48; border: 1px solid #a79a85; border-radius: 4px; background: transparent; cursor: pointer; }
+.agent-field-columns { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 56px; margin-top: 45px; padding-top: 28px; border-top: 1px solid #cbbda5; }
+.agent-field-guide h2 { font: 700 24px/1.2 Georgia, serif; margin: 0 0 22px; }
+.agent-field-start ol { margin: 0; padding-left: 25px; }
+.agent-field-start li { padding-left: 8px; margin: 0 0 24px; }
+.agent-field-start li::marker { color: #557254; font-weight: bold; }
+.agent-field-start h3 { font-size: 16px; margin: 0 0 6px; }
+.agent-field-start p { margin: 0 0 12px; color: #635849; }
+.agent-field-guide code { color: #304e3e; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.agent-field-guide pre { overflow-x: auto; margin: 12px 0 0; padding: 15px; background: #e8e0d0; border-left: 3px solid #64816b; border-radius: 2px; }
+.agent-field-guide pre code { font-size: 11px; white-space: pre; overflow-wrap: normal; }
+.agent-field-notes { padding-left: 28px; border-left: 1px solid #d3c7b5; font-size: 13px; color: #665a49; }
+.agent-field-notes section + section { border-top: 1px solid #d3c7b5; padding-top: 19px; margin-top: 19px; }
+.agent-field-notes h2 { font-size: 23px; margin-top: 10px; margin-bottom: 14px; color: #3a4e3e; }
+.agent-field-notes .agent-guide-rule { padding: 3px 0 0; }
+.agent-field-notes .agent-guide-rule span { font-size: 12px; line-height: 1.5; }
+.agent-field-guide .eyebrow { color: #776346; font-size: 10px; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; }
+.agent-reference-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: bold; }
+.agent-field-footer { margin-top: 26px; padding-top: 18px; border-top: 1px solid #d3c7b5; font-size: 11px; color: #7b6c55; }
+.agent-field-guide :is(a, button, pre):focus-visible { outline: 3px solid #3772a5; outline-offset: 4px; }
+@media (max-width: 700px) {
+  .agent-field-header { padding: 15px 20px; }
+  .agent-field-content { padding: 30px 20px 22px; }
+  .agent-field-columns { grid-template-columns: minmax(0, 1fr); gap: 20px; margin-top: 30px; }
+  .agent-field-notes { padding: 24px 0 0; border-left: 0; border-top: 1px solid #cbbda5; }
+  .agent-field-intro > p:not(.eyebrow) { font-size: 16px; }
+  .agent-field-guide pre { padding: 12px; }
+}
 .primary-button {
   background: var(--blue);
   border-color: #243e56;
@@ -150,6 +284,7 @@ canvas {
   pointer-events: none;
 }
 .ui-group button,
+.ui-group a,
 .game-panel,
 .stance-hud {
   pointer-events: auto;
@@ -984,6 +1119,15 @@ canvas {
 }
 @media (max-width: 600px) {
   .world-header img { display: none; }
+  .game-toolbar .agent-entry-link { display: none; }
+  .agent-guide-panel {
+    top: max(64px, calc(env(safe-area-inset-top) + 56px));
+    right: max(10px, env(safe-area-inset-right));
+    width: min(350px, calc(100vw - 20px));
+    max-height: calc(100dvh - max(74px, env(safe-area-inset-top) + 64px) - 10px);
+    padding: 13px 14px 12px;
+  }
+  .agent-guide-panel h1 { font-size: 24px; }
   .game-panel.appearance-panel {
     top: auto;
     bottom: calc(max(10px, env(safe-area-inset-bottom)) + 162px);
