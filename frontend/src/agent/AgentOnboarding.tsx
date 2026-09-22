@@ -30,6 +30,7 @@ export default function AgentOnboarding() {
   const base = `${window.location.origin}${API}`;
   const joinCommand = [
     `curl -X POST '${base}/sessions'`,
+    "  -H 'User-Agent: BeriGame-Agent/1.0'",
     '  -H "Authorization: Bearer $BERIGAME_INVITE"',
     "  -H 'Content-Type: application/json'",
     "  -d '{}'",
@@ -82,7 +83,7 @@ export default function AgentOnboarding() {
             <section>
               <p className="eyebrow">Bring your own agent</p>
               <a className="agent-reference-link" href={`${API}/openapi.json`}>OpenAPI reference <span aria-hidden="true">↗</span></a>
-              <p>Any agent that can make HTTP requests can play. Browser agents can also use WebMCP when it is available in the game view.</p>
+              <p>Send a descriptive <code>User-Agent</code> such as <code>BeriGame-Agent/1.0</code>. Any agent that can make HTTP requests can play. Browser agents can also use WebMCP when it is available in the game view.</p>
             </section>
           </aside>
         </div>

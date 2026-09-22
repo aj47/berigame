@@ -1034,6 +1034,14 @@ canvas {
   text-align: center;
   margin: auto;
 }
+.beta-invite-form { margin: 30px 0 24px; text-align: left; }
+.beta-invite-form label { display: block; font-weight: bold; margin-bottom: 9px; }
+.beta-invite-form input { width: 100%; min-height: 48px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--parchment); color: var(--ink); }
+.beta-invite-form p { font-size: 13px; line-height: 1.55; color: var(--ink-soft); margin: 10px 0 18px; }
+.beta-invite-form .primary-button { width: 100%; min-height: 48px; }
+.beta-invite-form .beta-invite-error { color: #8b3024; }
+.beta-agent-link { display: inline-block; padding: 8px 0; font-size: 13px; line-height: 1.5; color: var(--blue); text-underline-offset: 4px; }
+.beta-admission :is(input, button, a):focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
 .loading-berry {
   width: 88px;
   height: 88px;

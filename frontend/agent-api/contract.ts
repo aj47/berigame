@@ -1,4 +1,4 @@
-import { ApiError } from './security';
+import { ApiError } from './portable';
 import { GRID_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, validAppearance } from '../../shared/sim';
 
 type Field = { type: 'integer'; minimum: number; maximum: number } | { type: 'string'; minLength: number; maxLength: number; pattern?: string; enum?: string[] };

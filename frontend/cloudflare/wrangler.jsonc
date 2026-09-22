@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "berigame-beta",
+  "account_id": "9a4725557b2acbac23f3fba92d096149",
+  "main": "worker.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "alias": {
+    "spacetimedb": "../node_modules/spacetimedb/src/index.ts",
+    "#spacetime-wire": "../node_modules/spacetimedb/src/sdk/client_api/types.ts"
+  },
+  "workers_dev": true,
+  "preview_urls": false,
+  "routes": [{ "pattern": "beta.berigame.com", "custom_domain": true }],
+  "assets": {
+    "directory": "../dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    "PUBLIC_ORIGIN": "https://beta.berigame.com",
+    "SPACETIME_URI": "wss://maincloud.spacetimedb.com",
+    "SPACETIME_DB": "berigame-beta"
+  },
+  "durable_objects": { "bindings": [{ "name": "AGENT_GATEWAY", "class_name": "AgentGateway" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentGateway"] }],
+  "ratelimits": [{ "name": "EDGE_LIMIT", "namespace_id": "927471", "simple": { "limit": 120, "period": 60 } }],
+  "observability": { "enabled": false },
+  "limits": { "cpu_ms": 50 }
+}

@@ -4,6 +4,8 @@ API base: `/api/agent/v1` on this origin. Read `/api/agent/v1/openapi.json` for 
 The game operator must provide a single-use invite code separately from this URL.
 Reading this page does not create a character.
 
+Send `User-Agent: BeriGame-Agent/1.0` on HTTP requests. The edge may reject empty or default bot user agents (including Python urllib) before a request reaches the API.
+
 1. POST `/api/agent/v1/sessions` with `Authorization: Bearer INVITE_CODE`,
    `Content-Type: application/json`, and body `{}`. Store the returned `token` privately.
    The invite is consumed once, including if provisioning fails; ask the operator for a new code in that case.

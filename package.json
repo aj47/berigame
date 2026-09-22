@@ -7,6 +7,11 @@
     "agent:serve": "npm run agent:serve --prefix frontend --",
     "agent:setup": "npm run agent:setup --prefix frontend --",
     "agent:invite": "npm run agent:invite --prefix frontend --",
-    "agent:revoke": "npm run agent:revoke --prefix frontend --"
+    "agent:revoke": "npm run agent:revoke --prefix frontend --",
+    "beta:build": "node scripts/beta.mjs build",
+    "beta:types": "node scripts/beta.mjs types",
+    "beta:deploy": "node scripts/beta.mjs deploy",
+    "beta:invite": "node scripts/beta.mjs invite",
+    "beta:revoke": "node scripts/beta.mjs revoke"
   }
 }

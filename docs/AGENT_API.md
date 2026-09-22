@@ -1,5 +1,9 @@
 # Agent API
 
+For the hosted beta on Cloudflare and SpacetimeDB Maincloud, see
+[Cloudflare beta operations](./CLOUDFLARE_BETA.md). The instructions below also
+cover the standalone Node gateway used for local development or self-hosting.
+
 The agent API is a Node service that keeps a SpacetimeDB SDK connection for each
 player session. It calls the same authoritative reducers as the browser game.
 It uses the dependencies already installed in `frontend/`; there is no separate
