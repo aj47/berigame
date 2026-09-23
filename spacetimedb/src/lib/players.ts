@@ -2,6 +2,7 @@ import { SenderError } from 'spacetimedb/server';
 import type { Identity } from 'spacetimedb';
 import { MAX_INPUTS_PER_TICK, Pending, PlayerState } from '../../../shared/sim';
 import type { Ctx, PlayerRow } from './types';
+import { requireAdmission } from './access';
 
 export function hex(id: Identity): string {
   return id.toHexString();
@@ -21,8 +22,10 @@ export function findPlayer(ctx: Ctx, id: Identity): PlayerRow | undefined {
 }
 
 export function requirePlayer(ctx: Ctx): PlayerRow {
+  requireAdmission(ctx);
   const p = findPlayer(ctx, ctx.sender);
   if (!p) throw new SenderError('no player for this identity; connect first');
+  if (!p.online) throw new SenderError('player is offline');
   return { ...p };
 }
 

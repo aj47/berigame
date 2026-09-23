@@ -1,11 +1,16 @@
 import { ScheduleAt } from 'spacetimedb';
+import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import {
   FightState, MAX_HP, PlayerState, Pending, SPAWN_TILE, Stance, TICK_MS, TREE_SEEDS,
 } from '../../../shared/sim';
-import { clearInteractions, findPlayer, hex, savePlayer } from '../lib/players';
+import { clearInteractions, findPlayer, hex, sameId, savePlayer } from '../lib/players';
+import { requireAdmission } from '../lib/access';
 
 export const init = spacetimedb.init((ctx) => {
+  if (!ctx.db.accessPolicy.id.find(0)) {
+    ctx.db.accessPolicy.insert({ id: 0, owner: ctx.sender, gateway: undefined, requireAdmission: false });
+  }
   if (!ctx.db.world.id.find(0)) {
     ctx.db.world.insert({ id: 0, tick: 0, tickStartedAt: ctx.timestamp });
   }
@@ -20,7 +25,15 @@ export const init = spacetimedb.init((ctx) => {
 });
 
 export const onConnect = spacetimedb.clientConnected((ctx) => {
+  const policy = ctx.db.accessPolicy.id.find(0);
+  // Control connections do not create characters or consume player slots.
+  if (sameId(policy?.owner, ctx.sender) || sameId(policy?.gateway, ctx.sender)) return;
+  requireAdmission(ctx);
   const existing = findPlayer(ctx, ctx.sender);
+  if (existing && existing.connections >= 4) throw new SenderError('too many connections for this player');
+  if ((!existing || !existing.online) && [...ctx.db.player.iter()].filter(p => p.online).length >= 128) {
+    throw new SenderError('world is full');
+  }
   if (existing) {
     savePlayer(ctx, {
       ...existing,
@@ -30,6 +43,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     });
     return;
   }
+  if (ctx.db.player.count() >= 10000n) throw new SenderError('world character capacity reached');
   ctx.db.player.insert({
     identity: ctx.sender,
     name: 'Player-' + hex(ctx.sender).slice(4, 8),

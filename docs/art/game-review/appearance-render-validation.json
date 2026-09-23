@@ -1,0 +1,1950 @@
+{
+  "createdAt": "2026-09-21T03:03:28.814Z",
+  "url": "http://127.0.0.1:5173/",
+  "database": "berigame-graphics-review",
+  "host": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "cpu": "Apple M1 Pro"
+  },
+  "qualification": "The optional 4x CPU throttling profile is a browser CPU-throughput proxy using the same host GPU; it does not emulate a phone CPU/GPU or establish physical-phone performance. Local development build, headless desktop Chrome. Phone profile emulates viewport, touch, and device pixel ratio on the same computer; it is not physical-phone performance evidence. Frame data includes browser and machine scheduling noise.",
+  "sourceSha256": "3b54655795adc6e800c80d671645734e1ed21205b4aea42d2845916acd013ec2",
+  "modelSha256": "895d259eadd7ed2cae96c7201b8887e4a31007c0eb30acc9c174fbdde1366985",
+  "appearanceMode": true,
+  "assetSha256": {
+    "starter-adventurer-cropped.glb": "c63fa935cc8ff8af7e0651c7c32a78f297648880c5fd68b6afe66115e1bc6435",
+    "starter-adventurer-topknot.glb": "86f01381bad64c7b4a9c1a5b0ba8ad3cf0298b5633135df9c65fba9308d2839d",
+    "starter-adventurer.glb": "895d259eadd7ed2cae96c7201b8887e4a31007c0eb30acc9c174fbdde1366985"
+  },
+  "paletteSha256": "ba80f154b691e704f465828de1b15485172fdff8d22b3edb65a113c596dfd3ba",
+  "catalogSha256": "3cfda861d169e21e28b3f6d782986f18394465a6b4e81d2e095f601c9b2949a5",
+  "targetOnlinePlayers": 32,
+  "samples": [
+    {
+      "label": "desktop baseline",
+      "cpuThrottleRate": 1,
+      "onlinePlayers": 2,
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "devicePixelRatio": 1
+      },
+      "frames": {
+        "count": 360,
+        "averageMs": 16.67,
+        "estimatedFps": 60,
+        "p50Ms": 16.7,
+        "p95Ms": 16.7,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0
+      },
+      "renderer": {
+        "calls": {
+          "min": 69,
+          "max": 69
+        },
+        "triangles": {
+          "min": 8228,
+          "max": 8228
+        },
+        "geometries": {
+          "min": 71,
+          "max": 71
+        },
+        "textures": {
+          "min": 3,
+          "max": 3
+        },
+        "pixelRatio": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "resources": {
+        "calls": 69,
+        "triangles": 8228,
+        "geometries": 71,
+        "textures": 3,
+        "pixelRatio": 1,
+        "camera": [
+          8.055888535324723,
+          9.971813625143414,
+          19.229791003733858
+        ],
+        "sceneMaterialCount": 81,
+        "paletteEntries": 1,
+        "paletteUsers": 2
+      }
+    },
+    {
+      "label": "desktop crowd idle",
+      "cpuThrottleRate": 1,
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "devicePixelRatio": 1
+      },
+      "frames": {
+        "count": 360,
+        "averageMs": 16.67,
+        "estimatedFps": 60,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0
+      },
+      "renderer": {
+        "calls": {
+          "min": 159,
+          "max": 159
+        },
+        "triangles": {
+          "min": 70568,
+          "max": 70568
+        },
+        "geometries": {
+          "min": 131,
+          "max": 131
+        },
+        "textures": {
+          "min": 62,
+          "max": 62
+        },
+        "pixelRatio": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "resources": {
+        "calls": 159,
+        "triangles": 70568,
+        "geometries": 131,
+        "textures": 62,
+        "pixelRatio": 1,
+        "camera": [
+          8.055888535324723,
+          9.971813625143414,
+          19.229791003733858
+        ],
+        "sceneMaterialCount": 200,
+        "paletteEntries": 30,
+        "paletteUsers": 32
+      }
+    },
+    {
+      "label": "desktop crowd moving",
+      "cpuThrottleRate": 1,
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "devicePixelRatio": 1
+      },
+      "frames": {
+        "count": 348,
+        "averageMs": 17.24,
+        "estimatedFps": 58,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 33.5,
+        "maxMs": 50,
+        "over33ms": 3
+      },
+      "renderer": {
+        "calls": {
+          "min": 159,
+          "max": 159
+        },
+        "triangles": {
+          "min": 70568,
+          "max": 70568
+        },
+        "geometries": {
+          "min": 131,
+          "max": 131
+        },
+        "textures": {
+          "min": 62,
+          "max": 62
+        },
+        "pixelRatio": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "resources": {
+        "calls": 159,
+        "triangles": 70568,
+        "geometries": 131,
+        "textures": 62,
+        "pixelRatio": 1,
+        "camera": [
+          8.055888535324723,
+          9.971813625143414,
+          19.229791003733858
+        ],
+        "sceneMaterialCount": 200,
+        "paletteEntries": 30,
+        "paletteUsers": 32
+      }
+    },
+    {
+      "label": "390px phone emulation crowd idle",
+      "cpuThrottleRate": 1,
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "devicePixelRatio": 3
+      },
+      "frames": {
+        "count": 360,
+        "averageMs": 16.67,
+        "estimatedFps": 60,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0
+      },
+      "renderer": {
+        "calls": {
+          "min": 140,
+          "max": 140
+        },
+        "triangles": {
+          "min": 70194,
+          "max": 70194
+        },
+        "geometries": {
+          "min": 131,
+          "max": 131
+        },
+        "textures": {
+          "min": 62,
+          "max": 62
+        },
+        "pixelRatio": {
+          "min": 1.5,
+          "max": 1.5
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "resources": {
+        "calls": 140,
+        "triangles": 70194,
+        "geometries": 131,
+        "textures": 62,
+        "pixelRatio": 1.5,
+        "camera": [
+          9.978165860653574,
+          12.855229613136691,
+          22.83406098872545
+        ],
+        "sceneMaterialCount": 200,
+        "paletteEntries": 30,
+        "paletteUsers": 32
+      }
+    },
+    {
+      "label": "390px phone emulation crowd moving",
+      "cpuThrottleRate": 1,
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "devicePixelRatio": 3
+      },
+      "frames": {
+        "count": 346,
+        "averageMs": 17.34,
+        "estimatedFps": 57.7,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 33.4,
+        "maxMs": 50,
+        "over33ms": 3
+      },
+      "renderer": {
+        "calls": {
+          "min": 137,
+          "max": 140
+        },
+        "triangles": {
+          "min": 70114,
+          "max": 70194
+        },
+        "geometries": {
+          "min": 131,
+          "max": 131
+        },
+        "textures": {
+          "min": 62,
+          "max": 62
+        },
+        "pixelRatio": {
+          "min": 1.5,
+          "max": 1.5
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "resources": {
+        "calls": 140,
+        "triangles": 70194,
+        "geometries": 131,
+        "textures": 62,
+        "pixelRatio": 1.5,
+        "camera": [
+          9.978165860653574,
+          12.855229613136691,
+          22.83406098872545
+        ],
+        "sceneMaterialCount": 200,
+        "paletteEntries": 30,
+        "paletteUsers": 32
+      }
+    },
+    {
+      "label": "390px mobile viewport, 4x CPU throttle, crowd idle",
+      "cpuThrottleRate": 4,
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "devicePixelRatio": 3
+      },
+      "frames": {
+        "count": 348,
+        "averageMs": 17.24,
+        "estimatedFps": 58,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 33.4,
+        "maxMs": 33.4,
+        "over33ms": 0
+      },
+      "renderer": {
+        "calls": {
+          "min": 140,
+          "max": 140
+        },
+        "triangles": {
+          "min": 70194,
+          "max": 70194
+        },
+        "geometries": {
+          "min": 131,
+          "max": 131
+        },
+        "textures": {
+          "min": 62,
+          "max": 62
+        },
+        "pixelRatio": {
+          "min": 1.5,
+          "max": 1.5
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "resources": {
+        "calls": 140,
+        "triangles": 70194,
+        "geometries": 131,
+        "textures": 62,
+        "pixelRatio": 1.5,
+        "camera": [
+          9.978165860653574,
+          12.855229613136691,
+          22.83406098872545
+        ],
+        "sceneMaterialCount": 200,
+        "paletteEntries": 30,
+        "paletteUsers": 32
+      }
+    },
+    {
+      "label": "390px mobile viewport, 4x CPU throttle, crowd moving",
+      "cpuThrottleRate": 4,
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "devicePixelRatio": 3
+      },
+      "frames": {
+        "count": 243,
+        "averageMs": 24.69,
+        "estimatedFps": 40.5,
+        "p50Ms": 16.7,
+        "p95Ms": 50,
+        "p99Ms": 200.1,
+        "maxMs": 233.3,
+        "over33ms": 13
+      },
+      "renderer": {
+        "calls": {
+          "min": 137,
+          "max": 140
+        },
+        "triangles": {
+          "min": 70114,
+          "max": 70194
+        },
+        "geometries": {
+          "min": 131,
+          "max": 131
+        },
+        "textures": {
+          "min": 62,
+          "max": 62
+        },
+        "pixelRatio": {
+          "min": 1.5,
+          "max": 1.5
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "resources": {
+        "calls": 137,
+        "triangles": 70114,
+        "geometries": 131,
+        "textures": 62,
+        "pixelRatio": 1.5,
+        "camera": [
+          9.978165860653574,
+          12.855229613136691,
+          22.83406098872545
+        ],
+        "sceneMaterialCount": 200,
+        "paletteEntries": 30,
+        "paletteUsers": 32
+      }
+    },
+    {
+      "label": "390px phone emulation after crowd disconnected",
+      "cpuThrottleRate": 1,
+      "onlinePlayers": 2,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "devicePixelRatio": 3
+      },
+      "frames": {
+        "count": 361,
+        "averageMs": 16.67,
+        "estimatedFps": 60,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0
+      },
+      "renderer": {
+        "calls": {
+          "min": 50,
+          "max": 50
+        },
+        "triangles": {
+          "min": 7854,
+          "max": 7854
+        },
+        "geometries": {
+          "min": 71,
+          "max": 71
+        },
+        "textures": {
+          "min": 3,
+          "max": 3
+        },
+        "pixelRatio": {
+          "min": 1.5,
+          "max": 1.5
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "resources": {
+        "calls": 50,
+        "triangles": 7854,
+        "geometries": 71,
+        "textures": 3,
+        "pixelRatio": 1.5,
+        "camera": [
+          9.978165860653574,
+          12.855229613136691,
+          22.83406098872545
+        ],
+        "sceneMaterialCount": 81,
+        "paletteEntries": 1,
+        "paletteUsers": 2
+      }
+    },
+    {
+      "label": "desktop after appearance crowd disconnected",
+      "cpuThrottleRate": 1,
+      "onlinePlayers": 2,
+      "viewport": {
+        "width": 1280,
+        "height": 800,
+        "devicePixelRatio": 1
+      },
+      "frames": {
+        "count": 360,
+        "averageMs": 16.67,
+        "estimatedFps": 60,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0
+      },
+      "renderer": {
+        "calls": {
+          "min": 69,
+          "max": 69
+        },
+        "triangles": {
+          "min": 8228,
+          "max": 8228
+        },
+        "geometries": {
+          "min": 71,
+          "max": 71
+        },
+        "textures": {
+          "min": 3,
+          "max": 3
+        },
+        "pixelRatio": {
+          "min": 1,
+          "max": 1
+        }
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "resources": {
+        "calls": 69,
+        "triangles": 8228,
+        "geometries": 71,
+        "textures": 3,
+        "pixelRatio": 1,
+        "camera": [
+          8.055888535324723,
+          9.971813625143414,
+          19.229791003733858
+        ],
+        "sceneMaterialCount": 81,
+        "paletteEntries": 1,
+        "paletteUsers": 2
+      }
+    }
+  ],
+  "movementClicks": {
+    "count": 24,
+    "initialTile": {
+      "x": 25,
+      "z": 31
+    },
+    "finalTile": {
+      "x": 26,
+      "z": 31
+    },
+    "before": {
+      "calls": 69,
+      "triangles": 8228,
+      "geometries": 71,
+      "textures": 3,
+      "pixelRatio": 1,
+      "camera": [
+        7.066784419710227,
+        9.971813625143414,
+        19.229790981899782
+      ]
+    },
+    "after": {
+      "calls": 69,
+      "triangles": 8228,
+      "geometries": 71,
+      "textures": 3,
+      "pixelRatio": 1,
+      "camera": [
+        8.05483026995127,
+        9.971813625143414,
+        19.229791003733858
+      ]
+    },
+    "geometryCounts": [
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71,
+      71
+    ]
+  },
+  "cleanup": {
+    "sdkFixturesOffline": true,
+    "fixtureCount": 30,
+    "disconnectCalledForAllFixtures": true,
+    "browserClosed": true
+  },
+  "browserVersion": "153.0.8010.48",
+  "appearanceCycles": {
+    "sdkChanges": 24,
+    "previewCancelCycles": 24,
+    "before": {
+      "calls": 59,
+      "triangles": 8034,
+      "geometries": 64,
+      "textures": 3,
+      "pixelRatio": 1,
+      "camera": [
+        7.055888535324724,
+        9.971813625143414,
+        13.229791003733856
+      ],
+      "sceneMaterialCount": 81,
+      "paletteEntries": 1,
+      "paletteUsers": 2
+    },
+    "afterSDK": {
+      "calls": 59,
+      "triangles": 8034,
+      "geometries": 64,
+      "textures": 3,
+      "pixelRatio": 1,
+      "camera": [
+        7.055888535324724,
+        9.971813625143414,
+        13.229791003733856
+      ],
+      "sceneMaterialCount": 81,
+      "paletteEntries": 1,
+      "paletteUsers": 2
+    },
+    "afterPreview": {
+      "calls": 59,
+      "triangles": 8034,
+      "geometries": 64,
+      "textures": 3,
+      "pixelRatio": 1,
+      "camera": [
+        7.055888535324724,
+        9.971813625143414,
+        13.229791003733856
+      ],
+      "sceneMaterialCount": 81,
+      "paletteEntries": 1,
+      "paletteUsers": 2
+    },
+    "sdkSamples": [
+      {
+        "index": 1,
+        "appearance": {
+          "hairStyle": 1,
+          "skinTone": 1,
+          "hairColor": 1,
+          "robeColor": 1,
+          "wrapColor": 1
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8048,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 2,
+        "appearance": {
+          "hairStyle": 2,
+          "skinTone": 2,
+          "hairColor": 2,
+          "robeColor": 2,
+          "wrapColor": 2
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8152,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 3,
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 3,
+          "hairColor": 3,
+          "robeColor": 3,
+          "wrapColor": 0
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 4,
+        "appearance": {
+          "hairStyle": 1,
+          "skinTone": 4,
+          "hairColor": 0,
+          "robeColor": 4,
+          "wrapColor": 1
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8048,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 5,
+        "appearance": {
+          "hairStyle": 2,
+          "skinTone": 5,
+          "hairColor": 1,
+          "robeColor": 0,
+          "wrapColor": 2
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8152,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 6,
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 2,
+          "robeColor": 1,
+          "wrapColor": 0
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 7,
+        "appearance": {
+          "hairStyle": 1,
+          "skinTone": 1,
+          "hairColor": 3,
+          "robeColor": 2,
+          "wrapColor": 1
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8048,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 8,
+        "appearance": {
+          "hairStyle": 2,
+          "skinTone": 2,
+          "hairColor": 0,
+          "robeColor": 3,
+          "wrapColor": 2
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8152,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 9,
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 3,
+          "hairColor": 1,
+          "robeColor": 4,
+          "wrapColor": 0
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 10,
+        "appearance": {
+          "hairStyle": 1,
+          "skinTone": 4,
+          "hairColor": 2,
+          "robeColor": 0,
+          "wrapColor": 1
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8048,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 11,
+        "appearance": {
+          "hairStyle": 2,
+          "skinTone": 5,
+          "hairColor": 3,
+          "robeColor": 1,
+          "wrapColor": 2
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8152,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 12,
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 2,
+          "wrapColor": 0
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 13,
+        "appearance": {
+          "hairStyle": 1,
+          "skinTone": 1,
+          "hairColor": 1,
+          "robeColor": 3,
+          "wrapColor": 1
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8048,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 14,
+        "appearance": {
+          "hairStyle": 2,
+          "skinTone": 2,
+          "hairColor": 2,
+          "robeColor": 4,
+          "wrapColor": 2
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8152,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 15,
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 3,
+          "hairColor": 3,
+          "robeColor": 0,
+          "wrapColor": 0
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 16,
+        "appearance": {
+          "hairStyle": 1,
+          "skinTone": 4,
+          "hairColor": 0,
+          "robeColor": 1,
+          "wrapColor": 1
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8048,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 17,
+        "appearance": {
+          "hairStyle": 2,
+          "skinTone": 5,
+          "hairColor": 1,
+          "robeColor": 2,
+          "wrapColor": 2
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8152,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 18,
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 2,
+          "robeColor": 3,
+          "wrapColor": 0
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 19,
+        "appearance": {
+          "hairStyle": 1,
+          "skinTone": 1,
+          "hairColor": 3,
+          "robeColor": 4,
+          "wrapColor": 1
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8048,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 20,
+        "appearance": {
+          "hairStyle": 2,
+          "skinTone": 2,
+          "hairColor": 0,
+          "robeColor": 0,
+          "wrapColor": 2
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8152,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 21,
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 3,
+          "hairColor": 1,
+          "robeColor": 1,
+          "wrapColor": 0
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 22,
+        "appearance": {
+          "hairStyle": 1,
+          "skinTone": 4,
+          "hairColor": 2,
+          "robeColor": 2,
+          "wrapColor": 1
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8048,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 23,
+        "appearance": {
+          "hairStyle": 2,
+          "skinTone": 5,
+          "hairColor": 3,
+          "robeColor": 3,
+          "wrapColor": 2
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8152,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 24,
+        "appearance": {
+          "hairStyle": 0,
+          "skinTone": 0,
+          "hairColor": 0,
+          "robeColor": 4,
+          "wrapColor": 0
+        },
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 4,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 82,
+          "paletteEntries": 2,
+          "paletteUsers": 2
+        }
+      }
+    ],
+    "previewSamples": [
+      {
+        "index": 1,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 2,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 3,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 4,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 5,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 6,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 7,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 8,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 9,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 10,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 11,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 12,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 13,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 14,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 15,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 16,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 17,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 18,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 19,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 20,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 21,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 22,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 23,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      },
+      {
+        "index": 24,
+        "renderer": {
+          "calls": 59,
+          "triangles": 8034,
+          "geometries": 64,
+          "textures": 3,
+          "pixelRatio": 1,
+          "camera": [
+            7.055888535324724,
+            9.971813625143414,
+            13.229791003733856
+          ],
+          "sceneMaterialCount": 81,
+          "paletteEntries": 1,
+          "paletteUsers": 2
+        }
+      }
+    ]
+  },
+  "fixtureCount": 30,
+  "baselineOnlinePlayers": 2,
+  "maximumHarnessConcurrentConnections": 31,
+  "fixtureAppearanceVariants": [
+    {
+      "hairStyle": 0,
+      "skinTone": 0,
+      "hairColor": 0,
+      "robeColor": 0,
+      "wrapColor": 0
+    },
+    {
+      "hairStyle": 1,
+      "skinTone": 1,
+      "hairColor": 1,
+      "robeColor": 1,
+      "wrapColor": 1
+    },
+    {
+      "hairStyle": 2,
+      "skinTone": 2,
+      "hairColor": 2,
+      "robeColor": 2,
+      "wrapColor": 2
+    },
+    {
+      "hairStyle": 0,
+      "skinTone": 3,
+      "hairColor": 3,
+      "robeColor": 3,
+      "wrapColor": 0
+    },
+    {
+      "hairStyle": 1,
+      "skinTone": 4,
+      "hairColor": 0,
+      "robeColor": 4,
+      "wrapColor": 1
+    },
+    {
+      "hairStyle": 2,
+      "skinTone": 5,
+      "hairColor": 1,
+      "robeColor": 0,
+      "wrapColor": 2
+    },
+    {
+      "hairStyle": 0,
+      "skinTone": 0,
+      "hairColor": 2,
+      "robeColor": 1,
+      "wrapColor": 0
+    },
+    {
+      "hairStyle": 1,
+      "skinTone": 1,
+      "hairColor": 3,
+      "robeColor": 2,
+      "wrapColor": 1
+    },
+    {
+      "hairStyle": 2,
+      "skinTone": 2,
+      "hairColor": 0,
+      "robeColor": 3,
+      "wrapColor": 2
+    },
+    {
+      "hairStyle": 0,
+      "skinTone": 3,
+      "hairColor": 1,
+      "robeColor": 4,
+      "wrapColor": 0
+    },
+    {
+      "hairStyle": 1,
+      "skinTone": 4,
+      "hairColor": 2,
+      "robeColor": 0,
+      "wrapColor": 1
+    },
+    {
+      "hairStyle": 2,
+      "skinTone": 5,
+      "hairColor": 3,
+      "robeColor": 1,
+      "wrapColor": 2
+    },
+    {
+      "hairStyle": 0,
+      "skinTone": 0,
+      "hairColor": 0,
+      "robeColor": 2,
+      "wrapColor": 0
+    },
+    {
+      "hairStyle": 1,
+      "skinTone": 1,
+      "hairColor": 1,
+      "robeColor": 3,
+      "wrapColor": 1
+    },
+    {
+      "hairStyle": 2,
+      "skinTone": 2,
+      "hairColor": 2,
+      "robeColor": 4,
+      "wrapColor": 2
+    },
+    {
+      "hairStyle": 0,
+      "skinTone": 3,
+      "hairColor": 3,
+      "robeColor": 0,
+      "wrapColor": 0
+    },
+    {
+      "hairStyle": 1,
+      "skinTone": 4,
+      "hairColor": 0,
+      "robeColor": 1,
+      "wrapColor": 1
+    },
+    {
+      "hairStyle": 2,
+      "skinTone": 5,
+      "hairColor": 1,
+      "robeColor": 2,
+      "wrapColor": 2
+    },
+    {
+      "hairStyle": 0,
+      "skinTone": 0,
+      "hairColor": 2,
+      "robeColor": 3,
+      "wrapColor": 0
+    },
+    {
+      "hairStyle": 1,
+      "skinTone": 1,
+      "hairColor": 3,
+      "robeColor": 4,
+      "wrapColor": 1
+    },
+    {
+      "hairStyle": 2,
+      "skinTone": 2,
+      "hairColor": 0,
+      "robeColor": 0,
+      "wrapColor": 2
+    },
+    {
+      "hairStyle": 0,
+      "skinTone": 3,
+      "hairColor": 1,
+      "robeColor": 1,
+      "wrapColor": 0
+    },
+    {
+      "hairStyle": 1,
+      "skinTone": 4,
+      "hairColor": 2,
+      "robeColor": 2,
+      "wrapColor": 1
+    },
+    {
+      "hairStyle": 2,
+      "skinTone": 5,
+      "hairColor": 3,
+      "robeColor": 3,
+      "wrapColor": 2
+    },
+    {
+      "hairStyle": 0,
+      "skinTone": 0,
+      "hairColor": 0,
+      "robeColor": 4,
+      "wrapColor": 0
+    },
+    {
+      "hairStyle": 1,
+      "skinTone": 1,
+      "hairColor": 1,
+      "robeColor": 0,
+      "wrapColor": 1
+    },
+    {
+      "hairStyle": 2,
+      "skinTone": 2,
+      "hairColor": 2,
+      "robeColor": 1,
+      "wrapColor": 2
+    },
+    {
+      "hairStyle": 0,
+      "skinTone": 3,
+      "hairColor": 3,
+      "robeColor": 2,
+      "wrapColor": 0
+    },
+    {
+      "hairStyle": 1,
+      "skinTone": 4,
+      "hairColor": 0,
+      "robeColor": 3,
+      "wrapColor": 1
+    },
+    {
+      "hairStyle": 2,
+      "skinTone": 5,
+      "hairColor": 1,
+      "robeColor": 4,
+      "wrapColor": 2
+    }
+  ],
+  "crowdResourceCleanup": {
+    "before": {
+      "calls": 69,
+      "triangles": 8228,
+      "geometries": 71,
+      "textures": 3,
+      "pixelRatio": 1,
+      "camera": [
+        8.055888535324723,
+        9.971813625143414,
+        19.229791003733858
+      ],
+      "sceneMaterialCount": 81,
+      "paletteEntries": 1,
+      "paletteUsers": 2
+    },
+    "after": {
+      "calls": 69,
+      "triangles": 8228,
+      "geometries": 71,
+      "textures": 3,
+      "pixelRatio": 1,
+      "camera": [
+        8.055893002696312,
+        9.971820326200797,
+        19.229799380055585
+      ],
+      "sceneMaterialCount": 81,
+      "paletteEntries": 1,
+      "paletteUsers": 2
+    }
+  },
+  "finishedAt": "2026-09-21T03:05:17.952Z",
+  "finalSourceSha256": "3b54655795adc6e800c80d671645734e1ed21205b4aea42d2845916acd013ec2",
+  "errors": [],
+  "failures": []
+}

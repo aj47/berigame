@@ -1,0 +1,427 @@
+{
+  "schema_version": 1,
+  "atlas": {
+    "width": 64,
+    "height": 64,
+    "png_origin": "top-left",
+    "uv_origin": "bottom-left",
+    "color_space": "sRGB",
+    "base_colors": [
+      "42699C",
+      "355780",
+      "527DAE",
+      "E3D4B2",
+      "CABB9C",
+      "F0DDB8",
+      "C68B55",
+      "DFA76E",
+      "E9B882",
+      "513626",
+      "674731",
+      "78573B",
+      "333743",
+      "414451",
+      "252B36",
+      "BDA16D",
+      "34271F",
+      "483326",
+      "594030",
+      "221B18",
+      "F5EAD0",
+      "8C643E",
+      "A87345",
+      "273E63"
+    ]
+  },
+  "variants": {
+    "tousled": {
+      "glb": "tousled/starter-adventurer-v3-tousled.glb",
+      "blend": "tousled/starter-adventurer-v3-tousled.blend",
+      "hair_geometry": "tousled"
+    },
+    "cropped": {
+      "glb": "cropped/starter-adventurer-v3-cropped.glb",
+      "blend": "cropped/starter-adventurer-v3-cropped.blend",
+      "hair_geometry": "cropped"
+    },
+    "topknot": {
+      "glb": "topknot/starter-adventurer-v3-topknot.glb",
+      "blend": "topknot/starter-adventurer-v3-topknot.blend",
+      "hair_geometry": "topknot"
+    }
+  },
+  "families": {
+    "robe": {
+      "indices": [
+        0,
+        1,
+        2
+      ],
+      "png_rects": [
+        {
+          "index": 0,
+          "x": 0,
+          "y": 56,
+          "width": 8,
+          "height": 8
+        },
+        {
+          "index": 1,
+          "x": 8,
+          "y": 56,
+          "width": 8,
+          "height": 8
+        },
+        {
+          "index": 2,
+          "x": 16,
+          "y": 56,
+          "width": 8,
+          "height": 8
+        }
+      ],
+      "catalog": [
+        {
+          "index": 0,
+          "name": "Blue",
+          "base_hex": "#42699C"
+        },
+        {
+          "index": 1,
+          "name": "Forest",
+          "base_hex": "#4F7358"
+        },
+        {
+          "index": 2,
+          "name": "Russet",
+          "base_hex": "#99554B"
+        },
+        {
+          "index": 3,
+          "name": "Plum",
+          "base_hex": "#78567E"
+        },
+        {
+          "index": 4,
+          "name": "Oat",
+          "base_hex": "#A99D7E"
+        }
+      ],
+      "appearance_field": "robeColor",
+      "reference_cell": 0,
+      "blender_uv_centers": [
+        [
+          0.0625,
+          0.0625
+        ],
+        [
+          0.1875,
+          0.0625
+        ],
+        [
+          0.3125,
+          0.0625
+        ]
+      ],
+      "gltf_uv_centers": [
+        [
+          0.0625,
+          0.9375
+        ],
+        [
+          0.1875,
+          0.9375
+        ],
+        [
+          0.3125,
+          0.9375
+        ]
+      ]
+    },
+    "wraps": {
+      "indices": [
+        3,
+        4,
+        5
+      ],
+      "png_rects": [
+        {
+          "index": 3,
+          "x": 24,
+          "y": 56,
+          "width": 8,
+          "height": 8
+        },
+        {
+          "index": 4,
+          "x": 32,
+          "y": 56,
+          "width": 8,
+          "height": 8
+        },
+        {
+          "index": 5,
+          "x": 40,
+          "y": 56,
+          "width": 8,
+          "height": 8
+        }
+      ],
+      "catalog": [
+        {
+          "index": 0,
+          "name": "Linen",
+          "base_hex": "#E3D4B2"
+        },
+        {
+          "index": 1,
+          "name": "Flax",
+          "base_hex": "#BDA578"
+        },
+        {
+          "index": 2,
+          "name": "Slate",
+          "base_hex": "#82939F"
+        }
+      ],
+      "appearance_field": "wrapColor",
+      "reference_cell": 3,
+      "blender_uv_centers": [
+        [
+          0.4375,
+          0.0625
+        ],
+        [
+          0.5625,
+          0.0625
+        ],
+        [
+          0.6875,
+          0.0625
+        ]
+      ],
+      "gltf_uv_centers": [
+        [
+          0.4375,
+          0.9375
+        ],
+        [
+          0.5625,
+          0.9375
+        ],
+        [
+          0.6875,
+          0.9375
+        ]
+      ]
+    },
+    "skin": {
+      "indices": [
+        6,
+        7,
+        8,
+        22
+      ],
+      "png_rects": [
+        {
+          "index": 6,
+          "x": 48,
+          "y": 56,
+          "width": 8,
+          "height": 8
+        },
+        {
+          "index": 7,
+          "x": 56,
+          "y": 56,
+          "width": 8,
+          "height": 8
+        },
+        {
+          "index": 8,
+          "x": 0,
+          "y": 48,
+          "width": 8,
+          "height": 8
+        },
+        {
+          "index": 22,
+          "x": 48,
+          "y": 40,
+          "width": 8,
+          "height": 8
+        }
+      ],
+      "catalog": [
+        {
+          "index": 0,
+          "name": "Warm tan",
+          "base_hex": "#DFA76E"
+        },
+        {
+          "index": 1,
+          "name": "Fair",
+          "base_hex": "#F1CBAA"
+        },
+        {
+          "index": 2,
+          "name": "Golden",
+          "base_hex": "#C58B55"
+        },
+        {
+          "index": 3,
+          "name": "Olive",
+          "base_hex": "#B68A66"
+        },
+        {
+          "index": 4,
+          "name": "Brown",
+          "base_hex": "#94613E"
+        },
+        {
+          "index": 5,
+          "name": "Deep brown",
+          "base_hex": "#64412E"
+        }
+      ],
+      "appearance_field": "skinTone",
+      "reference_cell": 7,
+      "blender_uv_centers": [
+        [
+          0.8125,
+          0.0625
+        ],
+        [
+          0.9375,
+          0.0625
+        ],
+        [
+          0.0625,
+          0.1875
+        ],
+        [
+          0.8125,
+          0.3125
+        ]
+      ],
+      "gltf_uv_centers": [
+        [
+          0.8125,
+          0.9375
+        ],
+        [
+          0.9375,
+          0.9375
+        ],
+        [
+          0.0625,
+          0.8125
+        ],
+        [
+          0.8125,
+          0.6875
+        ]
+      ]
+    },
+    "hair": {
+      "indices": [
+        16,
+        17,
+        18
+      ],
+      "png_rects": [
+        {
+          "index": 16,
+          "x": 0,
+          "y": 40,
+          "width": 8,
+          "height": 8
+        },
+        {
+          "index": 17,
+          "x": 8,
+          "y": 40,
+          "width": 8,
+          "height": 8
+        },
+        {
+          "index": 18,
+          "x": 16,
+          "y": 40,
+          "width": 8,
+          "height": 8
+        }
+      ],
+      "catalog": [
+        {
+          "index": 0,
+          "name": "Chestnut",
+          "base_hex": "#483326"
+        },
+        {
+          "index": 1,
+          "name": "Black",
+          "base_hex": "#27242A"
+        },
+        {
+          "index": 2,
+          "name": "Copper",
+          "base_hex": "#8C4930"
+        },
+        {
+          "index": 3,
+          "name": "Silver",
+          "base_hex": "#A9A7A0"
+        }
+      ],
+      "appearance_field": "hairColor",
+      "reference_cell": 17,
+      "blender_uv_centers": [
+        [
+          0.0625,
+          0.3125
+        ],
+        [
+          0.1875,
+          0.3125
+        ],
+        [
+          0.3125,
+          0.3125
+        ]
+      ],
+      "gltf_uv_centers": [
+        [
+          0.0625,
+          0.6875
+        ],
+        [
+          0.1875,
+          0.6875
+        ],
+        [
+          0.3125,
+          0.6875
+        ]
+      ]
+    }
+  },
+  "defaults": {
+    "hairStyle": 0,
+    "robeColor": 0,
+    "wrapColor": 0,
+    "skinTone": 0,
+    "hairColor": 0
+  },
+  "notes": [
+    "Every GLB is a complete avatar; load only the selected hair variant.",
+    "All variants share one body, rig, 12 action names and collision contract. Hair has no gameplay meaning.",
+    "Clone or cache the replacement texture by appearance tuple; do not mutate the shared loader texture.",
+    "Only recolor listed cells; leave eye index 19, belt, boots and trousers unchanged.",
+    "Wrap colors also tint collar trim and sleeve cuffs because those share palette cells.",
+    "Set canvas replacement texture.flipY=false and SRGBColorSpace when replacing the glTF baseColor map.",
+    "Copy map sampling and wrapping settings from the original map. Keep one material per avatar.",
+    "Appearance values are numeric catalog indices; palette ramps use original-cell RGB ratios against each family reference cell."
+  ],
+  "catalog_source": "shared/sim/appearance.ts"
+}

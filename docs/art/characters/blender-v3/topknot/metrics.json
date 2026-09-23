@@ -1,0 +1,67 @@
+{
+  "hair_id": "topknot",
+  "blender": "5.2.1 LTS",
+  "triangles": 2088,
+  "mesh_vertices": 1418,
+  "materials": 1,
+  "mesh_objects": 1,
+  "bones": 26,
+  "atlas": [
+    64,
+    64
+  ],
+  "max_vertex_influences": 2,
+  "clips": {
+    "Idle": {
+      "seconds": 2.0,
+      "loop": true
+    },
+    "Run": {
+      "seconds": 0.8,
+      "loop": true
+    },
+    "Walk": {
+      "seconds": 1.2,
+      "loop": true
+    },
+    "Stop": {
+      "seconds": 0.5,
+      "loop": false
+    },
+    "Turn": {
+      "seconds": 0.6,
+      "loop": false
+    },
+    "Strike": {
+      "seconds": 0.9,
+      "loop": false
+    },
+    "Grab": {
+      "seconds": 0.9,
+      "loop": false
+    },
+    "GrabReady": {
+      "seconds": 2.0,
+      "loop": true
+    },
+    "Guard": {
+      "seconds": 1.0,
+      "loop": true
+    },
+    "Hit": {
+      "seconds": 0.5,
+      "loop": false
+    },
+    "Stagger": {
+      "seconds": 0.8,
+      "loop": false
+    },
+    "Defeat": {
+      "seconds": 1.2,
+      "loop": false
+    }
+  },
+  "glb_bytes": 473996,
+  "orientation": "Blender -Y forward, Z up; glTF +Z forward, Y up",
+  "status": "Asset build only; integration and device qualification tracked in docs/PLAYABLE_GRAPHICS_PROGRESS.md"
+}

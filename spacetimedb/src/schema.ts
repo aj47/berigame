@@ -1,8 +1,11 @@
 import { schema } from 'spacetimedb/server';
-import { chatMessage, combatEvent, groundItem, inventorySlot, player, tickSchedule, tree, world } from './tables';
+import { accessPolicy, playerGrant, appearance, chatMessage, combatEvent, groundItem, inventorySlot, player, tickSchedule, tree, world } from './tables';
 
 export const spacetimedb = schema({
+  accessPolicy,
+  playerGrant,
   world,
+  appearance,
   tickSchedule,
   player,
   inventorySlot,

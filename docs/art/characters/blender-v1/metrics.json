@@ -1,0 +1,62 @@
+{
+  "blender": "5.2.1 LTS",
+  "triangles": 2102,
+  "mesh_vertices": 1184,
+  "materials": 1,
+  "mesh_objects": 1,
+  "bones": 24,
+  "atlas": [
+    64,
+    64
+  ],
+  "max_vertex_influences": 2,
+  "clips": {
+    "Idle": {
+      "seconds": 2.0,
+      "loop": true
+    },
+    "Run": {
+      "seconds": 0.8,
+      "loop": true
+    },
+    "Walk": {
+      "seconds": 1.2,
+      "loop": true
+    },
+    "Stop": {
+      "seconds": 0.5,
+      "loop": false
+    },
+    "Turn": {
+      "seconds": 0.6,
+      "loop": false
+    },
+    "Strike": {
+      "seconds": 0.9,
+      "loop": false
+    },
+    "Grab": {
+      "seconds": 0.9,
+      "loop": false
+    },
+    "Guard": {
+      "seconds": 1.0,
+      "loop": true
+    },
+    "Hit": {
+      "seconds": 0.5,
+      "loop": false
+    },
+    "Stagger": {
+      "seconds": 0.8,
+      "loop": false
+    },
+    "Defeat": {
+      "seconds": 1.2,
+      "loop": false
+    }
+  },
+  "glb_bytes": 436300,
+  "orientation": "Blender -Y forward, Z up; glTF +Z forward, Y up",
+  "status": "Prototype asset; not integrated or smartphone benchmarked"
+}

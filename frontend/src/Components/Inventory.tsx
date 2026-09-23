@@ -1,116 +1,157 @@
-import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { INVENTORY_SIZE, getItemDef, type Slot } from '@sim';
-import { useGameActions } from '../spacetime/actions';
-import { useInventoryRows } from '../spacetime/hooks';
-import { useChatStore, useInventoryUiStore } from '../store';
+import React, { memo, useEffect, useMemo, useState } from "react";
+import { INVENTORY_SIZE, getItemDef, type Slot } from "@sim";
+import { useGameActions } from "../spacetime/actions";
+import { useInventoryRows } from "../spacetime/hooks";
 
-const DRAG_THRESHOLD_MS = 200; // hold this long before a drag starts; shorter is a click (eat)
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
 
-const Inventory = memo(() => {
-  const [showInventory, setShowInventory] = useState(false);
-  const mouseDownTimeRef = useRef<number | null>(null);
-  const focusedChat = useChatStore((s) => s.focusedChat);
+/** Every inventory operation has the same explicit tap/click flow. */
+const Inventory = memo(({ open, onClose }: Props) => {
   const rows = useInventoryRows();
-  const { draggedFromSlot, dragOverSlot, setDraggedFromSlot, setDragOverSlot, clearDragState } = useInventoryUiStore();
   const { eatBerry, moveItem, dropItem } = useGameActions();
-
+  const [selected, setSelected] = useState<number | null>(null);
+  const [movingFrom, setMovingFrom] = useState<number | null>(null);
+  const [pending, setPending] = useState(false);
   const slots = useMemo<Slot[]>(() => {
     const out: Slot[] = Array(INVENTORY_SIZE).fill(null);
-    for (const r of rows) if (r.slot < INVENTORY_SIZE) out[r.slot] = { itemId: r.itemId, quantity: r.quantity };
+    for (const row of rows)
+      if (row.slot < INVENTORY_SIZE)
+        out[row.slot] = { itemId: row.itemId, quantity: row.quantity };
     return out;
   }, [rows]);
-
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'i' && !focusedChat) setShowInventory((v) => !v);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [focusedChat]);
+    if (!open) setMovingFrom(null);
+  }, [open]);
+  useEffect(() => {
+    if (movingFrom !== null && !slots[movingFrom]) setMovingFrom(null);
+  }, [slots, movingFrom]);
 
-  const dropOutside = (fromSlot: number) => {
-    const item = slots[fromSlot];
-    if (item) dropItem(fromSlot, item.quantity);
-  };
-
-  const handleClick = (e: React.MouseEvent, slotIndex: number) => {
-    const item = slots[slotIndex];
-    if (!item || !mouseDownTimeRef.current) return;
-    const held = Date.now() - mouseDownTimeRef.current;
-    mouseDownTimeRef.current = null;
-    if (held >= DRAG_THRESHOLD_MS) return;
-    e.stopPropagation();
-    const def = getItemDef(item.itemId);
-    if (def && def.healthRestore > 0) eatBerry(slotIndex);
-  };
-
-  const handleDragStart = (e: React.DragEvent, slotIndex: number) => {
-    const held = mouseDownTimeRef.current ? Date.now() - mouseDownTimeRef.current : 0;
-    if (held < DRAG_THRESHOLD_MS) {
-      e.preventDefault();
-      return;
+  if (!open) return null;
+  const item = selected !== null ? slots[selected] : null;
+  const def = item ? getItemDef(item.itemId) : undefined;
+  const occupied = slots.filter(Boolean).length;
+  const run = async (action: () => Promise<unknown>) => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await action();
+    } finally {
+      setPending(false);
     }
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', '');
-    setDraggedFromSlot(slotIndex);
   };
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    if (draggedFromSlot !== null) {
-      const inventoryElement = (e.currentTarget as HTMLElement).closest('.inventory');
-      if (inventoryElement) {
-        const rect = inventoryElement.getBoundingClientRect();
-        const outside = e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom;
-        if (outside) dropOutside(draggedFromSlot);
-      }
+  const selectSlot = (slot: number) => {
+    if (movingFrom !== null) {
+      if (slot !== movingFrom) void run(() => moveItem(movingFrom, slot));
+      setMovingFrom(null);
     }
-    clearDragState();
-    mouseDownTimeRef.current = null;
-  };
-
-  const handleDrop = (e: React.DragEvent, toSlot: number) => {
-    e.preventDefault();
-    if (draggedFromSlot !== null && draggedFromSlot !== toSlot) moveItem(draggedFromSlot, toSlot);
-    clearDragState();
+    setSelected(slot);
   };
 
   return (
-    <>
-      <button className="ui-element" onClick={() => setShowInventory(!showInventory)}>
-        {!showInventory ? 'Inventory' : 'Close Inventory'}
-      </button>
-      {showInventory && (
-        <div className="inventory ui-element">
-          {slots.map((item, i) => {
-            const def = item ? getItemDef(item.itemId) : undefined;
-            const isDragOver = dragOverSlot === i;
-            const isDragging = draggedFromSlot === i;
-            return (
-              <div
-                key={i}
-                className={`inventory-slot ${isDragOver ? 'over' : ''} ${item ? 'filled' : ''} ${isDragging ? 'dragging' : ''}`}
-                draggable={!!item}
-                onMouseDown={() => { if (item) mouseDownTimeRef.current = Date.now(); }}
-                onClick={(e) => handleClick(e, i)}
-                onDragStart={(e) => handleDragStart(e, i)}
-                onDragEnd={handleDragEnd}
-                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverSlot(i); }}
-                onDragLeave={(e) => { if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) setDragOverSlot(null); }}
-                onDrop={(e) => handleDrop(e, i)}
-                title={item ? `${def?.name ?? item.itemId} (${item.quantity}) - click to eat, hold to drag, drag outside to drop` : 'Empty slot'}
-              >
-                {item && (
-                  <>
-                    <img src={def?.icon ?? '/berry.svg'} alt={def?.name ?? item.itemId} draggable={false} />
-                    {item.quantity > 1 && <div className="qty">{item.quantity}</div>}
-                  </>
-                )}
-              </div>
-            );
-          })}
+    <section className="game-panel inventory-panel" aria-label="Inventory">
+      <header className="panel-heading">
+        <div>
+          <span className="eyebrow">Your supplies</span>
+          <h2>
+            Inventory{" "}
+            <small>
+              {occupied}/{INVENTORY_SIZE}
+            </small>
+          </h2>
         </div>
-      )}
-    </>
+        <button
+          className="close-button"
+          onClick={onClose}
+          aria-label="Close inventory"
+        >
+          ×
+        </button>
+      </header>
+      <div className="inventory-grid" aria-label="Inventory slots">
+        {slots.map((slot, index) => {
+          const definition = slot ? getItemDef(slot.itemId) : undefined;
+          return (
+            <button
+              key={index}
+              className={`inventory-slot ${slot ? "filled" : ""} ${selected === index ? "selected" : ""} ${movingFrom !== null && movingFrom !== index ? "move-target" : ""}`}
+              onClick={() => selectSlot(index)}
+              disabled={pending}
+              aria-pressed={selected === index}
+              aria-label={`Slot ${index + 1}: ${slot ? `${definition?.name ?? slot.itemId}, ${slot.quantity}` : "empty"}${movingFrom !== null ? ", move here" : ""}`}
+            >
+              {slot ? (
+                <>
+                  <img
+                    src={definition?.icon ?? "/berry.svg"}
+                    alt=""
+                    draggable={false}
+                  />
+                  <span className="qty">{slot.quantity}</span>
+                </>
+              ) : (
+                <span className="empty-slot-mark" aria-hidden="true">
+                  ·
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="item-inspector" aria-live="polite">
+        {movingFrom !== null ? (
+          <>
+            <strong>Choose a destination slot</strong>
+            <p>Matching berries stack. Different items swap places.</p>
+            <button onClick={() => setMovingFrom(null)}>Cancel move</button>
+          </>
+        ) : item ? (
+          <>
+            <div className="item-description">
+              <strong>{def?.name ?? item.itemId}</strong>
+              <span>
+                {def?.healthRestore
+                  ? `Restores ${def.healthRestore} HP`
+                  : "Inventory item"}{" "}
+                · {item.quantity} held
+              </span>
+            </div>
+            <div className="item-actions">
+              <button
+                className="primary-button"
+                disabled={pending || !def?.healthRestore}
+                onClick={() => void run(() => eatBerry(selected!))}
+              >
+                Eat <span>+{def?.healthRestore ?? 0}</span>
+              </button>
+              <button
+                disabled={pending}
+                onClick={() => setMovingFrom(selected)}
+              >
+                Move
+              </button>
+              <button
+                disabled={pending}
+                onClick={() => void run(() => dropItem(selected!, 1))}
+              >
+                Drop 1
+              </button>
+            </div>
+            <p className="fine-print">
+              Anyone can pick up dropped items.
+            </p>
+          </>
+        ) : (
+          <p>
+            {occupied
+              ? "Select a berry to eat, move, or drop it."
+              : "Your bag is empty. Tap a berry tree and choose Harvest to gather food."}
+          </p>
+        )}
+      </div>
+    </section>
   );
 });
 

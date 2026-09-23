@@ -12,6 +12,7 @@ const ChatBubble = (props) => {
     <Html
       zIndexRange={[4, 0]}
       center
+      style={{ transform: 'translate(-50%, -100%)', pointerEvents: 'none' }}
       position={offsetPosition}
       className="player-chat-bubble"
     >

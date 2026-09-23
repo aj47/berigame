@@ -1,0 +1,24 @@
+/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/build_character.py:233: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat=bpy.data.materials.new('Beri_OneAtlas');mat.use_nodes=True
+INFO Draco is available, use library at /Applications/Blender.app/Contents/Resources/5.2/scripts/addons_core/io_scene_gltf2/libbf_intern_draco_bridge.dylib
+INFO MeshOptimizer is available, use library at /Applications/Blender.app/Contents/Resources/5.2/scripts/addons_core/io_scene_gltf2/libbf_intern_meshopt_bridge.dylib
+19:51:31 | INFO: Starting glTF 2.0 export
+19:51:31 | INFO: Extracting primitive: StarterAdventurerMesh
+19:51:31 | INFO: Primitives created: 1
+19:51:32 | INFO: Finished glTF 2.0 export in 0.6992011070251465 s
+/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/build_character.py:351: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world=bpy.data.worlds.new('WarmStudio');world.use_nodes=True;scene.world=world
+/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/build_character.py:357: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  gm=bpy.data.materials.new('StudioSand');gm.diffuse_color=(.68,.63,.52,1);gm.use_nodes=True;gs=next(n for n in gm.node_tree.nodes if n.type=='BSDF_PRINCIPLED');gs.inputs['Base Color'].default_value=(.68,.63,.52,1);gs.inputs['Roughness'].default_value=1;ground.data.materials.append(gm)
+00:08.261  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/cropped/idle-preview.png'
+00:14.075  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/cropped/strike-preview.png'
+00:19.790  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/cropped/grab-preview.png'
+00:25.887  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/cropped/grabready-preview.png'
+00:32.369  render           | Saved: '/Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/cropped/guard-preview.png'
+
+ASSET_METRICS {"hair_id": "cropped", "blender": "5.2.1 LTS", "triangles": 1984, "mesh_vertices": 1362, "materials": 1, "mesh_objects": 1, "bones": 26, "atlas": [64, 64], "max_vertex_influences": 2, "clips": {"Idle": {"seconds": 2.0, "loop": true}, "Run": {"seconds": 0.8, "loop": true}, "Walk": {"seconds": 1.2, "loop": true}, "Stop": {"seconds": 0.5, "loop": false}, "Turn": {"seconds": 0.6, "loop": false}, "Strike": {"seconds": 0.9, "loop": false}, "Grab": {"seconds": 0.9, "loop": false}, "GrabReady": {"seconds": 2.0, "loop": true}, "Guard": {"seconds": 1.0, "loop": true}, "Hit": {"seconds": 0.5, "loop": false}, "Stagger": {"seconds": 0.8, "loop": false}, "Defeat": {"seconds": 1.2, "loop": false}}, "glb_bytes": 463180, "orientation": "Blender -Y forward, Z up; glTF +Z forward, Y up", "status": "Asset build only; integration and device qualification tracked in docs/PLAYABLE_GRAPHICS_PROGRESS.md"}
+Info: Saved as "starter-adventurer-v3-cropped.blend"
+BUILD_COMPLETE /Users/ajjoobandi/Development/personal/berigame/docs/art/characters/blender-v3/cropped
+Blender 5.2.1 LTS (hash 9e2066aef7ef built 2026-08-25 01:35:57)
+
+Blender quit

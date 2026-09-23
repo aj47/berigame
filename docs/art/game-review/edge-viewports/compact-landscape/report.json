@@ -1,0 +1,543 @@
+{
+  "checks": [
+    {
+      "name": "568x320",
+      "bag": {
+        "width": 568,
+        "height": 320,
+        "header": {
+          "x": 12,
+          "y": 12,
+          "width": 87.078125,
+          "height": 34,
+          "top": 12,
+          "right": 99.078125,
+          "bottom": 46,
+          "left": 12
+        },
+        "toolbar": {
+          "x": 357.453125,
+          "y": 12,
+          "width": 198.546875,
+          "height": 44,
+          "top": 12,
+          "right": 556,
+          "bottom": 56,
+          "left": 357.453125
+        },
+        "hud": {
+          "x": 284,
+          "y": 205,
+          "width": 272,
+          "height": 107,
+          "top": 205,
+          "right": 556,
+          "bottom": 312,
+          "left": 284
+        },
+        "panel": {
+          "x": 12,
+          "y": 62,
+          "width": 260,
+          "height": 246,
+          "top": 62,
+          "right": 272,
+          "bottom": 308,
+          "left": 12
+        },
+        "choices": null,
+        "combat": [
+          {
+            "text": "Strikebeats Grab1",
+            "x": 293,
+            "y": 244,
+            "width": 66,
+            "height": 59,
+            "top": 244,
+            "right": 359,
+            "bottom": 303,
+            "left": 293
+          },
+          {
+            "text": "Grabbeats Guard2",
+            "x": 363,
+            "y": 244,
+            "width": 66,
+            "height": 59,
+            "top": 244,
+            "right": 429,
+            "bottom": 303,
+            "left": 363
+          },
+          {
+            "text": "Guardbeats Strike3",
+            "x": 433,
+            "y": 244,
+            "width": 66,
+            "height": 59,
+            "top": 244,
+            "right": 499,
+            "bottom": 303,
+            "left": 433
+          },
+          {
+            "text": "■StopEsc",
+            "x": 503,
+            "y": 244,
+            "width": 44,
+            "height": 59,
+            "top": 244,
+            "right": 547,
+            "bottom": 303,
+            "left": 503
+          }
+        ],
+        "actions": [
+          {
+            "text": "Eat +10",
+            "x": 22,
+            "y": 228.953125,
+            "width": 85.5,
+            "height": 44,
+            "top": 228.953125,
+            "right": 107.5,
+            "bottom": 272.953125,
+            "left": 22
+          },
+          {
+            "text": "Move",
+            "x": 113.5,
+            "y": 228.953125,
+            "width": 71.25,
+            "height": 44,
+            "top": 228.953125,
+            "right": 184.75,
+            "bottom": 272.953125,
+            "left": 113.5
+          },
+          {
+            "text": "Drop 1",
+            "x": 190.75,
+            "y": 228.953125,
+            "width": 71.25,
+            "height": 44,
+            "top": 228.953125,
+            "right": 262,
+            "bottom": 272.953125,
+            "left": 190.75
+          }
+        ],
+        "feet": {
+          "x": 283.99999999999994,
+          "y": 143.97390156039273
+        },
+        "head": {
+          "x": 283.99999999999994,
+          "y": 75.08617181105349
+        }
+      },
+      "style": {
+        "width": 568,
+        "height": 320,
+        "header": {
+          "x": 12,
+          "y": 12,
+          "width": 87.078125,
+          "height": 34,
+          "top": 12,
+          "right": 99.078125,
+          "bottom": 46,
+          "left": 12
+        },
+        "toolbar": {
+          "x": 357.453125,
+          "y": 12,
+          "width": 198.546875,
+          "height": 44,
+          "top": 12,
+          "right": 556,
+          "bottom": 56,
+          "left": 357.453125
+        },
+        "hud": {
+          "x": 284,
+          "y": 205,
+          "width": 272,
+          "height": 107,
+          "top": 205,
+          "right": 556,
+          "bottom": 312,
+          "left": 284
+        },
+        "panel": {
+          "x": 12,
+          "y": 62,
+          "width": 260,
+          "height": 246,
+          "top": 62,
+          "right": 272,
+          "bottom": 308,
+          "left": 12
+        },
+        "choices": {
+          "x": 19,
+          "y": 146,
+          "width": 246,
+          "height": 84,
+          "top": 146,
+          "right": 265,
+          "bottom": 230,
+          "left": 19
+        },
+        "combat": [
+          {
+            "text": "Strikebeats Grab1",
+            "x": 293,
+            "y": 244,
+            "width": 66,
+            "height": 59,
+            "top": 244,
+            "right": 359,
+            "bottom": 303,
+            "left": 293
+          },
+          {
+            "text": "Grabbeats Guard2",
+            "x": 363,
+            "y": 244,
+            "width": 66,
+            "height": 59,
+            "top": 244,
+            "right": 429,
+            "bottom": 303,
+            "left": 363
+          },
+          {
+            "text": "Guardbeats Strike3",
+            "x": 433,
+            "y": 244,
+            "width": 66,
+            "height": 59,
+            "top": 244,
+            "right": 499,
+            "bottom": 303,
+            "left": 433
+          },
+          {
+            "text": "■StopEsc",
+            "x": 503,
+            "y": 244,
+            "width": 44,
+            "height": 59,
+            "top": 244,
+            "right": 547,
+            "bottom": 303,
+            "left": 503
+          }
+        ],
+        "actions": [
+          {
+            "text": "Cancel",
+            "x": 22,
+            "y": 240,
+            "width": 92.796875,
+            "height": 44,
+            "top": 240,
+            "right": 114.796875,
+            "bottom": 284,
+            "left": 22
+          },
+          {
+            "text": "Save style",
+            "x": 122.796875,
+            "y": 240,
+            "width": 139.203125,
+            "height": 44,
+            "top": 240,
+            "right": 262,
+            "bottom": 284,
+            "left": 122.796875
+          }
+        ],
+        "feet": {
+          "x": 424.8397409921605,
+          "y": 169.57590831374563
+        },
+        "head": {
+          "x": 440.8421172623351,
+          "y": 103.57212644456253
+        }
+      }
+    },
+    {
+      "name": "640x360",
+      "bag": {
+        "width": 640,
+        "height": 360,
+        "header": {
+          "x": 18,
+          "y": 8,
+          "width": 144.375,
+          "height": 36,
+          "top": 8,
+          "right": 162.375,
+          "bottom": 44,
+          "left": 18
+        },
+        "toolbar": {
+          "x": 320.03125,
+          "y": 8,
+          "width": 301.96875,
+          "height": 44,
+          "top": 8,
+          "right": 622,
+          "bottom": 52,
+          "left": 320.03125
+        },
+        "hud": {
+          "x": 320,
+          "y": 245,
+          "width": 308,
+          "height": 107,
+          "top": 245,
+          "right": 628,
+          "bottom": 352,
+          "left": 320
+        },
+        "panel": {
+          "x": 12,
+          "y": 62,
+          "width": 296,
+          "height": 281.046875,
+          "top": 62,
+          "right": 308,
+          "bottom": 343.046875,
+          "left": 12
+        },
+        "choices": null,
+        "combat": [
+          {
+            "text": "Strikebeats Grab1",
+            "x": 329,
+            "y": 284,
+            "width": 78,
+            "height": 59,
+            "top": 284,
+            "right": 407,
+            "bottom": 343,
+            "left": 329
+          },
+          {
+            "text": "Grabbeats Guard2",
+            "x": 411,
+            "y": 284,
+            "width": 78,
+            "height": 59,
+            "top": 284,
+            "right": 489,
+            "bottom": 343,
+            "left": 411
+          },
+          {
+            "text": "Guardbeats Strike3",
+            "x": 493,
+            "y": 284,
+            "width": 78,
+            "height": 59,
+            "top": 284,
+            "right": 571,
+            "bottom": 343,
+            "left": 493
+          },
+          {
+            "text": "■StopEsc",
+            "x": 575,
+            "y": 284,
+            "width": 44,
+            "height": 59,
+            "top": 284,
+            "right": 619,
+            "bottom": 343,
+            "left": 575
+          }
+        ],
+        "actions": [
+          {
+            "text": "Eat +10",
+            "x": 22,
+            "y": 264,
+            "width": 99,
+            "height": 44,
+            "top": 264,
+            "right": 121,
+            "bottom": 308,
+            "left": 22
+          },
+          {
+            "text": "Move",
+            "x": 127,
+            "y": 264,
+            "width": 82.5,
+            "height": 44,
+            "top": 264,
+            "right": 209.5,
+            "bottom": 308,
+            "left": 127
+          },
+          {
+            "text": "Drop 1",
+            "x": 215.5,
+            "y": 264,
+            "width": 82.5,
+            "height": 44,
+            "top": 264,
+            "right": 298,
+            "bottom": 308,
+            "left": 215.5
+          }
+        ],
+        "feet": {
+          "x": 320.0906114094396,
+          "y": 161.9812428153746
+        },
+        "head": {
+          "x": 320.1009067838702,
+          "y": 84.45564677081343
+        }
+      },
+      "style": {
+        "width": 640,
+        "height": 360,
+        "header": {
+          "x": 18,
+          "y": 8,
+          "width": 144.375,
+          "height": 36,
+          "top": 8,
+          "right": 162.375,
+          "bottom": 44,
+          "left": 18
+        },
+        "toolbar": {
+          "x": 320.03125,
+          "y": 8,
+          "width": 301.96875,
+          "height": 44,
+          "top": 8,
+          "right": 622,
+          "bottom": 52,
+          "left": 320.03125
+        },
+        "hud": {
+          "x": 320,
+          "y": 245,
+          "width": 308,
+          "height": 107,
+          "top": 245,
+          "right": 628,
+          "bottom": 352,
+          "left": 320
+        },
+        "panel": {
+          "x": 12,
+          "y": 62,
+          "width": 296,
+          "height": 286,
+          "top": 62,
+          "right": 308,
+          "bottom": 348,
+          "left": 12
+        },
+        "choices": {
+          "x": 19,
+          "y": 133.5,
+          "width": 282,
+          "height": 136.5,
+          "top": 133.5,
+          "right": 301,
+          "bottom": 270,
+          "left": 19
+        },
+        "combat": [
+          {
+            "text": "Strikebeats Grab1",
+            "x": 329,
+            "y": 284,
+            "width": 78,
+            "height": 59,
+            "top": 284,
+            "right": 407,
+            "bottom": 343,
+            "left": 329
+          },
+          {
+            "text": "Grabbeats Guard2",
+            "x": 411,
+            "y": 284,
+            "width": 78,
+            "height": 59,
+            "top": 284,
+            "right": 489,
+            "bottom": 343,
+            "left": 411
+          },
+          {
+            "text": "Guardbeats Strike3",
+            "x": 493,
+            "y": 284,
+            "width": 78,
+            "height": 59,
+            "top": 284,
+            "right": 571,
+            "bottom": 343,
+            "left": 493
+          },
+          {
+            "text": "■StopEsc",
+            "x": 575,
+            "y": 284,
+            "width": 44,
+            "height": 59,
+            "top": 284,
+            "right": 619,
+            "bottom": 343,
+            "left": 575
+          }
+        ],
+        "actions": [
+          {
+            "text": "Cancel",
+            "x": 22,
+            "y": 280,
+            "width": 107.1875,
+            "height": 44,
+            "top": 280,
+            "right": 129.1875,
+            "bottom": 324,
+            "left": 22
+          },
+          {
+            "text": "Save style",
+            "x": 137.1875,
+            "y": 280,
+            "width": 160.796875,
+            "height": 44,
+            "top": 280,
+            "right": 297.984375,
+            "bottom": 324,
+            "left": 137.1875
+          }
+        ],
+        "feet": {
+          "x": 478.52367606522085,
+          "y": 190.78725457097116
+        },
+        "head": {
+          "x": 496.5353217431843,
+          "y": 116.5346313088705
+        }
+      }
+    }
+  ],
+  "errors": []
+}

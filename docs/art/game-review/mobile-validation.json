@@ -1,0 +1,34 @@
+{
+  "qualification": "Touch/viewport emulation in desktop Chrome, not physical-phone testing.",
+  "checks": [
+    {
+      "name": "all three stances usable by touch",
+      "passed": true
+    },
+    {
+      "name": "touch ground movement reaches chosen tile",
+      "passed": true
+    },
+    {
+      "name": "Gather shortcut harvests a real berry",
+      "passed": true
+    },
+    {
+      "name": "touch item selection and Move persist",
+      "passed": true
+    },
+    {
+      "name": "chat bubble wraps across a readable width",
+      "passed": true
+    },
+    {
+      "name": "landscape item actions remain visible",
+      "passed": true
+    },
+    {
+      "name": "no page errors",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

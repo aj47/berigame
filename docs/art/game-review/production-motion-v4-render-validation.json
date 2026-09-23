@@ -1,0 +1,560 @@
+{
+  "createdAt": "2026-09-21T04:08:42.524Z",
+  "url": "http://127.0.0.1:4175",
+  "host": {
+    "cpu": "Apple M1 Pro",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "qualification": "Local production bundle in headless Chrome.390px touch viewport/DPR3 on host GPU;4x Chrome CPU throttle is only a CPU-throughput proxy, not physical phone hardware. No profiler attached. RAF intervals measure delivery cadence, not GPU execution time.",
+  "samples": [
+    {
+      "label": "production390px crowd moving",
+      "cpuThrottleRate": 1,
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "devicePixelRatio": 3
+      },
+      "frames": {
+        "count": 480,
+        "averageMs": 16.67,
+        "estimatedFps": 60,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 16.8,
+        "maxMs": 16.8,
+        "over33ms": 0
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "debugGlobalsAbsent": true,
+      "fixturePositionsBefore": [
+        {
+          "x": 22,
+          "z": 22
+        },
+        {
+          "x": 23,
+          "z": 22
+        },
+        {
+          "x": 24,
+          "z": 22
+        },
+        {
+          "x": 25,
+          "z": 22
+        },
+        {
+          "x": 26,
+          "z": 22
+        },
+        {
+          "x": 27,
+          "z": 22
+        },
+        {
+          "x": 22,
+          "z": 23
+        },
+        {
+          "x": 23,
+          "z": 23
+        },
+        {
+          "x": 24,
+          "z": 23
+        },
+        {
+          "x": 25,
+          "z": 23
+        },
+        {
+          "x": 26,
+          "z": 23
+        },
+        {
+          "x": 27,
+          "z": 23
+        },
+        {
+          "x": 22,
+          "z": 24
+        },
+        {
+          "x": 23,
+          "z": 24
+        },
+        {
+          "x": 24,
+          "z": 24
+        },
+        {
+          "x": 25,
+          "z": 24
+        },
+        {
+          "x": 26,
+          "z": 24
+        },
+        {
+          "x": 27,
+          "z": 24
+        },
+        {
+          "x": 22,
+          "z": 25
+        },
+        {
+          "x": 23,
+          "z": 25
+        },
+        {
+          "x": 24,
+          "z": 25
+        },
+        {
+          "x": 25,
+          "z": 25
+        },
+        {
+          "x": 26,
+          "z": 25
+        },
+        {
+          "x": 27,
+          "z": 25
+        },
+        {
+          "x": 22,
+          "z": 26
+        },
+        {
+          "x": 23,
+          "z": 26
+        },
+        {
+          "x": 24,
+          "z": 26
+        },
+        {
+          "x": 25,
+          "z": 26
+        },
+        {
+          "x": 26,
+          "z": 26
+        },
+        {
+          "x": 27,
+          "z": 26
+        }
+      ],
+      "fixturePositionsAfter": [
+        {
+          "x": 23,
+          "z": 22
+        },
+        {
+          "x": 24,
+          "z": 22
+        },
+        {
+          "x": 25,
+          "z": 22
+        },
+        {
+          "x": 26,
+          "z": 22
+        },
+        {
+          "x": 27,
+          "z": 22
+        },
+        {
+          "x": 28,
+          "z": 22
+        },
+        {
+          "x": 23,
+          "z": 23
+        },
+        {
+          "x": 24,
+          "z": 23
+        },
+        {
+          "x": 25,
+          "z": 23
+        },
+        {
+          "x": 26,
+          "z": 23
+        },
+        {
+          "x": 27,
+          "z": 23
+        },
+        {
+          "x": 28,
+          "z": 23
+        },
+        {
+          "x": 23,
+          "z": 24
+        },
+        {
+          "x": 24,
+          "z": 24
+        },
+        {
+          "x": 25,
+          "z": 24
+        },
+        {
+          "x": 26,
+          "z": 24
+        },
+        {
+          "x": 27,
+          "z": 24
+        },
+        {
+          "x": 28,
+          "z": 24
+        },
+        {
+          "x": 23,
+          "z": 25
+        },
+        {
+          "x": 24,
+          "z": 25
+        },
+        {
+          "x": 25,
+          "z": 25
+        },
+        {
+          "x": 26,
+          "z": 25
+        },
+        {
+          "x": 27,
+          "z": 25
+        },
+        {
+          "x": 28,
+          "z": 25
+        },
+        {
+          "x": 23,
+          "z": 26
+        },
+        {
+          "x": 24,
+          "z": 26
+        },
+        {
+          "x": 25,
+          "z": 26
+        },
+        {
+          "x": 26,
+          "z": 26
+        },
+        {
+          "x": 27,
+          "z": 26
+        },
+        {
+          "x": 28,
+          "z": 26
+        }
+      ]
+    },
+    {
+      "label": "production390px crowd moving,4x CPU throttle",
+      "cpuThrottleRate": 4,
+      "onlinePlayers": 32,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "devicePixelRatio": 3
+      },
+      "frames": {
+        "count": 441,
+        "averageMs": 18.14,
+        "estimatedFps": 55.1,
+        "p50Ms": 16.7,
+        "p95Ms": 16.8,
+        "p99Ms": 116.6,
+        "maxMs": 116.8,
+        "over33ms": 6
+      },
+      "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "debugGlobalsAbsent": true,
+      "fixturePositionsBefore": [
+        {
+          "x": 22,
+          "z": 22
+        },
+        {
+          "x": 23,
+          "z": 22
+        },
+        {
+          "x": 24,
+          "z": 22
+        },
+        {
+          "x": 25,
+          "z": 22
+        },
+        {
+          "x": 26,
+          "z": 22
+        },
+        {
+          "x": 27,
+          "z": 22
+        },
+        {
+          "x": 22,
+          "z": 23
+        },
+        {
+          "x": 23,
+          "z": 23
+        },
+        {
+          "x": 24,
+          "z": 23
+        },
+        {
+          "x": 25,
+          "z": 23
+        },
+        {
+          "x": 26,
+          "z": 23
+        },
+        {
+          "x": 27,
+          "z": 23
+        },
+        {
+          "x": 22,
+          "z": 24
+        },
+        {
+          "x": 23,
+          "z": 24
+        },
+        {
+          "x": 24,
+          "z": 24
+        },
+        {
+          "x": 25,
+          "z": 24
+        },
+        {
+          "x": 26,
+          "z": 24
+        },
+        {
+          "x": 27,
+          "z": 24
+        },
+        {
+          "x": 22,
+          "z": 25
+        },
+        {
+          "x": 23,
+          "z": 25
+        },
+        {
+          "x": 24,
+          "z": 25
+        },
+        {
+          "x": 25,
+          "z": 25
+        },
+        {
+          "x": 26,
+          "z": 25
+        },
+        {
+          "x": 27,
+          "z": 25
+        },
+        {
+          "x": 22,
+          "z": 26
+        },
+        {
+          "x": 23,
+          "z": 26
+        },
+        {
+          "x": 24,
+          "z": 26
+        },
+        {
+          "x": 25,
+          "z": 26
+        },
+        {
+          "x": 26,
+          "z": 26
+        },
+        {
+          "x": 27,
+          "z": 26
+        }
+      ],
+      "fixturePositionsAfter": [
+        {
+          "x": 22,
+          "z": 22
+        },
+        {
+          "x": 23,
+          "z": 22
+        },
+        {
+          "x": 24,
+          "z": 22
+        },
+        {
+          "x": 25,
+          "z": 22
+        },
+        {
+          "x": 26,
+          "z": 22
+        },
+        {
+          "x": 27,
+          "z": 22
+        },
+        {
+          "x": 22,
+          "z": 23
+        },
+        {
+          "x": 23,
+          "z": 23
+        },
+        {
+          "x": 24,
+          "z": 23
+        },
+        {
+          "x": 25,
+          "z": 23
+        },
+        {
+          "x": 26,
+          "z": 23
+        },
+        {
+          "x": 27,
+          "z": 23
+        },
+        {
+          "x": 22,
+          "z": 24
+        },
+        {
+          "x": 23,
+          "z": 24
+        },
+        {
+          "x": 24,
+          "z": 24
+        },
+        {
+          "x": 25,
+          "z": 24
+        },
+        {
+          "x": 26,
+          "z": 24
+        },
+        {
+          "x": 27,
+          "z": 24
+        },
+        {
+          "x": 22,
+          "z": 25
+        },
+        {
+          "x": 23,
+          "z": 25
+        },
+        {
+          "x": 24,
+          "z": 25
+        },
+        {
+          "x": 25,
+          "z": 25
+        },
+        {
+          "x": 26,
+          "z": 25
+        },
+        {
+          "x": 27,
+          "z": 25
+        },
+        {
+          "x": 22,
+          "z": 26
+        },
+        {
+          "x": 23,
+          "z": 26
+        },
+        {
+          "x": 24,
+          "z": 26
+        },
+        {
+          "x": 25,
+          "z": 26
+        },
+        {
+          "x": 26,
+          "z": 26
+        },
+        {
+          "x": 27,
+          "z": 26
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "distSha256": "61213cfd5a9825d050a2a82b6fcce3a7a6392386a31a71a6ffbb99e0b7e7c095",
+  "sourceSha256": "b8adc085a8e3d266d8c75d0375fa20020049caaba9a9ebcbc8a8a1846fa3aad2",
+  "browserVersion": "153.0.8010.48",
+  "baselineOnlinePlayers": 3,
+  "totalPlayerRows": 380,
+  "onlinePlayers": 32,
+  "fixtureCleanupVerified": 29,
+  "observerDisconnected": true,
+  "fixturesCreated": 30,
+  "maximumHarnessConnections": 31,
+  "browserClosed": true,
+  "finalDistSha256": "61213cfd5a9825d050a2a82b6fcce3a7a6392386a31a71a6ffbb99e0b7e7c095",
+  "finalSourceSha256": "b8adc085a8e3d266d8c75d0375fa20020049caaba9a9ebcbc8a8a1846fa3aad2",
+  "sourceUnchanged": true,
+  "bundleUnchanged": true
+}

@@ -50,6 +50,6 @@ describe('combatFxStore', () => {
 
   it('floats the counter over the attacker', () => {
     useCombatFxStore.getState().pushEvent({ ...base, kind: EventKind.Counter, attacker: idA, defender: idB, damage: 2 });
-    expect(useCombatFxStore.getState().numbers[idA.toHexString()]?.text).toBe('COUNTER 2');
+    expect(useCombatFxStore.getState().numbers[idA.toHexString()]?.text).toBe('2');
   });
 });

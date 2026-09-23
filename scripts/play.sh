@@ -24,9 +24,13 @@ done
     curl -sSf https://install.spacetimedb.com | sh
 then reopen your shell and run this again."
 # The installer's launcher needs to know its root when it isn't on PATH.
-STDB_ARGS=()
-case "$SPACETIME" in "$HOME/.stdb/spacetime") STDB_ARGS=("--root-dir=$HOME/.stdb");; esac
-stdb() { "$SPACETIME" "${STDB_ARGS[@]}" "$@"; }
+stdb() {
+  if [ "$SPACETIME" = "$HOME/.stdb/spacetime" ]; then
+    "$SPACETIME" "--root-dir=$HOME/.stdb" "$@"
+  else
+    "$SPACETIME" "$@"
+  fi
+}
 log "spacetime CLI: $SPACETIME ($(stdb --version 2>/dev/null | head -1 | sed 's/spacetime Path: //'))"
 
 # --- 2. node -----------------------------------------------------------------
@@ -73,8 +77,7 @@ trap cleanup EXIT INT TERM
 stdb server add local --url "$STDB_URL" >/dev/null 2>&1 || true
 log "publishing module '$DB_NAME' to local server"
 if ! (cd spacetimedb && stdb publish "$DB_NAME" --server local --yes); then
-  log "publish failed (schema changed?). Retrying with --delete-data=always, which wipes local game data."
-  (cd spacetimedb && stdb publish "$DB_NAME" --server local --yes --delete-data=always)
+  fail "publish failed; existing local game data has been preserved. Review the error and any required schema migration before retrying."
 fi
 
 # --- 6. client bindings ------------------------------------------------------
@@ -93,4 +96,4 @@ cat <<TIP
   ============================================================
 
 TIP
-cd frontend && exec npx vite --host 127.0.0.1 --port "$CLIENT_PORT"
+cd frontend && npx vite --host 127.0.0.1 --port "$CLIENT_PORT"

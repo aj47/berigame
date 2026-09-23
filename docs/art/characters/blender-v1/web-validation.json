@@ -1,0 +1,156 @@
+{
+  "asset": {
+    "primitives": 1,
+    "triangles": 2102,
+    "vertices": 4174,
+    "bones": 24,
+    "materials": 1
+  },
+  "clips": [
+    {
+      "name": "Defeat",
+      "duration": 1.2000000476837158,
+      "tracks": 72
+    },
+    {
+      "name": "Grab",
+      "duration": 0.8999999761581421,
+      "tracks": 72
+    },
+    {
+      "name": "Guard",
+      "duration": 1,
+      "tracks": 72
+    },
+    {
+      "name": "Hit",
+      "duration": 0.5,
+      "tracks": 72
+    },
+    {
+      "name": "Idle",
+      "duration": 2,
+      "tracks": 72
+    },
+    {
+      "name": "Run",
+      "duration": 0.800000011920929,
+      "tracks": 72
+    },
+    {
+      "name": "Stagger",
+      "duration": 0.800000011920929,
+      "tracks": 72
+    },
+    {
+      "name": "Stop",
+      "duration": 0.5,
+      "tracks": 72
+    },
+    {
+      "name": "Strike",
+      "duration": 0.8999999761581421,
+      "tracks": 72
+    },
+    {
+      "name": "Turn",
+      "duration": 0.6000000238418579,
+      "tracks": 72
+    },
+    {
+      "name": "Walk",
+      "duration": 1.2000000476837158,
+      "tracks": 72
+    }
+  ],
+  "validation": [
+    {
+      "clip": "Defeat",
+      "finite": true,
+      "minY": 0.01499994847082565,
+      "maxExtent": 2.1203581696254945,
+      "maxVertexDisplacement": 1.2317300850909196
+    },
+    {
+      "clip": "Grab",
+      "finite": true,
+      "minY": 0.014987375384516353,
+      "maxExtent": 2.1293110756363016,
+      "maxVertexDisplacement": 0.7181857331248147
+    },
+    {
+      "clip": "Guard",
+      "finite": true,
+      "minY": 0.014990149222137632,
+      "maxExtent": 2.12930737409808,
+      "maxVertexDisplacement": 0.02478024799720488
+    },
+    {
+      "clip": "Hit",
+      "finite": true,
+      "minY": 0.014723852601562575,
+      "maxExtent": 2.1203581696254945,
+      "maxVertexDisplacement": 0.23125030750429593
+    },
+    {
+      "clip": "Idle",
+      "finite": true,
+      "minY": 0.01500020714362502,
+      "maxExtent": 2.1293566514888167,
+      "maxVertexDisplacement": 0.020212351657820884
+    },
+    {
+      "clip": "Run",
+      "finite": true,
+      "minY": 0.014999379007897096,
+      "maxExtent": 2.1415754185512332,
+      "maxVertexDisplacement": 0.4518633685862292
+    },
+    {
+      "clip": "Stagger",
+      "finite": true,
+      "minY": 0.014999945658495759,
+      "maxExtent": 2.1203581696254945,
+      "maxVertexDisplacement": 0.23255680228715334
+    },
+    {
+      "clip": "Stop",
+      "finite": true,
+      "minY": 0.014970568072261665,
+      "maxExtent": 2.1275641241468857,
+      "maxVertexDisplacement": 0.12233324190253601
+    },
+    {
+      "clip": "Strike",
+      "finite": true,
+      "minY": 0.014987375384516353,
+      "maxExtent": 2.1293110756363016,
+      "maxVertexDisplacement": 0.8131984665379863
+    },
+    {
+      "clip": "Turn",
+      "finite": true,
+      "minY": 0.014981826660454252,
+      "maxExtent": 2.1292200083280206,
+      "maxVertexDisplacement": 0.8464576750524604
+    },
+    {
+      "clip": "Walk",
+      "finite": true,
+      "minY": 0.014999656090647169,
+      "maxExtent": 2.1415754185512332,
+      "maxVertexDisplacement": 0.45186349522850794
+    }
+  ],
+  "crowd": {
+    "clip": "Run",
+    "characters": 32,
+    "drawCalls": 33,
+    "triangles": 67266,
+    "fps": 59.904153354654866,
+    "renderer": "WebKit WebGL",
+    "animationPlaying": true
+  },
+  "errors": [],
+  "note": "Desktop headless Chrome, Three.js 0.183.2, isolated asset viewer. Not the game runtime or a smartphone benchmark."
+}

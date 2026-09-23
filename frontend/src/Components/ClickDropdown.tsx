@@ -1,47 +1,78 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useUserInputStore } from "../store";
 
-const ClickDropdown = (props) => {
-  const clickedOtherObject = useUserInputStore(
-    (state: any) => state.clickedOtherObject
+const ClickDropdown = () => {
+  const selected = useUserInputStore((state: any) => state.clickedOtherObject);
+  const setSelected = useUserInputStore(
+    (state: any) => state.setClickedOtherObject,
   );
-  const clickedX = clickedOtherObject.e.clientX;
-  const clickedY = clickedOtherObject.e.clientY;
-  // Used to offset dropdown so it is always in view
-  const translateVal =
-    (clickedX > window.innerWidth / 2 ? "-100%" : "0") +
-    " , " +
-    (clickedY > window.innerHeight / 2 ? "-100%" : "0");
+  const ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ left: 12, top: 80 });
+  useLayoutEffect(() => {
+    const place = () => {
+      const rect = ref.current?.getBoundingClientRect();
+      const x = selected?.e?.clientX ?? window.innerWidth / 2;
+      const y = selected?.e?.clientY ?? window.innerHeight / 2;
+      setPosition({
+        left: Math.max(
+          12,
+          Math.min(x, window.innerWidth - (rect?.width ?? 240) - 12),
+        ),
+        top: Math.max(
+          12,
+          Math.min(y, window.innerHeight - (rect?.height ?? 200) - 12),
+        ),
+      });
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [selected]);
+  useEffect(() => {
+    const dismiss = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setSelected(null);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelected(null);
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [setSelected]);
+  if (!selected) return null;
   return (
     <div
       className="click-dropdown"
-      style={{
-        top: clickedOtherObject.e.clientY,
-        left: clickedOtherObject.e.clientX,
-        transform: `translate(${translateVal})`,
-      }}
+      ref={ref}
+      style={position}
+      role="group"
+      aria-label={`Actions for ${selected.connectionId}`}
     >
-      <button disabled> Selected {clickedOtherObject.connectionId}: </button>
-      {clickedOtherObject.dropdownOptions.map((e,i) => {
-        return (
-          <button
-            key={i}
-            onClick={e.onClick}
-            disabled={e.disabled}
-            style={{
-              opacity: e.disabled ? 0.5 : 1,
-              cursor: e.disabled ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {e.label}{" "}
-            <span style={{ color: "yellow", fontWeight: 600 }}>
-              {clickedOtherObject.connectionId}
-            </span>
-          </button>
-        );
-      })}
+      <div className="context-heading">
+        <span>{selected.connectionId}</span>
+        <button
+          className="close-button"
+          onClick={() => setSelected(null)}
+          aria-label="Close actions"
+        >
+          ×
+        </button>
+      </div>
+      {selected.dropdownOptions.map((option: any, index: number) => (
+        <button
+          className="context-action"
+          key={index}
+          onClick={option.onClick}
+          disabled={option.disabled}
+        >
+          {option.label}
+          <span aria-hidden="true">›</span>
+        </button>
+      ))}
     </div>
   );
 };
-
 export default ClickDropdown;

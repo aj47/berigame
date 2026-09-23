@@ -1,0 +1,203 @@
+{
+  "at": "2026-09-21T03:40:05.058Z",
+  "qualification": "Desktop Chrome touch viewport; browser offline, CDP freeze and buffered own-client messages emulate lifecycle/network failure. Not physical phone evidence.",
+  "checks": [
+    {
+      "name": "offline immediately warns and offers Rejoin",
+      "passed": true
+    },
+    {
+      "name": "offline recovery needs an advancing tick and preserves identity/inventory",
+      "passed": true
+    },
+    {
+      "name": "offline keyboard inputs were not queued",
+      "passed": true
+    },
+    {
+      "name": "fresh input works after recovery",
+      "passed": true
+    },
+    {
+      "name": "freeze/resume preserves identity/inventory and advancing ticks",
+      "passed": true
+    },
+    {
+      "name": "CDP freeze suspended page timers",
+      "passed": false
+    }
+  ],
+  "details": {
+    "baseline": {
+      "tick": 7944,
+      "identity": "c200d82f5a70fb0f8c8f00d42557d315b6ae3b99645ac10e9e79e16f70bcb51f",
+      "stance": 0,
+      "online": true,
+      "warning": null,
+      "sockets": [
+        1
+      ],
+      "closeEvents": [],
+      "pageHeartbeat": 59,
+      "inventory": [
+        "Slot 1: Goldberry, 1"
+      ],
+      "events": [
+        {
+          "event": "pageshow",
+          "at": 262.19999999925494
+        }
+      ],
+      "transitions": [
+        {
+          "visible": true,
+          "at": 278.69999999925494
+        },
+        {
+          "visible": false,
+          "at": 388
+        }
+      ]
+    },
+    "offline": {
+      "offline": {
+        "tick": 7944,
+        "identity": "c200d82f5a70fb0f8c8f00d42557d315b6ae3b99645ac10e9e79e16f70bcb51f",
+        "stance": 0,
+        "online": false,
+        "warning": "THE FIRST ISLAND\nBeriGame\n\nFind your footing. Pick your battles.\n\nConnection interrupted\n\nLive updates have stopped. Controls are paused, but the world keeps running. Rejoin to reconnect with your character.\n\nWaiting for fresh world updates.\n\nRejoin island\n\nStrike beats Grab. Grab beats Guard. Guard beats Strike.\n\nTap the ground to move. Tap a tree to gather. Open Help anytime.",
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 77,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 262.19999999925494
+          },
+          {
+            "event": "offline",
+            "at": 5948.599999997765
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 278.69999999925494
+          },
+          {
+            "visible": false,
+            "at": 388
+          },
+          {
+            "visible": true,
+            "at": 5949.89999999851
+          }
+        ]
+      },
+      "restored": {
+        "tick": 7947,
+        "identity": "c200d82f5a70fb0f8c8f00d42557d315b6ae3b99645ac10e9e79e16f70bcb51f",
+        "stance": 0,
+        "online": true,
+        "warning": null,
+        "sockets": [
+          1
+        ],
+        "closeEvents": [],
+        "pageHeartbeat": 78,
+        "inventory": [
+          "Slot 1: Goldberry, 1"
+        ],
+        "events": [
+          {
+            "event": "pageshow",
+            "at": 262.19999999925494
+          },
+          {
+            "event": "offline",
+            "at": 5948.599999997765
+          },
+          {
+            "event": "online",
+            "at": 7810.89999999851
+          }
+        ],
+        "transitions": [
+          {
+            "visible": true,
+            "at": 278.69999999925494
+          },
+          {
+            "visible": false,
+            "at": 388
+          },
+          {
+            "visible": true,
+            "at": 5949.89999999851
+          },
+          {
+            "visible": false,
+            "at": 7818.89999999851
+          }
+        ]
+      }
+    }
+  },
+  "errors": [],
+  "expectedConsole": [],
+  "status": "failed",
+  "failure": "Error: CDP freeze suspended page timers\n    at check (file:///Users/ajjoobandi/Development/personal/berigame/frontend/scripts/network-liveness-regression.mjs:7:135)\n    at file:///Users/ajjoobandi/Development/personal/berigame/frontend/scripts/network-liveness-regression.mjs:31:435",
+  "lastState": {
+    "tick": 7960,
+    "identity": "c200d82f5a70fb0f8c8f00d42557d315b6ae3b99645ac10e9e79e16f70bcb51f",
+    "stance": 0,
+    "online": true,
+    "warning": null,
+    "sockets": [
+      1
+    ],
+    "closeEvents": [],
+    "pageHeartbeat": 155,
+    "inventory": [
+      "Slot 1: Goldberry, 1"
+    ],
+    "events": [
+      {
+        "event": "pageshow",
+        "at": 262.19999999925494
+      },
+      {
+        "event": "offline",
+        "at": 5948.599999997765
+      },
+      {
+        "event": "online",
+        "at": 7810.89999999851
+      }
+    ],
+    "transitions": [
+      {
+        "visible": true,
+        "at": 278.69999999925494
+      },
+      {
+        "visible": false,
+        "at": 388
+      },
+      {
+        "visible": true,
+        "at": 5949.89999999851
+      },
+      {
+        "visible": false,
+        "at": 7818.89999999851
+      }
+    ]
+  },
+  "browserClosed": true
+}

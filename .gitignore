@@ -6,3 +6,7 @@ dist-ssr
 new_frontend/.env
 .aider*
 .spacetime-data/
+.agent-api-data/
+.wrangler/
+.dev.vars
+frontend/cloudflare/worker-configuration.d.ts

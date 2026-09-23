@@ -1,0 +1,108 @@
+{
+  "at": "2026-09-21T02:46:06.887Z",
+  "qualification": "Desktop browser engines with mobile viewport/touch emulation; not physical phones.",
+  "url": "http://127.0.0.1:5173",
+  "engines": [
+    {
+      "engine": "webkit",
+      "version": "26.5",
+      "status": "passed",
+      "checks": [
+        {
+          "label": "world connected, animated model fetched and WebGL scene rendered",
+          "pass": true,
+          "detail": {
+            "calls": 41,
+            "triangles": 7676,
+            "geometries": 40,
+            "textures": 3,
+            "pixelRatio": 1.5,
+            "camera": [
+              8.929905219492131,
+              12.782838651394526,
+              16.743572286547746
+            ]
+          }
+        },
+        {
+          "label": "three stance controls work via touch",
+          "pass": true
+        },
+        {
+          "label": "touch ground movement reaches chosen tile",
+          "pass": true
+        },
+        {
+          "label": "tree 2 harvest produces a berry",
+          "pass": true
+        },
+        {
+          "label": "touch inventory Move persists",
+          "pass": true
+        },
+        {
+          "label": "chat sends and appears in the log",
+          "pass": true
+        },
+        {
+          "label": "chat bubble retains readable width",
+          "pass": true,
+          "detail": {
+            "x": 85,
+            "y": 203.9777374267578,
+            "width": 220,
+            "height": 42
+          }
+        },
+        {
+          "label": "WebSocket interception available for real client disconnect",
+          "pass": true
+        },
+        {
+          "label": "connection loss shows recovery overlay",
+          "pass": true
+        },
+        {
+          "label": "rejoin preserves identity and carried inventory",
+          "pass": true
+        },
+        {
+          "label": "landscape inventory action fits viewport",
+          "pass": true,
+          "detail": {
+            "x": 30,
+            "y": 305.59375,
+            "width": 88.875,
+            "height": 44
+          }
+        },
+        {
+          "label": "no JavaScript page errors",
+          "pass": true
+        }
+      ],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "SpacetimeDB disconnected"
+      ],
+      "executable": "/Users/ajjoobandi/Library/Caches/ms-playwright/webkit-2336/pw_run.sh"
+    },
+    {
+      "engine": "firefox",
+      "version": "134.0",
+      "status": "engine-incompatible",
+      "checks": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "executable": "/Users/ajjoobandi/Library/Caches/ms-playwright/firefox-1471/firefox/Nightly.app/Contents/MacOS/firefox",
+      "error": "browser.newContext: Protocol error (Browser.setDefaultViewport): ERROR: failed to call method 'Browser.setDefaultViewport' with parameters {\n  \"browserContextId\": \"62675fce-0b3c-4906-af92-15e8fd82125d\",\n  \"viewport\": {\n    \"viewportSize\": {\n      \"width\": 390,\n      \"height\": 844\n    },\n    \"deviceScaleFactor\": 2,\n    \"isMobile\": false\n  }\n}\nFound property \"<root>.viewport.isMobile\" - false which is not described in this scheme\n    at async file:///Users/ajjoobandi/Development/personal/berigame/frontend/scripts/cross-browser-check.mjs:24:17",
+      "additionalDriverAttempt": {
+        "driver": "Playwright1.58.2",
+        "result": "newContext fails before page load: Browser.setContrast unsupported"
+      }
+    }
+  ],
+  "playwrightVersion": "1.62.0"
+}

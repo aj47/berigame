@@ -1,0 +1,285 @@
+"""Reproducible original BeriGame character. Run in an isolated Blender process."""
+import bpy, math, json, random, sys
+from pathlib import Path
+from mathutils import Vector, Matrix, Quaternion
+from math import sin, cos, pi
+
+OUT = Path(__file__).resolve().parent
+random.seed(24)
+scene = bpy.context.scene
+# This script is only run with --background --factory-startup.
+for obj in list(scene.objects):
+    bpy.data.objects.remove(obj, do_unlink=True)
+V, F, C, W = [], [], [], []
+palette = ['42699C','355780','527DAE','E3D4B2','CABB9C','F0DDB8',
+           'C68B55','DFA76E','E9B882','513626','674731','78573B',
+           '333743','414451','252B36','BDA16D','34271F','483326','594030',
+           '221B18','F5EAD0','8C643E','A87345','273E63']
+def vert(p, weights):
+    V.append(tuple(p)); W.append(weights if isinstance(weights,dict) else {weights:1.0}); return len(V)-1
+def face(ids,c): F.append(tuple(ids)); C.append(c)
+def surface(points,faces,c,bone):
+    ids=[vert(p,bone) for p in points]
+    for f in faces: face([ids[i] for i in f],c)
+def rings(rows,n,c,weights,phase=pi/8,cap=True):
+    ids=[]
+    for j,(center,rx,ry) in enumerate(rows):
+        wt=weights[j] if isinstance(weights,list) else weights
+        ids.append([vert((center[0]+rx*cos(2*pi*i/n+phase),center[1]+ry*sin(2*pi*i/n+phase),center[2]),wt) for i in range(n)])
+    for j in range(len(ids)-1):
+        for i in range(n):
+            a,b,d,e=ids[j][i],ids[j][(i+1)%n],ids[j+1][i],ids[j+1][(i+1)%n]
+            cc=c[random.randrange(len(c))] if isinstance(c,list) else c
+            face((a,b,e),cc);face((a,e,d),cc)
+    if cap:
+        face(tuple(reversed(ids[0])),c[0] if isinstance(c,list) else c)
+        face(ids[-1],c[0] if isinstance(c,list) else c)
+def ellipsoid(center,scale,c,bone,n=10,lats=6):
+    rows=[]
+    for j in range(lats+1):
+        t=-pi/2+.04+(pi-.08)*j/lats
+        rows.append(((center[0],center[1],center[2]+scale[2]*sin(t)),scale[0]*cos(t),scale[1]*cos(t)))
+    rings(rows,n,c,bone,phase=pi/n)
+def tube(a,b,radii,c,bones,n=8):
+    a,b=Vector(a),Vector(b); q=Vector((0,0,1)).rotation_difference((b-a).normalized()); rows=[]
+    ids=[]
+    for j,(t,r1,r2) in enumerate(radii):
+        wt=bones[j] if isinstance(bones,list) else bones
+        ids.append([vert(a+(b-a)*t+q@Vector((r1*cos(2*pi*i/n),r2*sin(2*pi*i/n),0)),wt) for i in range(n)])
+    for j in range(len(ids)-1):
+        for i in range(n):
+            cc=c[random.randrange(len(c))] if isinstance(c,list) else c
+            face((ids[j][i],ids[j][(i+1)%n],ids[j+1][(i+1)%n],ids[j+1][i]),cc)
+    face(tuple(reversed(ids[0])),c[0] if isinstance(c,list) else c);face(ids[-1],c[0] if isinstance(c,list) else c)
+def box(center,scale,c,bone):
+    x,y,z=center; a,b,d=scale
+    surface([(x+i*a,y+j*b,z+k*d) for k in [-1,1] for j in [-1,1] for i in [-1,1]],[(0,2,3,1),(4,5,7,6),(0,1,5,4),(2,6,7,3),(0,4,6,2),(1,3,7,5)],c,bone)
+
+# Skeleton: +Z up, -Y forward. 24 bones, no simulation or constraints.
+bones={}
+def bone(n,h,t,p=None): bones[n]=(Vector(h),Vector(t),p)
+bone('Root',(0,0,0),(0,0,.2))
+bone('Hips',(0,0,.98),(0,0,1.13),'Root')
+bone('Spine',(0,0,1.13),(0,0,1.32),'Hips')
+bone('Chest',(0,0,1.32),(0,0,1.49),'Spine')
+bone('Neck',(0,0,1.49),(0,0,1.65),'Chest')
+bone('Head',(0,0,1.65),(0,0,2.02),'Neck')
+for s,label in [(1,'L'),(-1,'R')]:
+    bone('UpperArm.'+label,(s*.29,0,1.46),(s*.48,0,1.22),'Chest')
+    bone('Forearm.'+label,(s*.48,0,1.22),(s*.59,-.02,1.00),'UpperArm.'+label)
+    bone('Hand.'+label,(s*.59,-.02,1.00),(s*.65,-.03,.88),'Forearm.'+label)
+    bone('Fingers.'+label,(s*.65,-.03,.88),(s*.68,-.055,.80),'Hand.'+label)
+    bone('Thumb.'+label,(s*.588,-.065,.935),(s*.552,-.090,.865),'Hand.'+label)
+    bone('Thigh.'+label,(s*.15,0,.99),(s*.17,0,.56),'Hips')
+    bone('Shin.'+label,(s*.17,0,.56),(s*.18,0,.17),'Thigh.'+label)
+    bone('Foot.'+label,(s*.18,0,.17),(s*.18,-.19,.08),'Shin.'+label)
+    bone('Robe.'+label,(s*.14,0,1.12),(s*.24,0,.74),'Hips')
+arm=bpy.data.armatures.new('AdventurerSkeleton'); rig=bpy.data.objects.new('Beri_Adventurer',arm);scene.collection.objects.link(rig)
+bpy.context.view_layer.objects.active=rig;rig.select_set(True);bpy.ops.object.mode_set(mode='EDIT')
+for n,(h,t,p) in bones.items():
+    b=arm.edit_bones.new(n);b.head=h;b.tail=t
+    if p:b.parent=arm.edit_bones[p]
+bpy.ops.object.mode_set(mode='OBJECT');rig.show_in_front=True
+
+# Torso, neck and simple faceted head.
+rings([((0,0,1.01),.20,.14),((0,0,1.16),.22,.15),((0,0,1.36),.29,.17),((0,0,1.47),.26,.145)],10,[0,0,0,1,2],[{'Hips':1},{'Spine':1},{'Chest':1},{'Chest':1}])
+tube((0,0,1.47),(0,0,1.69),[(0,.105,.095),(1,.105,.095)],7,'Neck')
+ellipsoid((0,-.005,1.84),(.267,.222,.281),[7,7,7,8], 'Head',12,7)
+for s in [-1,1]:ellipsoid((s*.267,.005,1.83),(.055,.055,.085),7,'Head',6,3)
+# Eyes: tiny opaque inset strips; no alpha or extra materials.
+for x in [-.088,.088]:
+    ellipsoid((x,-.219,1.855),(.014,.006,.034),19,'Head',6,3)
+# Hair cap: custom open helmet follows skull; a few large locks make the silhouette.
+ids=[]
+for j,(z,rx,ry) in enumerate([(1.88,.275,.232),(2.015,.25,.211),(2.115,.16,.139),(2.155,.035,.025)]):
+    ids.append([vert((rx*cos(2*pi*i/12),.012+ry*sin(2*pi*i/12),z+(.09*max(0,-sin(2*pi*i/12)) if j==0 else 0)+(.015*sin(i*3.1) if j<3 else 0)),'Head') for i in range(12)])
+for j in range(3):
+    for i in range(12):
+        cc=[16,17,18][(i+j)%3];face((ids[j][i],ids[j][(i+1)%12],ids[j+1][(i+1)%12]),cc);face((ids[j][i],ids[j+1][(i+1)%12],ids[j+1][i]),cc)
+face(ids[-1],17)
+for a,b,t in [((-.25,-.13,2.02),(-.10,-.20,2.10),(-.245,-.226,1.82)),((-.17,-.20,2.08),(.055,-.21,2.09),(-.11,-.249,1.88)),((-.025,-.21,2.105),(.205,-.15,2.04),(.02,-.25,1.96)),((.16,-.15,2.055),(.27,-.035,1.99),(.22,-.205,1.91))]:
+    mid=(Vector(a)+Vector(b)+Vector(t))/3+Vector((0,-.025,.025));surface([a,b,t,mid],[(0,1,3),(1,2,3),(2,0,3)],17,'Head')
+# Cream V collar lies outside the chest.
+surface([(-.115,-.137,1.535),(-.21,-.145,1.475),(-.085,-.186,1.31),(0,-.185,1.38)],[(0,1,2),(0,2,3)],3,'Chest')
+surface([(.115,-.137,1.535),(.21,-.145,1.475),(.085,-.186,1.31),(0,-.185,1.38)],[(0,3,2),(0,2,1)],3,'Chest')
+# Back collar and belt.
+tube((0,0,1.48),(0,0,1.535),[(0,.127,.108),(1,.114,.098)],3,'Neck',10)
+rings([((0,0,1.087),.231,.162),((0,0,1.165),.235,.166)],10,9,'Hips')
+box((0,-.173,1.125),(.044,.013,.042),15,'Hips');box((0,-.188,1.125),(.025,.004,.026),9,'Hips')
+# Divided robe: four open panels, no hidden full body underneath.
+for s,label in [(1,'L'),(-1,'R')]:
+    bn='Robe.'+label
+    for front in [-1,1]:
+        yy=front
+        pts=[(s*.025,yy*.151,1.09),(s*.23,yy*.10,1.09),(s*.335,yy*.157,.78),(s*.125,yy*.215,.73),(s*.07,yy*.204,.89)]
+        surface(pts,[(0,1,4),(1,2,4),(2,3,4)],0 if front==-1 else 1,bn)
+    surface([(s*.23,-.10,1.09),(s*.23,.10,1.09),(s*.335,.157,.78),(s*.335,-.157,.78)],[(0,1,2),(0,2,3)],1,bn)
+    # Legs and low boots, joint rings have explicit weights.
+    h,k,_=bones['Thigh.'+label]; _,a,_=bones['Shin.'+label]
+    tube(h,k,[(0,.115,.118),(.55,.124,.119),(1,.095,.097)],[12,13],['Thigh.'+label]*2+[{'Thigh.'+label:.6,'Shin.'+label:.4}],8)
+    tube(k,a,[(0,.098,.098),(.3,.10,.098),(.50,.085,.087)],[12,13],[{'Thigh.'+label:.3,'Shin.'+label:.7},'Shin.'+label,'Shin.'+label],8)
+    tube(k,a,[(.48,.071,.072),(1,.061,.064)],7,'Shin.'+label,8)
+    rings([((s*.18,-.080,.015),.119,.209),((s*.18,-.080,.070),.126,.215),((s*.18,-.068,.158),.105,.190),((s*.18,-.015,.210),.081,.11)],8,[9,10,10],'Foot.'+label)
+    tube((s*.18,0,.15),(s*.18,0,.31),[(0,.087,.093),(.85,.089,.096),(1,.106,.11)],[9,10],'Foot.'+label,8)
+    # Arms, short blue sleeves, cream cuff and broad wraps.
+    sh,el,_=bones['UpperArm.'+label];_,wr,_=bones['Forearm.'+label]
+    ellipsoid((s*.255,0,1.43),(.135,.142,.137),0,{'Chest':.7,'UpperArm.'+label:.3},8,4)
+    tube(sh,el,[(0,.133,.128),(.45,.12,.115),(.58,.105,.102),(1,.078,.078)],7,['UpperArm.'+label]*3+[{'UpperArm.'+label:.5,'Forearm.'+label:.5}],8)
+    # Shoulder overlap and chest-weighted inner sleeve prevent exposed joint caps.
+    tube(sh,el,[(-.35,.124,.13),(0,.148,.14),(.46,.139,.129)], [0,0,1,2],[{'Chest':.8,'UpperArm.'+label:.2},{'Chest':.15,'UpperArm.'+label:.85},'UpperArm.'+label],8)
+    tube(sh,el,[(.45,.141,.133),(.59,.128,.12)],3,'UpperArm.'+label,8)
+    tube(el,wr,[(0,.080,.079),(.25,.087,.083),(.72,.078,.074),(1,.064,.064)],7,[{'UpperArm.'+label:.3,'Forearm.'+label:.7},'Forearm.'+label,'Forearm.'+label,'Forearm.'+label],8)
+    tube(el,wr,[(.45,.086,.082),(.74,.081,.078),(1.02,.071,.070)],[3,3,4],'Forearm.'+label,8)
+    # A single low-poly palm, four broad fingers on one shared curl bone, separate thumb.
+    hh,ht,_=bones['Hand.'+label]
+    tube(hh,ht,[(0,.064,.06),(.6,.082,.064),(1,.079,.052)],7,'Hand.'+label,8)
+    for i in range(4):
+        x=s*(.604+i*.03);aa=(x,-.031,.885);bb=(x+s*.025,-.053,.815+(abs(i-1.5)*.008))
+        tube(aa,bb,[(0,.021,.026),(.65,.021,.025),(1,.017,.018)],7,'Fingers.'+label,5)
+    th,tt,_=bones['Thumb.'+label]
+    tube(th,tt,[(0,.033,.032),(.65,.03,.029),(1,.024,.024)],7,'Thumb.'+label,6)
+
+# Mesh and palette atlas: one material, one opaque texture.
+mesh=bpy.data.meshes.new('StarterAdventurerMesh');mesh.from_pydata(V,[],F);mesh.update()
+obj=bpy.data.objects.new('StarterAdventurer',mesh);scene.collection.objects.link(obj)
+for n in bones:obj.vertex_groups.new(name=n)
+for i,wt in enumerate(W):
+    for n,w in wt.items():obj.vertex_groups[n].add([i],w,'REPLACE')
+mod=obj.modifiers.new('Skin','ARMATURE');mod.object=rig;obj.parent=rig
+uv=mesh.uv_layers.new(name='PaletteUV')
+for poly,ci in zip(mesh.polygons,C):
+    coord=((ci%8+.5)/8,(ci//8+.5)/8)
+    for li in poly.loop_indices:uv.data[li].uv=coord
+atlas=bpy.data.images.new('BeriPalette64',64,64,alpha=False)
+pixels=[]
+for y in range(64):
+    for x in range(64):
+        ci=(y//8)*8+x//8;hx=palette[ci%len(palette)]
+        pixels.extend([int(hx[i:i+2],16)/255 for i in [0,2,4]]+[1])
+atlas.pixels=pixels;atlas.filepath_raw=str(OUT/'starter-palette.png');atlas.file_format='PNG';atlas.save();atlas.pack()
+mat=bpy.data.materials.new('Beri_OneAtlas');mat.use_nodes=True
+bs=next(n for n in mat.node_tree.nodes if n.type=='BSDF_PRINCIPLED');bs.inputs['Roughness'].default_value=.88
+tex=mat.node_tree.nodes.new('ShaderNodeTexImage');tex.image=atlas
+mat.node_tree.links.new(tex.outputs['Color'],bs.inputs['Base Color']);obj.data.materials.append(mat)
+# Recalculate normals, preserving intentional flat shading.
+bpy.ops.object.select_all(action='DESELECT');obj.select_set(True);bpy.context.view_layer.objects.active=obj
+bpy.ops.object.mode_set(mode='EDIT');bpy.ops.mesh.select_all(action='SELECT');bpy.ops.mesh.normals_make_consistent(inside=False);bpy.ops.object.mode_set(mode='OBJECT')
+
+# Animation helpers. Limbs use analytic two-bone IK while authoring; exported rig is FK-only.
+def reset():
+    for pb in rig.pose.bones:pb.matrix_basis=Matrix.Identity(4)
+    bpy.context.view_layer.update()
+def orient(n,head,direction,twist=0):
+    b=arm.bones[n];rest=(b.tail_local-b.head_local).normalized()
+    q=rest.rotation_difference(Vector(direction).normalized())
+    if twist:q=Quaternion(Vector(direction).normalized(),twist)@q
+    rot=q.to_matrix().to_4x4()@b.matrix_local.to_quaternion().to_matrix().to_4x4()
+    rot.translation=Vector(head);rig.pose.bones[n].matrix=rot;bpy.context.view_layer.update()
+def limb(upper,lower,end,target,pole):
+    pb=rig.pose.bones[upper];a=pb.head.copy();target=Vector(target);d=(target-a);dist=d.length
+    l1=arm.bones[upper].length;l2=arm.bones[lower].length;dist=max(.02,min(dist,l1+l2-.002));u=d.normalized()
+    v=Vector(pole)-a;v=(v-u*v.dot(u)).normalized()
+    along=(l1*l1-l2*l2+dist*dist)/(2*dist);height=math.sqrt(max(0,l1*l1-along*along))
+    joint=a+u*along+v*height;tip=a+u*dist
+    orient(upper,a,joint-a);orient(lower,joint,tip-joint)
+    return tip
+def pose(t=0,mode='Idle',strength=0):
+    reset();p=rig.pose.bones
+    phase=2*pi*t; moving=mode in ['Run','Walk']; sway=sin(phase)
+    rootz=-.035+(.022*cos(phase*2) if moving else .009*sin(phase))
+    lean=.10 if moving else 0
+    if mode=='Defeat':rootz-=.55*strength;lean=.85*strength
+    if mode in ['Hit','Stagger']:lean=-.20*strength;rootz-=.08*strength
+    p['Hips'].location=arm.bones['Hips'].matrix_local.to_quaternion().inverted()@Vector((0,0,rootz))
+    p['Spine'].rotation_mode='XYZ';p['Spine'].rotation_euler.x=lean
+    p['Chest'].rotation_mode='XYZ';p['Chest'].rotation_euler.y=.035*sway if moving else 0
+    if mode=='Stop':p['Spine'].rotation_euler.x=-.12*strength
+    bpy.context.view_layer.update()
+    for s,lab in [(1,'L'),(-1,'R')]:
+        sign=sway*s;lift=max(0,sign)*(.11 if moving else 0)
+        fy=(-.23*cos(phase)*s if moving else (s*.07))
+        fx=s*(.20 if moving else .23)
+        if mode in ['Strike','Grab','Guard']:fy=s*.13;fx=s*.24
+        if mode=='Defeat':fy=s*.19;fx=s*.29
+        foot_target=Vector((fx,fy,.17+lift));knee_pole=Vector((fx,-1,.6));foot_direction=Vector((0,-.19,-.09))
+        tip=limb('Thigh.'+lab,'Shin.'+lab,'Foot.'+lab,foot_target,knee_pole)
+        orient('Foot.'+lab,tip,foot_direction)
+        sh=p['UpperArm.'+lab].head.copy()
+        target=Vector((s*.42,-.10+(.19*sign if moving else 0),1.075+(.055*abs(sign) if moving else 0)))
+        direction=Vector((s*.12,-.08,-1));pole=(s*.8,.13,1.17)
+        curl=.7
+        if mode=='Strike':
+            goal=Vector((s*.29,-.53 if lab=='R' else -.04,1.43 if lab=='R' else 1.16))
+            target=target.lerp(goal,strength);direction=direction.lerp(Vector((0,-1,.05)) if lab=='R' else Vector((0,-.4,-.6)),strength)
+        if mode=='Grab':
+            target=target.lerp(Vector((s*.34,-.42,1.38+s*.055)),strength);direction=direction.lerp(Vector((s*.2,-1,.1)),strength);pole=(s*.9,-.15,1.20);curl=.7*(1-strength)
+        if mode=='Guard':
+            target=target.lerp(Vector((s*.19,-.30,1.68)),strength);direction=direction.lerp(Vector((0,-.15,1)),strength);pole=(s*.49,-.30,1.27)
+        if mode in ['Hit','Stagger']:target.y+=.17*strength;target.z+=.10*strength
+        if mode=='Defeat':target=target.lerp(Vector((s*.50,-.26,.52)),strength)
+        wrist=limb('UpperArm.'+lab,'Forearm.'+lab,'Hand.'+lab,target,pole)
+        orient('Hand.'+lab,wrist,direction)
+        p['Fingers.'+lab].rotation_mode='XYZ';p['Fingers.'+lab].rotation_euler.x=-curl
+        p['Thumb.'+lab].rotation_mode='XYZ';p['Thumb.'+lab].rotation_euler.x=-.28*curl
+        p['Robe.'+lab].rotation_mode='XYZ';p['Robe.'+lab].rotation_euler.x=(.27*sign if moving else 0)
+    if mode=='Turn':
+        p['Root'].rotation_mode='XYZ';p['Root'].rotation_euler.y=pi/2*strength
+    bpy.context.view_layer.update()
+
+fps=30;scene.render.fps=fps
+specs={'Idle':(60,True),'Run':(24,True),'Walk':(36,True),'Stop':(15,False),'Turn':(18,False),'Strike':(27,False),'Grab':(27,False),'Guard':(30,True),'Hit':(15,False),'Stagger':(24,False),'Defeat':(36,False)}
+rig.animation_data_create();actions={}
+for name,(duration,loop) in specs.items():
+    action=bpy.data.actions.new(name);rig.animation_data.action=action;action.use_fake_user=True;actions[name]=action
+    for frame in range(duration+1):
+        t=frame/duration
+        if name in ['Strike','Grab']:strength=max(0,1-abs(t-.40)/.25)
+        elif name=='Guard':strength=1
+        elif name in ['Defeat','Turn']:strength=t*t*(3-2*t)
+        elif name in ['Hit','Stagger','Stop']:strength=sin(pi*t)
+        else:strength=0
+        pose(t,name,strength)
+        for pb in rig.pose.bones:
+            if pb.rotation_mode!='QUATERNION':
+                q=pb.matrix_basis.to_quaternion();pb.rotation_mode='QUATERNION';pb.rotation_quaternion=q
+            pb.keyframe_insert('location',frame=frame,group=pb.name)
+            pb.keyframe_insert('rotation_quaternion',frame=frame,group=pb.name)
+            pb.keyframe_insert('scale',frame=frame,group=pb.name)
+    action['loop']=loop;action['duration_seconds']=duration/fps
+rig.animation_data.action=None;reset()
+
+# Save/export before adding presentation-only objects.
+scene.frame_start=0;scene.frame_end=60
+bpy.ops.object.select_all(action='DESELECT');rig.select_set(True);obj.select_set(True);bpy.context.view_layer.objects.active=rig
+bpy.ops.export_scene.gltf(filepath=str(OUT/'starter-adventurer-v1.glb'),export_format='GLB',use_selection=True,export_animations=True,export_animation_mode='ACTIONS',export_force_sampling=True,export_skins=True,export_materials='EXPORT',export_yup=True)
+mesh.calc_loop_triangles()
+stats={'blender':bpy.app.version_string,'triangles':len(mesh.loop_triangles),'mesh_vertices':len(mesh.vertices),'materials':len(mesh.materials),'mesh_objects':1,'bones':len(arm.bones),'atlas':[64,64],'max_vertex_influences':max(len(w) for w in W),'clips':{n:{'seconds':v[0]/fps,'loop':v[1]} for n,v in specs.items()},'glb_bytes':(OUT/'starter-adventurer-v1.glb').stat().st_size,'orientation':'Blender -Y forward, Z up; glTF +Z forward, Y up','status':'Prototype asset; not integrated or smartphone benchmarked'}
+(OUT/'metrics.json').write_text(json.dumps(stats,indent=2))
+print('ASSET_METRICS',json.dumps(stats))
+
+# Studio presentation. Excluded from the GLB.
+world=bpy.data.worlds.new('WarmStudio');world.use_nodes=True;scene.world=world
+bg=next(n for n in world.node_tree.nodes if n.type=='BACKGROUND');bg.inputs['Color'].default_value=(.72,.77,.87,1);bg.inputs['Strength'].default_value=.65
+def light(name,loc,power,size):
+    d=bpy.data.lights.new(name,'AREA');o=bpy.data.objects.new(name,d);scene.collection.objects.link(o);o.location=loc;d.energy=power;d.shape='DISK';d.size=size;o.rotation_euler=(Vector((0,0,1.1))-o.location).to_track_quat('-Z','Y').to_euler()
+light('Key',(-3,-4,6),450,4);light('Fill',(3,-2,4),180,3);light('Rim',(1,3,4),350,3)
+bpy.ops.mesh.primitive_plane_add(size=200,location=(0,0,-.007));ground=bpy.context.object;ground.name='StudioGround'
+gm=bpy.data.materials.new('StudioSand');gm.diffuse_color=(.68,.63,.52,1);gm.use_nodes=True;gs=next(n for n in gm.node_tree.nodes if n.type=='BSDF_PRINCIPLED');gs.inputs['Base Color'].default_value=(.68,.63,.52,1);gs.inputs['Roughness'].default_value=1;ground.data.materials.append(gm)
+camd=bpy.data.cameras.new('ReviewCamera');cam=bpy.data.objects.new('ReviewCamera',camd);scene.collection.objects.link(cam);scene.camera=cam
+cam.location=(3,-6,3.0);cam.rotation_euler=(Vector((0,0,1.1))-cam.location).to_track_quat('-Z','Y').to_euler();camd.type='ORTHO';camd.ortho_scale=2.65
+scene.render.engine='CYCLES';scene.cycles.samples=24
+scene.render.resolution_x=700;scene.render.resolution_y=800;scene.render.resolution_percentage=100
+scene.render.image_settings.file_format='PNG'
+rig.animation_data.action=actions['Idle'];scene.frame_set(1)
+bpy.context.view_layer.objects.active=rig
+# Store a useful material-colored viewport and rest/animation-ready native file.
+for screen in bpy.data.screens:
+    for area in screen.areas:
+        if area.type=='VIEW_3D':
+            area.spaces.active.region_3d.view_distance=3.5;area.spaces.active.region_3d.view_location=(0,0,1.1)
+            area.spaces.active.shading.color_type='TEXTURE'
+bpy.context.preferences.filepaths.save_version=0
+bpy.ops.wm.save_as_mainfile(filepath=str(OUT/'starter-adventurer-v1.blend'))
+for name,frame in [('Idle',1),('Strike',12),('Grab',12),('Guard',1)]:
+    rig.animation_data.action=actions[name];scene.frame_set(frame);scene.render.filepath=str(OUT/(name.lower()+'-preview.png'));bpy.ops.render.render(write_still=True)
+print('BUILD_COMPLETE',str(OUT))

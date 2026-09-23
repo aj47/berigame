@@ -3,13 +3,14 @@ import spacetimedb from '../schema';
 import { tickSchedule } from '../tables';
 import {
   DEATH_TICKS, EventKind, FightState, HARVEST_TICKS, type Stance, MELEE_RANGE, Pending, PlayerState, SPAWN_TILE,
-  SWING_INTERVAL_TICKS, TREE_COOLDOWN_TICKS,
-  bfsNextStep, blockedSetFromTiles, chebyshev, decayFightState, facingFromDelta, goalAdjacentTo,
+  MOVEMENT_STEPS_PER_TICK, SWING_INTERVAL_TICKS, TREE_COOLDOWN_TICKS,
+  bfsPath, blockedSetFromTiles, chebyshev, decayFightState, facingFromDelta, goalAdjacentTo,
   goalIsTile, knockbackTile, neighbors8, resolveSwing, tileKey,
 } from '../../../shared/sim';
 import { emitEvent } from '../lib/events';
-import { dropOnGround, giveItem, readSlots } from '../lib/inventory';
-import { hex, sameId } from '../lib/players';
+import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
+import { clearInteractions, hex, sameId } from '../lib/players';
+import { canPlay } from '../lib/access';
 import type { Ctx, PlayerRow, TreeRow } from '../lib/types';
 
 interface TickState {
@@ -109,9 +110,7 @@ function resolvePending(s: TickState, p: PlayerRow): void {
       return;
     }
     if (chebyshev(p, item) <= MELEE_RANGE) {
-      const taken = giveItem(s.ctx, p.identity, item.itemId, item.quantity, p, s.T);
-      if (taken >= item.quantity) s.ctx.db.groundItem.id.delete(item.id);
-      else if (taken > 0) s.ctx.db.groundItem.id.update({ ...item, quantity: item.quantity - taken });
+      takeGroundItem(s.ctx, p.identity, item);
       p.pending = Pending.None; p.pendingId = 0n;
       p.targetX = undefined; p.targetZ = undefined;
       mark(s, p);
@@ -144,20 +143,31 @@ function phaseMovement(s: TickState): void {
     }
 
     if (goal) {
-      const step = bfsNextStep(p, goal, s.blocked);
-      if (!step) {
+      // The path validates every intermediate tile and both sides of a
+      // diagonal. Taking its first two steps cannot tunnel through a tree or
+      // overshoot the first tile satisfying a melee/follow goal.
+      const path = bfsPath(p, goal, s.blocked);
+      if (!path || path.length === 0) {
         if (!p.combatTarget) { p.targetX = undefined; p.targetZ = undefined; }
         if (p.pending !== Pending.None) { p.pending = Pending.None; p.pendingId = 0n; }
         mark(s, p);
       } else {
-        p.facing = facingFromDelta(step.x - p.x, step.z - p.z);
-        p.x = step.x;
-        p.z = step.z;
-        if (!p.combatTarget && p.targetX === p.x && p.targetZ === p.z) {
-          p.targetX = undefined;
-          p.targetZ = undefined;
+        for (const step of path.slice(0, MOVEMENT_STEPS_PER_TICK)) {
+          p.facing = facingFromDelta(step.x - p.x, step.z - p.z);
+          p.x = step.x;
+          p.z = step.z;
+          if (!p.combatTarget && p.targetX === p.x && p.targetZ === p.z) {
+            p.targetX = undefined;
+            p.targetZ = undefined;
+          }
+          mark(s, p);
+          // Harvest/pickup stops at the first reachable interaction tile,
+          // including when that is the first half of this tick's travel.
+          if (p.pending !== Pending.None) {
+            resolvePending(s, p);
+            if (p.pending === Pending.None) break;
+          }
         }
-        mark(s, p);
       }
     }
 
@@ -204,6 +214,8 @@ function phaseSwings(s: TickState): void {
     if (a.facing !== face) { a.facing = face; mark(s, a); }
     if (s.T < a.nextSwingTick) continue;
 
+    // A passive defender must face the exchange too, so blocks and grabs meet the incoming hands.
+    d.facing = facingFromDelta(a.x - d.x, a.z - d.z);
     const o = resolveSwing(
       { stance: a.stance as Stance, fightState: a.fightState as FightState },
       { stance: d.stance as Stance, fightState: d.fightState as FightState }
@@ -307,6 +319,16 @@ export const tick = spacetimedb.reducer(
     const world = ctx.db.world.id.find(0);
     if (!world) return;
     const T = world.tick + 1;
+
+    // Expiry/revocation stops queued movement, harvesting and combat even if a
+    // client keeps its WebSocket open and sends no further requests.
+    for (const player of ctx.db.player.iter()) {
+      if (player.online && !canPlay(ctx, player.identity)) {
+        const p = { ...player, online: false };
+        clearInteractions(ctx, p);
+        ctx.db.player.identity.update(p);
+      }
+    }
 
     const players = new Map<string, PlayerRow>();
     for (const p of ctx.db.player.iter()) players.set(hex(p.identity), { ...p });

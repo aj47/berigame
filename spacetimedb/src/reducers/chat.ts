@@ -2,14 +2,21 @@ import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { CHAT_KEEP_ROWS, MAX_CHAT_LEN, NAME_MAX_LEN, NAME_MIN_LEN } from '../../../shared/sim';
 import { currentTick, requirePlayer, savePlayer, touchInput } from '../lib/players';
+import { requireCapability } from '../lib/access';
 
 export const sendChat = spacetimedb.reducer(
   { text: t.string() },
   (ctx, { text }) => {
+    requireCapability(ctx, ctx.sender, 'chat');
     const trimmed = text.trim();
     if (trimmed.length === 0 || trimmed.length > MAX_CHAT_LEN) throw new SenderError('bad message length');
     const p = requirePlayer(ctx);
     const T = currentTick(ctx);
+    for (const message of ctx.db.chatMessage.iter()) {
+      if (message.sender.toHexString() === p.identity.toHexString() && T - message.tick < 5) {
+        throw new SenderError('wait three seconds between messages');
+      }
+    }
     touchInput(p, T);
     savePlayer(ctx, p);
     ctx.db.chatMessage.insert({ id: 0n, sender: p.identity, text: trimmed, tick: T, sentAt: ctx.timestamp });

@@ -10,6 +10,24 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const AccessPolicy = __t.object("AccessPolicy", {
+  id: __t.u8(),
+  owner: __t.identity(),
+  gateway: __t.option(__t.identity()),
+  requireAdmission: __t.bool(),
+});
+export type AccessPolicy = __Infer<typeof AccessPolicy>;
+
+export const Appearance = __t.object("Appearance", {
+  identity: __t.identity(),
+  hairStyle: __t.u8(),
+  skinTone: __t.u8(),
+  hairColor: __t.u8(),
+  robeColor: __t.u8(),
+  wrapColor: __t.u8(),
+});
+export type Appearance = __Infer<typeof Appearance>;
+
 export const ChatMessage = __t.object("ChatMessage", {
   id: __t.u64(),
   sender: __t.identity(),
@@ -86,6 +104,16 @@ export const Player = __t.object("Player", {
   inputsThisTick: __t.u8(),
 });
 export type Player = __Infer<typeof Player>;
+
+export const PlayerGrant = __t.object("PlayerGrant", {
+  identity: __t.identity(),
+  issuer: __t.identity(),
+  agent: __t.bool(),
+  expiresAtMicros: __t.u64(),
+  combat: __t.bool(),
+  chat: __t.bool(),
+});
+export type PlayerGrant = __Infer<typeof PlayerGrant>;
 
 export const TickSchedule = __t.object("TickSchedule", {
   scheduledId: __t.u64(),

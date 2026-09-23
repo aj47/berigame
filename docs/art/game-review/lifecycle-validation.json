@@ -1,0 +1,54 @@
+{
+  "createdAt": "2026-09-21T02:52:48.173Z",
+  "checks": [
+    {
+      "name": "fresh character uses a scoped credential",
+      "pass": true
+    },
+    {
+      "name": "Enter activates focused Guard without opening chat",
+      "pass": true
+    },
+    {
+      "name": "Enter activates the Bag button",
+      "pass": true
+    },
+    {
+      "name": "second tab shares the same character",
+      "pass": true
+    },
+    {
+      "name": "keyboard Rejoin after socket loss preserves identity",
+      "pass": true
+    },
+    {
+      "name": "typing shortcuts in chat preserves stance",
+      "pass": true
+    },
+    {
+      "name": "legacy local token migration preserves the existing character",
+      "pass": true
+    },
+    {
+      "name": "legacy migration preserves the original token copy",
+      "pass": true
+    },
+    {
+      "name": "invalid sign-in has an explicit recovery path",
+      "pass": true
+    },
+    {
+      "name": "ordinary Rejoin does not silently replace a stored credential",
+      "pass": true
+    },
+    {
+      "name": "explicit reset creates a connected character",
+      "pass": true
+    },
+    {
+      "name": "explicit reset backs up the prior credential and saves a new scoped token",
+      "pass": true
+    }
+  ],
+  "failures": []
+}

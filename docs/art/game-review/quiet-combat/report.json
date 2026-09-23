@@ -1,0 +1,46 @@
+{
+  "qualification": "Synthetic visual FX probe on a fresh browser character; not a new authoritative combat test.",
+  "checks": [
+    {
+      "name": "clash",
+      "text": "",
+      "style": {
+        "color": "rgb(247, 241, 227)",
+        "fontStyle": "normal"
+      }
+    },
+    {
+      "name": "counter",
+      "text": "2",
+      "style": {
+        "color": "rgb(170, 223, 254)",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "name": "hit",
+      "text": "4",
+      "style": {
+        "color": "rgb(255, 233, 194)",
+        "fontStyle": "normal"
+      }
+    },
+    {
+      "name": "heal",
+      "text": "+3",
+      "style": {
+        "color": "rgb(167, 242, 146)",
+        "fontStyle": "normal"
+      }
+    },
+    {
+      "name": "defeat has no floating label"
+    },
+    {
+      "name": "HUD state uses colored shape",
+      "accessibleName": "Neutral"
+    }
+  ],
+  "errors": [],
+  "ok": true
+}

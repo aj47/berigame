@@ -2,10 +2,11 @@ import { useMemo } from 'react';
 import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 import { tables, type DbConnection } from '../module_bindings';
 import type { Player } from '../module_bindings/types';
+import { identityHex } from './identity';
 
 export function useMyIdentityHex(): string | null {
   const { identity } = useSpacetimeDB<DbConnection>();
-  return identity ? identity.toHexString() : null;
+  return identity ? identityHex(identity) : null;
 }
 
 export function useWorld() {
@@ -26,15 +27,18 @@ export function usePlayersByHex(): Map<string, Player> {
   const rows = usePlayers();
   return useMemo(() => {
     const m = new Map<string, Player>();
-    for (const p of rows) m.set(p.identity.toHexString(), p);
+    for (const p of rows) m.set(identityHex(p.identity), p);
     return m;
   }, [rows]);
 }
 
 export function useMyPlayer(): Player | null {
-  const hex = useMyIdentityHex();
+  const { identity } = useSpacetimeDB<DbConnection>();
+  const id = identity?.__identity__;
   const players = usePlayers();
-  return useMemo(() => (hex ? players.find((p) => p.identity.toHexString() === hex) ?? null : null), [hex, players]);
+  // Identity.isEqual also formats both operands in SDK 2.10; compare its
+  // public u256 value directly instead of allocating strings for every row.
+  return useMemo(() => (id !== undefined ? players.find((p) => p.identity.__identity__ === id) ?? null : null), [id, players]);
 }
 
 export function useTrees() {
@@ -58,5 +62,10 @@ export function useChatMessages() {
 /** Only this client's rows arrive (row-level security on the server). */
 export function useInventoryRows() {
   const [rows] = useTable(tables.inventorySlot);
+  return rows;
+}
+
+export function useAppearanceRows() {
+  const [rows] = useTable(tables.appearance);
   return rows;
 }

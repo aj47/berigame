@@ -1,0 +1,119 @@
+{
+  "version": "153.0.8010.48",
+  "identity": "c200f269b94394d46a4776573ffa0b46e3205c7c52d5522520fef783a24fe464",
+  "sampleCount": 1844,
+  "errors": [],
+  "legs": [
+    {
+      "name": "east-strike",
+      "stance": 0,
+      "target": [
+        40,
+        25
+      ],
+      "start": 644.5,
+      "reached": 5206.79999999702,
+      "end": 6309.599999997765,
+      "sampledClipsDuringTravel": {
+        "Run": 232
+      },
+      "movingFrames": 227,
+      "wrongMovingClipFrames": 0,
+      "yawAlignmentMinimum": 0.8156181181150927,
+      "yawAlignmentMedian": 0.9999999999999692,
+      "backwardsFacingFrames": 0,
+      "settledClips": {
+        "Idle": 9
+      }
+    },
+    {
+      "name": "south-grab",
+      "stance": 1,
+      "target": [
+        40,
+        40
+      ],
+      "start": 6389.39999999851,
+      "reached": 11207.699999999255,
+      "end": 12310.699999999255,
+      "sampledClipsDuringTravel": {
+        "RunGrab": 247
+      },
+      "movingFrames": 244,
+      "wrongMovingClipFrames": 0,
+      "yawAlignmentMinimum": 0.876305547525892,
+      "yawAlignmentMedian": 0.9999999999958061,
+      "backwardsFacingFrames": 0,
+      "settledClips": {
+        "GrabReady": 9
+      }
+    },
+    {
+      "name": "west-guard",
+      "stance": 2,
+      "target": [
+        25,
+        40
+      ],
+      "start": 12389.699999999255,
+      "reached": 17206.29999999702,
+      "end": 18309.599999997765,
+      "sampledClipsDuringTravel": {
+        "RunGuard": 247
+      },
+      "movingFrames": 244,
+      "wrongMovingClipFrames": 0,
+      "yawAlignmentMinimum": 0.8803817497508758,
+      "yawAlignmentMedian": 1.0,
+      "backwardsFacingFrames": 0,
+      "settledClips": {
+        "Guard": 9
+      }
+    },
+    {
+      "name": "north-guard",
+      "stance": 2,
+      "target": [
+        25,
+        25
+      ],
+      "start": 18359.5,
+      "reached": 22604.89999999851,
+      "end": 23707.39999999851,
+      "sampledClipsDuringTravel": {
+        "RunGuard": 213
+      },
+      "movingFrames": 209,
+      "wrongMovingClipFrames": 0,
+      "yawAlignmentMinimum": 0.9999999910717023,
+      "yawAlignmentMedian": 1.0,
+      "backwardsFacingFrames": 0,
+      "settledClips": {
+        "Guard": 9
+      }
+    },
+    {
+      "name": "diagonal-strike",
+      "stance": 0,
+      "target": [
+        34,
+        34
+      ],
+      "start": 23789.39999999851,
+      "reached": 26805.39999999851,
+      "end": 27908.89999999851,
+      "sampledClipsDuringTravel": {
+        "Run": 139
+      },
+      "movingFrames": 137,
+      "wrongMovingClipFrames": 0,
+      "yawAlignmentMinimum": 0.922879602025103,
+      "yawAlignmentMedian": 0.9999999999999969,
+      "backwardsFacingFrames": 0,
+      "settledClips": {
+        "Idle": 9
+      }
+    }
+  ],
+  "stopClip": "Guard"
+}

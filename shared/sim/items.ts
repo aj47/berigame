@@ -13,10 +13,10 @@ export interface ItemDef {
 
 /** Mirrors shared/itemDefinitions.js (the legacy CommonJS copy used by the Lambda backend). */
 export const ITEM_DEFS: Record<string, ItemDef> = {
-  berry_blueberry: { id: 'berry_blueberry', name: 'Blueberry', icon: '/blueberry.svg', healthRestore: 5, maxStack: MAX_STACK, color: '#4F46E5' },
-  berry_strawberry: { id: 'berry_strawberry', name: 'Strawberry', icon: '/strawberry.svg', healthRestore: 3, maxStack: MAX_STACK, color: '#EF4444' },
-  berry_greenberry: { id: 'berry_greenberry', name: 'Greenberry', icon: '/greenberry.svg', healthRestore: 2, maxStack: MAX_STACK, color: '#22C55E' },
-  berry_goldberry: { id: 'berry_goldberry', name: 'Goldberry', icon: '/goldberry.svg', healthRestore: 10, maxStack: MAX_STACK, color: '#F59E0B' },
+  berry_blueberry: { id: 'berry_blueberry', name: 'Blueberry', icon: '/items/blueberry.png', healthRestore: 5, maxStack: MAX_STACK, color: '#4F46E5' },
+  berry_strawberry: { id: 'berry_strawberry', name: 'Strawberry', icon: '/items/strawberry.png', healthRestore: 3, maxStack: MAX_STACK, color: '#EF4444' },
+  berry_greenberry: { id: 'berry_greenberry', name: 'Greenberry', icon: '/items/greenberry.png', healthRestore: 2, maxStack: MAX_STACK, color: '#22C55E' },
+  berry_goldberry: { id: 'berry_goldberry', name: 'Goldberry', icon: '/items/goldberry.png', healthRestore: 10, maxStack: MAX_STACK, color: '#F59E0B' },
 };
 
 export function getItemDef(itemId: string): ItemDef | undefined {

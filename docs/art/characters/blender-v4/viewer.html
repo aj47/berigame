@@ -1,0 +1,48 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Beri — character prototype</title>
+<style>html,body{margin:0;height:100%;background:#f3eee2;font:15px system-ui;color:#30271e}canvas{display:block;width:100%;height:100%}header{position:absolute;top:20px;left:24px;right:24px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}h1{font-size:20px;margin:0 18px 0 0}select,button{font:inherit;padding:8px 12px;background:#fffcf5;border:1px solid #c3b49e;border-radius:8px}footer{position:absolute;bottom:20px;left:24px;right:24px;pointer-events:none}#stats{font-variant-numeric:tabular-nums}small{display:block;margin-top:5px;color:#746a5a}#error{color:#a00}</style>
+<header><h1>Beri / starter adventurer</h1><label>Motion <select id="clip"></select></label><label>Characters <select id="count"><option>1</option><option>16</option><option>32</option><option>64</option></select></label><button id="wire">Wireframe</button><button id="pause">Pause</button></header>
+<footer><div id="stats">Loading exported GLB…</div><div id="error"></div><small>Drag to orbit · scroll or pinch to zoom · prototype, not a phone performance qualification</small></footer>
+<script type="importmap">{"imports":{"three":"/vendor/build/three.module.js","three/addons/":"/vendor/examples/jsm/"}}</script>
+<script type="module">
+import * as T from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';import {OrbitControls} from 'three/addons/controls/OrbitControls.js';import {clone} from 'three/addons/utils/SkeletonUtils.js';
+const scene=new T.Scene();scene.background=new T.Color('#f3eee2');
+const camera=new T.PerspectiveCamera(36,innerWidth/innerHeight,.05,120);camera.position.set(3.4,2.6,5.6);
+const renderer=new T.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);document.body.prepend(renderer.domElement);
+if(T.SRGBColorSpace)renderer.outputColorSpace=T.SRGBColorSpace;else renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,1.05,0);controls.update();
+scene.add(new T.HemisphereLight(0xfff9e9,0x6b798b,2));const sun=new T.DirectionalLight(0xfff2de,3);sun.position.set(-3,5,4);scene.add(sun);
+const ground=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({color:0xddd2bb,roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.012;scene.add(ground);
+let gltf,actors=[],mixers=[],paused=false,wire=false,frames=0,start=performance.now(),fps=0;
+const sel=document.querySelector('#clip');
+function populate(n){for(const a of actors)scene.remove(a);for(const m of mixers)m.stopAllAction();actors=[];mixers=[];const cols=Math.ceil(Math.sqrt(n));for(let i=0;i<n;i++){const a=clone(gltf.scene);a.position.set((i%cols-(cols-1)/2)*1.7,0,(Math.floor(i/cols)-(Math.ceil(n/cols)-1)/2)*1.7);scene.add(a);actors.push(a);mixers.push(new T.AnimationMixer(a));}controls.target.set(0,1,0);camera.position.set(n===1?3.4:cols*1.8,n===1?2.6:cols*1.5,n===1?5.6:cols*2.5);controls.update();play(sel.value);}
+function play(name){const c=T.AnimationClip.findByName(gltf.animations,name);for(let i=0;i<mixers.length;i++){const m=mixers[i];m.stopAllAction();const a=m.clipAction(c);a.reset().play();m.setTime(i*.057);}window.review.clip=name;}
+function pair(cues,time){
+ if(actors.length!==2)populate(2);
+ paused=true;
+ actors[0].position.set(-.5,0,0);actors[0].rotation.y=Math.PI/2;
+ actors[1].position.set(.5,0,0);actors[1].rotation.y=-Math.PI/2;
+ controls.target.set(0,1,0);camera.position.set(2.7,3.8,5.3);controls.update();
+ for(let i=0;i<2;i++){
+  const cue=cues[i], reaction=cue.reaction&&time*1000>=cue.reaction.atMs;
+  const name=reaction?cue.reaction.clip:cue.clip;
+  const c=T.AnimationClip.findByName(gltf.animations,name),m=mixers[i];m.stopAllAction();
+  const a=m.clipAction(c);a.reset().setLoop(T.LoopOnce,1);a.clampWhenFinished=true;a.play();
+  m.setTime(Math.max(0,time-(reaction?cue.reaction.atMs/1000:0)));actors[i].updateMatrixWorld(true);
+ }
+ renderer.render(scene,camera);
+}
+window.review={setPair:pair, gait:()=>{
+ populate(1);play('Run');paused=true;
+ const samples=[];
+ for(const t of [0,1/6,1/3,.5,2/3-.0001]){
+  mixers[0].setTime(t);actors[0].updateMatrixWorld(true);
+  const b=actors[0].getObjectByName('FootL')??actors[0].getObjectByName('Foot.L');
+  samples.push({t,foot:b?.getWorldPosition(new T.Vector3()).toArray()});
+ }
+ return samples;
+},ready:false,errors:[],setClip:n=>{sel.value=n;play(n)},setCount:n=>populate(n),setTime:t=>{paused=true;for(const m of mixers)m.setTime(t);renderer.render(scene,camera)},snapshot:()=>({clip:sel.value,characters:actors.length,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,fps,renderer:renderer.getContext().getParameter(renderer.getContext().RENDERER)}),validate:()=>{paused=true;const results=[];for(const clip of gltf.animations){play(clip.name);let minY=Infinity,maxExtent=0,finite=true,maxDelta=0,first;for(let step=0;step<=12;step++){mixers[0].setTime(clip.duration*step/12*.99999);actors[0].updateMatrixWorld(true);const points=[];actors[0].traverse(o=>{if(o.isSkinnedMesh){o.skeleton.update();const pos=o.geometry.attributes.position;for(let i=0;i<pos.count;i++){const v=new T.Vector3().fromBufferAttribute(pos,i);(o.applyBoneTransform??o.boneTransform).call(o,i,v);v.applyMatrix4(o.matrixWorld);finite&&=Number.isFinite(v.x+v.y+v.z);minY=Math.min(minY,v.y);maxExtent=Math.max(maxExtent,v.length());points.push(v);}}});if(!first)first=points;else for(let i=0;i<points.length;i++)maxDelta=Math.max(maxDelta,points[i].distanceTo(first[i]));}results.push({clip:clip.name,finite,minY,maxExtent,maxVertexDisplacement:maxDelta});}return results;}};
+try{gltf=await new GLTFLoader().loadAsync('tousled/starter-adventurer-v4-tousled.glb');for(const c of gltf.animations){const o=document.createElement('option');o.value=c.name;o.textContent=c.name;sel.append(o);}sel.value='Idle';populate(1);window.review.clips=gltf.animations.map(c=>({name:c.name,duration:c.duration,tracks:c.tracks.length}));let primitives=0,triangles=0,vertices=0,bones=0,materials=new Set();gltf.scene.traverse(o=>{if(o.isMesh){primitives++;triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;vertices+=o.geometry.attributes.position.count;materials.add(o.material.uuid);if(o.isSkinnedMesh)bones=o.skeleton.bones.length;}});window.review.asset={primitives,triangles,vertices,bones,materials:materials.size};window.review.ready=true;}catch(e){document.querySelector('#error').textContent=e.message;window.review.errors.push(e.message);}
+sel.onchange=()=>play(sel.value);document.querySelector('#count').onchange=e=>populate(+e.target.value);document.querySelector('#pause').onclick=e=>{paused=!paused;e.target.textContent=paused?'Play':'Pause'};document.querySelector('#wire').onclick=()=>{wire=!wire;for(const a of actors)a.traverse(o=>{if(o.isMesh)o.material.wireframe=wire;});};
+const clock=new T.Clock();function tick(){requestAnimationFrame(tick);const dt=Math.min(clock.getDelta(),.1);if(!paused)mixers.forEach(m=>m.update(dt));renderer.render(scene,camera);frames++;const now=performance.now();if(now-start>1000){fps=frames*1000/(now-start);frames=0;start=now;document.querySelector('#stats').textContent=`${actors.length} character${actors.length===1?'':'s'} · ${renderer.info.render.triangles.toLocaleString()} visible triangles · ${renderer.info.render.calls} draw calls · ${fps.toFixed(0)} fps here`;}}tick();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script></html>

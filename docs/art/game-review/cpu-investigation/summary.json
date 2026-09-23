@@ -1,0 +1,960 @@
+{
+  "createdAt": "2026-09-21T03:09:41.315Z",
+  "qualification": "Diagnostic Chrome CPU profile with4x CPU throttle on the host GPU. Includes profiler overhead; not physical phone evidence or an FPS benchmark.",
+  "errors": [],
+  "sourceBefore": "76711f7735451f43983068456ec878ef293b8cb58784fbb7f2b99344aabc0331",
+  "baselineOnline": 2,
+  "onlineDuringProfile": 32,
+  "totalPlayerRows": 229,
+  "offlinePlayerRows": 197,
+  "profile": {
+    "durationMs": 12691.356,
+    "samples": 8687,
+    "aggregateSelf": [
+      {
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "selfMs": 2092.64,
+        "selfPercent": 16.49
+      },
+      {
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "selfMs": 1453.83,
+        "selfPercent": 11.46
+      },
+      {
+        "function": "uint8ArrayToHexString",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 957,
+        "selfMs": 1292.0400000000002,
+        "selfPercent": 10.159999999999998
+      },
+      {
+        "function": "u256ToUint8Array",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 996,
+        "selfMs": 1234.5600000000002,
+        "selfPercent": 9.71
+      },
+      {
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 958,
+        "selfMs": 953.0500000000001,
+        "selfPercent": 7.509999999999999
+      },
+      {
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/src/spacetime/hooks.ts?t=1789958935120",
+        "line": 31,
+        "selfMs": 774.64,
+        "selfPercent": 6.1099999999999985
+      },
+      {
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/src/Components/3D/PlayerAvatar.tsx?t=1789960071361",
+        "line": 66,
+        "selfMs": 308.72,
+        "selfPercent": 2.4299999999999997
+      },
+      {
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb_react.js?v=225b2d89",
+        "line": 1962,
+        "selfMs": 229.09,
+        "selfPercent": 1.81
+      },
+      {
+        "function": "generator",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 5414,
+        "selfMs": 223.49999999999997,
+        "selfPercent": 1.76
+      },
+      {
+        "function": "updateMatrixWorld",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 5467,
+        "selfMs": 215.13000000000002,
+        "selfPercent": 1.6900000000000002
+      },
+      {
+        "function": "projectObject",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 17172,
+        "selfMs": 182.38000000000002,
+        "selfPercent": 1.4200000000000004
+      },
+      {
+        "function": "evaluate",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 23206,
+        "selfMs": 179.02999999999997,
+        "selfPercent": 1.4100000000000001
+      },
+      {
+        "function": "multiplyMatrices",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 4505,
+        "selfMs": 153.85,
+        "selfPercent": 1.2100000000000004
+      },
+      {
+        "function": "setFromRotationMatrix",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 5010,
+        "selfMs": 143.38,
+        "selfPercent": 1.1300000000000001
+      },
+      {
+        "function": "(garbage collector)",
+        "url": "",
+        "line": 0,
+        "selfMs": 137.89,
+        "selfPercent": 1.09
+      },
+      {
+        "function": "update",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 28011,
+        "selfMs": 135.97,
+        "selfPercent": 1.07
+      },
+      {
+        "function": "jsxDEV",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=225b2d89",
+        "line": 605,
+        "selfMs": 132.56,
+        "selfPercent": 1.0600000000000003
+      },
+      {
+        "function": "now",
+        "url": "",
+        "line": 0,
+        "selfMs": 115.54999999999998,
+        "selfPercent": 0.9100000000000001
+      },
+      {
+        "function": "updateHostComponent",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 8070,
+        "selfMs": 108.35,
+        "selfPercent": 0.85
+      },
+      {
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/@react-three_drei.js?v=225b2d89",
+        "line": 14724,
+        "selfMs": 103.98,
+        "selfPercent": 0.8200000000000001
+      },
+      {
+        "function": "setProgram",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 17392,
+        "selfMs": 74.29,
+        "selfPercent": 0.59
+      },
+      {
+        "function": "texSubImage2D",
+        "url": "",
+        "line": 0,
+        "selfMs": 70.36,
+        "selfPercent": 0.55
+      },
+      {
+        "function": "apply",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 26732,
+        "selfMs": 67.66,
+        "selfPercent": 0.53
+      },
+      {
+        "function": "u256ToHexString",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 1001,
+        "selfMs": 64.2,
+        "selfPercent": 0.5200000000000001
+      },
+      {
+        "function": "slerpFlat",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 2721,
+        "selfMs": 62.33,
+        "selfPercent": 0.49000000000000005
+      },
+      {
+        "function": "decode",
+        "url": "",
+        "line": 0,
+        "selfMs": 57.4,
+        "selfPercent": 0.46
+      },
+      {
+        "function": "WebGLRenderer.renderBufferDirect",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 16962,
+        "selfMs": 51.26,
+        "selfPercent": 0.4
+      },
+      {
+        "function": "equ",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 15853,
+        "selfMs": 42.870000000000005,
+        "selfPercent": 0.35
+      },
+      {
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/src/spacetime/hooks.ts?t=1789958935120",
+        "line": 21,
+        "selfMs": 38.339999999999996,
+        "selfPercent": 0.31
+      },
+      {
+        "function": "updateMatrixWorld",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 7594,
+        "selfMs": 38.24,
+        "selfPercent": 0.3
+      },
+      {
+        "function": "completeWork",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 8344,
+        "selfMs": 34.279999999999994,
+        "selfPercent": 0.28
+      },
+      {
+        "function": "bindVertexArray",
+        "url": "",
+        "line": 0,
+        "selfMs": 33.5,
+        "selfPercent": 0.26
+      },
+      {
+        "function": "upload",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 11573,
+        "selfMs": 29.64,
+        "selfPercent": 0.23
+      },
+      {
+        "function": "TextDecoder",
+        "url": "",
+        "line": 0,
+        "selfMs": 28.939999999999998,
+        "selfPercent": 0.23
+      },
+      {
+        "function": "readUInt8Array",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 648,
+        "selfMs": 28.65,
+        "selfPercent": 0.23
+      }
+    ],
+    "topSelf": [
+      {
+        "id": 468,
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "selfMs": 2092.64,
+        "inclusiveMs": 2092.64,
+        "selfPercent": 16.49
+      },
+      {
+        "id": 2,
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "selfMs": 1453.83,
+        "inclusiveMs": 1453.83,
+        "selfPercent": 11.46
+      },
+      {
+        "id": 268,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/src/spacetime/hooks.ts?t=1789958935120",
+        "line": 31,
+        "selfMs": 545.61,
+        "inclusiveMs": 1822.58,
+        "selfPercent": 4.3
+      },
+      {
+        "id": 1124,
+        "function": "uint8ArrayToHexString",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 957,
+        "selfMs": 403.79,
+        "inclusiveMs": 560.48,
+        "selfPercent": 3.18
+      },
+      {
+        "id": 272,
+        "function": "u256ToUint8Array",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 996,
+        "selfMs": 242.53,
+        "inclusiveMs": 242.53,
+        "selfPercent": 1.91
+      },
+      {
+        "id": 1126,
+        "function": "u256ToUint8Array",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 996,
+        "selfMs": 233.57,
+        "inclusiveMs": 233.57,
+        "selfPercent": 1.84
+      },
+      {
+        "id": 143,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb_react.js?v=225b2d89",
+        "line": 1962,
+        "selfMs": 229.09,
+        "inclusiveMs": 449,
+        "selfPercent": 1.81
+      },
+      {
+        "id": 144,
+        "function": "generator",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 5414,
+        "selfMs": 212.85,
+        "inclusiveMs": 212.85,
+        "selfPercent": 1.68
+      },
+      {
+        "id": 270,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 958,
+        "selfMs": 212.84,
+        "inclusiveMs": 212.84,
+        "selfPercent": 1.68
+      },
+      {
+        "id": 86,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/src/Components/3D/PlayerAvatar.tsx?t=1789960071361",
+        "line": 66,
+        "selfMs": 189.16,
+        "inclusiveMs": 717.81,
+        "selfPercent": 1.49
+      },
+      {
+        "id": 1073,
+        "function": "uint8ArrayToHexString",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 957,
+        "selfMs": 179.51,
+        "inclusiveMs": 234.9,
+        "selfPercent": 1.41
+      },
+      {
+        "id": 10,
+        "function": "evaluate",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 23206,
+        "selfMs": 167.91,
+        "inclusiveMs": 195.93,
+        "selfPercent": 1.32
+      },
+      {
+        "id": 1125,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 958,
+        "selfMs": 156.69,
+        "inclusiveMs": 156.69,
+        "selfPercent": 1.23
+      },
+      {
+        "id": 9,
+        "function": "setFromRotationMatrix",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 5010,
+        "selfMs": 139.49,
+        "inclusiveMs": 139.49,
+        "selfPercent": 1.1
+      },
+      {
+        "id": 209,
+        "function": "(garbage collector)",
+        "url": "",
+        "line": 0,
+        "selfMs": 137.89,
+        "inclusiveMs": 137.89,
+        "selfPercent": 1.09
+      },
+      {
+        "id": 7,
+        "function": "update",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 28011,
+        "selfMs": 135.97,
+        "inclusiveMs": 586.1,
+        "selfPercent": 1.07
+      },
+      {
+        "id": 249,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/src/spacetime/hooks.ts?t=1789958935120",
+        "line": 31,
+        "selfMs": 123.73,
+        "inclusiveMs": 348.46,
+        "selfPercent": 0.97
+      },
+      {
+        "id": 317,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/src/Components/3D/PlayerAvatar.tsx?t=1789960071361",
+        "line": 66,
+        "selfMs": 119.56,
+        "inclusiveMs": 484.08,
+        "selfPercent": 0.94
+      },
+      {
+        "id": 1079,
+        "function": "uint8ArrayToHexString",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 957,
+        "selfMs": 107.5,
+        "inclusiveMs": 154.19,
+        "selfPercent": 0.85
+      },
+      {
+        "id": 254,
+        "function": "uint8ArrayToHexString",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 957,
+        "selfMs": 102.37,
+        "inclusiveMs": 141.12,
+        "selfPercent": 0.81
+      },
+      {
+        "id": 99,
+        "function": "u256ToUint8Array",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 996,
+        "selfMs": 100.8,
+        "inclusiveMs": 100.8,
+        "selfPercent": 0.79
+      },
+      {
+        "id": 63,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/@react-three_drei.js?v=225b2d89",
+        "line": 14724,
+        "selfMs": 99.33,
+        "inclusiveMs": 211.37,
+        "selfPercent": 0.78
+      },
+      {
+        "id": 1118,
+        "function": "uint8ArrayToHexString",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 957,
+        "selfMs": 97.28,
+        "inclusiveMs": 135.87,
+        "selfPercent": 0.77
+      },
+      {
+        "id": 1072,
+        "function": "u256ToUint8Array",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 996,
+        "selfMs": 94.79,
+        "inclusiveMs": 94.79,
+        "selfPercent": 0.75
+      },
+      {
+        "id": 92,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 958,
+        "selfMs": 87.31,
+        "inclusiveMs": 87.31,
+        "selfPercent": 0.69
+      },
+      {
+        "id": 1114,
+        "function": "uint8ArrayToHexString",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 957,
+        "selfMs": 75.5,
+        "inclusiveMs": 109.53,
+        "selfPercent": 0.59
+      },
+      {
+        "id": 318,
+        "function": "u256ToUint8Array",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 996,
+        "selfMs": 75.4,
+        "inclusiveMs": 75.4,
+        "selfPercent": 0.59
+      },
+      {
+        "id": 23,
+        "function": "setProgram",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 17392,
+        "selfMs": 74.29,
+        "inclusiveMs": 444.87,
+        "selfPercent": 0.59
+      },
+      {
+        "id": 451,
+        "function": "texSubImage2D",
+        "url": "",
+        "line": 0,
+        "selfMs": 70.36,
+        "inclusiveMs": 70.36,
+        "selfPercent": 0.55
+      },
+      {
+        "id": 256,
+        "function": "u256ToUint8Array",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 996,
+        "selfMs": 65.11,
+        "inclusiveMs": 65.11,
+        "selfPercent": 0.51
+      },
+      {
+        "id": 329,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 958,
+        "selfMs": 64.96,
+        "inclusiveMs": 64.96,
+        "selfPercent": 0.51
+      },
+      {
+        "id": 1080,
+        "function": "u256ToUint8Array",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 996,
+        "selfMs": 63.56,
+        "inclusiveMs": 63.56,
+        "selfPercent": 0.5
+      },
+      {
+        "id": 89,
+        "function": "updateHostComponent",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 8070,
+        "selfMs": 62.12,
+        "inclusiveMs": 89.22,
+        "selfPercent": 0.49
+      },
+      {
+        "id": 8,
+        "function": "apply",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 26732,
+        "selfMs": 60.78,
+        "inclusiveMs": 210.6,
+        "selfPercent": 0.48
+      },
+      {
+        "id": 15,
+        "function": "projectObject",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 17172,
+        "selfMs": 55.43,
+        "inclusiveMs": 223.71,
+        "selfPercent": 0.44
+      }
+    ],
+    "topInclusive": [
+      {
+        "id": 1,
+        "function": "(root)",
+        "url": "",
+        "line": 0,
+        "selfMs": 0,
+        "inclusiveMs": 12691.36,
+        "selfPercent": 0
+      },
+      {
+        "id": 67,
+        "function": "performWorkUntilDeadline",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 455,
+        "selfMs": 0,
+        "inclusiveMs": 5025.15,
+        "selfPercent": 0
+      },
+      {
+        "id": 69,
+        "function": "workLoop",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 262,
+        "selfMs": 2.91,
+        "inclusiveMs": 5023.74,
+        "selfPercent": 0.02
+      },
+      {
+        "id": 68,
+        "function": "flushWork",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 233,
+        "selfMs": 0,
+        "inclusiveMs": 5023.74,
+        "selfPercent": 0
+      },
+      {
+        "id": 70,
+        "function": "flushSyncCallbacks",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 2755,
+        "selfMs": 0,
+        "inclusiveMs": 4038.11,
+        "selfPercent": 0
+      },
+      {
+        "id": 71,
+        "function": "performSyncWorkOnRoot",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 13314,
+        "selfMs": 0,
+        "inclusiveMs": 4038.11,
+        "selfPercent": 0
+      },
+      {
+        "id": 72,
+        "function": "renderRootSync",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 13577,
+        "selfMs": 0,
+        "inclusiveMs": 3979.14,
+        "selfPercent": 0
+      },
+      {
+        "id": 73,
+        "function": "workLoopSync",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 13618,
+        "selfMs": 0.96,
+        "inclusiveMs": 3978.15,
+        "selfPercent": 0.01
+      },
+      {
+        "id": 74,
+        "function": "performUnitOfWork",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 13674,
+        "selfMs": 3.04,
+        "inclusiveMs": 3977.19,
+        "selfPercent": 0.02
+      },
+      {
+        "id": 75,
+        "function": "beginWork$1",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 14201,
+        "selfMs": 1.57,
+        "inclusiveMs": 3817.84,
+        "selfPercent": 0.01
+      },
+      {
+        "id": 76,
+        "function": "beginWork",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 10330,
+        "selfMs": 1.12,
+        "inclusiveMs": 3803.62,
+        "selfPercent": 0.01
+      },
+      {
+        "id": 77,
+        "function": "updateFunctionComponent",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 8996,
+        "selfMs": 0,
+        "inclusiveMs": 3709.41,
+        "selfPercent": 0
+      },
+      {
+        "id": 78,
+        "function": "renderWithHooks",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 5877,
+        "selfMs": 5.16,
+        "inclusiveMs": 3698.6,
+        "selfPercent": 0.04
+      },
+      {
+        "id": 85,
+        "function": "PlayerAvatar",
+        "url": "http://127.0.0.1:5173/src/Components/3D/PlayerAvatar.tsx?t=1789960071361",
+        "line": 52,
+        "selfMs": 5.8,
+        "inclusiveMs": 2695.3,
+        "selfPercent": 0.05
+      },
+      {
+        "id": 3,
+        "function": "loop",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 17054,
+        "selfMs": 8.43,
+        "inclusiveMs": 2276.11,
+        "selfPercent": 0.07
+      },
+      {
+        "id": 5,
+        "function": "render$1",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 17032,
+        "selfMs": 16.11,
+        "inclusiveMs": 2236.78,
+        "selfPercent": 0.13
+      },
+      {
+        "id": 468,
+        "function": "(idle)",
+        "url": "",
+        "line": 0,
+        "selfMs": 2092.64,
+        "inclusiveMs": 2092.64,
+        "selfPercent": 16.49
+      },
+      {
+        "id": 265,
+        "function": "useMyPlayer",
+        "url": "http://127.0.0.1:5173/src/spacetime/hooks.ts?t=1789958935120",
+        "line": 28,
+        "selfMs": 1.39,
+        "inclusiveMs": 1855.58,
+        "selfPercent": 0.01
+      },
+      {
+        "id": 266,
+        "function": "useMemo",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 7086,
+        "selfMs": 2.58,
+        "inclusiveMs": 1827.37,
+        "selfPercent": 0.02
+      },
+      {
+        "id": 267,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/src/spacetime/hooks.ts?t=1789958935120",
+        "line": 31,
+        "selfMs": 2.21,
+        "inclusiveMs": 1824.79,
+        "selfPercent": 0.02
+      },
+      {
+        "id": 268,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/src/spacetime/hooks.ts?t=1789958935120",
+        "line": 31,
+        "selfMs": 545.61,
+        "inclusiveMs": 1822.58,
+        "selfPercent": 4.3
+      },
+      {
+        "id": 2,
+        "function": "(program)",
+        "url": "",
+        "line": 0,
+        "selfMs": 1453.83,
+        "inclusiveMs": 1453.83,
+        "selfPercent": 11.46
+      },
+      {
+        "id": 12,
+        "function": "WebGLRenderer.render",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-4FZO36VH.js?v=225b2d89",
+        "line": 17098,
+        "selfMs": 5.78,
+        "inclusiveMs": 1300.08,
+        "selfPercent": 0.05
+      },
+      {
+        "id": 294,
+        "function": "performConcurrentWorkOnRoot",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 13110,
+        "selfMs": 0,
+        "inclusiveMs": 973.38,
+        "selfPercent": 0
+      },
+      {
+        "id": 295,
+        "function": "renderRootSync",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 13577,
+        "selfMs": 0,
+        "inclusiveMs": 932.65,
+        "selfPercent": 0
+      },
+      {
+        "id": 296,
+        "function": "workLoopSync",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 13618,
+        "selfMs": 0,
+        "inclusiveMs": 929.7,
+        "selfPercent": 0
+      },
+      {
+        "id": 297,
+        "function": "performUnitOfWork",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 13674,
+        "selfMs": 0,
+        "inclusiveMs": 929.7,
+        "selfPercent": 0
+      },
+      {
+        "id": 1123,
+        "function": "u256ToHexString",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 1001,
+        "selfMs": 27.55,
+        "inclusiveMs": 821.6,
+        "selfPercent": 0.22
+      },
+      {
+        "id": 1122,
+        "function": "toHexString",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 1520,
+        "selfMs": 0,
+        "inclusiveMs": 821.6,
+        "selfPercent": 0
+      },
+      {
+        "id": 298,
+        "function": "beginWork$1",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 14201,
+        "selfMs": 0,
+        "inclusiveMs": 818.54,
+        "selfPercent": 0
+      },
+      {
+        "id": 299,
+        "function": "beginWork",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 10330,
+        "selfMs": 0,
+        "inclusiveMs": 807.71,
+        "selfPercent": 0
+      },
+      {
+        "id": 245,
+        "function": "BerryTree",
+        "url": "http://127.0.0.1:5173/src/Components/3D/BerryTree.tsx?t=1789958935121",
+        "line": 23,
+        "selfMs": 1.21,
+        "inclusiveMs": 790.87,
+        "selfPercent": 0.01
+      },
+      {
+        "id": 126,
+        "function": "__privateGet.onmessage",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 5785,
+        "selfMs": 3.89,
+        "inclusiveMs": 781.51,
+        "selfPercent": 0.03
+      },
+      {
+        "id": 128,
+        "function": "processMessage_fn",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 7195,
+        "selfMs": 2.21,
+        "inclusiveMs": 775.63,
+        "selfPercent": 0.02
+      },
+      {
+        "id": 127,
+        "function": "handleOnMessage_fn",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 7211,
+        "selfMs": 0,
+        "inclusiveMs": 775.63,
+        "selfPercent": 0
+      },
+      {
+        "id": 129,
+        "function": "forEachServerMessageV3",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/spacetimedb.js?v=225b2d89",
+        "line": 6333,
+        "selfMs": 0,
+        "inclusiveMs": 773.42,
+        "selfPercent": 0
+      },
+      {
+        "id": 300,
+        "function": "updateFunctionComponent",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 8996,
+        "selfMs": 0,
+        "inclusiveMs": 747.77,
+        "selfPercent": 0
+      },
+      {
+        "id": 305,
+        "function": "renderWithHooks",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-K53OKDGH.js?v=225b2d89",
+        "line": 5877,
+        "selfMs": 4.57,
+        "inclusiveMs": 741.75,
+        "selfPercent": 0.04
+      },
+      {
+        "id": 28,
+        "function": "(anonymous)",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UNQ4SYIA.js?v=225b2d89",
+        "line": 18621,
+        "selfMs": 0,
+        "inclusiveMs": 720.62,
+        "selfPercent": 0
+      },
+      {
+        "id": 29,
+        "function": "flushSyncCallbacks",
+        "url": "http://127.0.0.1:5173/node_modules/.vite/deps/chunk-UNQ4SYIA.js?v=225b2d89",
+        "line": 9123,
+        "selfMs": 0,
+        "inclusiveMs": 720.62,
+        "selfPercent": 0
+      }
+    ]
+  },
+  "render": {
+    "calls": 131,
+    "triangles": 70016,
+    "geometries": 102,
+    "textures": 62,
+    "pixelRatio": 1.5,
+    "camera": [
+      8.978165860653574,
+      12.855229613136691,
+      16.83406098872545
+    ],
+    "sceneMaterialCount": 200,
+    "paletteEntries": 30,
+    "paletteUsers": 32
+  },
+  "fixturesVerifiedOffline": true,
+  "fixturesCreated": 30,
+  "browserClosed": true,
+  "sourceAfter": "76711f7735451f43983068456ec878ef293b8cb58784fbb7f2b99344aabc0331",
+  "sourceUnchanged": true
+}

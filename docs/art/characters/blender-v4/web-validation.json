@@ -1,0 +1,259 @@
+{
+  "clips": [
+    {
+      "name": "Block",
+      "duration": 0.4000000059604645,
+      "tracks": 78
+    },
+    {
+      "name": "BlockCounter",
+      "duration": 0.6000000238418579,
+      "tracks": 78
+    },
+    {
+      "name": "Defeat",
+      "duration": 1.2000000476837158,
+      "tracks": 78
+    },
+    {
+      "name": "Grab",
+      "duration": 0.699999988079071,
+      "tracks": 78
+    },
+    {
+      "name": "Grabbed",
+      "duration": 0.5,
+      "tracks": 78
+    },
+    {
+      "name": "GrabReady",
+      "duration": 2,
+      "tracks": 78
+    },
+    {
+      "name": "Guard",
+      "duration": 2,
+      "tracks": 78
+    },
+    {
+      "name": "Hit",
+      "duration": 0.4000000059604645,
+      "tracks": 78
+    },
+    {
+      "name": "Idle",
+      "duration": 2,
+      "tracks": 78
+    },
+    {
+      "name": "Run",
+      "duration": 0.6666666865348816,
+      "tracks": 78
+    },
+    {
+      "name": "RunGrab",
+      "duration": 0.6666666865348816,
+      "tracks": 78
+    },
+    {
+      "name": "RunGuard",
+      "duration": 0.6666666865348816,
+      "tracks": 78
+    },
+    {
+      "name": "Stagger",
+      "duration": 0.5,
+      "tracks": 78
+    },
+    {
+      "name": "Stop",
+      "duration": 0.5,
+      "tracks": 78
+    },
+    {
+      "name": "Strike",
+      "duration": 0.5,
+      "tracks": 78
+    },
+    {
+      "name": "Turn",
+      "duration": 0.6000000238418579,
+      "tracks": 78
+    },
+    {
+      "name": "Walk",
+      "duration": 0.9333333373069763,
+      "tracks": 78
+    }
+  ],
+  "asset": {
+    "primitives": 1,
+    "triangles": 1970,
+    "vertices": 3960,
+    "bones": 26,
+    "materials": 1
+  },
+  "validation": [
+    {
+      "clip": "Block",
+      "finite": true,
+      "minY": 0.015000023874181947,
+      "maxExtent": 2.1243189986067805,
+      "maxVertexDisplacement": 0.08445023514565748
+    },
+    {
+      "clip": "BlockCounter",
+      "finite": true,
+      "minY": 0.01499075655786336,
+      "maxExtent": 2.125060920290201,
+      "maxVertexDisplacement": 0.44539001276351053
+    },
+    {
+      "clip": "Defeat",
+      "finite": true,
+      "minY": 0.014999828084156413,
+      "maxExtent": 2.1203581696254945,
+      "maxVertexDisplacement": 1.2317299137575064
+    },
+    {
+      "clip": "Grab",
+      "finite": true,
+      "minY": 0.014992384054190568,
+      "maxExtent": 2.125327956296438,
+      "maxVertexDisplacement": 0.32272194239328306
+    },
+    {
+      "clip": "Grabbed",
+      "finite": true,
+      "minY": 0.013472358090367122,
+      "maxExtent": 2.1203581696254945,
+      "maxVertexDisplacement": 0.350523121336215
+    },
+    {
+      "clip": "GrabReady",
+      "finite": true,
+      "minY": 0.015000094600028827,
+      "maxExtent": 2.1253573180156256,
+      "maxVertexDisplacement": 0.01443590437263171
+    },
+    {
+      "clip": "Guard",
+      "finite": true,
+      "minY": 0.015000094600028827,
+      "maxExtent": 2.1253573180156256,
+      "maxVertexDisplacement": 0.01443590437263171
+    },
+    {
+      "clip": "Hit",
+      "finite": true,
+      "minY": 0.014999982258078333,
+      "maxExtent": 2.1203581696254945,
+      "maxVertexDisplacement": 0.23839752000346437
+    },
+    {
+      "clip": "Idle",
+      "finite": true,
+      "minY": 0.014999966669590335,
+      "maxExtent": 2.1253573180156256,
+      "maxVertexDisplacement": 0.011232878926230058
+    },
+    {
+      "clip": "Run",
+      "finite": true,
+      "minY": 0.012349220120434039,
+      "maxExtent": 2.1312109024600683,
+      "maxVertexDisplacement": 0.6459711486917953
+    },
+    {
+      "clip": "RunGrab",
+      "finite": true,
+      "minY": 0.012349220120434039,
+      "maxExtent": 2.1312109024600683,
+      "maxVertexDisplacement": 0.6459711486917953
+    },
+    {
+      "clip": "RunGuard",
+      "finite": true,
+      "minY": 0.012349220120434039,
+      "maxExtent": 2.1312109024600683,
+      "maxVertexDisplacement": 0.6459711486917953
+    },
+    {
+      "clip": "Stagger",
+      "finite": true,
+      "minY": 0.014454747586887315,
+      "maxExtent": 2.1203581696254945,
+      "maxVertexDisplacement": 0.23615786101336544
+    },
+    {
+      "clip": "Stop",
+      "finite": true,
+      "minY": 0.014990405180862997,
+      "maxExtent": 2.1237323409471505,
+      "maxVertexDisplacement": 0.12233325671359103
+    },
+    {
+      "clip": "Strike",
+      "finite": true,
+      "minY": 0.014984869111376087,
+      "maxExtent": 2.1246646514321954,
+      "maxVertexDisplacement": 0.4443367687665451
+    },
+    {
+      "clip": "Turn",
+      "finite": true,
+      "minY": 0.014994550885283831,
+      "maxExtent": 2.1252814581650594,
+      "maxVertexDisplacement": 0.8360693694266278
+    },
+    {
+      "clip": "Walk",
+      "finite": true,
+      "minY": 0.01323053474449273,
+      "maxExtent": 2.1312109024600683,
+      "maxVertexDisplacement": 0.6459715304556328
+    }
+  ],
+  "gait": [
+    {
+      "t": 0,
+      "foot": [
+        0.18766885090323993,
+        0.21656583881538272,
+        -0.3201850168137316
+      ]
+    },
+    {
+      "t": 0.16666666666666666,
+      "foot": [
+        0.19000005442602436,
+        0.27499998414976107,
+        7.066043750114659e-9
+      ]
+    },
+    {
+      "t": 0.3333333333333333,
+      "foot": [
+        0.18766884731936992,
+        0.216565734847748,
+        0.320184643848034
+      ]
+    },
+    {
+      "t": 0.5,
+      "foot": [
+        0.19000004207037097,
+        0.16999999064768334,
+        -1.4920306717902676e-7
+      ]
+    },
+    {
+      "t": 0.6665666666666666,
+      "foot": [
+        0.1876700275988609,
+        0.21654192088165253,
+        -0.3201475209512439
+      ]
+    }
+  ]
+}
