@@ -1,289 +1,264 @@
-# BeriGame roadmap: earn a sturdy stick in the first 3 minutes, then the Beacon and the coast (M1 to M3)
+# BeriGame roadmap: the Grove, a lucky stick, and the way out (M1 to M3)
 
-Status: design only. Owner decisions recorded in §3.
-Baseline (in flight on this branch): every swing hits, punch 3, stick 6, a swing every 4 ticks (600 ms tick), `MAX_HP` 30, melee range 1, 2 tiles of movement a tick on a 50×50 grid, spawn at (25,25).
-Trees (id): strawberry 1 (40,30) +3, greenberry 2 (30,35) +2, goldberry 3 (20,30) +10, blueberry 4 (30,25) +5, strawberry 5 (15,20) +3, greenberry 6 (25,15) +2. Harvest 5 ticks, regrow 50, one harvester per tree, 25% bonus stick today (`STICK_DROP_CHANCE`; M1 lowers it to 10% and adds the stick meter).
-Quick bar = bag slots 1–3 (keys 1–3). Eat cooldown 3 ticks. Death drops the whole bag. Beta characters last at most 1 hour.
+Status: design only. Owner decisions recorded in §4.
+Baseline (live): every swing hits, punch 3, stick 6, a swing every 4 ticks (600 ms tick), `MAX_HP` 30, melee range 1, 2 tiles of movement a tick on a 50×50 grid, spawn at (25,25). A finished berry harvest finds a stick 25% of the time (`STICK_DROP_CHANCE`, `ctx.random`). Found weapons go to the quick bar (slots 1–3, keys 1–3).
+Trees (id): strawberry 1 (40,30) +3, greenberry 2 (30,35) +2, goldberry 3 (20,30) +10, blueberry 4 (30,25) +5, strawberry 5 (15,20) +3, greenberry 6 (25,15) +2. Harvest 5 ticks, regrow 50, one harvester per tree. Eat cooldown 3 ticks. Death drops the whole bag. Beta characters last at most 1 hour.
 
 ---
 
 ## 1. Vision and rules of thumb
 
-*"The first island": a cheerful, low-poly tropical brawler on a readable 600 ms tick, where every player gathers, eats and fights under the same rules.*
+*"The first island": a cheerful, low-poly tropical brawler on a readable 600 ms tick. You wash up in a grove ringed by brambles; a sturdy stick gets you out, and each area gives you the key to the next.*
 
-1. **Fewest concepts.** Before 3:00 a new player needs gather and the quick bar; eat and fight are taught in context. Each milestone adds at most one new verb.
-2. **Something meaningful by 3:00: the sturdy stick.** It is the first real reward and it is earned, not handed out: about 5 harvests of work. A new character finds one within three minutes even on a busy server (up to 6 newcomers arriving together, §2). **The stick is earned: a visible meter, luck can only make it sooner.** The newcomer's queue place and grace are protected until they find it.
-3. **Equal starts.** Combat power comes from preparation (weapon, food, position), never from time played.
-4. **Players are players.** No rule, score or reward depends on whether a player is a human or an agent; there is no reliable proof of personhood. Caps are per player, and only where farming matters.
-5. **PvP is optional.** Every goal has a gatherer route. Players without the combat grant cannot be attacked, so the ring and grace do nothing for them. Their First Day is 2 steps (find a sturdy stick, then a goldberry); they may still wield the stick, and it pays off against the F3 Giant. They can finish every later goal except "land a hit".
-6. **Session-sized, world-persistent.** A visit is a one-hour arc; the world (the Beacon) remembers.
-7. **Mobile-first, cheap tick.** One goal chip, no new toolbar buttons. No per-tick movers or per-tick writes; schema changes are appended columns with defaults or new tables.
+1. **Fewest concepts.** Before 3:00 a new player needs gather, eat, the quick bar and one rule: brambles need a stick. Each milestone adds at most one new verb.
+2. **Something meaningful by 3:00.** You have gathered and eaten, and about 3 in 4 players (near-worst case, busy server) hold a sturdy stick. The stick is **pure luck: 1 in 4 berry harvests, no meter, no guarantee.**
+3. **Keys open areas.** The stick lets you push through the bramble hedge to the Coast; the Coast's materials make the stone club, the key to Area 3. A key works while you carry it (bag or wielded). No key is stored on your character, and dying drops it.
+4. **Equal starts.** Combat power comes from preparation (weapon, food, position), never from time played.
+5. **Players are players.** No rule, score or reward depends on whether a player is a human or an agent; there is no reliable proof of personhood.
+6. **PvP is optional.** Players without the combat grant cannot be attacked and skip the wield step; every area and key is open to them.
+7. **Mobile-first, cheap tick.** One goal chip, no new toolbar buttons. No per-tick writes; schema changes are appended columns with defaults or new tables; static map data lives in `shared/sim`.
 
-## 2. The first 3 minutes
+## 2. The map: the Grove, the bramble hedge, the Coast
 
-The goal chip (M1) replaces the GatherShortcut button. It shows one line: the step, progress, and "tap to do it".
+The whole 50×50 grid is land (`GroundPlane.tsx`: a 50×50 plane over a 52×52 sand shelf), so the shore is the grid edge. North is −z (away from the default camera). `ring(t) = chebyshev(t, SPAWN_TILE)`.
 
-**"First Day"**, three steps (two without the combat grant):
-
-| # | Chip text | Done when | Verb taught |
-|---|---|---|---|
-| 1 | Find a sturdy stick — gather berries n/5 | A stick in the bag or wielded | gather |
-| 2 | *(combat grant)* Wield your stick: "Tap the stick in your quick bar" (desktop adds its key) | `player.weapon === 'stick'` | quick bar |
-| 3 | *(combat grant, and an attackable player online)* Land a hit outside the ring. *Everyone else:* Pick a goldberry, the island's best food | A Hit with you as attacker / a goldberry in the bag | fight / gather (contested) |
-
-- **One rule for the grant:** step 2 and "Land a hit" need the combat grant. Without it, First Day is step 1 then "Pick a goldberry"; wielding still works but is not a step.
-- Step 3 is re-derived live: if the last attackable player leaves, a fighter's step 3 turns into "Pick a goldberry". Step 3 is done when whichever form is showing is satisfied; once it is in the done set, First Day stays done (an attackable player joining later does not reopen it).
-- `n` is the public `player.stickSearch` (0–4). The key shown in step 2 comes from the stick's actual quick slot, not a fixed "2".
-- Eat is not a First Day step: grace lasts until you find your stick (plus 6 s to wield), so a newcomer meets fights armed. Eating is taught in the fight: while hostile and HP < 15, the CombatHud hint reads "Tap Goldberry (1) to heal +10" (best berry in the quick bar, its key, its heal).
-
-**Script.** Walking times use Chebyshev distance to the tree's nearest free tile at 2 tiles a tick; the player taps the chip again on the tick after each harvest. "Busy" means 10 players online and every tree just claimed when you spawn. Every tree then ripens and is re-claimed on the same tick (every 55 ticks), so moving gains nothing: this is the same as waiting at one tree, and a near-worst case for one newcomer (5 × 55 ticks). If a tree is instead claimed on the tick you arrive (a veteran takes the gold tree at tick 7, so it ripens at 62), the 5th claim is at 282 and the 5th harvest is done by about tick 287 (2:52), still inside priority. Times assume no lucky find; each harvest has a 10% chance to end the search early.
-
-| Time (quiet) | Time (busy, near-worst) | What the player sees and does |
+| Area | Tiles | Rule |
 |---|---|---|
-| 0:00 | 0:00 | Spawn at (25,25) in the sand ring. HP 30/30, empty bag, a **Safe** badge on the HP bar. Chip: **1/3 Find a sturdy stick — gather berries 0/5** (1/2 without the grant). |
-| 0:03–0:07 | 0:03–0:36 | Tap the chip (tick 5). Quiet: it walks you to the tree with the soonest claim, the goldberry at (20,30): 4 tiles to (21,29), 2 ticks (the blueberry is equally close; the lower tree id wins). Harvest bar, 5 ticks. **+1 goldberry**, meter **1/5**. Busy: nothing is ripe; every tree ripens at 0:33, so the chip parks you at the nearest, the gold tree: "Waiting: ripe in 30 s". Newcomer first, you harvest 0:33–0:36. |
-| 0:08–0:26 | 0:37–2:15 | Harvests 2–4, meter **2/5 … 4/5**. Quiet: the nearest ripe tree each time, a 4–5 tick walk plus 5 ticks: greenberry (30,35) done 0:13, blueberry (30,25) done 0:19, strawberry (40,30) done 0:26. The bag is now goldberry, greenberry, blueberry, strawberry in slots 1–4. Busy: the same tree's next ripenings, done 1:09, 1:42, 2:15. |
-| 0:34 | 2:48 | Harvest 5 always finds it. Quiet: greenberry (25,15), 7 ticks away, done 0:34; the greenberry stacks, and the stick takes quick slot 3 (the blueberry moves to slot 5). Busy: done 2:48, stick in slot 2. Banner: **"You found a sturdy stick! Press <key> to wield — hits twice as hard"** (quiet: 3, busy: 2; touch: "Tap it in your quick bar"), a sparkle on its slot and the "+ Stick" float. **Your grace ends 6 s later** (10 ticks to wield and step back); newcomer priority ends at once. |
-| 0:34 | 2:49 | **2/3 Wield your stick.** The weapon chip reads "Stick · 6 dmg". |
-| 0:34–3:00 | 2:49–3:00 | **3/3.** With the combat grant and an attackable player online: "Land a hit": a stick kills an unarmed player in 9.6 s, while their punches need 21.6 s. Otherwise "Pick a goldberry", already in the bag from harvest 1 in both timelines, so the chip reads **"First Day done"**. **In M1 a solo player has nothing more to do after about 0:34.** M2's Beacon fixes that (about 4 minutes of solo feeding to start a Bloom). |
+| **The Grove** | `ring ≤ 16`: x and z in 9–41, 33×33 = 1089 tiles (1083 walkable; 6 trees) | Spawn, the safe ring (`ring ≤ 2`, 25 tiles) and all 6 berry trees |
+| **Bramble hedge** | `ring == 17`: x or z = 8 or 42, one tile thick, **136 tiles** | Enter only while holding a stick; see the movement rule below |
+| **The Coast** | `ring ≥ 18`: **1275 tiles**, a band 8 deep on the west and north (0–7), 7 deep on the east and south (43–49) | No food, no safe ring. M2 adds driftwood and flint |
 
-- **Luck.** Chance of finding the stick on harvest 1–4: 10%, 9%, 8.1%, 7.3%; 66% of players need all five. Average 4.1 harvests. Average find: about 0:27 quiet, about 2:18 busy.
-- **Busy but staggered** (the usual case: trees ripen at different ticks): the chip hops to the tree with the soonest claim, about one harvest every 18 ticks, so the stick comes at roughly 1:00. The lock-step case above is the bound.
+```
+.........................
+.R..........d..........R.
+.........................
+.........................
+....##################...
+....#                #...
+....#                #...
+....#       g        #...
+....#                #...
+....#                #...
+....#  s             #...
+....#      ooo       #...
+.d..#      o@o b     #.d.
+....#      ooo       #...
+....#                #...
+....#     G         s#...
+....#                #...
+....#          g     #...
+....#                #...
+....#                #...
+....#                #...
+....##################...
+.........................
+.R..........d..........R.
+.........................
+```
 
-**The guarantees (M1, one appended column):**
-- **Stick: the meter.** Every finished harvest by a player without a stick either finds one or adds 1 to `player.stickSearch`.
-  - Pure helper: `harvestFindsStick(roll, harvestsWithoutStick)` returns `roll < STICK_DROP_CHANCE || harvestsWithoutStick + 1 >= STICK_GUARANTEE_HARVESTS` (0.10 and 5). So the 5th stick-less harvest always finds one, and luck can only make it sooner.
-  - A find grants the stick and resets the counter to 0. The counter survives death, so a stick lost in a death drop is earned again through the same meter.
-  - **While you hold a stick (bag or wielded), harvests neither advance the meter nor find one; the draw still happens.** No spares pile up, and nobody can find sticks to hand out.
-  - The `ctx.random` draw still happens on every finished harvest, so the draw order is unchanged; fixtures' expected stick outcomes are regenerated.
-  - Supply: one stick guaranteed within 5 of your own harvests, at most one per harvest, about 1 per 4.1 on average.
-- **Contention: wait-and-claim, newcomer first, then first come first served.** `startHarvest` on a regrowing or claimed tree no longer throws. It queues `Pending.Harvest`, and the player waits on the adjacent tile.
-  - On the tick a tree ripens, the waiters claim it in this order: newcomers first (`p.state === Alive && p.respawnTick > T`, true only during first-spawn grace, because after a death `respawnTick ≤ T` once you are alive), and among newcomers the higher `stickSearch` first, then earliest `lastInputTick`, then `s.order`. Newcomers sharing a tree therefore do not rotate: the one nearest a stick finishes first.
-  - Newcomer priority ends when you find your stick or attack, or at insert + 290 (2:54). That covers the busy 5th ripening (275–282) only if you tap the chip within about 5 s of spawning.
-  - Any input while waiting resets your `lastInputTick`, so it moves you behind waiters of the same rank.
-  - The chip picks the tree with the soonest claim for you: max(ripening tick, your arrival tick) plus 55 ticks for each waiter who would claim before you (read from the public player rows: `pending`, `pendingId`, `respawnTick`, `stickSearch`, `lastInputTick`), then nearest, then lowest id. This spreads newcomers across trees.
-  - While Waiting, the chip (and the gateway for `state.goal`) re-ranks every tick and re-targets when another tree now gives a claim at least 55 ticks sooner. Newcomers who spawn on the same tick all pick the gold tree at first, then spread out on the next ticks.
-  - It shows "Waiting: ripe in N s" and never promises a place: a tree just claimed is 55 ticks (33 s) away, plus 33 s for each waiter ahead of you.
-  - Work is done only for waiting players, on the tick their tree ripens.
-- **Safety: one Safe badge.** The ring, first-spawn grace and respawn grace show as one "Safe" badge on the HP bar.
-  - The ring: x and z both in 23–27 (25 tiles).
-  - Respawn grace: 10 ticks after a death (`tick < respawnTick + 10`).
-  - First-spawn grace: `respawnTick = now + 290` when the player row is first inserted (not on reconnect), so the same rule gives 300 ticks (3:00). The first meter find sets `respawnTick = T` (`phaseHarvest`, only while `respawnTick > T`): the same rule then gives exactly 10 ticks (6 s) to wield and step back, and newcomer priority ends at once. You are safe until you are armed.
-  - Attacking ends any grace: an accepted `attack` sets `respawnTick = 0`, which ends first-spawn grace, respawn grace and newcomer priority. A rejected attack changes nothing.
-  - A stick picked up from the ground completes step 1 but does not end first-spawn grace; grace ends only at a meter find, an attack or insert + 300.
-  - Grace covers the whole stick search, so a hit (which clears `pending` via `interrupt()`) cannot cost a newcomer their place in line or their bag before they are armed.
-- **Bound.** Saturated, the island yields 6 harvests per 55 ticks (about 11 a minute), and newcomers take them first.
-  - k newcomers arriving together, each at their own tree, finish by tick 5 + 55·max(5, ⌈5k/6⌉) at worst: **k ≤ 6 all by 2:48**; the 7th needs a 6th ripening (3:21 at best), and by then their priority has ended.
-  - Sustained, the promise holds for **up to about 2.2 newcomers a minute** (5 harvests each; about 2.7 at average luck). Hourly churn at 30 online is about 0.5 a minute, which fits. A launch of 10 agents at once does not: the 7th to 10th finish after 3:00.
-- **Acceptance test** (sim, newcomers follow `state.goal`; "done" = a stick found and wielded):
-  - (a) 10 gather bots saturating all 6 trees, 1 newcomer: done before tick 300.
-  - (b) 10 bots, 3 of them with the combat grant attacking the nearest attackable player, 1 newcomer: done before tick 300.
-  - (c) 6 newcomers inserted on the same tick among the bots of (a): all done before tick 300.
+1 char = 2×2 tiles, north up. `@` spawn, `o` safe ring, `#` bramble hedge, `.` Coast; trees `G` gold, `b` blue, `s` straw, `g` green; M2 nodes `d` driftwood, `R` tide rock.
 
-## 3. Decisions (owner, recorded)
+- **Why ring 17:** the farthest tree is strawberry 1 at ring 15, so its harvest tiles reach ring 16 and one free column stays between it and the hedge (1-tile clearance). Every other tree is at ring 5 or 10.
+- **No gaps, by construction:** a step changes `ring` by at most 1, so every path out of the Grove sets foot on a ring-17 tile. No diagonal can skip it.
+- **Distances:** spawn to the hedge is 17 tiles (9 ticks, 5.4 s); no Grove tile is more than 9 ticks from the hedge; the strawberry 1 tree is 2 tiles from it. The north worn path (`frontend/src/Objects/GroundPlane.tsx`) already ends on the hedge at world z −17. Lengthen the east, west and south paths by 1 so all four end on the hedge at (25,8), (42,25), (25,42) and (8,25): the natural crossing points.
+- **Connectivity:** the Coast is an annulus at least 7 tiles wide, so it is connected; M2's 8 single-tile nodes, 20+ tiles apart, cannot split it (tested anyway).
+
+**Movement rule (stateless, per player, per step):** a player may step onto a bramble tile only if they hold a stick (bag or wielded) **or** they step in from the Coast (`ring(from) ≥ 18`). Stepping off a bramble tile is always allowed.
+- In words: *without a stick, brambles keep you in the Grove but never keep you out of it.* A player who drops their stick on the Coast walks home; nobody is ever stranded.
+- Standing on a bramble tile without a stick (you dropped it there, or it was crafted away): you can step straight across to either side, not along or diagonally (the orthogonal tile of a diagonal is bramble). On a corner tile ((8,8), (42,8), (8,42), (42,42)) you can only step outward (then walk home through any other hedge tile).
+- Trees stay the only hard blocks; brambles are a passability predicate, not blocked tiles, so items can still drop on them and be picked up from an adjacent tile (either side).
+
+## 3. The first 3 minutes
+
+The goal chip (M1) replaces the GatherShortcut button: one line, "tap to do it".
+
+**"First Day"**, five steps (four without the combat grant):
+
+| # | Chip text | Done when | Teaches |
+|---|---|---|---|
+| 1 | Pick a berry | Your first HarvestDone (or a berry in the bag) | gather |
+| 2 | Eat it: tap the <berry> in your quick bar | Your first Eat (or HP full) | eat, quick bar |
+| 3 | Search the berry trees for a sturdy stick | A stick in the bag or wielded (skipped if harvest 1 found one) | luck, persistence |
+| 4 | *(combat grant)* Wield your stick: tap it (desktop adds its key) | `player.weapon === 'stick'` | wield |
+| 5 | Push through the brambles to the Coast | You stand on a tile with `ring ≥ 18` | the hedge rule |
+
+- **New characters wash ashore tired: 20/30 HP** (first insert only; respawns and reconnects are unchanged), so step 2 heals for real. No count on step 3; the Help panel says "about 1 harvest in 4 turns one up".
+- Steps come from state plus a remembered done set, so eating or losing the stick never un-completes a step. After First Day, a player holding no stick (a death drop) sees steps 3 and 5 again: they respawned in the Grove and need a new key.
+
+**Script.** Walking uses Chebyshev distance at 2 tiles a tick; the player taps the chip on the tick after each harvest. "Busy, near-worst": 10 players online and every tree claimed on the tick you spawn, so every tree ripens and is re-claimed in lock-step (one harvest per 55 ticks), with newcomer priority (below).
+
+| Quiet | Busy, near-worst | What happens |
+|---|---|---|
+| 0:00 | 0:00 | Spawn at (25,25), **20/30 HP**, a **Safe** badge. Chip: **Pick a berry**. |
+| 0:03–0:07 | 0:03–0:36 | Tap (tick 5). Quiet: 2 ticks to (21,29), harvest the goldberry, done tick 12. Busy: parked at the gold tree, "Waiting: ripe in 30 s", harvest 0:33–0:36. 25% chance the stick comes now. |
+| 0:08 | 0:37 | **Eat it** → 30/30 (goldberry +10). |
+| 0:14 … 1:00 | 1:09, 1:42, 2:15, 2:48 | **Search for a stick.** Quiet: the chip hops to the tree with the soonest claim, a harvest every ~6.6 s (done 0:14, 0:20, 0:26, 0:34, 0:41, 0:47, 0:54, 1:00, …; 26 harvests by 3:00). Busy: one harvest per 33 s, 5 by 3:00. |
+| on a find | on a find | Banner **"You found a sturdy stick! Tap it to wield — hits twice as hard"**, a sparkle on its slot. Grace ends 6 s later. Then **Wield** (grant only) and **"Push through the brambles to the Coast"**: at most 9 ticks (5.4 s) of walking. |
+
+**Luck** (P(stick within k harvests) = 1 − 0.75^k; average 4 harvests, median 3):
+
+| Harvests k | 1 | 2 | 3 | 4 | 5 | 8 | 10 | 16 | 26 |
+|---|---|---|---|---|---|---|---|---|---|
+| P(stick) | 25% | 44% | 58% | 68% | **76%** | 90% | 94% | 99% | 99.9% |
+| Quiet, by | 0:07 | 0:14 | 0:20 | 0:26 | 0:34 | 0:54 | 1:07 | 1:47 | 2:55 |
+| Busy near-worst, by | 0:36 | 1:09 | 1:42 | 2:15 | **2:48** | — | — | — | — |
+
+- **By 3:00:** quiet, 99.9% (median find 0:20). Busy but staggered (the usual busy case): about 7–9 harvests by 3:00, roughly 9 in 10 (bots already standing at a ripe free tree claim at once, so newcomer priority only helps among waiters). Busy near-worst (lock-step, acceptance test (a)): 5 harvests, **76%, about 3 in 4**, the floor. Everyone has gathered and eaten by 0:08 (quiet) or 0:37 (busy).
+- **Bad luck is real:** 1 player in 18 needs more than 10 harvests. That is the owner's call (no guarantee); the knob is `STICK_DROP_CHANCE` (open question 1).
+- **No spare sticks:** while you hold a stick (bag or wielded), finished harvests do not find another. The `ctx.random` draw still happens on every harvest, so the draw order is unchanged.
+
+**Safety: one Safe badge** (the ring or any grace):
+- **Safe ring:** `SAFE_RADIUS = 2` (x and z both in 23–27). `attack` is rejected and no swing lands if either side is inside. The blueberry (30,25) and gold (20,30) trees stay outside.
+- **Respawn grace:** 10 ticks after a death (`tick < respawnTick + 10`).
+- **First-spawn grace: until you get a stick, attack, or 3:00.** On first insert `respawnTick = now + 290` (same rule → 300 ticks). Getting a stick while `respawnTick > T` (a find or a pickup) sets `respawnTick = T`: 10 more ticks (6 s) to wield and step back. An accepted `attack` sets it to 0. A reconnect does not reset it. About 1 in 4 players on a near-worst busy server meet 3:00 unarmed, in the Grove, next to the safe ring.
+
+**Contention: wait-and-claim, newcomer first.** `startHarvest` on a regrowing or claimed tree queues `Pending.Harvest` instead of throwing; the player waits on the adjacent tile.
+- On the ripening tick, waiters claim in this order: newcomers (alive with `respawnTick > T`, i.e. in first-spawn grace), then earliest `lastInputTick`, then `s.order`. Any input while waiting resets your `lastInputTick`.
+- The chip (and the gateway's `state.goal`) picks the tree with the soonest claim for you: max(ripening, your arrival) + 55 ticks per waiter ahead of you, then nearest, then lowest id; while waiting it re-targets when another tree is ≥55 ticks sooner. It shows "Waiting: ripe in N s" and never promises a place.
+- **Bound:** saturated, the Grove yields 6 harvests per 55 ticks (about 11 a minute). Up to 6 newcomers arriving together each get about 5 harvests by 3:00 (about 76% each); 12 together get about 2.5 each (about 51%). Finders drop out of the priority tier, so the unlucky ones get more than 2.5 each.
+
+## 4. Decisions (owner, recorded)
 
 | # | Question | Decision | Where it lands |
 |---|---|---|---|
-| 1 | Persistent identity for returning browsers | Yes, in the future | Future F1 (the gate) |
-| 2 | XP skills after the gate | Yes, in the future | Future F2 |
-| 3 | Safe ring of radius 2 plus 10-tick respawn grace, with the blueberry tree outside it | Yes, now | M1 |
-| 4 | Keep the full-bag drop on death | Yes | Unchanged through M3 |
-| 5 | Humans-vs-agents tally | No: there is no reliable proof of personhood. Every mechanic that separates humans from agents for scoring or rewards is removed. | Everywhere (§1.4) |
-| 6 | Future PvE Giant open to players without the combat grant | Yes, in the future | Future F3 |
+| 1 | Persistent identity for returning browsers | Yes, in the future | F1 (the gate) |
+| 2 | XP skills after the gate | Yes, in the future | F2 |
+| 3 | Safe ring of radius 2 plus 10-tick respawn grace | Yes, now | M1 |
+| 4 | Keep the full-bag drop on death | Yes (it also drops your keys) | Unchanged |
+| 5 | Humans-vs-agents tally | No: no reliable proof of personhood | Everywhere (§1.5) |
+| 6 | Future PvE Giant open to players without the combat grant | Yes, in the future | F3, in Area 3 |
+| 7 | Guaranteed stick (meter or pity) | **No: pure chance per harvest** | M1 |
+| 8 | A way to progress after the stick | **Yes: the stick opens the next area** | M1 (hedge), M2 (Coast) |
 
 Owner direction: the base is very simple, easy to understand, and meaningful in the first 3 minutes. Sticks are the first meaningful reward and are not easy.
 
-**Open questions (new):**
-1. **A training dummy in the ring, so a solo player can land a first hit?** *Default: no in M1. Yes if more than 50% of sessions start with ≤1 other combat player online.*
-2. **First-spawn grace length?** *Default: until your first meter find (plus 10 ticks to wield) or 3:00, whichever comes first; attacking ends it.*
-3. **More than 6 newcomers at once (an agent launch) overrun 3:00. Accept, or add a fallback?** *Default: accept in M1 and watch the time-to-stick metric; the M2 Bloom speeds regrow for every tree, which raises the saturated harvest rate.*
-4. **Stick meter knobs: `STICK_DROP_CHANCE` 10% and `STICK_GUARANTEE_HARVESTS` 5?** *Default: 10% and 5 (quiet 0:34, busy near-worst 2:48). If the median quiet time-to-stick passes 1:00 or players leave during the meter, drop the guarantee to 4 first (quiet 0:26, busy worst 2:15), then raise the chance.*
+**Open questions:**
+1. **`STICK_DROP_CHANCE` stays 0.25?** *Default yes (quiet median 0:20; busy near-worst 76% by 3:00). If the p75 time-to-stick passes 3:00 on live, raise it to 0.30 (near-worst 83%).*
+2. **One-way brambles (you can always come home) or a strict wall?** *Default one-way: no stranded players, no rescue mechanic. Strict is simpler to say but needs an escape (e.g. driftwood finding sticks).*
+3. **Club recipe: 1 driftwood + 2 flint (default) or 1 stick + 2 flint?** *Default driftwood: the stick stays your Grove key and driftwood has a use now that the Beacon is parked. If the stick is consumed, the club must also count as a bramble key.*
+4. **Area 3: grow the grid or carve it out of the Coast?** *Default grow (§6 M3).*
 
-## 4. Progression model
-
-**World goal and gear now. Identity, then skills, in the future.**
+## 5. Progression model
 
 | Layer | Ships in | Survives death? | Why |
 |---|---|---|---|
-| First Day chip and the stick meter | M1 | Yes (state plus a remembered done set; the meter's count is on the player row) | Direction and a first earned reward in the first 3 minutes |
-| The Beacon | M2 | World-level | A solo goal, open to every player; a 1-hour guest still leaves a mark |
-| Gear: stone club | M3 | No, it drops | Real power with real risk; equal starts |
-| Persistent identity, then skills, titles and the bank | Future | Account | Only worth building once a returning player keeps their identity |
+| First Day chip | M1 | Yes (state plus a remembered done set) | Direction in the first 3 minutes |
+| Area keys: stick → Coast, stone club → Area 3 | M1, M2, M3 | **No, they drop** | Progress you can see on the map, with real risk; equal starts |
+| Persistent identity, then skills, titles and the bank | Future | Account | Only worth it once a returning player keeps their identity |
 
-Why no XP now:
-- Guest identities expire every hour (`lifetimeSeconds: 3600`), so a level ladder would reset each visit.
-- Gating any harvest behind a level would turn time played into power. Goldberry out-heals every weapon.
+Why no XP now: guest identities expire every hour, so a level ladder would reset each visit; gating harvests behind levels turns time played into power.
 
-## 5. Milestones
+## 6. Milestones
 
-Codes: never reuse a shipped code (EventKind 0–7, Pending 0–2); a new one takes the next free number when it merges.
+Codes: never reuse a shipped code (EventKind 0 and 4–7, Pending 0–2); a new one takes the next free number at merge.
 
-### M1 "The first 3 minutes" (one appended column)
+### M1 "The Grove" (no new verb, one new rule: the hedge)
 
-What a new player sees in M1: movement and camera; the goal chip and its stick meter; the stick-find banner; ripe/regrowing trees and the harvest bar; "Waiting: ripe in N s"; the quick bar and wield toggle; eating (heal value, cooldown, full-HP block, the delay to your next swing); HP and the Safe badge; death drops the bag and ground pickup; attack/follow/stop; 4 berry heal values. Queue priority is invisible.
+What a new player sees: movement and camera; the goal chip; the stick-find banner; ripe/regrowing trees and the harvest bar; "Waiting: ripe in N s"; the quick bar and wield toggle; eating; HP and the Safe badge; the bramble hedge and its toast; death drops the bag.
 
-- **Schema:** `player.stickSearch: t.u8().default(0)`, appended last. An append-only migration with a default, but like the `weapon` column the Maincloud publish needs `--yes=remote,skip-login,break-clients` with `--delete-data=never`, followed immediately by the Worker/static deploy (`docs/CLOUDFLARE_BETA.md`). Run `stdb:generate` and `beta:types`.
-- **Stick meter:** `STICK_DROP_CHANCE` 0.25 → 0.10; new `STICK_GUARANTEE_HARVESTS = 5`; `harvestFindsStick(roll, harvestsWithoutStick)` in `shared/sim` (§2).
-  - `phaseHarvest` draws `ctx.random` on every HarvestDone as today. If the harvester holds a stick (bag or wielded), nothing else happens. Otherwise, on a find: grant the stick, set `stickSearch = 0`, and if `respawnTick > T` (first-spawn grace) set `respawnTick = T` (10 more ticks of grace, priority ends). Otherwise `stickSearch += 1`.
-- **Stick slot:** `addItem` puts a weapon in the first empty quick slot (1–3). If all three are full, it takes quick slot 3 and moves that stack to the first free bag slot (overflow to the ground as today); if slot 3 already holds a weapon, the new one goes to the bag as today. This applies to finds and to ground pickups.
-- **Safe ring:** `SAFE_RADIUS = 2`, a Chebyshev ring around `SPAWN_TILE` (x and z both in 23–27).
-  - `attack` is rejected if either side is inside the ring.
-  - `phaseSwings` lands no damage if either side is inside it, so an attacker who chases into the ring cannot hit someone just outside.
-  - The blueberry tree (30,25) and the gold tree (20,30) stay outside. The gold tree's nearest tile (21,29) is 1 tick from the ring edge, so fights lost at the gold tree end in retreats into the ring. Accepted.
-- **Grace:** a player is untargetable while `tick < respawnTick + 10`.
-  - New characters: `respawnTick = now + 290` when the row is first inserted, never on reconnect (3:00). The first meter find sets it to `T` (above). An accepted `attack` sets it to 0, ending any grace and newcomer priority.
-  - A ground-picked stick does not touch `respawnTick`.
-  - The client shows the Safe badge while the ring or grace applies. The respawn timer UI stays keyed on `state = Dead`.
-- **Wait-and-claim:** `startHarvest` queues on a regrowing or claimed tree instead of throwing. A pre-pass at the start of `phaseMovement`, before any `resolvePending`, resolves every tree that ripens this tick among its adjacent waiters (a walker arriving that tick joins the same ordering): newcomers first, and among newcomers the higher `stickSearch` first, then earliest `lastInputTick`, then `s.order`. `resolvePending` keeps `Pending.Harvest` when the claim fails instead of clearing it.
-- **Goal chip:** `GatherShortcut` becomes `GoalChip`.
-  - One line; tapping performs the step. On a gather step it goes to the tree with the soonest claim for you (§2). While Waiting, the chip (and the gateway for `state.goal`) re-ranks every tick and re-targets when another tree now gives a claim at least 55 ticks sooner.
-  - Steps come from one shared pure function in `shared/sim/goals.ts`, using state only: a stick in the bag or wielded, `player.stickSearch`, `player.weapon === 'stick'`, a goldberry in the bag, the combat grant, plus a remembered "done" set. (`combat_event` is an event table, so nothing is stored and a reload loses past events.)
-  - The done set lives in `localStorage` per identity (wrapped in try/catch), so eating a berry or losing the stick never un-completes a step. If storage is empty it re-derives, and the worst outcome is a repeated step.
-  - After First Day, if you hold no stick (a death drop), the chip shows the meter again: "Find a sturdy stick — gather berries n/5".
-- **Stick find:** the banner "You found a sturdy stick! Press <key> to wield — hits twice as hard" (touch: "Tap it in your quick bar"), a short CSS sparkle on the stick's quick-bar slot, and the existing "+ Stick" float.
-- **CombatHud:** while hostile and HP < 15, the hint becomes "Tap <best berry> (<key>) to heal +N". (`GatherShortcut` and the chip are hidden while hostile, so the hint cannot live on the chip.)
-- **Copy to update:** the Help panel ("Harvesting a berry tree can turn up a stick"; the gather step "Open your bag, select a berry, then Eat") and the LoadingScreen tip ("Harvesting can turn up a stick") must describe the meter ("Every harvest searches for a sturdy stick; the 5th harvest without one always finds one") and the quick bar.
-- **Art:** a sand ring decal (one mesh, no texture), the Safe badge, the sparkle and stick tooltips. No new models.
-- **Agent API:**
-  - `state.goal {id, text, progress, total, hint}` comes from the same `goals.ts` (progress `n/5` on step 1); the done set lives in the gateway session.
-  - `harvest` may return `waiting {treeId, ripeInTicks}`.
-  - Document the stick meter, the ring and grace in `agent.md`.
-- **Tests (`server-reducers.test.ts` plus a new sim test):**
-  - `harvestFindsStick`: counter 0–3 finds only when `roll < 0.10` (roll = 0.10 is not a find); counter 4 always finds.
-  - `phaseHarvest`: the counter rises by 1 per stick-less harvest, resets to 0 on a find, the 5th stick-less harvest always finds one, and the counter survives death; while holding a stick the counter does not move and nothing is found; one `ctx.random` draw per harvest, draw count unchanged against the fixture (expected stick outcomes updated).
-  - A stick found with quick slots 1–3 full lands in slot 3 and the displaced stack moves to the first free bag slot.
-  - Attack is rejected, and no damage lands, when either side is in the ring.
-  - Respawn grace ends at +10 ticks; a new character is protected until insert + 300 ticks; the first meter find sets `respawnTick = T`, so grace ends 10 ticks later and priority at once; an accepted attack clears any grace; a ground-picked stick and a find during respawn grace change nothing; a reconnect does not reset first-spawn grace.
-  - Waiters: a newcomer beats a veteran; among newcomers, the higher `stickSearch` wins; then earliest `lastInputTick`, then `s.order`; a walker arriving on the ripening tick does not beat a waiter of the same rank.
-  - The §2 acceptance scenarios (a), (b) and (c).
+- **Schema: none.** Grace reuses `respawnTick`; the brambles are static data. No `break-clients` publish.
+- **Constants** (`shared/sim/constants.ts`): `HEDGE_RING = 17`, `SAFE_RADIUS = 2`, `RESPAWN_GRACE_TICKS = 10`, `FIRST_SPAWN_GRACE_TICKS = 300`, `FIRST_SPAWN_HP = 20`. `STICK_DROP_CHANCE` stays 0.25.
+- **Map** (new `shared/sim/areas.ts`): `ringOf(t)`, `isBramble(t)`, `areaOf(t)` (`'grove' | 'hedge' | 'coast'`), `canEnter(from, to, hasStick)` = `!isBramble(to) || hasStick || ringOf(from) > HEDGE_RING`.
+- **Pathfinding** (`shared/sim/pathfinding.ts`): `bfsPath`, `bfsNextStep` and `nearestReachableTile` take an optional `canEnter(from, to)`; `canStep` applies it to the destination and to both orthogonal tiles of a diagonal (no corner cutting through brambles). Default: allow all, so existing callers and tests are unchanged.
+- **Server:** `holdsItem(slots, weapon, itemId)` in `shared/sim`. `setTarget`, `startHarvest`, `pickupItem` and `phaseMovement` (moves and follows) build the predicate from `holdsItem(…, 'stick')`. Cheap check first: `p.weapon === 'stick'` already means you hold one (the weapon stays in the quick bar), so `readSlots` (an owner-index filter, ≤28 rows) runs only for moving players not wielding it. `blocked.ts` stays trees-only. `bfsPath` is recomputed every tick, so dropping the stick mid-route makes it fail and clears the target: the player stops where they are (not re-clamped to ring 16).
+- **Unreachable interactions:** if the interaction tile of `pickupItem` or `startHarvest` can't be reached under the player's predicate (a stick on the Coast from a death on the hedge, since `phaseDeath` drops onto `neighbors8`; an M2 node), the reducer throws `'Thorny brambles — you need a sturdy stick to push through'` and queues nothing. Today `nearestReachableTile` would clamp, the target clears and `Pending.Pickup`/`Harvest` would stay set forever.
+- **Stick:** `harvestFindsStick(roll, holdsStick)` = `!holdsStick && roll < STICK_DROP_CHANCE`; `phaseHarvest` draws on every finished berry harvest as today.
+- **Grace and ring:** as §3. First insert sets `hp = FIRST_SPAWN_HP` and `respawnTick = T + (FIRST_SPAWN_GRACE_TICKS − RESPAWN_GRACE_TICKS)` (= 290; never hard-code it); when a stick arrives during first-spawn grace, `phaseHarvest` and the pickup callers (`pickupItem`, and `resolvePending` via `p`) set `p.respawnTick = T`, not `takeGroundItem` (it only gets `ctx` and `owner`, and the tick writes its in-memory player copies back at the end, overwriting a write made inside it); an accepted `attack` sets 0. The client's respawn timer stays keyed on `state = Dead`.
+- **Wait-and-claim:** as §3. A pre-pass at the start of `phaseMovement` resolves each tree that ripens this tick among its adjacent waiters; `resolvePending` keeps `Pending.Harvest` when the claim fails.
+- **Goal chip:** `GatherShortcut` becomes `GoalChip`, driven by one pure function in `shared/sim/goals.ts` (state plus the done set, kept in `localStorage` per identity inside try/catch; if lost it re-derives and may repeat a step).
+- **Hedge UI:** a click beyond the hedge without a stick walks to the nearest reachable tile (ring 16, as `nearestReachableTile` already does) and shows the toast **"Thorny brambles — you need a sturdy stick to push through"**. Arriving on the Coast the first time: toast "You pushed through to the Coast".
+- **Art:** brambles as two instanced meshes (136 squashed flat-shaded icosahedra in dark olive, 0.5–0.6 tall with seeded jitter, plus ~400 small pale thorn cones), no pointer events (`raycast` disabled) so clicks reach the ground. A sand ring decal for the safe ring. Lengthen the east, west and south worn paths in `GroundPlane.tsx` by 1 (length 17) so they meet the hedge. Client move interpolation (`useTileMotion`) keeps the trees-only set: server tiles are authoritative.
+- **Copy:** Help panel and LoadingScreen tip: "Harvests sometimes turn up a sturdy stick (about 1 in 4). A stick lets you push through the brambles." Agent onboarding and `contract.ts` text likewise.
+- **Agent API:** `state.goal {id, text, hint}`; `state.me.area`; `state.world.brambles {center, ring: 17, key: 'stick'}`; `move` beyond the hedge without a stick returns the clamped tile plus `blockedBy: 'brambles'`; `harvest` may return `waiting {treeId, ripeInTicks}`. Document the hedge, grace and chance in `docs/AGENT_API.md`.
+- **Tests** (sim plus `server-reducers.test.ts`):
+  - Geometry: 136 bramble tiles; every tree and its 8 neighbours at `ring ≤ 16`; spawn inside.
+  - Reachability: from spawn without a stick BFS reaches exactly the 1083 walkable Grove tiles; with a stick all 2494 walkable tiles. Coast only (flood limited to ring ≥ 18) from (0,0): 1275 tiles, 1267 with M2's 8 nodes. Without a stick from (0,0): 2494 (the way home is one-way).
+  - A stick holder walks (25,25) → (2,25), crossing at (8,25): 23 steps, 12 ticks; without a stick the target clamps to ring 16 and the path stops there.
+  - Dropping the stick on a hedge tile: the player can step orthogonally to ring 16 or 18, not along or diagonally; on a corner tile only outward. A stickless player on the Coast walks home.
+  - `pickupItem` / `startHarvest` on a Coast target without a stick: throws the brambles message, no `Pending` set.
+  - Follow and harvest pending respect the predicate: a stickless follower never paths onto brambles and stands still while the target is out of reach (`bfsPath` null keeps `combatTarget`; no fallback in M1).
+  - `harvestFindsStick`: holders never find; otherwise `roll < 0.25` (0.25 is not a find); one draw per harvest, fixture draw count unchanged.
+  - Grace: insert + 300; a find or pickup → 10 more ticks; attack → 0; reconnect keeps it; HP 20 on first insert only.
+  - Waiters: a newcomer beats a veteran, then earliest `lastInputTick`, then `s.order`.
+  - Acceptance (sim, newcomers follow `state.goal`; luck is not asserted, harvest opportunities are): (a) lock-step: 10 bots saturating all trees, 1 newcomer finishes ≥5 harvests before tick 300; (b) the same with 3 armed bots; (c) 6 newcomers together each finish ≥5 (finders leave the priority tier).
   - `mobile-check.mjs` passes with the chip at 320×568.
-- **Not in M1:** crafting, new items, NPCs, currencies, balance changes beyond the stick meter. The eat cooldown stays at 3 everywhere, in every milestone.
+- **Not in M1:** crafting, new items, NPCs, currencies, balance changes beyond the no-spare rule. The eat cooldown stays 3.
 
-### M2 "The Beacon" (one new verb: feed)
+### M2 "The Coast" (one new verb: make)
 
-- **Schema** (appended, with defaults):
-  - `tree.kind u8 = 0` (0 berry, 1 driftwood; tide rock is added in M3).
-  - `world_project(id u32 PK, projectId string, x, z, fuel u16, bloomUntilTick u32, lastFedBy string)`: public.
-- **Seeding:** the tick seeds missing node ids (101+) when `tree.count() < NODE_SEEDS.length`. Idempotent, no version column.
-- **Driftwood** (`shared/sim/nodes.ts`): 8 piles, 2–3 tiles in from the coast, each blocking its tile with a 1-tile gap to the next. Harvest 4, regrow 25, yields 1 driftwood (about 28 a minute world-wide). Driftwood harvests do not advance the stick meter; only berry trees search for sticks.
-- **The Beacon** sits at (27,27), inside the ring, and blocks its tile. It can be fed from inside the ring.
-  - Fuel is **driftwood only, 1 each**. No decay.
-  - Reaching **60 fuel** starts the **Goldberry Bloom** and resets fuel to 0: berry regrow drops from 50 to 38 ticks for 1000 ticks (10 min). Reaching 60 again during a Bloom extends it by 1000 ticks. World berries go from about 11 to about 14 a minute.
-  - Solo cost: about 60 × 7 ticks, roughly 4 minutes of gathering and feeding.
-- **Reducer:** `contribute(projectId, slot, qty)` via a new Pending code (reach 1). It emits a Contribute event, plus a BloomStart event, and sets `lastFedBy`.
-- **No scores:** the panel shows "Last fed by <name>" and the recent Contribute events this client has seen. Nothing is minted or ranked, so no cap is needed.
-- **UI:**
-  - Tapping the Beacon opens a panel (fuel bar, Bloom timer, last fed by, Feed button).
-  - After First Day, the chip continues with "Gather driftwood" and "Feed the Beacon (N/60)". This is the solo arc and works without the combat grant.
-  - `ClickDropdown` gains a Gather label for driftwood.
-- **Art:** driftwood as 3 instanced cylinders; the Beacon as a log pile with 3 emissive cones scaled by fuel. One icon (`frontend/public/items/driftwood.png`). No lights, no particles.
-- **Agent API:** `harvest {nodeId?|kind?}` and `contribute {projectId, slot, qty}`. State: `nodes` (keep the `trees` alias for one release) and `projects`. Run `stdb:generate` and `beta:types`.
-- **Tests:**
-  - Seeding twice is a no-op.
-  - Per-kind harvest and regrow ticks.
-  - Only driftwood is accepted as fuel; 60 starts Bloom and resets fuel; 60 during Bloom extends it.
-  - Regrow is 38 during Bloom and 50 after.
-  - Contribute out of reach is rejected.
-  - BFS reachability over the whole grid with all nodes placed.
+- **Schema:** `tree.kind u8 = 0` appended (0 berry, 1 driftwood, 2 tide rock). Publish like the `weapon` column: `--yes=remote,skip-login,break-clients` with `--delete-data=never`, then the Worker/static deploy right away (`docs/CLOUDFLARE_BETA.md`); run `stdb:generate` and `beta:types`.
+- **Seeding** (`shared/sim/nodes.ts`): the tick seeds missing node ids (101+). Idempotent, no version column.
+- **Driftwood:** 4 piles on the beach straight past each path crossing: (25,3), (46,25), (25,46), (3,25). Harvest 4, regrow 25, 1 driftwood (about 14 a minute world-wide).
+- **Tide rocks:** 4, one per corner: (3,3), (46,3), (3,46), (46,46), 4–5 tiles past the hedge corners. Harvest 6, regrow 40, 1 flint (about 9 a minute). The corners are the contested spots: 2 ticks (4 steps) from the hedge corner to a tile next to the rock, 11 ticks (6.6 s, 21 steps) from the nearest path crossing.
+- Only berry trees find sticks.
+- **Stone club** = 1 driftwood + 2 flint (open question 3), 8 damage, one-handed, wields like the stick. `craft(recipe)` is instant, rejected while dead or hostile. When you hold the inputs, the chip shows **"Make a stone club"**.
+- **Chip after First Day:** "Gather driftwood and 2 flint on the Coast" (progress `n/3`) → "Make a stone club" → (M3) "Take your club to the boulders".
+- **Art:** driftwood as 3 instanced cylinders per pile; the tide rock a flat-shaded dodecahedron; icons for driftwood, flint, club. Shared vertex-colour material, no textures.
+- **Agent API:** `harvest {nodeId? | kind?}`, `craft {recipe}`; state `nodes` (keep the `trees` alias for one release) and `recipes[] {id, inputs, canCraft, missing}`.
+- **Tests:** seeding twice is a no-op; per-kind harvest and regrow; nodes never find sticks; craft inputs, rejection while hostile, overflow to the ground; Coast still connected with all nodes; `smoke.ts` makes a club end to end.
 
-### M3 "The Club" (one new verb: make)
+### M3 "The Boulders" (sketch; no new verb)
 
-- **Schema:** none new (`tree.kind` 2 = tide rock).
-- **Tide rocks:** 4, one near each corner. Harvest 6, regrow 40, yields 1 flint (about 9 a minute world-wide). The corners are contested.
-- **Stone club** = 1 stick + 2 flint, 8 damage, one-handed. Instant, works anywhere, rejected while dead or hostile. When you hold the inputs, a **"Make club"** button appears on the chip. Crafting uses up your stick; the meter finds the next one.
-- **Items:** add `description` to `ItemDef`. The club wields like the stick (quick bar only, put away if moved or dropped).
-- **Art:** 2 icons (flint, club); the tide rock is a flat-shaded dodecahedron; the club is the stick with a lashed head. Shared vertex-colour material, no textures.
-- **Agent API:** `craft {recipe}`; state `recipes[] {id, inputs, canCraft, missing}`.
-- **Tests:** craft input handling and overflow to the ground; `smoke.ts` makes a club end to end.
+- **Land:** grow `GRID_SIZE` to 64 with `TILE_ORIGIN` unchanged, so every existing tile, row and tree keeps its coordinates; the new strip lies east and south (x or z 50–63). Most of it is static water (a blocked mask in `shared/sim`); the south-east corner becomes **the volcano shore**, dressed with the unused `models/island-volcano.glb` (copy it into `frontend/public/models` to load it). `GroundPlane` centres a `GRID_SIZE` plane at world −0.5 and `IslandDetails` spreads cover over ±24, both assuming `GRID_SIZE/2 == TILE_ORIGIN`: the ground mesh and ground cover move to the new centre, and `areaOf` stops the Coast at the old shoreline.
+- **Key:** a boulder band on the old south-east shoreline, passable while holding a stone club: the same stateless holding rule and one-way return as the brambles. Smashable boulders with stored state are parked.
+- **Contents:** the Giant (F3), a rare resource (obsidian), and the natural home for a world goal if the Beacon returns.
 
 ### Future (owner-approved, not scheduled)
 
-- **F1 Persistent identity (the gate).** Returning browsers keep their identity, using a scoped token in localStorage reused across the 1-hour grant renewals. Nothing below starts before this lands.
-- **F2 XP skills.**
-  - Skills: Foraging, Beachcombing and Crafting.
-  - Curve: `xpForLevel(L) = 25·(L−1)²`, capped at L30 (21 025 XP, about 5 h per skill).
-  - Levels unlock recipes, cosmetics and at most −2 harvest ticks (never below 3). They never grant damage, HP or access to the gold tree.
-- **F3 The Giant.** A PvE world boss, open to every player, including those without the combat grant. The combat grant stays PvP-only.
+- **F1 Persistent identity (the gate).** Returning browsers keep their identity via a scoped token reused across the 1-hour grant renewals. Nothing below starts before this.
+- **F2 XP skills:** Foraging, Beachcombing, Crafting; `xpForLevel(L) = 25·(L−1)²`, capped at L30 (21 025 XP, about 5 h per skill). Levels unlock recipes, cosmetics and at most −2 harvest ticks (never below 3); never damage, HP, area access or the gold tree.
+- **F3 The Giant.** A PvE world boss in Area 3, open to every player including those without the combat grant.
 
-## 6. Items and combat numbers
+## 7. Items and combat numbers
 
-Item ids are permanent. Materials stack to 99 (`MAX_STACK`); the stick stacks to 1.
+Item ids are permanent. Materials stack to 99; weapons stack to 1.
 
-| id | Name | Source | Stats | M |
+| id | Name | Source | Stats / role | M |
 |---|---|---|---|---|
-| `stick` *(existing)* | Sturdy stick | The stick meter, only for players without a stick: 10% a berry harvest, always on the 5th without one (about 1 per 4.1 harvests); death-drop piles | 6 dmg / 4 t = 2.50 HP/s | M1 meter |
-| `driftwood` | Driftwood | Driftwood pile | material; Beacon fuel 1 | M2 |
-| `flint` | Flint Shard | Tide rock (corners) | material; the contested input | M3 |
-| `stone_club` | Stone Club | 1 stick + 2 flint | 8 dmg / 4 t = 3.33 HP/s, one-handed | M3 |
+| `stick` *(existing)* | Sturdy stick | 25% of finished berry harvests, only for players holding none; death drops | 6 dmg; **key to the Coast** | M1 rule |
+| `driftwood` | Driftwood | Driftwood pile (Coast) | club handle | M2 |
+| `flint` | Flint Shard | Tide rock (Coast corners) | club head; the contested input | M2 |
+| `stone_club` | Stone Club | 1 driftwood + 2 flint | 8 dmg, one-handed; **key to Area 3** | M2 |
 
-**Combat matrix** (30 HP, no eating; time to kill from the first hit; swing every 2.4 s):
+**Combat matrix** (30 HP, no eating, swing every 2.4 s): punch 3 = 1.25 HP/s, 10 hits / 21.6 s; stick 6 = 2.50 HP/s, 5 hits / 9.6 s; club 8 = 3.33 HP/s, 4 hits / 7.2 s.
 
-| Weapon | HP/s | Hits / TTK |
-|---|---|---|
-| Punch 3 | 1.25 | 10 / 21.6 s |
-| Stick 6 | 2.50 | 5 / 9.6 s |
-| Stone club 8 | 3.33 | 4 / 7.2 s |
+**Food sustain** (eat cooldown 3 ticks): greenberry +2 = 1.11 HP/s, strawberry +3 = 1.67, blueberry +5 = 2.78, goldberry +10 = 5.56. Each eat delays your next swing by 3 ticks. Goldberry out-heals every weapon but comes from one tree (about 1.8 a minute): the hill to hold. All food is in the Grove, so Coast trips are provisioned trips.
 
-**Food sustain** (eat cooldown 3 ticks, all milestones): greenberry +2 = 1.11 HP/s, strawberry +3 = 1.67, blueberry +5 = 2.78, goldberry +10 = 5.56.
+## 8. Balance and economy
 
-Each eat also delays your next swing by 3 ticks, so a player who eats is not hitting.
+- **World output per minute:** berries about 11 (Grove only), goldberries about 1.8, sticks at most about 2.7 (25% of stickless players' harvests), driftwood about 14 (M2), flint about 9 (M2).
+- **Faucets are node items only.** No meter, no pity: the only stick rule besides the roll is "none while you hold one", so no spares pile up to hand out.
+- **Sinks:** death drops (ground piles last 500 ticks, keys included); crafting (M2).
+- **Area flow:** armed players leave for the Coast, which thins the Grove where the unarmed newcomers are. Food pulls them back.
+- **Per-player caps:** `MAX_INPUTS_PER_TICK` 5; the agent API's 1 request a second; one tree claim at a time; harvests find a stick only while you hold none.
+- **Knobs, in order:** `STICK_DROP_CHANCE`; `HEDGE_RING` (17 is the minimum with 1-tile tree clearance); first-spawn grace length; flint regrow.
 
-What the numbers mean in a fight:
-- **M1:** a stick doubles your damage against a punch, which is why it is earned. Berries are the tempo trade: heal now or swing now.
-- **Eating is a delay, not a stalemate.** Blueberries against a stick net +0.28 HP/s, and a stack of 10 lasts about 18 s. Goldberry out-heals every weapon, but it comes from one tree (about 1.8 a minute), so it is the natural hill to hold.
-- **M3:** a club kills in 4 hits instead of 5.
-
-## 7. Balance and economy
-
-- **World output per minute:**
-
-  | Berries | Goldberries | Sticks | Driftwood | Flint |
-  |---|---|---|---|---|
-  | about 11 (about 14 in Bloom) | about 1.8 | at most about 2.7, only players without a stick find them (1 per 4.1 of their berry harvests on average: about the same as today's plain 25% roll (without the earlier draft's carry-none rule); the meter changes how finds are spread out and removes the free first stick, not the total supply) | about 28 (M2) | about 9 (M3) |
-
-- **Faucets are node items only.** Nothing is minted from nothing. The stick meter is the only per-player guarantee: one stick guaranteed within 5 of your own harvests, never more than one per harvest, and none while you hold one. Sticks are not Beacon fuel, so the meter cannot fuel the Bloom.
-- **Sinks:**
-  - Death drops (ground piles last 500 ticks).
-  - Beacon fuel (driftwood, M2).
-  - Crafting (M3).
-- **Per-player caps that matter:**
-  - The existing `MAX_INPUTS_PER_TICK` 5.
-  - The agent API's 1 request a second.
-  - One tree claim at a time.
-  - The stick meter: on average 1 stick per 4.1 of your own harvests, at most 1 per harvest, none while you hold one; luck never beats your own harvest rate.
-  - No other caps are needed because nothing is scored or minted.
-- **Knobs to tune first:**
-  - The stick meter: `STICK_DROP_CHANCE` 10% and `STICK_GUARANTEE_HARVESTS` 5 (open question 4).
-  - First-spawn grace: until the first meter find (plus 10 ticks) or 3:00.
-  - The Bloom threshold of 60 driftwood.
-  - Bloom length of 1000 ticks.
-
-## 8. Risks
+## 9. Risks
 
 | Risk | Mitigation |
 |---|---|
-| Veterans camp trees and new players starve | Wait-and-claim, newcomer first; the §2 acceptance scenarios include armed bots |
-| The meter grind feels slow (66% of players need all 5 harvests; busy near-worst 2:48) | Visible n/5 progress and a celebrated find; knobs: guarantee 5 → 4 first, then the chance; watch time-to-stick (open question 4) |
-| More than 6 newcomers at once (e.g. an agent launch) | Bounded by saturated supply, 6 harvests per 55 ticks; the 7th and later finish after 3:00; watch time-to-stick (open question 3) |
-| Throwaway characters use grace or newcomer priority to take harvests | New identities are free in beta, so this is bounded, not prevented: priority ends at the first stick, an attack or 2:54, grace at 3:00; the worst case is a throwaway taking up to 4 protected goldberries (untargetable, priority harvests at the gold tree before the guaranteed 5th ends its grace) and dropping them for a main; one harvester per tree. Optional mitigation: newcomer priority does not apply at the gold tree |
-| Stick farming (die, drop, re-find; spares to hand out) | The meter caps finds at your own harvest rate: about 1 per 4.1 harvests, at most 1 per harvest; holders find none, so no spares build up; sticks are not fuel; the stick stacks to 1 |
-| Reusing `respawnTick` for new-character grace confuses the client | Respawn UI keyed on `state = Dead`; fall back to an appended `graceUntilTick` column |
-| The `stickSearch` column breaks connected clients on publish | Same path as `weapon`: `break-clients` with `--delete-data=never`, then the Worker/static deploy right away |
-| Solo players have nothing to do after First Day in M1 | M2's Beacon is a solo goal; the dummy per open question 1 |
-| EventKind or Pending codes collide with in-flight branches | Never reuse a shipped code; take the next free number at merge |
-| Node seeding bugs on the live beta | Seed only missing ids; "seeding twice is a no-op" test; publish with `--delete-data=never` |
-| Mobile HUD overflow | One-line chip, the Safe badge on the HP bar, no new toolbar buttons or panel tabs |
+| Unlucky streaks (1 in 18 needs >10 harvests) feel unfair | Celebrate the find; Help says "about 1 in 4"; watch p75 time-to-stick, raise the chance first (open question 1) |
+| Veterans camp trees and newcomers starve | Wait-and-claim, newcomer first; acceptance scenarios include armed bots |
+| M1 ships before M2: the Coast is empty sand | Ship M2 right behind M1; in M1 the Coast is still a visible goal and the chip ends at step 5 |
+| Stranded on the Coast without a stick | One-way brambles: you can always walk home |
+| Stick hand-offs (a friend drops one at the hedge) | Accepted: co-op; harvests never find a spare, pickups may; sticks drop on death |
+| Per-player pathing cost | One `readSlots` per moving player per tick; cache per tick if profiling asks |
+| Throwaway characters use newcomer priority | Bounded: priority ends at a stick, an attack or 3:00; one harvester per tree; optional: no priority at the gold tree |
+| Agents treat brambles as walls and get stuck | `blockedBy: 'brambles'` on `move`, the rule in `AGENT_API.md`, `state.me.area` |
+| Reusing `respawnTick` for first-spawn grace confuses the client | Respawn UI keyed on `state = Dead`; fall back to an appended `graceUntilTick` |
+| Node seeding bugs on the live beta | Seed only missing ids; "seeding twice is a no-op" test; `--delete-data=never` |
+| Mobile HUD overflow | One-line chip, Safe badge on the HP bar, toasts only |
 
-## 9. Parked (cut from the earlier draft, each until a playtest shows the need)
+## 10. Parked (each until a playtest shows the need)
 
 | Idea | Why parked |
 |---|---|
-| Driftwood shield, offhand slot, armor | A second slot, wield rules and a turtle risk; the club is enough gear for now |
-| Chronicle and "Island news" | "Last fed by" covers the mark a guest leaves; no stored prose to trim or sanitise |
-| Old Maro NPC, talk, seashells, shop | The chip already gives direction; a currency needs sinks we do not have |
-| Palm, frond, cord, coconut | An extra crafting step that teaches nothing new |
-| Flint spear | Reach 2 and two-handed are two new concepts |
-| Brace | A new button and a timing mind-game |
-| Fishing and grill | A tool, spots and a station to add a food tier berries already cover |
-| Requests board, Tides, visit aims, Warden crown | Economy and scoring layers; the gold tree is already the hill |
+| Stick meter, pity counter, guaranteed 5th harvest | Owner: the stick is not guaranteed |
+| The Beacon and the Goldberry Bloom (feed driftwood, faster regrow) | The areas are now the solo arc; a second verb in M2. Candidate world goal for Area 3 |
+| "Land a hit" First Day step, training dummy | The Coast is the step after the stick for everyone |
+| Driftwood shield, offhand slot, armor | A second slot and a turtle risk; the club is enough gear |
+| Chronicle, Old Maro NPC, seashells, shop | The chip gives direction; a currency needs sinks we do not have |
+| Palm, frond, cord, coconut; flint spear; brace | Extra steps or new concepts that teach nothing new |
+| Fishing and grill | A food tier berries already cover |
+| Smashable boulders with stored state | The holding rule is stateless and consistent with the hedge |
 | Raft, dyes, bank, heartwood, basket insurance | After F1 at the earliest |
