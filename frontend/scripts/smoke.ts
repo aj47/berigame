@@ -334,6 +334,8 @@ async function main() {
   await waitFor('A swings the stick at B', () => A.events.filter((e) => e.kind === EventKind.Hit && e.attacker.toHexString() === A.identity && e.itemId === STICK_ITEM_ID).length > stickHitsBefore, 20_000);
   const stickHit = A.events.filter((e) => e.kind === EventKind.Hit && e.attacker.toHexString() === A.identity && e.itemId === STICK_ITEM_ID)[stickHitsBefore];
   check(`a stick swing deals ${STICK_DAMAGE} and names the stick`, stickHit.damage === STICK_DAMAGE && stickHit.itemId === STICK_ITEM_ID, `dmg=${stickHit.damage} itemId=${stickHit.itemId}`);
+  // B's copy of the event can arrive a moment after A's.
+  await waitFor('B sees the stick hit', () => B.events.some((e) => e.tick === stickHit.tick && e.kind === EventKind.Hit && e.itemId === STICK_ITEM_ID), 5_000).catch(() => {});
   check('B received the stick Hit event', B.events.some((e) => e.tick === stickHit.tick && e.kind === EventKind.Hit && e.itemId === STICK_ITEM_ID));
   await waitFor('B dies and drops carried inventory', () => me(B).state === 1 && [...B.conn.db.inventorySlot.iter()].length === 0, 40_000);
   await waitFor('A sees the death drop', () => [...A.conn.db.groundItem.iter()].some((item) => item.droppedBy.toHexString() === B.identity && item.droppedOnDeath));
