@@ -82,11 +82,11 @@ async function main() {
   const project = (x: number, z: number, y = 1) => page.evaluate(([x, z, y]: number[]) => (window as any).__berigameProject(x, z, y), [x, z, y]);
   const clickTile = async (x: number, z: number, y = 0) => { const p = await project(x, z, y); await page.mouse.click(p.x, p.y); };
   // Plain DOM calls: Playwright locators stall while the fake page clock is installed.
-  const chooseAction = (text: string) => waitFor(`menu action ${text}`, () => page.evaluate((text: string) => {
+  const chooseAction = (text: string, timeout = 5_000) => waitFor(`menu action ${text}`, () => page.evaluate((text: string) => {
     const button = [...document.querySelectorAll<HTMLButtonElement>('.click-dropdown button')].find((b) => b.textContent?.includes(text));
     button?.click();
     return !!button;
-  }, text), 5_000);
+  }, text), timeout);
   const debug = async (label: string) => {
     await page.screenshot({ path: path.join(OUT, `debug-${label}.png`) });
     console.error(label, JSON.stringify({
@@ -118,9 +118,17 @@ async function main() {
   // 2. The browser player picks it up through the UI and wields it with key 1.
   await waitFor('helper walked off', () => chebyshev(row(helper), ground) > 2, 30_000);
   await sleep(1000);
-  await clickTile(ground.x, ground.z, 0.42); // the item sprite floats 0.42 above the tile
   try {
-    await chooseAction('Pick up');
+    // The item sprite floats about 0.42 above the tile, next to the player's own click box:
+    // try a few points on it before giving up.
+    let opened = false;
+    for (const y of [0.42, 0.3, 0.55, 0.2]) {
+      await clickTile(ground.x, ground.z, y);
+      opened = await chooseAction('Pick up', 2_000).then(() => true, () => false);
+      if (opened) break;
+      await page.keyboard.press('Escape'); // close any other menu the click opened
+    }
+    if (!opened) throw new Error('timeout: menu action Pick up');
   } catch (e) {
     await page.screenshot({ path: path.join(OUT, 'debug-pickup.png') });
     console.error(JSON.stringify({
