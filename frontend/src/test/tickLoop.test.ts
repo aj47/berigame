@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Identity } from 'spacetimedb';
-import { EventKind, TICK_MS } from '@sim';
+import { EventKind, STICK_ITEM_ID, TICK_MS } from '@sim';
+import { STICK_SWING_CLIP, STICK_SWING_IMPACT_MS } from '../animation/stickSwing';
 import { onWorldTick, tickClock } from '../spacetime/tickClock';
 import { useCombatFxStore } from '../spacetime/stores/combatFxStore';
 
@@ -39,17 +40,46 @@ describe('tickClock', () => {
 });
 
 describe('combatFxStore', () => {
-  const base = { tick: 1, attackerStance: 0, defenderStance: 1, attackerState: 0, defenderState: 0, defenderHp: 26 };
+  const base = { tick: 1, itemId: '', defenderHp: 26 };
+  const hexA = idA.toHexString(), hexB = idB.toHexString();
+  beforeEach(() => useCombatFxStore.setState({ seq: 0, numbers: {}, finds: {}, cues: {} }));
 
-  it('floats damage over the defender and animates the attacker on a hit', () => {
-    useCombatFxStore.getState().pushEvent({ ...base, kind: EventKind.Hit, attacker: idA, defender: idB, damage: 4 });
+  it('floats punch damage over the defender and animates the attacker', () => {
+    useCombatFxStore.getState().pushEvent({ ...base, kind: EventKind.Hit, attacker: idA, defender: idB, damage: 3 });
     const s = useCombatFxStore.getState();
-    expect(s.attackSeq[idA.toHexString()]).toBe(1);
-    expect(s.numbers[idB.toHexString()]?.text).toBe('4');
+    expect(s.numbers[hexB]).toMatchObject({ text: '3', itemId: '', delayMs: 160 });
+    expect(s.numbers[hexA]).toBeUndefined();
+    expect(s.cues[hexA]?.clip).toBe('Strike');
   });
 
-  it('floats the counter over the attacker', () => {
-    useCombatFxStore.getState().pushEvent({ ...base, kind: EventKind.Counter, attacker: idA, defender: idB, damage: 2 });
-    expect(useCombatFxStore.getState().numbers[idA.toHexString()]?.text).toBe('2');
+  it('floats stick damage at the stick impact', () => {
+    useCombatFxStore.getState().pushEvent({ ...base, kind: EventKind.Hit, attacker: idA, defender: idB, damage: 6, itemId: STICK_ITEM_ID });
+    const s = useCombatFxStore.getState();
+    expect(s.numbers[hexB]).toMatchObject({ text: '6', itemId: STICK_ITEM_ID, delayMs: STICK_SWING_IMPACT_MS });
+    expect(s.cues[hexA]?.clip).toBe(STICK_SWING_CLIP);
+  });
+
+  it.each([
+    ['harvest first', [EventKind.HarvestDone, EventKind.ItemFound]],
+    ['find first', [EventKind.ItemFound, EventKind.HarvestDone]],
+  ])('floats a found stick over the harvester alongside the berry, %s', (_order, kinds) => {
+    for (const kind of kinds) {
+      const itemId = kind === EventKind.ItemFound ? STICK_ITEM_ID : 'berry_blueberry';
+      useCombatFxStore.getState().pushEvent({ ...base, kind, attacker: idA, defender: idA, damage: 0, itemId });
+    }
+    const s = useCombatFxStore.getState();
+    expect(s.numbers[hexA]).toMatchObject({ text: '+1', kind: EventKind.HarvestDone });
+    expect(s.finds[hexA]).toMatchObject({ text: '+ Stick', kind: EventKind.ItemFound, itemId: STICK_ITEM_ID });
+    // It rises after the '+1' so the two never overlap, and neither animates the harvester.
+    expect(s.finds[hexA].delayMs).toBeGreaterThan(s.numbers[hexA].delayMs);
+    expect(s.cues[hexA]).toBeUndefined();
+  });
+
+  it('clears a found-item float after it has played', () => {
+    vi.useFakeTimers();
+    useCombatFxStore.getState().pushEvent({ ...base, kind: EventKind.ItemFound, attacker: idA, defender: idA, damage: 0, itemId: STICK_ITEM_ID });
+    vi.runAllTimers();
+    expect(useCombatFxStore.getState().finds).toEqual({});
+    vi.useRealTimers();
   });
 });

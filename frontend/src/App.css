@@ -286,7 +286,7 @@ canvas {
 .ui-group button,
 .ui-group a,
 .game-panel,
-.stance-hud {
+.combat-hud {
   pointer-events: auto;
 }
 .world-header {
@@ -394,7 +394,7 @@ canvas {
 .reset-view-button { width: 100%; margin-bottom: 14px; font-size: 12px; }
 .hud-opponent { min-width: 0; flex: 1; height: 21px; text-align: right; line-height: 1; }
 .hud-opponent strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: #fff1cc; }
-.hud-opponent span { display: block; font-size: 9px; color: #e6d0ac; white-space: nowrap; margin-top: 2px; }
+.hud-opponent span { display: block; font-size: 9px; color: #e6d0ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
 
 /* A local-only wardrobe draft is previewed on the real world character. */
 .appearance-panel { display: flex; flex-direction: column; overflow: hidden; }
@@ -464,6 +464,21 @@ canvas {
 .inventory-slot.move-target {
   border-style: dashed;
   border-color: var(--blue);
+}
+.inventory-slot.quick {
+  border-color: #8f7148;
+}
+.inventory-slot.wielded {
+  box-shadow: inset 0 0 0 2px #d9a93f;
+}
+.quick-slot-number {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 9px;
+  font-weight: bold;
+  color: #7a6243;
+  pointer-events: none;
 }
 .empty-slot-mark {
   color: #a98c62;
@@ -574,36 +589,36 @@ canvas {
   font-size: 12px;
   margin-bottom: 0;
 }
-.rps-guide {
+.weapon-guide {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   margin: 14px 0;
   padding: 12px 0;
   border-block: 1px solid #c9b58e;
 }
-.rps-guide div {
+.weapon-guide div {
   text-align: center;
 }
-.rps-guide img {
+.weapon-guide img {
   width: 44px;
   height: 44px;
   object-fit: contain;
 }
-.rps-guide strong,
-.rps-guide span {
+.weapon-guide strong,
+.weapon-guide span {
   display: block;
 }
-.rps-guide strong {
+.weapon-guide strong {
   font-size: 13px;
 }
-.rps-guide span {
+.weapon-guide span {
   font-size: 10px;
   margin-top: 4px;
   color: var(--ink-soft);
 }
 /* One compact combat strip keeps all core actions within reach. */
-.stance-hud {
+.combat-hud {
   position: absolute;
   bottom: max(14px, env(safe-area-inset-bottom));
   left: 50%;
@@ -623,7 +638,7 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 9px;
 }
 .hud-health {
@@ -656,23 +671,50 @@ canvas {
 .hud-health strong {
   font-size: 11px;
 }
-.fight-state {
+.hud-status {
   font-size: 11px;
   color: #d5c7b0;
   white-space: nowrap;
 }
-.fight-state.advantage {
-  color: #a8e2a8;
+/* What your next swing hits with: fist (punch) or the wielded weapon. */
+.weapon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  height: 21px;
+  padding: 0 8px 0 3px;
+  background: #403930;
+  border: 1px solid #7f6c4e;
+  border-radius: 11px;
+  color: #e9dbc2;
+  font-size: 10px;
+  font-weight: bold;
+  white-space: nowrap;
 }
-.fight-state.disadvantage {
-  color: #ffa594;
+.weapon-chip img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
 }
-.combat-buttons {
+.weapon-chip.armed {
+  background: #57452f;
+  border-color: #d2a664;
+  color: #ffe6b8;
+}
+.weapon-chip.compact {
+  padding: 0 2px;
+}
+.weapon-chip.compact .weapon-chip-label {
+  display: none;
+}
+.hotbar {
   display: grid;
   grid-template-columns: repeat(3, 1fr) 52px;
   gap: 6px;
 }
-.stance-button {
+.hotbar-slot {
+  min-width: 0;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -684,34 +726,69 @@ canvas {
   border: 1px solid #7f6c4e;
   border-radius: 6px;
 }
-.stance-button:hover:enabled {
+.hotbar-slot:hover:enabled {
   background: #635640;
 }
-.stance-button.active {
+.hotbar-slot.active {
   border-color: #f1c55c;
   background: #705e3a;
   box-shadow: inset 0 0 0 1px #f1c55c;
 }
-.stance-icon {
+.hotbar-slot.empty {
+  background: #3a332a;
+  border-style: dashed;
+}
+.hotbar-icon {
+  flex: 0 0 auto;
   width: 34px;
   height: 34px;
   object-fit: contain;
 }
-.stance-button-copy {
+.hotbar-empty-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #8d7a5c;
+}
+.hotbar-copy {
+  min-width: 0;
+  max-width: 100%;
   text-align: center;
 }
-.stance-name {
+.hotbar-name {
   display: block;
   font-weight: bold;
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.stance-beats {
+.hotbar-hint {
   display: block;
   font-size: 9px;
   color: #e2d4bb;
   margin-top: 2px;
+  white-space: nowrap;
 }
-.stance-button kbd {
+.hotbar-slot.active .hotbar-hint {
+  color: #ffd98a;
+}
+.hotbar-qty {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  min-width: 15px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: #1f1a15;
+  color: #fff4dc;
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 14px;
+  pointer-events: none;
+}
+.hotbar-slot kbd {
   position: absolute;
   right: 4px;
   top: 4px;
@@ -828,29 +905,6 @@ canvas {
   height: 100%;
   background: #7aaf63;
 }
-.stance-badge {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  border-radius: 50%;
-  background: #302a23e6;
-  border: 2px solid #c8bda7;
-}
-.stance-badge img {
-  display: block;
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-}
-.stance-badge.advantage {
-  border-color: #9be99e;
-}
-.stance-badge.disadvantage {
-  border-color: #ff786d;
-}
 .player-chat-bubble {
   width: max-content;
   max-width: min(220px, 70vw);
@@ -880,59 +934,20 @@ canvas {
 .damage-number.normal-damage {
   color: #ffe9c2;
 }
-.damage-number.counter-damage {
-  color: #aadffe;
-  font-style: italic;
-  letter-spacing: -0.04em;
+.damage-number.stick-damage {
+  color: #ffc36e;
+  font-size: 27px;
 }
-.combat-impact {
-  pointer-events: none;
-  animation: clash-flash 420ms ease-out both;
-}
-.clash-spark {
-  display: block;
-  position: relative;
-  width: 18px;
-  height: 18px;
-  border: 2px solid #def7ff;
-  border-radius: 3px;
-  transform: rotate(45deg);
-  box-shadow: 0 0 0 2px #284a66aa;
-}
-.clash-spark::before,
-.clash-spark::after {
-  content: "";
-  position: absolute;
-  background: #def7ff;
-  border-radius: 2px;
-}
-.clash-spark::before { width: 32px; height: 3px; left: -9px; top: 5px; }
-.clash-spark::after { height: 32px; width: 3px; left: 5px; top: -9px; }
-@keyframes clash-flash {
-  0% { opacity: 0; transform: scale(.55); }
-  20% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.35); }
-}
-.fight-state-indicator {
-  width: 9px;
-  height: 9px;
-  margin: 3px 5px;
-  flex: 0 0 auto;
-  border: 1px solid #b9b6a8;
-  border-radius: 50%;
-  background: #d2c9b4;
-}
-.fight-state-indicator.advantage {
-  border-color: #dbffb4;
-  background: #97d977;
-  border-radius: 1px;
-  transform: rotate(45deg);
-}
-.fight-state-indicator.disadvantage {
-  border: 0;
-  border-radius: 0;
-  background: #f49b80;
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
+.damage-number.item-found {
+  color: #d9f59b;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  text-shadow:
+    -1px -1px 0 #3a2c10,
+    1px -1px 0 #3a2c10,
+    -1px 1px 0 #3a2c10,
+    1px 1px 0 #3a2c10,
+    0 0 6px #f2c94c99;
 }
 .damage-number.heal {
   color: #a7f292;
@@ -1187,19 +1202,19 @@ canvas {
     );
     padding: 12px;
   }
-  .stance-hud {
+  .combat-hud {
     bottom: max(10px, env(safe-area-inset-bottom));
     padding: 9px 9px 7px;
   }
-  .combat-buttons {
+  .hotbar {
     grid-template-columns: repeat(3, 1fr) 45px;
     gap: 5px;
   }
-  .stance-button kbd,
+  .hotbar-slot kbd,
   .stop-button kbd {
     display: none;
   }
-  .stance-icon {
+  .hotbar-icon {
     width: 36px;
     height: 36px;
   }
@@ -1230,32 +1245,32 @@ canvas {
   .game-toolbar {
     top: max(8px, env(safe-area-inset-top));
   }
-  .stance-hud {
+  .combat-hud {
     left: auto;
     right: max(12px, env(safe-area-inset-right));
     transform: none;
     width: 385px;
     bottom: max(8px, env(safe-area-inset-bottom));
   }
-  .stance-button {
+  .hotbar-slot {
     flex-direction: row;
     min-height: 48px;
     padding: 4px;
   }
-  .stance-icon {
+  .hotbar-icon {
     width: 28px;
     height: 28px;
   }
-  .stance-button-copy {
+  .hotbar-copy {
     text-align: left;
   }
-  .stance-name {
+  .hotbar-name {
     font-size: 10px;
   }
-  .stance-beats {
+  .hotbar-hint {
     font-size: 8px;
   }
-  .stance-button kbd,
+  .hotbar-slot kbd,
   .stop-button kbd,
   .hud-hint {
     display: none;
@@ -1299,7 +1314,7 @@ canvas {
 @media (max-width: 340px) {
   .game-panel.appearance-panel { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 122px); }
   .world-header > div { display: none; }
-  .stance-beats, .hud-hint { display: none; }
+  .hotbar-hint, .hud-hint { display: none; }
   .game-panel { max-height: calc(100dvh - 210px); }
 }
 /* Compact phone landscape keeps controls in two non-overlapping columns. */
@@ -1322,14 +1337,16 @@ canvas {
   .item-description span { font-size: 11px; }
   .item-actions { margin-top: 6px; }
   .item-inspector .fine-print { margin-top: 4px; font-size: 9px; }
-  .stance-hud { left: auto; right: max(12px, env(safe-area-inset-right)); transform: none; width: calc(50vw - 12px); padding: 7px; bottom: 8px; }
-  .combat-buttons { grid-template-columns: repeat(3, minmax(0, 1fr)) 44px; gap: 4px; }
-  .stance-button { flex-direction: column; padding: 4px 2px; min-height: 54px; }
-  .stance-icon { width: 24px; height: 24px; }
-  .stance-button-copy { text-align: center; }
-  .stance-name { font-size: 10px; }
-  .stance-beats { font-size: 8px; }
-  .stance-button kbd, .stop-button kbd, .hud-hint { display: none; }
+  .combat-hud { left: auto; right: max(12px, env(safe-area-inset-right)); transform: none; width: calc(50vw - 12px); padding: 7px; bottom: 8px; }
+  .hotbar { grid-template-columns: repeat(3, minmax(0, 1fr)) 44px; gap: 4px; }
+  .hotbar-slot { flex-direction: column; padding: 4px 2px; min-height: 54px; }
+  .hotbar-icon { width: 24px; height: 24px; }
+  .hotbar-copy { text-align: center; }
+  .hotbar-name { font-size: 10px; }
+  .hotbar-hint { font-size: 8px; }
+  .hotbar-slot kbd, .stop-button kbd, .hud-hint { display: none; }
+  .weapon-chip-label { display: none; }
+  .weapon-chip { padding: 0 2px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *,

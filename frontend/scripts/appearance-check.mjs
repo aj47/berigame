@@ -38,7 +38,7 @@ try{
  const names=['Topknot','Skin tone: Brown','Hair color: Silver','Robe: Plum','Wraps: Slate'];
  for(const name of names)await page.getByRole('button',{name,exact:true}).tap();
  await page.waitForTimeout(1200);
- const framing=await page.evaluate(()=>{const me=window.__berigame.me;const panel=document.querySelector('.appearance-panel').getBoundingClientRect();return{feet:window.__berigameProject(me.x,me.z,0),head:window.__berigameProject(me.x,me.z,2.1),panelTop:panel.top,hudTop:document.querySelector('.stance-hud').getBoundingClientRect().top,buttons:[...document.querySelectorAll('.appearance-actions button')].map(e=>({label:e.textContent,...e.getBoundingClientRect().toJSON()}))}});
+ const framing=await page.evaluate(()=>{const me=window.__berigame.me;const panel=document.querySelector('.appearance-panel').getBoundingClientRect();return{feet:window.__berigameProject(me.x,me.z,0),head:window.__berigameProject(me.x,me.z,2.1),panelTop:panel.top,hudTop:document.querySelector('.combat-hud')?.getBoundingClientRect().top??innerHeight,buttons:[...document.querySelectorAll('.appearance-actions button')].map(e=>({label:e.textContent,...e.getBoundingClientRect().toJSON()}))}});
  check('portrait actor is above the wardrobe sheet',framing.feet.y<framing.panelTop&&framing.head.y>60,framing);
  check('portrait Save and Cancel stay above the combat HUD',framing.buttons.every(b=>b.height>=44&&b.y+b.height<=framing.hudTop),framing);
  await page.screenshot({path:path.join(out,`${engine}-edited-portrait.png`)});

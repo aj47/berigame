@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Vector3 } from 'three';
-import { MOVEMENT_STEPS_PER_TICK, KNOCKBACK_TILES, bfsPath, blockedSetFromTiles, chebyshev, facingToYaw, goalIsTile, tileToWorld, type Facing, type Tile } from '@sim';
+import { MOVEMENT_STEPS_PER_TICK, bfsPath, blockedSetFromTiles, chebyshev, facingToYaw, goalIsTile, tileToWorld, type Facing, type Tile } from '@sim';
 import { tickClock } from '../spacetime/tickClock';
 import { useTrees } from '../spacetime/hooks';
 
@@ -27,7 +27,7 @@ function dampAngle(current: number, target: number, factor: number): number {
   return current + delta * factor;
 }
 const stepLength = (a: Vector3, b: Vector3) => Math.max(Math.abs(b.x-a.x), Math.abs(b.z-a.z));
-// Absorb a small packet/frame gap without flashing an idle Guard pose mid-run.
+// Absorb a small packet/frame gap without flashing the idle pose mid-run.
 const MOVEMENT_ANIMATION_GRACE_MS = 120;
 
 /**
@@ -55,9 +55,9 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
       if (g) g.position.copy(destination);
     };
     if (!m.initialized || !g) { snap(); return; }
-    // A legal two-step diagonal is 2.83 world units, not a teleport. Allow the
-    // existing one-tile combat knockback in the same authoritative update too.
-    const maximum = MOVEMENT_STEPS_PER_TICK + KNOCKBACK_TILES;
+    // A legal two-step diagonal is 2.83 world units, not a teleport. Anything
+    // further than one tick of travel (e.g. a respawn) snaps.
+    const maximum = MOVEMENT_STEPS_PER_TICK;
     if (chebyshev(previous, tile) > maximum) { snap(); return; }
     const route = bfsPath(previous, goalIsTile(tile), blocked);
     if (!route || route.length > maximum) { snap(); return; }

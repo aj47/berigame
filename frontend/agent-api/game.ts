@@ -1,6 +1,6 @@
 import { Identity } from 'spacetimedb';
 import { DbConnection, tables } from '../src/module_bindings';
-import { chebyshev, getItemDef, GRID_SIZE, INVENTORY_SIZE, Pending, PlayerState, STANCE_NAMES, TICK_MS } from '../../shared/sim';
+import { chebyshev, getItemDef, GRID_SIZE, HOTBAR_SIZE, INVENTORY_SIZE, Pending, PlayerState, PUNCH_DAMAGE, swingDamage, TICK_MS } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
 import { ApiError, type Invite } from './portable';
 
@@ -110,7 +110,7 @@ export async function createGameService(credential: Credential, options: Connect
       me();
       const describePlayer = (p: ReturnType<typeof me>) => ({ id: p.identity.toHexString(), name: p.name,
         tile: { x: p.x, z: p.z }, health: p.hp, maxHealth: p.maxHp, alive: p.state === PlayerState.Alive,
-        stance: STANCE_NAMES[p.stance], fightState: ['Neutral', 'Advantage', 'Disadvantage'][p.fightState],
+        weapon: p.weapon ? { itemId: p.weapon, name: getItemDef(p.weapon)?.name ?? p.weapon, damage: swingDamage(p.weapon) } : null,
         combatTarget: p.combatTarget?.toHexString() ?? null, hostile: p.hostile,
         destination: p.targetX === undefined ? null : { x: p.targetX, z: p.targetZ },
         action: p.harvestEndTick ? 'harvesting' : p.pending === Pending.Harvest ? 'walking to tree'
@@ -122,12 +122,18 @@ export async function createGameService(credential: Credential, options: Connect
         state() {
           const self = me();
           const tick = conn.db.world.id.find(0)?.tick ?? 0;
+          const inventory = [...conn.db.inventorySlot.iter()].filter(row => row.owner.toHexString() === player.identity).sort((a, b) => a.slot - b.slot);
+          // Only the first quick slot holding the wielded item counts as the one in hand.
+          const wieldedSlot = self.weapon ? inventory.find(row => row.slot < HOTBAR_SIZE && row.itemId === self.weapon)?.slot : undefined;
           return {
             tick, tickMs: TICK_MS, gridSize: GRID_SIZE, player: describePlayer(self),
             permissions: { combat: invite.combat, chat: invite.chat },
             inventorySize: INVENTORY_SIZE,
-            inventory: [...conn.db.inventorySlot.iter()].filter(row => row.owner.toHexString() === player.identity)
-              .sort((a, b) => a.slot - b.slot).map(row => ({ slot: row.slot, itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity, healthRestored: getItemDef(row.itemId)?.healthRestore })),
+            hotbarSize: HOTBAR_SIZE,
+            punchDamage: PUNCH_DAMAGE,
+            inventory: inventory.map(row => ({ slot: row.slot, itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity,
+              healthRestored: getItemDef(row.itemId)?.healthRestore, weaponDamage: getItemDef(row.itemId)?.weaponDamage ?? 0,
+              hotbar: row.slot < HOTBAR_SIZE, wielded: row.slot === wieldedSlot })),
             players: [...conn.db.player.iter()].filter(p => p.online).slice(0, 128).map(describePlayer),
             trees: [...conn.db.tree.iter()].map(tree => ({ id: tree.id, tile: { x: tree.x, z: tree.z }, berry: getItemDef(tree.itemId)?.name,
               ready: tree.cooldownUntilTick <= tick && !tree.harvester, regrowTicks: Math.max(0, tree.cooldownUntilTick - tick), harvesting: !!tree.harvester })),
@@ -144,7 +150,6 @@ export async function createGameService(credential: Credential, options: Connect
           const r = conn.reducers;
           switch (name) {
             case 'move': await r.setTarget({ x: input.x, z: input.z }); break;
-            case 'stance': await r.setStance({ stance: ['strike', 'grab', 'guard'].indexOf(input.stance) }); break;
             case 'stop': await r.cancel({}); break;
             case 'harvest': {
               const tick = conn.db.world.id.find(0)?.tick ?? 0;
@@ -154,6 +159,8 @@ export async function createGameService(credential: Credential, options: Connect
               await r.startHarvest({ treeId }); break;
             }
             case 'eat': await r.eatBerry({ slot: input.slot }); break;
+            case 'wield': await r.wieldItem({ slot: input.slot }); break;
+            case 'unwield': await r.unwield({}); break;
             case 'attack': await r.attack({ target: Identity.fromString(input.playerId) }); break;
             case 'follow': await r.follow({ target: Identity.fromString(input.playerId) }); break;
             case 'pickup': await r.pickupItem({ id: BigInt(input.id) }); break;

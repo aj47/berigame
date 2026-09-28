@@ -102,10 +102,13 @@ const LoadingScreen = () => {
           </details>
         )}
         <div className="loading-tips">
-          <img src="/ui/stance-strike.png" alt="" />
-          <img src="/ui/stance-grab.png" alt="" />
-          <img src="/ui/stance-guard.png" alt="" />
-          <p>Strike beats Grab. Grab beats Guard. Guard beats Strike.</p>
+          <img src="/ui/punch.png" alt="" />
+          <img src="/items/stick.png" alt="" />
+          <img src="/items/blueberry.png" alt="" />
+          <p>
+            Punch by default. Harvesting can turn up a stick. Keys 1–3 use your
+            first three bag slots.
+          </p>
         </div>
         <p className="fine-print">
           Tap the ground to move. Tap a tree to gather. Open Help anytime.

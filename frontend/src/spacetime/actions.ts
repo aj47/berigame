@@ -42,11 +42,14 @@ export function useGameActions() {
   return {
     setTarget: (x: number, z: number) => run('setTarget', (c) => c.reducers.setTarget({ x, z })),
     cancel: () => run('cancel', (c) => c.reducers.cancel()),
-    setStance: (stance: number) => run('setStance', (c) => c.reducers.setStance({ stance })),
     attack: (target: Identity) => run('attack', (c) => c.reducers.attack({ target })),
     follow: (target: Identity) => run('follow', (c) => c.reducers.follow({ target })),
     startHarvest: (treeId: number) => run('startHarvest', (c) => c.reducers.startHarvest({ treeId })),
     eatBerry: (slot: number) => run('eatBerry', (c) => c.reducers.eatBerry({ slot })),
+    /** Wield the weapon in quick slot 0..HOTBAR_SIZE-1; the server rejects anything else. */
+    wieldItem: (slot: number) => run('wieldItem', (c) => c.reducers.wieldItem({ slot })),
+    /** Put the weapon away and go back to punching. */
+    unwield: () => run('unwield', (c) => c.reducers.unwield({})),
     moveItem: (from: number, to: number) => run('moveItem', (c) => c.reducers.moveItem({ from, to })),
     dropItem: (slot: number, quantity: number) => run('dropItem', (c) => c.reducers.dropItem({ slot, quantity })),
     pickupItem: (id: bigint) => run('pickupItem', (c) => c.reducers.pickupItem({ id })),

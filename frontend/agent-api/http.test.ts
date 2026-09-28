@@ -63,12 +63,31 @@ test('authentication, scope and strict schemas reject requests before game actio
       ['attack', { playerId: '0'.repeat(64) }, 403], ['chat', { text: 'hi' }, 403],
       ['move', { x: 4, z: 5, owner: 'someone_else' }, 400], ['move', { x: 50, z: 5 }, 400],
       ['move', { x: 1.5, z: 5 }, 400], ['__proto__', {}, 404], ['tick', {}, 404],
+      // Weapons are wielded only from the three quick slots; unwield takes no fields.
+      ['wield', { slot: 3 }, 400], ['wield', { slot: -1 }, 400], ['wield', {}, 400], ['unwield', { slot: 0 }, 400],
+      // The rock-paper-scissors stance action was retired in API 1.1.0.
+      ['stance', { stance: 'guard' }, 404],
     ];
     for (const [name, body, status] of cases) {
       f.advance(1100);
       assert.equal((await f.request(`/actions/${name}`, token, body, { 'Idempotency-Key': randomUUID() })).status, status);
     }
     assert.deepEqual(f.calls, []);
+  } finally { await f.close(); }
+});
+
+test('wield and unwield reach the game with the documented quick-slot range', async () => {
+  const f = await fixture();
+  try {
+    const { token } = await f.enter();
+    assert.equal((await f.request('/actions/wield', token, { slot: 2 }, { 'Idempotency-Key': randomUUID() })).status, 200);
+    f.advance(1100);
+    assert.equal((await f.request('/actions/unwield', token, {}, { 'Idempotency-Key': randomUUID() })).status, 200);
+    assert.deepEqual(f.calls, ['wield', 'unwield']);
+    const spec = await (await f.request('/openapi.json')).json() as any;
+    assert.equal(spec.info.version, '1.1.0');
+    assert.equal(spec.paths['/actions/stance'], undefined);
+    assert.deepEqual(spec.paths['/actions/wield'].post.requestBody.content['application/json'].schema.properties.slot, { type: 'integer', minimum: 0, maximum: 2 });
   } finally { await f.close(); }
 });
 

@@ -18,8 +18,8 @@ const TickDebug = () => {
     (window as any).__berigame = {
       tick,
       period: tickClock.period,
-      me: me ? { hex: identityHex(me.identity), x: me.x, z: me.z, hp: me.hp, stance: me.stance, fightState: me.fightState, state: me.state, name: me.name, target: me.combatTarget ? identityHex(me.combatTarget) : null, hostile: me.hostile } : null,
-      players: players.map((p) => ({ hex: identityHex(p.identity), name: p.name, x: p.x, z: p.z, hp: p.hp, stance: p.stance, fightState: p.fightState, online: p.online, target: p.combatTarget ? identityHex(p.combatTarget) : null, hostile: p.hostile })),
+      me: me ? { hex: identityHex(me.identity), x: me.x, z: me.z, hp: me.hp, weapon: me.weapon, state: me.state, name: me.name, target: me.combatTarget ? identityHex(me.combatTarget) : null, hostile: me.hostile } : null,
+      players: players.map((p) => ({ hex: identityHex(p.identity), name: p.name, x: p.x, z: p.z, hp: p.hp, weapon: p.weapon, online: p.online, target: p.combatTarget ? identityHex(p.combatTarget) : null, hostile: p.hostile })),
     };
   }, [tick, players, me]);
 

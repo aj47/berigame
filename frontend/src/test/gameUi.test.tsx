@@ -8,26 +8,28 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { PlayerState, Stance } from "@sim";
+import { PlayerState, PUNCH_DAMAGE, getItemDef } from "@sim";
 import Inventory from "../Components/Inventory";
-import StanceHud from "../Components/StanceHud";
+import CombatHud from "../Components/CombatHud";
+import { slotsFromRows, wieldedSlotIndex } from "../Components/itemUi";
+import { useToastStore } from "../spacetime/stores/toastStore";
 import LoadingScreen from "../Components/LoadingScreen";
 import GatherShortcut from "../Components/GatherShortcut";
 
 const mock = vi.hoisted(() => ({
-  rows: [{ slot: 0, itemId: "berry_blueberry", quantity: 3 }],
+  rows: [{ slot: 0, itemId: "berry_blueberry", quantity: 3 }] as any[],
   eatBerry: vi.fn().mockResolvedValue(undefined),
   moveItem: vi.fn().mockResolvedValue(undefined),
   dropItem: vi.fn().mockResolvedValue(undefined),
-  setStance: vi.fn(),
+  wieldItem: vi.fn().mockResolvedValue(true),
+  unwield: vi.fn().mockResolvedValue(true),
   cancel: vi.fn(),
   startHarvest: vi.fn().mockResolvedValue(true),
   tick: 100,
   player: {
     hp: 18,
     maxHp: 30,
-    stance: 0,
-    fightState: 0,
+    weapon: "",
     state: 0,
     x: 25,
     z: 25,
@@ -66,8 +68,7 @@ beforeEach(() => {
   mock.player = {
     hp: 18,
     maxHp: 30,
-    stance: 0,
-    fightState: 0,
+    weapon: "",
     state: 0,
     x: 25,
     z: 25,
@@ -77,6 +78,8 @@ beforeEach(() => {
     pending: 0,
     harvestEndTick: 0,
   };
+  mock.rows = [{ slot: 0, itemId: "berry_blueberry", quantity: 3 }];
+  useToastStore.setState({ message: null });
   mock.players = new Map();
   mock.trees = [];
   mock.tick = 100;
@@ -106,6 +109,38 @@ describe("cross-platform inventory actions", () => {
     await waitFor(() => expect(mock.dropItem).toHaveBeenCalledWith(0, 1));
   });
 
+  it("offers Wield for a stick in a quick slot and Unwield once it is wielded", async () => {
+    mock.rows = [
+      { slot: 0, itemId: "berry_blueberry", quantity: 3 },
+      { slot: 1, itemId: "stick", quantity: 1 },
+    ];
+    const { rerender } = render(<Inventory open onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Slot 2: Stick/ }));
+    expect(screen.getByText(/Weapon · 6 damage/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Eat/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Wield" }));
+    await waitFor(() => expect(mock.wieldItem).toHaveBeenCalledWith(1));
+    await act(async () => {});
+    mock.player = { ...mock.player, weapon: "stick" };
+    rerender(<Inventory open onClose={() => {}} />);
+    expect(
+      screen.getByRole("button", { name: /Slot 2: Stick, 1, wielded/ }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Unwield" }));
+    await waitFor(() => expect(mock.unwield).toHaveBeenCalledOnce());
+    expect(mock.eatBerry).not.toHaveBeenCalled();
+  });
+
+  it("only wields from the quick bar and explains slots 1-3", () => {
+    mock.rows = [{ slot: 5, itemId: "stick", quantity: 1 }];
+    render(<Inventory open onClose={() => {}} />);
+    expect(
+      screen.getByText(/Slots 1–3 are your quick bar — move a stick there to wield it/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Slot 6: Stick/ }));
+    expect(screen.getByRole("button", { name: "Wield" })).toBeDisabled();
+  });
+
   it("cancels moving when the bag closes", () => {
     const { rerender } = render(<Inventory open onClose={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: /Slot 1: Blueberry/ }));
@@ -118,29 +153,152 @@ describe("cross-platform inventory actions", () => {
   });
 });
 
-describe("combat controls", () => {
-  it("offers an on-screen Stop and does not switch stance while typing", () => {
-    render(
-      <>
-        <StanceHud />
-        <input aria-label="Message" />
-      </>,
-    );
+describe("combat quick slots", () => {
+  const stickAndBerries = () => {
+    mock.rows = [
+      { slot: 0, itemId: "berry_blueberry", quantity: 3 },
+      { slot: 1, itemId: "stick", quantity: 1 },
+    ];
+  };
+
+  it("offers an on-screen Stop, shows health and the punch chip", () => {
+    render(<CombatHud />);
     fireEvent.click(
       screen.getByRole("button", {
         name: "Stop moving, attacking, or harvesting",
       }),
     );
     expect(mock.cancel).toHaveBeenCalledOnce();
-    fireEvent.keyDown(screen.getByLabelText("Message"), { key: "2" });
-    expect(mock.setStance).not.toHaveBeenCalled();
-    fireEvent.keyDown(window, { key: "2" });
-    expect(mock.setStance).toHaveBeenCalledWith(Stance.Grab);
     expect(screen.getByRole("meter", { name: "Health" })).toHaveAttribute(
       "aria-valuenow",
       "18",
     );
-    expect(screen.getByText("beats Guard")).toBeInTheDocument();
+    expect(screen.getByText(`Punch · ${PUNCH_DAMAGE} dmg`)).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(mock.cancel).toHaveBeenCalledTimes(2);
+  });
+
+  it("renders inventory slots 0-2 as quick slots with name, quantity and action", () => {
+    stickAndBerries();
+    render(<CombatHud />);
+    const berry = screen.getByRole("button", { name: "Quick slot 1: Blueberry" });
+    expect(berry).toHaveTextContent("Blueberry");
+    expect(berry).toHaveTextContent("Eat +5");
+    expect(berry).toHaveTextContent("3");
+    expect(berry).toHaveAttribute("aria-pressed", "false");
+    expect(
+      screen.getByRole("button", { name: "Quick slot 2: Stick" }),
+    ).toHaveTextContent("Wield");
+    expect(
+      screen.getByRole("button", { name: "Quick slot 3: empty" }),
+    ).toBeDisabled();
+  });
+
+  it("key 1 eats the berry in slot 0, but not at full health", async () => {
+    const { rerender } = render(<CombatHud />);
+    fireEvent.keyDown(window, { key: "1" });
+    await waitFor(() => expect(mock.eatBerry).toHaveBeenCalledWith(0));
+    await act(async () => {});
+    mock.eatBerry.mockClear();
+    mock.player = { ...mock.player, hp: 30 };
+    rerender(<CombatHud />);
+    fireEvent.keyDown(window, { key: "1" });
+    expect(mock.eatBerry).not.toHaveBeenCalled();
+    expect(useToastStore.getState().message).toBe(
+      "You're already at full health",
+    );
+  });
+
+  it("key 2 wields the stick in slot 1, and pressing it again unwields", async () => {
+    stickAndBerries();
+    const { rerender } = render(<CombatHud />);
+    const event = new KeyboardEvent("keydown", { key: "2", cancelable: true });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(mock.wieldItem).toHaveBeenCalledWith(1));
+    await act(async () => {});
+    mock.player = { ...mock.player, weapon: "stick" };
+    rerender(<CombatHud />);
+    const stick = screen.getByRole("button", {
+      name: "Quick slot 2: Stick, wielded",
+    });
+    expect(stick).toHaveAttribute("aria-pressed", "true");
+    expect(stick).toHaveClass("active");
+    expect(stick).toHaveTextContent("Wielded");
+    expect(
+      screen.getByText(`Stick · ${getItemDef("stick")!.weaponDamage} dmg`),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "2" });
+    await waitFor(() => expect(mock.unwield).toHaveBeenCalledOnce());
+    expect(mock.wieldItem).toHaveBeenCalledOnce();
+    expect(mock.eatBerry).not.toHaveBeenCalled();
+  });
+
+  it("clicking a quick slot does the same as its key", async () => {
+    stickAndBerries();
+    render(<CombatHud />);
+    fireEvent.click(screen.getByRole("button", { name: "Quick slot 2: Stick" }));
+    await waitFor(() => expect(mock.wieldItem).toHaveBeenCalledWith(1));
+  });
+
+  it("ignores digits while typing, repeated or with modifiers, and on empty slots", () => {
+    stickAndBerries();
+    render(
+      <>
+        <CombatHud />
+        <input aria-label="Message" />
+      </>,
+    );
+    fireEvent.keyDown(screen.getByLabelText("Message"), { key: "1" });
+    fireEvent.keyDown(screen.getByLabelText("Message"), { key: "2" });
+    fireEvent.keyDown(window, { key: "1", repeat: true });
+    fireEvent.keyDown(window, { key: "2", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "3" });
+    expect(mock.eatBerry).not.toHaveBeenCalled();
+    expect(mock.wieldItem).not.toHaveBeenCalled();
+    expect(mock.unwield).not.toHaveBeenCalled();
+  });
+
+  it("ignores quick keys while a text-entry panel such as Appearance is open", () => {
+    stickAndBerries();
+    render(<CombatHud quickKeysEnabled={false} />);
+    fireEvent.keyDown(window, { key: "1" });
+    fireEvent.keyDown(window, { key: "2" });
+    expect(mock.eatBerry).not.toHaveBeenCalled();
+    expect(mock.wieldItem).not.toHaveBeenCalled();
+  });
+
+  it("disables quick slots while dead", () => {
+    stickAndBerries();
+    mock.player = { ...mock.player, state: PlayerState.Dead, hp: 0 };
+    render(<CombatHud />);
+    expect(screen.getByText("Respawning…")).toBeInTheDocument();
+    for (const button of document.querySelectorAll(".hotbar-slot"))
+      expect(button).toBeDisabled();
+    fireEvent.keyDown(window, { key: "1" });
+    fireEvent.keyDown(window, { key: "2" });
+    expect(mock.eatBerry).not.toHaveBeenCalled();
+    expect(mock.wieldItem).not.toHaveBeenCalled();
+  });
+
+  it("marks only the first quick slot holding the wielded item", () => {
+    const slots = slotsFromRows(
+      [
+        { slot: 2, itemId: "stick", quantity: 1 },
+        { slot: 1, itemId: "stick", quantity: 1 },
+        { slot: 40, itemId: "stick", quantity: 1 },
+      ],
+      3,
+    );
+    expect(slots.map((slot) => slot?.itemId ?? null)).toEqual([
+      null,
+      "stick",
+      "stick",
+    ]);
+    expect(wieldedSlotIndex(slots, "stick", 3)).toBe(1);
+    expect(wieldedSlotIndex(slots, "", 3)).toBe(-1);
   });
 });
 
@@ -239,11 +397,11 @@ describe("authoritative swing timing", () => {
       x: 26,
       z: 25,
     });
-    const { rerender } = render(<StanceHud />);
+    const { rerender } = render(<CombatHud />);
     expect(screen.getByText("Rival")).toBeInTheDocument();
     expect(screen.getByText("Recovery · 3 ticks")).toBeInTheDocument();
     mock.tick = 104;
-    rerender(<StanceHud />);
+    rerender(<CombatHud />);
     expect(screen.getByText("Swing ready")).toBeInTheDocument();
     mock.players.set("opponent", {
       name: "Rival",
@@ -252,7 +410,7 @@ describe("authoritative swing timing", () => {
       x: 32,
       z: 25,
     });
-    rerender(<StanceHud />);
+    rerender(<CombatHud />);
     expect(screen.getByText("Moving into range")).toBeInTheDocument();
     expect(screen.queryByText("Swing ready")).not.toBeInTheDocument();
   });

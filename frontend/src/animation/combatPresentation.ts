@@ -1,43 +1,49 @@
-import { EventKind, Stance } from '@sim';
+import { EventKind, STICK_ITEM_ID } from '@sim';
+import { STICK_SWING_CLIP, STICK_SWING_IMPACT_MS, STICK_SWING_MS } from './stickSwing';
 
-export type Clip = 'Idle'|'Walk'|'Run'|'RunGrab'|'RunGuard'|'Strike'|'Grab'|'GrabReady'|'Guard'|'Block'|'BlockCounter'|'Grabbed'|'Hit'|'Stagger'|'Defeat';
-export interface ExchangeCue {
+/** Every clip an adventurer plays: locomotion, the two attacks, the hit reaction and defeat. */
+export const CLIPS = ['Idle', 'Run', 'Strike', STICK_SWING_CLIP, 'Hit', 'Defeat'] as const;
+export type Clip = (typeof CLIPS)[number];
+
+export interface ActionCue {
   clip: Clip;
   durationMs: number;
-  reaction?: { clip: Clip; atMs: number };
 }
-export interface AnimationCue extends ExchangeCue { seq: number; at: number }
-export interface ExchangePresentation { attacker: ExchangeCue; defender: ExchangeCue; impactMs: number }
+/**
+ * A one-off clip scheduled on one avatar. `action` is the attacker's swing,
+ * starting when the event arrives; `reaction` is the defender's Hit, starting
+ * at the swing's impact.
+ */
+export interface AnimationCue extends ActionCue {
+  seq: number;
+  at: number;
+  role: 'action' | 'reaction';
+}
+export interface AttackPresentation {
+  attacker: ActionCue;
+  defender: ActionCue;
+  /** When the blow lands, from the start of the attacker's clip. */
+  impactMs: number;
+}
 
-/** Both sides tell the same physical story, even when the defender wins the RPS. */
-export function exchangePresentation(kind: number, attackerStance: number, defenderStance: number): ExchangePresentation | null {
-  if (kind === EventKind.Clash) {
-    const clip: Clip = attackerStance === Stance.Guard ? 'Block' : attackerStance === Stance.Grab ? 'GrabReady' : 'Strike';
-    return { attacker: { clip, durationMs: 500 }, defender: { clip, durationMs: 500 }, impactMs: 160 };
-  }
-  if (kind !== EventKind.Hit && kind !== EventKind.Counter) return null;
-  const attackerWins = kind === EventKind.Hit;
-  const winnerStance = attackerWins ? attackerStance : defenderStance;
-  let winner: ExchangeCue, loser: ExchangeCue, impactMs: number;
-  if (winnerStance === Stance.Grab) {
-    impactMs = 224;
-    winner = { clip: 'Grab', durationMs: 700 };
-    loser = { clip: 'Block', reaction: { clip: 'Grabbed', atMs: impactMs }, durationMs: 724 };
-  } else if (winnerStance === Stance.Guard) {
-    impactMs = 288;
-    winner = { clip: 'BlockCounter', durationMs: 600 };
-    loser = { clip: 'Strike', reaction: { clip: 'Stagger', atMs: impactMs }, durationMs: 788 };
-  } else {
-    impactMs = 160;
-    winner = { clip: 'Strike', durationMs: 500 };
-    loser = { clip: 'Grab', reaction: { clip: 'Hit', atMs: impactMs }, durationMs: 560 };
-  }
-  return attackerWins ? { attacker: winner, defender: loser, impactMs } : { attacker: loser, defender: winner, impactMs };
+/** Bare fists: the baked 'Strike' jab lands 160ms in. */
+export const PUNCH_ATTACK = { clip: 'Strike', durationMs: 500, impactMs: 160 } as const;
+/** A wielded stick: the synthesized overhead chop (animation/stickSwing.ts). */
+export const STICK_ATTACK = { clip: STICK_SWING_CLIP, durationMs: STICK_SWING_MS, impactMs: STICK_SWING_IMPACT_MS } as const;
+const HIT_REACTION: ActionCue = { clip: 'Hit', durationMs: 400 };
+
+/**
+ * How one swing looks, from the committed event: `itemId` is what the
+ * attacker held when the server resolved the swing ('' = punch). Never read
+ * the live player row here; it may already have changed.
+ */
+export function attackPresentation(kind: number, itemId: string): AttackPresentation | null {
+  if (kind !== EventKind.Hit) return null;
+  const { clip, durationMs, impactMs } = itemId === STICK_ITEM_ID ? STICK_ATTACK : PUNCH_ATTACK;
+  return { attacker: { clip, durationMs }, defender: HIT_REACTION, impactMs };
 }
 
 export function cuePose(cue: AnimationCue | null, now: number): { clip: Clip; key: string; elapsedSeconds: number } | null {
   if (!cue || now < cue.at || now >= cue.at + cue.durationMs) return null;
-  const elapsed = now - cue.at;
-  const reacting = cue.reaction && elapsed >= cue.reaction.atMs;
-  return { clip: reacting ? cue.reaction!.clip : cue.clip, key: `${cue.seq}:${reacting ? 'reaction' : 'action'}`, elapsedSeconds: (elapsed - (reacting ? cue.reaction!.atMs : 0)) / 1000 };
+  return { clip: cue.clip, key: `${cue.seq}:${cue.role}`, elapsedSeconds: (now - cue.at) / 1000 };
 }

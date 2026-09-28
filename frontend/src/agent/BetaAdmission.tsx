@@ -72,7 +72,7 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
       </form>
       <a className="beta-agent-link" href="/agent">Bringing an agent? Open the field guide <span aria-hidden="true">↗</span></a>
       <div className="loading-tips">
-        <img src="/ui/stance-strike.png" alt="" /><img src="/ui/stance-grab.png" alt="" /><img src="/ui/stance-guard.png" alt="" />
+        <img src="/ui/punch.png" alt="" /><img src="/items/stick.png" alt="" /><img src="/items/blueberry.png" alt="" />
         <p>Explore the island. Gather berries. Choose your next move.</p>
       </div>
     </div>

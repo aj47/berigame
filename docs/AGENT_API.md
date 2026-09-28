@@ -116,6 +116,35 @@ action can be in flight per session. A timeout closes the session because the
 action outcome may be uncertain. An accepted move or harvest may still be in
 progress; read state to observe completion.
 
+### Gameplay through the API
+
+Actions mirror the browser controls: `move`, `harvest`, `eat`, `wield`, `unwield`,
+`stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`, and
+the scoped `attack` and `chat`. OpenAPI has the exact schemas.
+
+- **Combat is punch-or-stick.** While attacking, you swing automatically. Bare
+  fists punch for `PUNCH_DAMAGE` (3). A wielded stick hits for its
+  `weaponDamage` (6). Numbers come from `shared/sim`.
+- **Quick slots.** Inventory slots `0..HOTBAR_SIZE-1` (0..2) are the quick slots,
+  the same slots behind the game's 1/2/3 keys. State reports `hotbarSize`,
+  `punchDamage`, and a `hotbar`, `wielded` and `weaponDamage` value on every
+  inventory row.
+- **Getting a stick.** Each completed harvest has a `STICK_DROP_CHANCE` (25%)
+  chance to add a stick next to the berry. One harvest can therefore add two
+  inventory rows, so find rows by `itemId`.
+- **Wielding.** `POST /actions/wield {"slot": n}` wields the weapon in quick slot
+  `n`. Slots outside 0..2 get `400`. A slot without a weapon gets `422`.
+  `POST /actions/unwield {}` goes back to punching.
+- **Losing the stick.** Moving it out of the quick slots, dropping it, or dying
+  unwields it.
+- **Player state.** Each player in state has `weapon: null` (punching) or
+  `{ itemId, name, damage }`. Other players' weapons are public, because the stick
+  is drawn in their hand. Inventories stay private.
+
+API version **1.1.0** removed the rock-paper-scissors `stance` action and the
+`stance`/`fightState` player fields. `/actions/stance` now returns 404
+(`unknown_action` from the Node gateway, `not_found` at the Cloudflare edge).
+
 To revoke a player as the gateway operator:
 
 ```sh
@@ -209,5 +238,7 @@ SpacetimeDB server at `127.0.0.1:3010`. It requires
 `berigame-agent-api-check`, `BERIGAME_AGENT_TEST_OWNER` pointing to its disposable
 owner credential JSON, and `BERIGAME_AGENT_TEST_DATA` pointing to its private test
 directory. It checks real gameplay, separate identities, invite replay, scope
-enforcement, direct connection rejection, revocation and throttling. It never
+enforcement, direct connection rejection, revocation and throttling. Wielding a
+berry must be rejected. The stick wield/unwield round trip runs only when its
+first harvest happened to find a stick; otherwise it prints `SKIP`. It never
 targets the ordinary game world.

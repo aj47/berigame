@@ -37,6 +37,52 @@ const clickTile = async (page, x, z, y = 0) => {
   await page.mouse.up();
 };
 
+// Mirrors shared/sim (constants.ts, items.ts); this plain-node script cannot import TypeScript.
+const PUNCH_DAMAGE = 3;
+const STICK_DAMAGE = 6;
+const TREE_TILES = [[40, 30], [30, 35], [20, 30], [30, 25], [15, 20], [25, 15]];
+const quickSlot = (page, n) => page.locator(`.combat-hud .hotbar-slot[data-slot="${n}"]`);
+const quickLabels = (page) => page.locator('.combat-hud .hotbar-slot').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
+const openBag = async (page) => { if (!(await page.locator('.inventory-panel').count())) await page.click('[data-panel="inventory"]'); await page.waitForSelector('.inventory-panel'); };
+const closeBag = async (page) => { if (await page.locator('.inventory-panel').count()) await page.getByRole('button', { name: 'Close inventory', exact: true }).click(); };
+const bagLabels = async (page) => { await openBag(page); return page.locator('.inventory-slot').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label'))); };
+const stickSlot = async (page) => (await bagLabels(page)).findIndex((label) => /^Slot \d+: Stick\b/.test(label ?? ''));
+const onScreen = (p) => p.x > 60 && p.x < 1220 && p.y > 90 && p.y < 560;
+
+/** Walk toward a tree until it projects inside the clear part of the viewport, then open its menu and harvest if it is ripe. */
+async function harvestTreeViaUi(page, x, z) {
+  for (let step = 0; step < 8 && !onScreen(await project(page, x, z, 1.5)); step++) {
+    const me = (await state(page)).me;
+    const dx = Math.sign(x - me.x) * Math.min(4, Math.abs(x - me.x));
+    const dz = Math.sign(z - me.z) * Math.min(4, Math.abs(z - me.z));
+    // A plain ground click walks; Escape would trigger Stop, so it is not used here.
+    await clickTile(page, me.x + dx, me.z + dz);
+    await sleep(1800);
+  }
+  await clickTile(page, x, z, 1.5);
+  if (!(await page.waitForSelector('.click-dropdown', { timeout: 3_000 }).catch(() => null))) return false;
+  const harvest = page.locator('.click-dropdown button:has-text("Harvest")');
+  if (!(await harvest.count()) || !(await harvest.first().isEnabled())) { await page.keyboard.press('Escape'); return false; }
+  await harvest.first().click();
+  if (!(await page.waitForSelector('.harvest-progress', { timeout: 15_000 }).catch(() => null))) return false;
+  await page.waitForSelector('.harvest-progress', { state: 'detached', timeout: 15_000 }).catch(() => {});
+  await sleep(700);
+  return true;
+}
+
+/** Harvest trees in turn until the 25% bonus roll puts a stick in the bag. Returns the bag slot index or -1. */
+async function findStickViaUi(page, timeout = 420_000) {
+  const start = Date.now();
+  for (let i = 0; Date.now() - start < timeout; i++) {
+    const slot = await stickSlot(page);
+    await closeBag(page);
+    if (slot >= 0) return slot;
+    const [x, z] = TREE_TILES[i % TREE_TILES.length];
+    if (!(await harvestTreeViaUi(page, x, z))) await sleep(500);
+  }
+  return -1;
+}
+
 const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL ?? 'chrome' });
 const errors = { A: [], B: [] };
 const open = async (name) => {
@@ -71,12 +117,16 @@ try {
   check('B sees A at the new tile', !!seenByB);
   await A.screenshot({ path: `${OUT}/02-moved-A.png` });
 
-  // Stance hotkeys.
-  await A.keyboard.press('3');
-  await waitFor(A, 'stance -> Guard', (s) => s.me.stance === 2, 3_000);
-  check('key 3 sets Guard', (await state(A)).me.stance === 2);
-  await A.keyboard.press('1');
-  await waitFor(A, 'stance -> Strike', (s) => s.me.stance === 0, 3_000);
+  // Quick slots: a fresh character has three empty slots and punches.
+  check('combat HUD shows three quick slots', (await A.locator('.combat-hud .hotbar-slot').count()) === 3);
+  const emptyLabels = await quickLabels(A);
+  check('empty quick slots are labelled', emptyLabels.every((label, i) => label === `Quick slot ${i + 1}: empty`), emptyLabels.join(' | '));
+  check('weapon chip shows Punch', /Punch/.test((await A.textContent('.combat-hud')) ?? ''));
+  const beforeKeys = (await state(A)).me;
+  for (const key of ['1', '2', '3']) await A.keyboard.press(key);
+  await sleep(1200);
+  const afterKeys = (await state(A)).me;
+  check('pressing empty quick-slot keys changes nothing', afterKeys.weapon === '' && afterKeys.hp === beforeKeys.hp, `weapon=${JSON.stringify(afterKeys.weapon)}`);
 
   // B attacks A: click A's avatar in B's page, choose Attack from the dropdown.
   const aPos = (await state(B)).players.find((p) => p.hex === meA.hex);
@@ -86,21 +136,15 @@ try {
   await B.click('.click-dropdown button:has-text("Attack")');
   const bState = await waitFor(B, 'B targets A', (s) => s.me.target === meA.hex && s.me.hostile, 5_000);
   check('B is now attacking A', bState.me.target === meA.hex);
-  // Both hold Strike, so the first exchanges clash: no damage, a CLASH number over A.
-  await A.waitForSelector('.damage-number', { timeout: 15_000 });
+  // Every swing is a Hit: B's bare-handed punch costs A exactly PUNCH_DAMAGE.
+  const punched = await waitFor(A, 'A takes a punch', (s) => s.me.hp < 30, 15_000);
+  check(`a punch deals ${PUNCH_DAMAGE}`, (30 - punched.me.hp) % PUNCH_DAMAGE === 0 && punched.me.hp < 30, `hp=${punched.me.hp}`);
+  await A.waitForSelector('.damage-number', { timeout: 5_000 });
   await A.screenshot({ path: `${OUT}/04-combat-A.png` });
   const firstNumber = await A.locator('.damage-number').first().textContent();
-  check('first exchange renders CLASH over A', firstNumber === 'CLASH', firstNumber ?? '');
-  const hud = await A.textContent('.stance-hud');
-  check('HUD shows a fight state and HP', /HP\s+\d+\s*\/\s*30/.test(hud ?? ''), hud?.replace(/\s+/g, ' '));
-
-  // A switches to Guard -> counters B's Strike; A should gain Advantage.
-  await A.keyboard.press('3');
-  const adv = await waitFor(A, 'A reaches Advantage', (s) => s.me.fightState === 1, 15_000);
-  check('Guard vs Strike gives A the Advantage', adv.me.fightState === 1);
-  // Give A real damage so the later eating check cannot pass at full HP.
-  await A.keyboard.press('2');
-  await waitFor(A, 'A receives damage', (s) => s.me.hp < 30, 8_000);
+  check('the punch renders its damage over A', (firstNumber ?? '').includes(String(PUNCH_DAMAGE)), firstNumber ?? '');
+  const hud = await A.textContent('.combat-hud');
+  check('HUD shows HP and the punch chip', /HP\s+\d+\s*\/\s*30/.test(hud ?? '') && /Punch/.test(hud ?? ''), hud?.replace(/\s+/g, ' '));
   await B.locator('.stop-button').click();
   await waitFor(B, 'on-screen Stop ends attack', (s) => !s.me.hostile && s.me.target === null);
   await A.keyboard.press('Escape');
@@ -120,18 +164,21 @@ try {
   await A.screenshot({ path: `${OUT}/05-harvest-A.png` });
   await A.keyboard.press('i');
   await A.waitForSelector('.inventory-slot.filled', { timeout: 12_000 });
-  check('berry appears in inventory after harvest', (await A.locator('.inventory-slot.filled').count()) === 1);
+  // A harvest adds the berry and, 25% of the time, a stick in the same update.
+  const harvested = await bagLabels(A);
+  check('blueberry appears in quick slot 1 after harvest', /^Slot 1: Blueberry, 1\b/.test(harvested[0] ?? ''), harvested[0] ?? '');
+  check('the harvest adds at most a berry and a stick', harvested.filter((l) => !/: empty/.test(l ?? '')).every((l) => /: (Blueberry|Stick)\b/.test(l ?? '')));
   await A.screenshot({ path: `${OUT}/06-inventory-A.png` });
+  check('the quick slot mirrors the bag', /^Quick slot 1: Blueberry$/.test((await quickLabels(A))[0] ?? ''));
 
-  // Eat it.
+  // Eat it from the quick slot with key 1.
   const hpBefore = (await state(A)).me.hp;
   check('eating begins below full health', hpBefore < 30);
-  await A.click('.inventory-slot.filled');
-  await A.getByRole('button', { name: /^Eat/ }).click();
-  await A.waitForFunction(() => document.querySelectorAll('.inventory-slot.filled').length === 0);
+  await A.keyboard.press('1');
+  await A.waitForFunction(() => !document.querySelector('.inventory-slot[aria-label^="Slot 1: Blueberry"]'));
   await waitFor(A, 'blueberry restores exactly five capped HP', (s) => s.me.hp === Math.min(30, hpBefore + 5));
   const hpAfter = (await state(A)).me.hp;
-  check('eating consumes the berry and heals exactly five capped HP', hpAfter === Math.min(30, hpBefore + 5), `${hpBefore}->${hpAfter}`);
+  check('quick-slot key 1 eats the berry and heals exactly five capped HP', hpAfter === Math.min(30, hpBefore + 5), `${hpBefore}->${hpAfter}`);
   await waitFor(B, 'B sees the heal', (s) => s.players.some((p) => p.hex === aHex && p.hp === hpAfter));
 
   // Chat.
@@ -147,15 +194,52 @@ try {
 
   // Refresh keeps identity.
   const hexBefore = (await state(A)).me.hex;
+  const bagBefore = await bagLabels(A);
   await A.reload();
   const after = await waitFor(A, 'A reconnected', (s) => s.me !== null, 20_000);
   check('refresh keeps the same identity and healed HP', after.me.hex === hexBefore && after.me.hp === hpAfter);
-  await A.click('[data-panel="inventory"]');
-  check('refresh keeps the consumed inventory empty', await A.locator('.inventory-slot.filled').count() === 0);
+  await A.waitForFunction(() => !document.querySelector('.loading-screen'), null, { timeout: 20_000 });
+  const bagAfter = await bagLabels(A);
+  check('refresh keeps the bag as it was (berry consumed)', JSON.stringify(bagAfter) === JSON.stringify(bagBefore) && !bagAfter.some((l) => /Blueberry/.test(l ?? '')));
+  await closeBag(A);
+  await B.getByRole('button', { name: 'Close chat', exact: true }).click();
+
+  // Stick: harvest until one turns up, move it to a quick slot, wield it with its key, hit B with it.
+  let found = await findStickViaUi(A);
+  check('harvesting eventually finds a stick', found >= 0);
+  if (found >= 0) {
+    if (found >= 3) {
+      await openBag(A);
+      await A.locator('.inventory-slot').nth(found).click();
+      await A.getByRole('button', { name: 'Move', exact: true }).click();
+      await A.locator('.inventory-slot').nth(0).click();
+      await A.waitForSelector('.inventory-slot[aria-label^="Slot 1: Stick"]', { timeout: 5_000 });
+      found = 0;
+      await closeBag(A);
+    }
+    await A.keyboard.press(String(found + 1));
+    await waitFor(A, 'A wields the stick', (s) => s.me.weapon === 'stick', 5_000);
+    check('the quick-slot key wields the stick', (await quickSlot(A, found).getAttribute('aria-pressed')) === 'true'
+      && (await quickSlot(A, found).getAttribute('aria-label')) === `Quick slot ${found + 1}: Stick, wielded`);
+    check('weapon chip shows the stick damage', new RegExp(`Stick\\s*·\\s*${STICK_DAMAGE}`).test((await A.textContent('.combat-hud')) ?? ''));
+    await waitFor(B, 'B sees the stick in A\'s hand', (s) => s.players.some((p) => p.hex === aHex && p.weapon === 'stick'), 5_000);
+    const avatarWeapon = await B.evaluate((hex) => (window.__berigameAvatars?.() ?? []).find((a) => a.identity === hex)?.weapon, aHex);
+    check('B renders A holding the stick', avatarWeapon === 'stick', String(avatarWeapon));
+    const bHp = (await state(B)).me.hp;
+    const bTile = (await state(A)).players.find((p) => p.hex === bHex);
+    await clickTile(A, bTile.x, bTile.z, 1.1);
+    await A.locator('.click-dropdown button:has-text("Attack")').click();
+    const struck = await waitFor(B, 'B takes a stick hit', (s) => s.me.hp < bHp, 20_000);
+    check(`a stick hit deals ${STICK_DAMAGE}`, bHp - struck.me.hp === STICK_DAMAGE, `${bHp}->${struck.me.hp}`);
+    await A.screenshot({ path: `${OUT}/07b-stick-A.png` });
+    await A.locator('.stop-button').click();
+    await waitFor(A, 'A stops', (s) => !s.me.hostile);
+    await A.keyboard.press(String(found + 1));
+    await waitFor(A, 'the same key puts the stick away', (s) => s.me.weapon === '', 5_000);
+    check('pressing the wielded slot again returns to punching', /Punch/.test((await A.textContent('.combat-hud')) ?? ''));
+  }
 
   // A real inventory is lost on death, the UI disables combat, then recovers.
-  await A.getByRole('button', { name: 'Close inventory', exact: true }).click();
-  await B.getByRole('button', { name: 'Close chat', exact: true }).click();
   await clickTile(B, 30, 25, 1.5);
   await B.waitForSelector('.click-dropdown');
   for (let retry = 0; retry < 35 && !(await B.locator('.click-dropdown .context-action:enabled').count()); retry++) {
@@ -165,20 +249,21 @@ try {
   await B.locator('.click-dropdown button:has-text("Harvest")').click();
   await B.click('[data-panel="inventory"]');
   await B.waitForSelector('.inventory-slot.filled', { timeout: 15_000 });
-  check('death UI test begins with a carried berry', await B.locator('.inventory-slot.filled').count() === 1);
-  await A.locator('.stance-button').nth(0).click();
-  await B.locator('.stance-button').nth(1).click();
+  check('death UI test begins with a carried berry', /^Slot 1: Blueberry\b/.test((await bagLabels(B))[0] ?? ''));
+  check('the carried berry enables quick slot 1', await quickSlot(B, 0).isEnabled());
   const victim = (await state(A)).players.find((player) => player.hex === bHex);
   await clickTile(A, victim.x, victim.z, 1.1);
   await A.locator('.click-dropdown button:has-text("Attack")').click();
   await waitFor(B, 'B dies', (s) => s.me.state === 1, 40_000);
   await B.getByText('Respawning…', { exact: true }).waitFor();
-  check('dead player combat controls are disabled', await B.locator('.stance-button:disabled').count() === 3);
+  check('dead player quick slots are disabled', await B.locator('.hotbar-slot:disabled').count() === 3);
   check('carried berry disappears from the dead player bag', await B.locator('.inventory-slot.filled').count() === 0);
   await B.screenshot({ path: `${OUT}/08-death-B.png` });
   await waitFor(B, 'B respawns at full health', (s) => s.me.state === 0 && s.me.hp === 30 && s.me.x === 25 && s.me.z === 25, 6_000);
   await waitFor(A, 'A sees respawn and stops attacking', (s) => !s.me.hostile && s.me.target === null && s.players.some((player) => player.hex === bHex && player.hp === 30));
-  check('respawn restores controls and preserves inventory loss', await B.locator('.stance-button:disabled').count() === 0 && await B.locator('.inventory-slot.filled').count() === 0);
+  const respawnLabels = await quickLabels(B);
+  check('respawn restores the HUD and preserves inventory loss', !(await B.getByText('Respawning…', { exact: true }).count())
+    && respawnLabels.every((label, i) => label === `Quick slot ${i + 1}: empty`) && await B.locator('.inventory-slot.filled').count() === 0);
   await B.screenshot({ path: `${OUT}/09-respawn-B.png` });
 
   check('no page errors in A', errors.A.length === 0, errors.A.slice(0, 3).join(' | '));

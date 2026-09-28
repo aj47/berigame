@@ -90,9 +90,11 @@ cat <<TIP
   ============================================================
    BeriGame is ready: http://127.0.0.1:$CLIENT_PORT
    Open it in two windows (one normal, one incognito) to
-   get two players. Click the ground to walk, 1/2/3 to switch
-   stance, click a player -> Attack, click a tree -> Harvest,
-   I for inventory, Enter to chat. Ctrl-C stops everything.
+   get two players. Click the ground to walk, click a player
+   -> Attack (you punch), click a tree -> Harvest (sometimes
+   finds a stick), 1/2/3 use the quick slots (eat a berry or
+   wield/put away a stick), I for inventory, Enter to chat.
+   Ctrl-C stops everything.
   ============================================================
 
 TIP

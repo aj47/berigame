@@ -22,10 +22,21 @@ try {
   const scopedKey = await page.evaluate(async () => (await import('/src/spacetime/connection.ts')).TOKEN_KEY);
   const originalToken = await page.evaluate((key) => localStorage.getItem(key), scopedKey);
   check('fresh character uses a scoped credential', !!originalToken && scopedKey.startsWith('berigame_stdb_token:v2:'));
-  await page.locator('.stance-button').nth(2).focus();
+  // A fresh character's quick slots are empty (disabled), so keyboard activation is checked on Stop:
+  // start a long walk, press Enter on the focused Stop button, and the character must halt short of it.
+  const start = await page.evaluate(() => ({ x: window.__berigame.me.x, z: window.__berigame.me.z }));
+  const goal = { x: start.x + 8, z: start.z };
+  const target = await page.evaluate(({ x, z }) => window.__berigameProject(x, z, 0), goal);
+  await page.mouse.click(target.x, target.y);
+  await page.waitForFunction((s) => window.__berigame.me.x !== s.x || window.__berigame.me.z !== s.z, start, { timeout: 5_000 });
+  await page.locator('.combat-hud .stop-button').focus();
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => window.__berigame.me.stance === 2);
-  check('Enter activates focused Guard without opening chat', await page.locator('.chat-panel').count() === 0);
+  await page.waitForTimeout(1_500);
+  const halted = await page.evaluate(() => ({ x: window.__berigame.me.x, z: window.__berigame.me.z }));
+  await page.waitForTimeout(1_200);
+  const still = await page.evaluate(() => ({ x: window.__berigame.me.x, z: window.__berigame.me.z }));
+  check('Enter activates focused Stop without opening chat', halted.x === still.x && halted.z === still.z
+    && !(still.x === goal.x && still.z === goal.z) && await page.locator('.chat-panel').count() === 0);
   await page.locator('[data-panel="inventory"]').focus();
   await page.keyboard.press('Enter');
   await page.locator('.inventory-panel').waitFor();
@@ -42,9 +53,14 @@ try {
   await page.keyboard.press('Enter');
   await ready(page);
   check('keyboard Rejoin after socket loss preserves identity', await identity(page) === originalIdentity);
+  // Digits 1-3 are quick-slot keys and i/h open panels; while typing in chat none of them may fire.
+  const beforeTyping = await page.evaluate(() => ({ weapon: window.__berigame.me.weapon, hp: window.__berigame.me.hp }));
   await page.click('[data-panel="chat"]');
   await page.locator('#chat-message').pressSequentially('123 ih');
-  check('typing shortcuts in chat preserves stance', await page.evaluate(() => window.__berigame.me.stance === 2));
+  await page.waitForTimeout(800);
+  const afterTyping = await page.evaluate(() => ({ weapon: window.__berigame.me.weapon, hp: window.__berigame.me.hp }));
+  check('typing shortcuts in chat leaves quick slots, weapon and panels alone', JSON.stringify(afterTyping) === JSON.stringify(beforeTyping)
+    && await page.locator('#chat-message').inputValue() === '123 ih' && await page.locator('.inventory-panel').count() === 0);
   await context.close();
 
   // Carry a genuine local legacy credential into a fresh browser storage scope.

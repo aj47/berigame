@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { sRGBEncoding } from 'three';
 import { Html, useTexture } from '@react-three/drei';
-import { getItemDef, tileToWorld } from '@sim';
+import { ITEM_DEFS, getItemDef, tileToWorld } from '@sim';
 import type { GroundItem as GroundItemRow } from '../../module_bindings/types';
 import { useGameActions } from '../../spacetime/actions';
 import { useUserInputStore } from '../../store';
+
+// Fetch every item icon up front: the first stick anyone drops must not
+// suspend the world's shared Suspense boundary while its sprite loads.
+for (const def of Object.values(ITEM_DEFS)) useTexture.preload(def.icon);
 
 const GroundItem = ({ groundItem }: { groundItem: GroundItemRow }) => {
   const [hovered, setHovered] = useState(false);

@@ -3,11 +3,13 @@ import {
   chebyshev,
   getItemDef,
   GRID_SIZE,
+  HOTBAR_SIZE,
   INVENTORY_SIZE,
+  isWeapon,
   Pending,
   PlayerState,
-  Stance,
-  STANCE_NAMES,
+  PUNCH_DAMAGE,
+  swingDamage,
 } from "@sim";
 import { useGameActions } from "../spacetime/actions";
 import {
@@ -24,11 +26,11 @@ export type WebMCPStatus = "checking" | "ready" | "unsupported" | "error";
 
 type Props = { onStatusChange: (status: WebMCPStatus) => void };
 
-const stanceByName = {
-  strike: Stance.Strike,
-  grab: Stance.Grab,
-  guard: Stance.Guard,
-} as const;
+/** What a player swings with: null weapon means bare fists. Weapons are public on the player row. */
+const describeWeapon = (weapon: string) => ({
+  weapon: weapon ? getItemDef(weapon)?.name ?? weapon : "Punch",
+  damage: swingDamage(weapon),
+});
 
 /** Registers game actions in the current page and reuses the live game client. */
 export default function GameWebMCPTools({ onStatusChange }: Props) {
@@ -113,17 +115,23 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           const player = state.me;
           const byIdentity = new Map(state.players.map((row: any) => [identityHex(row.identity), row]));
           const targetId = player?.combatTarget ? identityHex(player.combatTarget) : null;
-          const inventoryRows = [...state.inventory]
-            .sort((a: any, b: any) => a.slot - b.slot)
-            .map((slot: any) => {
-              const item = getItemDef(slot.itemId);
-              return {
-                slot: slot.slot,
-                item: item?.name ?? slot.itemId,
-                quantity: slot.quantity,
-                healthRestored: item?.healthRestore ?? 0,
-              };
-            });
+          const sortedInventory = [...state.inventory].sort((a: any, b: any) => a.slot - b.slot);
+          // Only the first quick slot holding the wielded item is the one in hand.
+          const wieldedSlot = player?.weapon
+            ? sortedInventory.find((row: any) => row.slot < HOTBAR_SIZE && row.itemId === player.weapon)?.slot
+            : undefined;
+          const inventoryRows = sortedInventory.map((slot: any) => {
+            const item = getItemDef(slot.itemId);
+            return {
+              slot: slot.slot,
+              item: item?.name ?? slot.itemId,
+              quantity: slot.quantity,
+              healthRestored: item?.healthRestore ?? 0,
+              weaponDamage: item?.weaponDamage ?? 0,
+              quickSlot: slot.slot < HOTBAR_SIZE,
+              wielded: slot.slot === wieldedSlot,
+            };
+          });
           return JSON.stringify({
             connection: {
               online: typeof navigator === "undefined" ? true : navigator.onLine,
@@ -138,8 +146,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                   tile: { x: player.x, z: player.z },
                   health: player.hp,
                   maxHealth: player.maxHp,
-                  stance: STANCE_NAMES[player.stance] ?? "Unknown",
-                  fightState: ["Neutral", "Advantage", "Disadvantage"][player.fightState] ?? "Unknown",
+                  ...describeWeapon(player.weapon ?? ""),
                   alive: player.state === PlayerState.Alive,
                   hostile: player.hostile,
                   target: targetId ? byIdentity.get(targetId)?.name ?? targetId : null,
@@ -160,7 +167,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                 tile: { x: row.x, z: row.z },
                 health: row.hp,
                 maxHealth: row.maxHp,
-                stance: STANCE_NAMES[row.stance] ?? "Unknown",
+                ...describeWeapon(row.weapon ?? ""),
                 alive: row.state === PlayerState.Alive,
                 isYou: player ? identityHex(row.identity) === identityHex(player.identity) : false,
               })),
@@ -174,6 +181,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                 : null,
               regrowsInTicks: Math.max(0, tree.cooldownUntilTick - state.tick),
             })),
+            quickSlots: `Inventory slots 0-${HOTBAR_SIZE - 1} are quick slots; wield a weapon there. Bare fists punch for ${PUNCH_DAMAGE}.`,
             inventory: inventoryRows,
           }, null, 2);
         },
@@ -196,17 +204,33 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
         },
       ),
       tool(
-        "choose_stance",
-        "Set your combat stance. Strike beats Grab, Grab beats Guard, and Guard beats Strike. The choice affects the next combat exchange.",
-        { stance: { type: "string", enum: ["strike", "grab", "guard"], description: "The stance to use." } },
-        ["stance"],
-        async ({ stance }) => {
+        "wield_item",
+        `Wield the weapon in a quick slot (zero-based inventory slot 0-${HOTBAR_SIZE - 1}). A wielded stick hits harder than a ${PUNCH_DAMAGE}-damage punch and is visible in your hand. Harvesting trees sometimes finds a stick.`,
+        { slot: { type: "integer", minimum: 0, maximum: HOTBAR_SIZE - 1, description: `Zero-based quick slot, 0-${HOTBAR_SIZE - 1}.` } },
+        ["slot"],
+        async ({ slot }) => {
           const { error } = requirePlayer() as any;
           if (error) return error;
-          const value = typeof stance === "string" ? stance.toLowerCase() : "";
-          if (!Object.prototype.hasOwnProperty.call(stanceByName, value)) return "Choose one of: strike, grab, guard.";
-          const selected = stanceByName[value as keyof typeof stanceByName];
-          return reportAction(await live.current.actions.setStance(selected), `${STANCE_NAMES[selected]} stance selected.`);
+          if (!Number.isInteger(slot) || slot < 0 || slot >= HOTBAR_SIZE)
+            return `Weapons are wielded from quick slots 0 through ${HOTBAR_SIZE - 1}. Move the weapon there first.`;
+          const item = live.current.inventory.find((row: any) => row.slot === slot);
+          if (!item || !isWeapon(item.itemId)) return "That quick slot does not hold a weapon. Inspect your inventory and choose a weapon slot.";
+          const definition = getItemDef(item.itemId)!;
+          return reportAction(
+            await live.current.actions.wieldItem(slot),
+            `Wielding the ${definition.name.toLowerCase()} (${definition.weaponDamage} damage per swing).`,
+          );
+        },
+      ),
+      tool(
+        "unwield_item",
+        `Put your weapon away and fight with bare fists (${PUNCH_DAMAGE} damage per punch).`,
+        {},
+        [],
+        async () => {
+          const { error } = requirePlayer() as any;
+          if (error) return error;
+          return reportAction(await live.current.actions.unwield(), "Weapon put away. You will punch.");
         },
       ),
       tool(
@@ -221,12 +245,12 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           const target = live.current.players.find((row: any) => identityHex(row.identity).toLowerCase() === requestedId);
           if (!target || !target.online || target.state !== PlayerState.Alive) return "That player is not currently online and alive. Inspect the game again and choose an available player.";
           if (identityHex(target.identity) === identityHex(player.identity)) return "You cannot attack your own character.";
-          return reportAction(await live.current.actions.attack(target.identity), "Attack started. Choose a stance and inspect the game state to follow the exchange.");
+          return reportAction(await live.current.actions.attack(target.identity), "Attack started. Your character swings automatically; inspect the game state to follow health.");
         },
       ),
       tool(
         "harvest_nearest_tree",
-        "Walk to and harvest the nearest ripe berry tree. Harvesting takes a few seconds and adds berries to your inventory when it completes.",
+        "Walk to and harvest the nearest ripe berry tree. Harvesting takes a few seconds and adds berries to your inventory when it completes, sometimes with a stick you can wield.",
         {},
         [],
         async () => {

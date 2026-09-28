@@ -1,0 +1,146 @@
+{
+  "url": "http://127.0.0.1:5173/",
+  "database": "berigame",
+  "event": {
+    "kind": 0,
+    "damage": 6,
+    "itemId": "stick"
+  },
+  "stepMs": 40,
+  "frames": [
+    {
+      "file": "swing-00.png",
+      "stepMs": 40,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-01.png",
+      "stepMs": 80,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-02.png",
+      "stepMs": 120,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-03.png",
+      "stepMs": 160,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-04.png",
+      "stepMs": 200,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-05.png",
+      "stepMs": 240,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-06.png",
+      "stepMs": 280,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-07.png",
+      "stepMs": 320,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-08.png",
+      "stepMs": 360,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-09.png",
+      "stepMs": 400,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-10.png",
+      "stepMs": 440,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-11.png",
+      "stepMs": 480,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-12.png",
+      "stepMs": 520,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-13.png",
+      "stepMs": 560,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-14.png",
+      "stepMs": 600,
+      "clip": "StickSwing",
+      "cue": "10:action",
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-15.png",
+      "stepMs": 640,
+      "clip": "Idle",
+      "cue": null,
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-16.png",
+      "stepMs": 680,
+      "clip": "Idle",
+      "cue": null,
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-17.png",
+      "stepMs": 720,
+      "clip": "Idle",
+      "cue": null,
+      "weapon": "stick"
+    },
+    {
+      "file": "swing-18.png",
+      "stepMs": 760,
+      "clip": "Idle",
+      "cue": null,
+      "weapon": "stick"
+    }
+  ],
+  "errors": []
+}

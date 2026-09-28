@@ -11,7 +11,6 @@ import ChatBubble from './ChatBubble';
 import { useNameplateVisibility } from './useNameplateVisibility';
 import DamageNumber from './DamageNumber';
 import HealthBar from './HealthBar';
-import StanceBadge from './StanceBadge';
 
 import AdventurerModel, { BASE_MODEL_URL, modelUrl } from './AdventurerModel';
 import { useAppearancePreview } from '../../appearance/store';
@@ -51,6 +50,7 @@ const PlayerAvatar = ({ row, isSelf, chatText, chatTick, currentTick, setPlayerR
   const motion = useTileMotion(row.x, row.z, row.facing, groupRef);
   const cue = useCombatFxStore((s) => s.cues[hex]);
   const floating = useCombatFxStore((s) => s.numbers[hex]);
+  const found = useCombatFxStore((s) => s.finds[hex]);
   const transient = useRef<AnimationCue | null>(null);
   transient.current = cue ?? null;
   const dead = row.state === PlayerState.Dead;
@@ -70,15 +70,15 @@ const PlayerAvatar = ({ row, isSelf, chatText, chatTick, currentTick, setPlayerR
     <group ref={groupRef} onClick={onClick}>
       <mesh position={[0, 1.05, 0]} visible={false}><boxGeometry args={[0.9, 2.1, 0.8]} /><meshBasicMaterial /></mesh>
       {!dead && <HealthBar playerPosition={origin} health={row.hp} maxHealth={row.maxHp} yOffset={2.45} isOwnPlayer={isSelf} />}
-      {!dead && <StanceBadge stance={row.stance} fightState={row.fightState} yOffset={3.05} />}
       <Html zIndexRange={[3,0]} center position={[0,2.63,0]} style={{ pointerEvents:'none' }}>
         <span ref={nameRef} data-player-name={hex} className={`adventurer-name ${isSelf ? 'self' : targeted ? 'targeted' : ''}`}>{isSelf ? 'You' : row.name}{targeted ? ' · Target' : ''}</span>
       </Html>
-      {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} appearAt={floating.at + floating.delayMs} />}
-      {showChat && <ChatBubble playerPosition={origin} yOffset={3.65} chatMessage={chatText} />}
+      {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} itemId={floating.itemId} appearAt={floating.at + floating.delayMs} />}
+      {found && <DamageNumber key={`find-${hex}-${found.seq}`} playerPosition={origin} yOffset={1.8} kind={found.kind} text={found.text} itemId={found.itemId} appearAt={found.at + found.delayMs} />}
+      {showChat && <ChatBubble playerPosition={origin} yOffset={3.0} chatMessage={chatText} />}
       <Suspense fallback={<mesh position={[0,1,0]}><capsuleGeometry args={[.25,1,4,6]} /><meshStandardMaterial color="#42699c" /></mesh>}>
-        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} stance={row.stance} motion={motion} transient={transient} />}>
-          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} stance={row.stance} motion={motion} transient={transient} />
+        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} motion={motion} transient={transient} />}>
+          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} motion={motion} transient={transient} />
         </HairBoundary>
       </Suspense>
       <mesh position={[0, 0.016, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[1, 0.65, 1]}>

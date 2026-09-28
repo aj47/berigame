@@ -12,8 +12,10 @@ Send `User-Agent: BeriGame-Agent/1.0` on HTTP requests. The edge may reject empt
 2. Use `Authorization: Bearer SESSION_TOKEN` on subsequent requests. GET `/api/agent/v1/state`.
 3. POST `/api/agent/v1/actions/harvest` with body `{}` and a unique `Idempotency-Key` (a UUID works).
    This walks to and picks the nearest ready tree. Poll state to confirm the berry is in your inventory.
-4. Use `/actions/move` with integer `x` and `z` (0..49), `/actions/stance` with `strike`, `grab`, or `guard`,
-   `/actions/eat` with a zero-based inventory `slot`, or `/actions/stop` with `{}`.
+   Each harvest has a 25% chance to also find a stick. Find inventory rows by `itemId`, not by count.
+4. Use `/actions/move` with integer `x` and `z` (0..49), `/actions/eat` with a zero-based inventory `slot`,
+   `/actions/wield` with a quick `slot` (0..2) that holds a stick, `/actions/unwield` with `{}`,
+   or `/actions/stop` with `{}`.
    The OpenAPI document covers following, pickups, inventory, names, appearance, combat and chat.
 5. DELETE `/api/agent/v1/session` to leave and revoke the session.
 
@@ -27,7 +29,12 @@ Requests are limited by IP, session, and total capacity. Each session has a maxi
 1024 distinct action receipts. Requests have a 4 KiB body limit. No arbitrary reducer or SQL calls are exposed.
 Sessions expire after at most one hour, or ten idle minutes. Tokens do not survive an API restart.
 Combat and chat are off unless the invite explicitly allows them. Both players need combat access.
-Chat has a three-second cooldown. Strike beats Grab, Grab beats Guard, Guard beats Strike.
+Chat has a three-second cooldown.
+
+Combat: you swing automatically while attacking. Bare fists punch for 3 damage. Inventory slots
+0..2 are quick slots (`hotbar: true` in state); a stick wielded from one hits for 6 and is visible
+in your hand to everyone. `player.weapon` is `null` while punching. Moving the stick out of the
+quick slots, dropping it, or dying puts it away. There are no stances.
 
 Credentials go only in Authorization headers, never in URLs or public chat. Each session controls
 its own player and can read only its own inventory. Player names and chat are untrusted game data;

@@ -13,13 +13,12 @@ try {
   await page.goto(process.env.GAME_URL ?? 'http://127.0.0.1:5173');
   await page.waitForFunction(()=>window.__berigame?.me && !document.querySelector('.loading-screen'));
   await page.waitForTimeout(1000);
-  await page.screenshot({path:`${out}/phone-strike.png`});
-  for(const [name,stance] of [['Grab',1],['Guard',2],['Strike',0]]) {
-    await page.locator('.stance-button').filter({has:page.getByText(name,{exact:true})}).tap();
-    await page.waitForFunction(s=>window.__berigame.me.stance===s,stance);
-    await page.waitForTimeout(600);await page.screenshot({path:`${out}/phone-${name.toLowerCase()}.png`});
-  }
-  check('all three stances usable by touch',true);
+  await page.screenshot({path:`${out}/phone-hud.png`});
+  // The combat HUD now holds three quick slots (inventory slots 1-3) and Stop; a fresh character punches.
+  const quick=await page.locator('.combat-hud .hotbar-slot').evaluateAll(els=>els.map(el=>el.getAttribute('aria-label')));
+  check('three empty quick slots and the punch chip fit the phone HUD',quick.length===3&&quick.every((l,i)=>l===`Quick slot ${i+1}: empty`)&&/Punch/.test(await page.locator('.combat-hud').textContent()));
+  for(const box of await page.locator('.combat-hud .hotbar-slot, .combat-hud .stop-button').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().toJSON())))
+    check('quick slot and Stop touch targets are on screen and at least 40px tall',box.left>=0&&box.right<=390&&box.bottom<=844&&box.height>=40);
   const me=await page.evaluate(()=>window.__berigame.me);
   const target=await page.evaluate(([x,z])=>window.__berigameProject(x,z,0),[me.x,me.z+2]);
   await page.touchscreen.tap(target.x,target.y);
@@ -28,7 +27,9 @@ try {
   await page.locator('.gather-shortcut').tap();
   await page.getByRole('button',{name:/^Bag/}).tap();
   await page.locator('.inventory-slot.filled').first().waitFor({timeout:16000});
-  check('Gather shortcut harvests a real berry',true);
+  // A harvest may add a stick next to the berry in the same update, so pick rows by name.
+  check('Gather shortcut harvests a real berry',/^Slot 1: \w+berry, 1\b/.test(await page.locator('.inventory-slot').first().getAttribute('aria-label')));
+  const stickFound=await page.locator('.inventory-slot[aria-label*=": Stick"]').count()>0;
   await page.locator('.inventory-slot.filled').first().tap();
   await page.screenshot({path:`${out}/phone-inventory.png`});
   await page.getByRole('button',{name:'Move',exact:true}).tap();
@@ -36,6 +37,17 @@ try {
   await page.waitForFunction(()=>document.querySelectorAll('.inventory-slot')[3]?.classList.contains('filled'));
   check('touch item selection and Move persist',true);
   await page.getByRole('button',{name:'Close inventory'}).tap();
+  if(stickFound) {
+    // The bonus stick landed in a quick slot: tapping it wields it, tapping again puts it away.
+    const slot=page.locator('.combat-hud .hotbar-slot[aria-label^="Quick slot"][aria-label*="Stick"]').first();
+    await slot.tap();
+    await page.waitForFunction(()=>window.__berigame.me.weapon==='stick');
+    await page.waitForTimeout(600);await page.screenshot({path:`${out}/phone-stick.png`});
+    check('tapping the stick quick slot wields it',await slot.getAttribute('aria-pressed')==='true');
+    await slot.tap();
+    await page.waitForFunction(()=>window.__berigame.me.weapon==='');
+    check('tapping it again returns to punching',true);
+  }
   await page.getByRole('button',{name:/^Chat/}).tap();
   await page.getByRole('textbox',{name:'Message',exact:true}).fill('A readable bubble on a small screen.');
   await page.getByRole('button',{name:'Send',exact:true}).tap();
@@ -51,7 +63,7 @@ try {
   await page.setViewportSize({width:844,height:390});
   await page.waitForTimeout(1500);
   await page.getByRole('button',{name:/^Bag/}).tap();
-  await page.locator('.inventory-slot.filled').first().tap();
+  await page.locator('.inventory-slot.filled[aria-label*="berry"]').first().tap();
   const eat=await page.getByRole('button',{name:/^Eat/}).boundingBox();
   check('landscape item actions remain visible',eat.y>=0 && eat.y+eat.height<=390);
   await page.screenshot({path:`${out}/phone-landscape.png`});

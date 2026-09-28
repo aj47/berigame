@@ -2,14 +2,17 @@ import React, { memo, useEffect, useRef, useState } from "react";
 import ChatBox from "./ChatBox";
 import Inventory from "./Inventory";
 import AppearancePanel from "./AppearancePanel";
-import StanceHud, { isTyping, STANCE_IMAGES } from "./StanceHud";
+import CombatHud from "./CombatHud";
+import { PUNCH_ICON } from "./itemUi";
+import { isTyping } from "./keyboard";
 import Toast from "./Toast";
 import GatherShortcut from "./GatherShortcut";
 import TickDebug from "./TickDebug";
-import { Stance } from "@sim";
+import { PUNCH_DAMAGE, STICK_ITEM_ID, getItemDef } from "@sim";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 
 type Panel = "inventory" | "chat" | "help" | "appearance" | null;
+const stick = getItemDef(STICK_ITEM_ID);
 const UIComponents = memo(() => {
   const [panel, setPanel] = useState<Panel>(null);
   const toolbar = useRef<HTMLElement>(null);
@@ -114,7 +117,7 @@ const UIComponents = memo(() => {
           <header className="panel-heading">
             <div>
               <span className="eyebrow">An adventurer’s field guide</span>
-              <h2>Small moves. Smart reads.</h2>
+              <h2>Gather. Arm up. Hold your ground.</h2>
             </div>
             <button
               className="close-button"
@@ -143,26 +146,30 @@ const UIComponents = memo(() => {
               bag, select a berry, then Eat to heal.
             </li>
             <li>
-              <strong>Read your opponent.</strong> Select another adventurer and
-              choose Attack. You approach and attack automatically in range.
+              <strong>Pick your fights.</strong> Select another adventurer and
+              choose Attack. You approach and swing automatically in range.
             </li>
             <li>
-              <strong>Choose your answer.</strong> Change stance during the
-              fight. Matching stances clash; the winning stance gains the upper
-              hand.
+              <strong>Find a better weapon.</strong> You punch by default.
+              Harvesting a berry tree can turn up a stick — keep it in quick
+              slot 1, 2 or 3 and press its key to wield it. It hits harder, and
+              everyone can see it in your hand.
             </li>
           </ol>
           <div
-            className="rps-guide"
-            aria-label="Strike beats Grab. Grab beats Guard. Guard beats Strike."
+            className="weapon-guide"
+            aria-label={`Punch deals ${PUNCH_DAMAGE} damage. A wielded stick deals ${stick?.weaponDamage ?? 0} damage.`}
           >
-            {[Stance.Strike, Stance.Grab, Stance.Guard].map((stance, index) => (
-              <div key={stance}>
-                <img src={STANCE_IMAGES[stance]} alt="" />
-                <strong>{["Strike", "Grab", "Guard"][index]}</strong>
-                <span>beats {["Grab", "Guard", "Strike"][index]}</span>
-              </div>
-            ))}
+            <div>
+              <img src={PUNCH_ICON} alt="" />
+              <strong>Punch</strong>
+              <span>{PUNCH_DAMAGE} damage · always ready</span>
+            </div>
+            <div>
+              <img src={stick?.icon} alt="" />
+              <strong>{stick?.name ?? "Stick"}</strong>
+              <span>{stick?.weaponDamage ?? 0} damage · found while harvesting</span>
+            </div>
           </div>
           <p>
             <strong>Need space?</strong> Choose a new ground tile to move, or
@@ -170,7 +177,8 @@ const UIComponents = memo(() => {
             same abilities.
           </p>
           <p className="fine-print">
-            Keyboard shortcuts are optional: 1 / 2 / 3 choose a stance, Esc
+            Keyboard shortcuts are optional: 1 / 2 / 3 use your quick slots
+            (berries there are eaten, a stick is wielded or put away), Esc
             stops, I opens your bag, Enter opens chat. Every action also has an
             on-screen control.
           </p>
@@ -179,7 +187,7 @@ const UIComponents = memo(() => {
           </a>
         </section>
       )}
-      <StanceHud />
+      <CombatHud quickKeysEnabled={panel !== "appearance"} />
       <Toast />
       {import.meta.env.DEV && <TickDebug />}
     </div>

@@ -39,6 +39,45 @@ The deployment computer may use `.spacetime-data/tools/spacetimedb-cli` if
 `spacetime` is not on PATH. Never use `--delete-data` to resolve a schema conflict.
 Use a data-preserving migration and regenerate frontend bindings when required.
 
+### Breaking schema publishes (the punch/stick quick-slot release)
+
+A schema change that only adds or removes reducers, or adds a table, publishes
+with the command above and keeps everyone connected. The quick-slot combat release
+is not like that. It replaced rock-paper-scissors stances with punch/stick combat
+and changed two tables:
+
+- `player` gained a `weapon` column, appended at the end with default `''`.
+- The `combat_event` event table was reshaped. The four stance and state columns
+  are gone, and `item_id` was added.
+
+SpacetimeDB auto-migrates both changes and keeps all rows. It still classifies
+them as breaking for connected clients. Publish them with `break-clients` added
+to `--yes`. Keep `--delete-data=never`, and **never delete data**:
+
+```sh
+spacetime --version   # the flag below needs a CLI that supports break-clients (2.10.1 does)
+spacetime --config-path .spacetime-data/deploy-beta/cli.toml publish \
+  --server maincloud --module-path spacetimedb --delete-data=never \
+  --yes=remote,skip-login,break-clients berigame-beta
+npm run beta:deploy   # immediately afterwards
+```
+
+- **Everyone is disconnected.** The publish disconnects every browser and every
+  agent session. The Worker drops its API sessions once their upstream socket
+  fails, so agents must redeem new invites.
+- **Deploy the Worker and static bundle right after.** Old bundles decode rows
+  by column position. Until `beta:deploy` finishes, the Worker and any cached
+  page read the new `player` and `combat_event` rows misaligned. Publish when
+  few people are playing.
+- **Players must reload the page** after the deploy to pick up the new bindings.
+- **Agent clients change too.** The agent API moves to version 1.1.0, and
+  `/actions/stance` returns 404. Agents use `/actions/wield` and
+  `/actions/unwield` instead.
+- **The retired columns stay on purpose.** `player.stance`, `fight_state`,
+  `last_exchange_tick` and `out_of_range_ticks` remain in the table. Removing or
+  reordering `player` columns would need a manual migration. The module writes
+  0 to them and nothing reads them. Do not "clean them up" with `--delete-data`.
+
 ### First deployment credentials
 
 The initial deployment stores credentials with mode 0600 beneath the ignored

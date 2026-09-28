@@ -1,5 +1,7 @@
 import { ApiError } from './portable';
-import { GRID_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, validAppearance } from '../../shared/sim';
+import {
+  GRID_SIZE, HOTBAR_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, PUNCH_DAMAGE, STICK_DROP_CHANCE, STICK_ITEM_ID, getItemDef, validAppearance,
+} from '../../shared/sim';
 
 type Field = { type: 'integer'; minimum: number; maximum: number } | { type: 'string'; minLength: number; maxLength: number; pattern?: string; enum?: string[] };
 type Action = { description: string; properties: Record<string, Field>; required: string[]; scope?: 'combat' | 'chat' };
@@ -7,13 +9,17 @@ const integer = (minimum: number, maximum: number): Field => ({ type: 'integer',
 const text = (minLength: number, maxLength: number, pattern?: string): Field => ({ type: 'string', minLength, maxLength, ...(pattern ? { pattern } : {}) });
 const playerId = text(64, 64, '^[0-9a-fA-F]{64}$');
 const slot = integer(0, INVENTORY_SIZE - 1);
+const hotbarSlot = integer(0, HOTBAR_SIZE - 1);
+const stickDamage = getItemDef(STICK_ITEM_ID)!.weaponDamage;
+const stickChance = `${Math.round(STICK_DROP_CHANCE * 100)}%`;
 export const ACTIONS: Record<string, Action> = {
   move: { description: 'Walk to a tile. The server paths around obstacles.', properties: { x: integer(0, GRID_SIZE - 1), z: integer(0, GRID_SIZE - 1) }, required: ['x', 'z'] },
-  stance: { description: 'Choose strike, grab, or guard. Strike beats grab, grab beats guard, guard beats strike.', properties: { stance: { type: 'string', minLength: 4, maxLength: 6, enum: ['strike', 'grab', 'guard'] } }, required: ['stance'] },
-  harvest: { description: 'Walk to and harvest a tree, or the nearest ready tree when treeId is omitted. Inspect state to confirm completion.', properties: { treeId: integer(1, 4294967295) }, required: [] },
+  harvest: { description: `Walk to and harvest a tree, or the nearest ready tree when treeId is omitted. Each harvest gives one berry and has a ${stickChance} chance to also find a stick (a weapon). Inspect state to confirm completion.`, properties: { treeId: integer(1, 4294967295) }, required: [] },
   eat: { description: 'Eat one berry in your inventory slot.', properties: { slot }, required: ['slot'] },
+  wield: { description: `Wield the weapon in quick slot 0-${HOTBAR_SIZE - 1} (inventory slots 0-${HOTBAR_SIZE - 1}). A stick deals ${stickDamage} damage per swing instead of the ${PUNCH_DAMAGE}-damage punch and is visible in your hand. Moving it out of the quick slots, dropping it, or dying unwields it.`, properties: { slot: hotbarSlot }, required: ['slot'] },
+  unwield: { description: `Put your weapon away and punch for ${PUNCH_DAMAGE} damage.`, properties: {}, required: [] },
   stop: { description: 'Stop movement, harvesting, following, and combat.', properties: {}, required: [] },
-  attack: { description: 'Start combat with an online player who also has combat access.', properties: { playerId }, required: ['playerId'], scope: 'combat' },
+  attack: { description: `Start combat with an online player who also has combat access. You swing every few ticks: a punch deals ${PUNCH_DAMAGE} damage, a wielded stick ${stickDamage}.`, properties: { playerId }, required: ['playerId'], scope: 'combat' },
   follow: { description: 'Follow an online player.', properties: { playerId }, required: ['playerId'] },
   pickup: { description: 'Walk to and pick up a ground item. Use its string ID from state.', properties: { id: text(1, 20, '^[0-9]+$') }, required: ['id'] },
   drop: { description: 'Drop items from your own inventory.', properties: { slot, quantity: integer(1, 99) }, required: ['slot', 'quantity'] },
@@ -58,7 +64,7 @@ const sessionResponse = { description: 'Bearer token shown once. Never place it 
   permissions, pollIntervalMs: { type: 'integer', const: 1000 },
 }, ['token', 'sessionId', 'playerId', 'expiresAt', 'permissions', 'pollIntervalMs'])) };
 export const openapi = {
-  openapi: '3.1.0', info: { title: 'BeriGame Agent API', version: '1.0.0' }, servers: [{ url: '/api/agent/v1' }],
+  openapi: '3.1.0', info: { title: 'BeriGame Agent API', version: '1.1.0' }, servers: [{ url: '/api/agent/v1' }],
   components: { securitySchemes: { session: { type: 'http', scheme: 'bearer', description: 'Session token from POST /sessions. Invitations are accepted only at POST /sessions.' }, invite: { type: 'http', scheme: 'bearer', description: 'Single-use invite code provided by the world operator.' } } },
   paths: {
     '/sessions': { post: { operationId: 'join_game', summary: 'Redeem an invite for a player session', security: [{ invite: [] }], requestBody: { required: true, content: json(object({}, [])) }, responses: { '201': sessionResponse, '401': error, '429': error, '503': error } } },
