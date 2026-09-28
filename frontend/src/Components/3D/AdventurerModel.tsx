@@ -37,7 +37,7 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
   const animator=useMemo(()=>new AvatarAnimator(model,clipSet,{seed}),[model,clipSet,seed]);
   useEffect(()=>()=>animator.dispose(),[animator]);
   // Reused every frame: nothing is allocated per avatar per frame.
-  const input=useRef<AnimatorInput>({now:0,dt:0,dead:false,cue:null,moving:false,speed:0,holdMs:0,x:0,z:0,yaw:0});
+  const input=useRef<AnimatorInput>({now:0,dt:0,dead:false,cue:null,moving:false,speed:0,holdMs:0,x:0,z:0,yaw:0,weapon:''});
   const revision=useRef(-1);
   const colors=paletteKey(appearance);
   useLayoutEffect(()=>{
@@ -49,8 +49,14 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
   },[model,base,colors,appearance.hairStyle,identity,url]);
   useLayoutEffect(()=>{
     model.userData.berigameAvatar={...model.userData.berigameAvatar,weapon};
+    const armed=weapon===STICK_ITEM_ID;
+    // Baked rigs skin the stick into the body on the PropR bone (rest scale 0): show it by
+    // scaling the bone, with no extra mesh or draw call. No clip keys PropR.
+    const prop=model.getObjectByName('PropR');
+    if(prop){prop.scale.setScalar(armed?1:0);return ()=>{prop.scale.setScalar(0);};}
+    // Older rigs: a separate stick mesh in the right hand.
     const hand=model.getObjectByName('HandR');
-    if(weapon!==STICK_ITEM_ID||!hand)return;
+    if(!armed||!hand)return;
     // Shared geometry and material, so nothing is disposed when the stick is put away.
     const stick=new Mesh(stickGeometry(),stickMaterial());
     stick.name='HeldStick';
@@ -74,6 +80,7 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
     frame.speed=travel.speed??0;
     frame.holdMs=travel.holdMs??0;
     frame.dt=delta;
+    frame.weapon=weapon;
     // The avatar's group (PlayerAvatar) carries its ground position and facing.
     const group=model.parent;
     if(group){frame.x=group.position.x;frame.z=group.position.z;frame.yaw=group.rotation.y;}

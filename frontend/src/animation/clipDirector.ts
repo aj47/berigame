@@ -84,11 +84,11 @@ export const DEFEAT_DELAY_CAP_MS = 500;
  */
 export const DEFEAT_AFTER_HIT_S = 0.25;
 
-const COMBAT: ReadonlySet<Clip> = new Set<Clip>(['Strike', STICK_SWING_CLIP, 'Hit', 'Defeat']);
+const COMBAT: ReadonlySet<Clip> = new Set<Clip>(['Strike', STICK_SWING_CLIP, 'Hit', 'HitHeavy', 'Defeat']);
 
 export function fadeSeconds(from: Clip, to: Clip): number {
   switch (to) {
-    case 'Hit': return FADE.hit;
+    case 'Hit': case 'HitHeavy': return FADE.hit;
     case 'Strike': case STICK_SWING_CLIP: return FADE.attack;
     case 'Defeat': return FADE.defeat;
     case 'Stop': return FADE.stop;
@@ -167,6 +167,7 @@ export class ClipDirector {
     const { has } = this.options;
     if (has(clip)) return clip;
     if (clip === STICK_SWING_CLIP && has('Strike')) return 'Strike';
+    if (clip === 'HitHeavy' && has('Hit')) return 'Hit';
     return 'Idle';
   }
 
@@ -199,7 +200,7 @@ export class ClipDirector {
 
     if (clip !== this.targetClip || seq !== this.targetSeq || role !== this.targetRole) {
       const previous = this.targetClip === '' ? null : this.targetClip;
-      if (clip === 'Defeat' && previous === 'Hit') start = DEFEAT_AFTER_HIT_S;
+      if (clip === 'Defeat' && (previous === 'Hit' || previous === 'HitHeavy')) start = DEFEAT_AFTER_HIT_S;
       if (clip === 'Stop') this.stopUntil = now + Math.max(0, this.options.duration('Stop') - FADE.settle) * 1000;
       // Leaving a stride: stand on whichever foot is already forward.
       if (previous === 'Run' && clip !== 'Run') this.stance = this.options.leadStance?.() ?? 0;
@@ -232,7 +233,7 @@ export class ClipDirector {
       // A fading-out Run keeps its last cadence.
       if (layer.clip === 'Run' && running) layer.timeScale = cadence;
       // The killing blow's recoil holds while the fall takes over, instead of recovering towards upright.
-      else if (layer.clip === 'Hit' && falling) layer.timeScale = 0;
+      else if ((layer.clip === 'Hit' || layer.clip === 'HitHeavy') && falling) layer.timeScale = 0;
       if (layer.clip === 'Idle') this.idleWeight += layer.weight;
       else if (layer.clip === 'Run') this.runWeight += layer.weight;
       if (COMBAT.has(layer.clip)) this.combatWeight += layer.weight;

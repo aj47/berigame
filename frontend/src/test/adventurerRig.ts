@@ -46,7 +46,8 @@ export interface AdventurerRig {
   clearance: (p: Vector3, q: Vector3, skip?: string[]) => { distance: number; bone: string };
 }
 
-const RIGHT_HAND = ['HandR', 'FingersR', 'FingerTipsR', 'ThumbR'];
+/** The gripping hand, and the stick skinned in on PropR (it is the stick being measured). */
+const RIGHT_HAND = ['HandR', 'FingersR', 'FingerTipsR', 'ThumbR', 'PropR'];
 
 /** `file` is one of the shipped hair variants in public/models; they share one rig and clip set. */
 export async function loadAdventurerRig(file = 'starter-adventurer.glb'): Promise<AdventurerRig> {

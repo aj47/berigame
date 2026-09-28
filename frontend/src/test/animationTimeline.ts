@@ -21,6 +21,8 @@ export interface Timeline {
   /** Dead from this time (until `aliveFrom`, if set). */
   deadFrom?: number;
   aliveFrom?: number;
+  /** player.weapon from this time on: [ms, weapon] pairs in time order. */
+  weapon?: [number, string][];
 }
 
 export interface Avatar {
@@ -85,6 +87,8 @@ export function play(avatars: Avatar[], timeline: Timeline, fps = 60, onFrame?: 
     input.cue = cueAt(timeline.cues, now);
     input.moving = travel.moving; input.speed = travel.speed; input.holdMs = travel.holdMs;
     input.dt = frame === 0 ? 0 : dtMs / 1000; input.z = travel.z;
+    input.weapon = '';
+    for (const [at, weapon] of timeline.weapon ?? []) if (now >= at) input.weapon = weapon;
     for (const avatar of avatars) {
       avatar.root.position.z = travel.z;
       avatar.animator.update(input);

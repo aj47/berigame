@@ -1,5 +1,5 @@
 import { AnimationClip, AnimationMixer, LoopOnce, LoopRepeat, type AnimationAction, type Bone, type Object3D } from 'three';
-import type { Clip } from './combatPresentation';
+import { ARMED_VARIANT, type Clip } from './combatPresentation';
 import { ClipDirector, type DirectorInput } from './clipDirector';
 import { ProceduralLayer, type LayerInput } from './proceduralLayer';
 import type { AvatarClipSet, Stance } from './stance';
@@ -48,6 +48,8 @@ export interface AnimatorInput extends DirectorInput {
   x: number;
   z: number;
   yaw: number;
+  /** player.weapon: 'stick' plays StickIdle/StickRun in place of Idle/Run when the rig has them. */
+  weapon?: string;
 }
 
 export interface AnimatorOptions {
@@ -69,6 +71,8 @@ export class AvatarAnimator {
   private readonly clips = new Map<string, AnimationClip>();
   private readonly mirrored: Map<string, AnimationClip>;
   private readonly feet: [Object3D | undefined, Object3D | undefined];
+  /** A stick is wielded: Idle and Run play their armed variants. */
+  private armed = false;
   private readonly layerInput: LayerInput = { dt: 0, time: 0, idle: 0, run: 0, combat: 0, swing: 0, defeat: 0, x: 0, z: 0, yaw: 0 };
 
   constructor(model: Object3D, set: AvatarClipSet, options: AnimatorOptions = {}) {
@@ -102,7 +106,9 @@ export class AvatarAnimator {
   }
 
   private action(clip: Clip, mirror: boolean, slot: 0 | 1): AnimationAction | null {
-    const source = (mirror && this.mirrored.get(clip)) || this.clips.get(clip);
+    const variant = this.armed ? ARMED_VARIANT[clip] : undefined;
+    const name = variant && this.clips.has(variant) ? variant : clip;
+    const source = (mirror && this.mirrored.get(name)) || this.clips.get(name);
     return source ? this.mixer.clipAction(slot === 0 ? source : aliasOf(source)) : null;
   }
 
@@ -113,6 +119,24 @@ export class AvatarAnimator {
     // 2. Blend: start, weigh and stop actions.
     const director = this.director;
     director.update(input);
+    const armed = input.weapon === 'stick';
+    if (armed !== this.armed) {
+      this.armed = armed;
+      // Swap playing Idle/Run actions for their (un)armed variant, keeping phase and weight.
+      for (let i = 0; i < director.count; i++) {
+        const layer = director.layers[i];
+        const old = layer.handle as AnimationAction | null;
+        if (!old || !ARMED_VARIANT[layer.clip]) continue;
+        const next = this.action(layer.clip, layer.mirror, layer.slot);
+        if (!next || next === old) continue;
+        next.reset();
+        next.setLoop(LoopRepeat, Infinity);
+        next.time = old.time % next.getClip().duration;
+        next.play();
+        old.stop();
+        layer.handle = next;
+      }
+    }
     for (let i = 0; i < director.endedCount; i++) (director.ended[i] as AnimationAction).stop();
     for (let i = 0; i < director.count; i++) {
       const layer = director.layers[i];

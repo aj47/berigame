@@ -51,8 +51,11 @@ export function dampAngle(current: number, target: number, factor: number): numb
   return current + delta * factor;
 }
 
-/** The baked Run cycle's feet travel ~1.92 units/s at native cadence. Match them to ground speed. */
-export const RUN_NATIVE_SPEED = 1.92;
+/**
+ * The baked Run cycle (0.6 s, build_character.py RUN_SPEED) plants each foot and
+ * slides it back at 3.3 units/s at native cadence. Match it to ground speed.
+ */
+export const RUN_NATIVE_SPEED = 3.3;
 export const runScale = (speed?: number) => Math.max(0.85, Math.min(2.5, (speed ?? 3.33) / RUN_NATIVE_SPEED));
 
 /** How quickly Run's cadence winds down once the body has stopped at its destination. */

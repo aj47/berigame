@@ -67,8 +67,6 @@ describe('procedural layer', () => {
       if (error > worst) { worst = error; where = object.name; }
     });
     expect(worst, where).toBeLessThanOrEqual(1e-5);
-    // No clip binds Neck or Head (pruned): they are exactly at rest again.
-    for (const name of ['Neck', 'Head']) expect(angle(layered.bone(name).quaternion, rig.node(name).quaternion), name).toBeLessThanOrEqual(1e-5);
   }, 60_000);
 
   it('breathes, shifts its weight and glances around while idle, with the feet planted', () => {
@@ -109,10 +107,9 @@ describe('procedural layer', () => {
     });
     expect(Math.max(...swingOffsets)).toBeLessThan(0.5);
     const range = (values: number[]) => Math.max(...values) - Math.min(...values);
-    // Run rocks the chest from side to side; the head keeps about half of it.
+    // Run rocks the chest from side to side; the baked head counter-turn and the layer keep the head steadier.
     expect(range(chestSway)).toBeGreaterThan(8);
     expect(range(headSway)).toBeLessThan(range(chestSway) * 0.6);
-    expect(range(headSway)).toBeGreaterThan(range(chestSway) * 0.4);
   });
 
   it('swings the robe flaps back when setting off and forward when stopping', () => {

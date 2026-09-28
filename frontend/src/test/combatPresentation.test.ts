@@ -28,7 +28,7 @@ describe('attack presentation', () => {
   it('swings a wielded stick with its own chop, landing later', () => {
     const stick = attackPresentation(EventKind.Hit, STICK_ITEM_ID)!;
     expect(stick.attacker).toEqual({ clip: STICK_SWING_CLIP, durationMs: STICK_SWING_MS });
-    expect(stick.defender).toEqual({ clip: 'Hit', durationMs: 400 });
+    expect(stick.defender).toEqual({ clip: 'HitHeavy', durationMs: 550 });
     expect(stick.impactMs).toBe(STICK_SWING_IMPACT_MS);
     expect(stick.impactMs).toBeGreaterThan(PUNCH_ATTACK.impactMs);
     expect(stick.impactMs).toBeLessThan(stick.attacker.durationMs);
@@ -69,7 +69,7 @@ describe('combat fx store', () => {
     push(event(EventKind.Hit, { damage: 6, itemId: STICK_ITEM_ID }));
     const s = useCombatFxStore.getState();
     expect(s.cues[a]).toMatchObject({ clip: STICK_SWING_CLIP, durationMs: STICK_SWING_MS, role: 'action', at: 1000 });
-    expect(s.cues[d]).toMatchObject({ clip: 'Hit', role: 'reaction', at: 1000 + STICK_SWING_IMPACT_MS });
+    expect(s.cues[d]).toMatchObject({ clip: 'HitHeavy', role: 'reaction', at: 1000 + STICK_SWING_IMPACT_MS });
     expect(s.numbers[d]).toMatchObject({ text: '6', itemId: STICK_ITEM_ID, delayMs: STICK_SWING_IMPACT_MS });
     expect(s.numbers[a]).toBeUndefined();
   });

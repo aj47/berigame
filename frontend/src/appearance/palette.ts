@@ -2,8 +2,11 @@ import type { MeshStandardMaterial, Texture } from 'three';
 import { CanvasTexture } from 'three';
 import { HAIR_COLORS, ROBE_COLORS, SKIN_TONES, WRAP_COLORS, type Appearance } from '@sim';
 
-// Matches the Blender atlas contract; PNG rows start at the top.
-const BASE = ['42699C','355780','527DAE','E3D4B2','CABB9C','F0DDB8','C68B55','DFA76E','E9B882','513626','674731','78573B','333743','414451','252B36','BDA16D','34271F','483326','594030','221B18','F5EAD0','8C643E','A87345','273E63'];
+// Matches the Blender atlas contract (build_character.py `palette`); PNG rows start at the top.
+// Cells 12-14 (trousers) were lifted from 333743/414451/252B36 so legs read against the boots.
+const BASE = ['42699C','355780','527DAE','E3D4B2','CABB9C','F0DDB8','C68B55','DFA76E','E9B882','513626','674731','78573B','5E6479','6C7288','4A5064','BDA16D','34271F','483326','594030','221B18','F5EAD0','8C643E','A87345','273E63',
+  // 24-27: the skinned-in stick (leaf, bark, dark bark, cut wood). In no family below, so no appearance tints it.
+  '6AA84F','8A5A33','6E4424','D9B27C'];
 const rgb = (hex: string) => hex.replace('#','').match(/../g)!.map((channel) => parseInt(channel,16));
 export function paletteKey(a: Appearance): string {
   return [a.skinTone,a.hairColor,a.robeColor,a.wrapColor].join(':');
