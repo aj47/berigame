@@ -6,13 +6,19 @@ const DELTAS: ReadonlyArray<readonly [number, number]> = [
   [0, 1], [-1, 0], [0, -1], [1, 0], [-1, 1], [-1, -1], [1, -1], [1, 1],
 ];
 
-function canStep(from: Tile, dx: number, dz: number, blocked: Set<number>): Tile | null {
+/** Extra per-player passability, e.g. the bramble rule. Default: every step allowed. */
+export type EnterRule = (from: Tile, to: Tile) => boolean;
+const allowAll: EnterRule = () => true;
+
+function canStep(from: Tile, dx: number, dz: number, blocked: Set<number>, enter: EnterRule): Tile | null {
   const to = { x: from.x + dx, z: from.z + dz };
-  if (!inBounds(to) || blocked.has(tileKey(to))) return null;
-  // No corner cutting: a diagonal needs both orthogonal neighbours free.
+  if (!inBounds(to) || blocked.has(tileKey(to)) || !enter(from, to)) return null;
+  // No corner cutting: a diagonal needs both orthogonal neighbours free (and enterable).
   if (dx !== 0 && dz !== 0) {
-    if (blocked.has(tileKey({ x: from.x + dx, z: from.z }))) return null;
-    if (blocked.has(tileKey({ x: from.x, z: from.z + dz }))) return null;
+    const a = { x: from.x + dx, z: from.z };
+    const b = { x: from.x, z: from.z + dz };
+    if (blocked.has(tileKey(a)) || !enter(from, a)) return null;
+    if (blocked.has(tileKey(b)) || !enter(from, b)) return null;
   }
   return to;
 }
@@ -22,7 +28,7 @@ function canStep(from: Tile, dx: number, dz: number, blocked: Set<number>): Tile
  * `start` (exclusive) to the first tile satisfying `isGoal`, or null if
  * unreachable. `start` itself satisfying the goal returns [].
  */
-export function bfsPath(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<number>): Tile[] | null {
+export function bfsPath(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<number>, enter: EnterRule = allowAll): Tile[] | null {
   if (isGoal(start)) return [];
   const startKey = tileKey(start);
   const parent = new Int32Array(GRID_SIZE * GRID_SIZE).fill(-1);
@@ -32,7 +38,7 @@ export function bfsPath(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<
   while (head < queue.length) {
     const cur = queue[head++];
     for (const [dx, dz] of DELTAS) {
-      const next = canStep(cur, dx, dz, blocked);
+      const next = canStep(cur, dx, dz, blocked, enter);
       if (!next) continue;
       const k = tileKey(next);
       if (parent[k] !== -1) continue;
@@ -54,8 +60,8 @@ export function bfsPath(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<
 }
 
 /** First tile of the BFS path, or null when already there / unreachable. */
-export function bfsNextStep(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<number>): Tile | null {
-  const path = bfsPath(start, isGoal, blocked);
+export function bfsNextStep(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<number>, enter: EnterRule = allowAll): Tile | null {
+  const path = bfsPath(start, isGoal, blocked, enter);
   if (!path || path.length === 0) return null;
   return path[0];
 }
@@ -73,8 +79,8 @@ export function goalAdjacentTo(target: Tile, blocked: Set<number>, range = 1): (
  * `goal` if reachable, else the reachable tile with the smallest Chebyshev
  * distance to `goal` (ties broken by BFS order, i.e. closest to start).
  */
-export function nearestReachableTile(start: Tile, goal: Tile, blocked: Set<number>): Tile {
-  if (!blocked.has(tileKey(goal)) && bfsPath(start, goalIsTile(goal), blocked)) return goal;
+export function nearestReachableTile(start: Tile, goal: Tile, blocked: Set<number>, enter: EnterRule = allowAll): Tile {
+  if (!blocked.has(tileKey(goal)) && bfsPath(start, goalIsTile(goal), blocked, enter)) return goal;
   const seen = new Set<number>([tileKey(start)]);
   const queue: Tile[] = [start];
   let head = 0;
@@ -83,7 +89,7 @@ export function nearestReachableTile(start: Tile, goal: Tile, blocked: Set<numbe
   while (head < queue.length) {
     const cur = queue[head++];
     for (const [dx, dz] of DELTAS) {
-      const next = canStep(cur, dx, dz, blocked);
+      const next = canStep(cur, dx, dz, blocked, enter);
       if (!next) continue;
       const k = tileKey(next);
       if (seen.has(k)) continue;
@@ -97,4 +103,23 @@ export function nearestReachableTile(start: Tile, goal: Tile, blocked: Set<numbe
     }
   }
   return best;
+}
+
+/** Every tile reachable from `start` (inclusive), for tests and tools. `within` limits the flood. */
+export function reachableTiles(start: Tile, blocked: Set<number>, enter: EnterRule = allowAll, within: (t: Tile) => boolean = () => true): Set<number> {
+  const seen = new Set<number>([tileKey(start)]);
+  const queue: Tile[] = [start];
+  let head = 0;
+  while (head < queue.length) {
+    const cur = queue[head++];
+    for (const [dx, dz] of DELTAS) {
+      const next = canStep(cur, dx, dz, blocked, enter);
+      if (!next || !within(next)) continue;
+      const k = tileKey(next);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      queue.push(next);
+    }
+  }
+  return seen;
 }

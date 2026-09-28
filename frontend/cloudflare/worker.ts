@@ -332,7 +332,10 @@ export class AgentGateway extends DurableObject<Env> {
           await this.ctx.storage.sync(); // Persist the intent before sending a game action.
           let status = 200;
           let body: unknown = { accepted: true, action, idempotencyKey, message: 'Read /state to observe the result.' };
-          try { await deadline(game.action(action, input), 5000); }
+          try {
+            const result = await deadline(game.action(action, input), 5000);
+            if (result) body = { ...(body as object), ...result };
+          }
           catch (error) {
             const safe = error instanceof ApiError ? error : new ApiError(422, 'action_rejected', 'The game rejected this action. Inspect state before trying again.');
             status = safe.status; body = errorBody(safe);

@@ -1,12 +1,17 @@
 import { useFrame } from '@react-three/fiber';
 import React, { useRef } from 'react';
-import { GRID_SIZE, worldToTile, tileToWorld } from '@sim';
+import { BRAMBLE_MESSAGE, GRID_SIZE, HEDGE_RING, SAFE_RADIUS, STICK_ITEM_ID, holdsItem, ringOf, worldToTile, tileToWorld } from '@sim';
 import { useGameActions } from '../spacetime/actions';
+import { useInventoryRows, useMyPlayer } from '../spacetime/hooks';
+import { useToastStore } from '../spacetime/stores/toastStore';
+import { slotsFromRows } from '../Components/itemUi';
 import { useUserInputStore } from '../store';
 
 /** The terrain exactly covers the server grid; its coastline never hides walkable tiles. */
 const GroundPlane = () => {
   const { setTarget } = useGameActions();
+  const me = useMyPlayer();
+  const rows = useInventoryRows();
   const marker = useRef<any>(null);
   const clickedAt = useRef(-Infinity);
   useFrame(() => {
@@ -32,6 +37,11 @@ const GroundPlane = () => {
     marker.current.position.set(x, 0.045, z);
     clickedAt.current = performance.now();
     setTarget(tile.x, tile.z);
+    // Without a stick the server stops you at the hedge; say why.
+    if (me && ringOf(me) < HEDGE_RING && ringOf(tile) >= HEDGE_RING
+      && !holdsItem(slotsFromRows(rows), me.weapon, STICK_ITEM_ID)) {
+      useToastStore.getState().show(BRAMBLE_MESSAGE);
+    }
   };
   return <>
     <mesh name="land_mesh" rotation={[-Math.PI / 2, 0, 0]} position={[-0.5, 0, -0.5]} onClick={onClick}>
@@ -49,7 +59,12 @@ const GroundPlane = () => {
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0]}>
       <circleGeometry args={[3.15, 12]} /><meshStandardMaterial color="#c4b485" roughness={1} />
     </mesh>
-    {[[0, -9, 1.8, 16], [8, 0, 16, 1.8], [-8, 0, 16, 1.8], [0, 8, 1.8, 16]].map(([x,z,w,h],i) => <mesh key={i} rotation={[-Math.PI / 2,0,0]} position={[x,0.004,z]}>
+    {/* The safe ring (no fighting): a pale sand border around the 5x5 centre tiles. */}
+    <mesh rotation={[-Math.PI / 2, 0, Math.PI / 4]} position={[0, 0.008, 0]}>
+      <ringGeometry args={[(SAFE_RADIUS + 0.5) * Math.SQRT2 - 0.22, (SAFE_RADIUS + 0.5) * Math.SQRT2, 4, 1]} /><meshStandardMaterial color="#dccb98" roughness={1} />
+    </mesh>
+    {/* All four paths run from the centre to the hedge crossings at 17 tiles. */}
+    {[[0, -9, 1.8, 16], [8.5, 0, 17, 1.8], [-8.5, 0, 17, 1.8], [0, 8.5, 1.8, 17]].map(([x,z,w,h],i) => <mesh key={i} rotation={[-Math.PI / 2,0,0]} position={[x,0.004,z]}>
       <planeGeometry args={[w,h]} /><meshStandardMaterial color="#b2a47b" roughness={1} />
     </mesh>)}
   </>;

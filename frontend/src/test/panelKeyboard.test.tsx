@@ -10,7 +10,7 @@ vi.mock('../Components/AppearancePanel', () => ({ default: () => null }));
 vi.mock('../Components/CombatHud', () => ({ default: () => <button aria-label="Quick slot 1: Blueberry">Blueberry</button> }));
 vi.mock('../Components/keyboard', () => ({ isTyping: (target: any) => /INPUT|TEXTAREA|SELECT/.test(target?.tagName) }));
 vi.mock('../Components/Toast', () => ({ default: () => null }));
-vi.mock('../Components/GatherShortcut', () => ({ default: () => null }));
+vi.mock('../Components/GoalChip', () => ({ default: () => null }));
 vi.mock('../Components/TickDebug', () => ({ default: () => null }));
 afterEach(cleanup);
 

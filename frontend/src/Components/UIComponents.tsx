@@ -6,7 +6,7 @@ import CombatHud from "./CombatHud";
 import { PUNCH_ICON } from "./itemUi";
 import { isTyping } from "./keyboard";
 import Toast from "./Toast";
-import GatherShortcut from "./GatherShortcut";
+import GoalChip from "./GoalChip";
 import TickDebug from "./TickDebug";
 import { PUNCH_DAMAGE, STICK_ITEM_ID, getItemDef } from "@sim";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
@@ -105,10 +105,7 @@ const UIComponents = memo(() => {
           Agent
         </a>
       </nav>
-      <GatherShortcut
-        visible={panel === null}
-        solo={players.filter((player) => player.online).length <= 1}
-      />
+      <GoalChip visible={panel === null} />
       <Inventory open={panel === "inventory"} onClose={close} />
       <ChatBox open={panel === "chat"} onClose={close} />
       <AppearancePanel open={panel === "appearance"} onClose={close} />
@@ -142,18 +139,28 @@ const UIComponents = memo(() => {
             </li>
             <li>
               <strong>Gather supplies.</strong> Select a berry tree and choose
-              Harvest, or use the Gather shortcut to find a ripe tree. Open your
-              bag, select a berry, then Eat to heal.
+              Harvest, or tap the goal at the top left. If a tree is regrowing
+              or taken, you wait beside it and pick it when it ripens. Tap a
+              berry in your quick bar to eat it and heal.
+            </li>
+            <li>
+              <strong>Find a sturdy stick.</strong> Harvests sometimes turn up
+              a sturdy stick (about 1 in 4). A stick lets you push through the
+              brambles. Keep it in quick slot 1, 2 or 3 and press its key to
+              wield it: it hits twice as hard as a punch.
+            </li>
+            <li>
+              <strong>Push through the brambles.</strong> A thorny hedge rings
+              the Grove. You need a stick to push out to the Coast, but you can
+              always walk back in without one. Dying drops your bag, stick
+              included.
             </li>
             <li>
               <strong>Pick your fights.</strong> Select another adventurer and
               choose Attack. You approach and swing automatically in range.
-            </li>
-            <li>
-              <strong>Find a better weapon.</strong> You punch by default.
-              Harvesting a berry tree can turn up a stick — keep it in quick
-              slot 1, 2 or 3 and press its key to wield it. It hits harder, and
-              everyone can see it in your hand.
+              Nobody can fight in the sandy safe ring at the centre, and you
+              are safe for a moment after respawning, and as a newcomer until
+              you find a stick, attack, or 3 minutes pass.
             </li>
           </ol>
           <div

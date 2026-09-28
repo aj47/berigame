@@ -1,0 +1,250 @@
+/**
+ * The "First Day" goal chip, as one pure function shared by the browser chip
+ * and the agent gateway's `state.goal`.
+ *
+ * Steps come from live state plus a remembered done set, so eating or losing
+ * the stick never un-completes a step during First Day. After First Day, a
+ * player holding no stick (a death drop) sees "find a stick" and "reach the
+ * Coast" again: they respawned in the Grove and need a new key.
+ */
+import { areaOf, coastPastCrossing, HEDGE_CROSSINGS, holdsItem, isNewcomer } from './areas';
+import { HARVEST_TICKS, HOTBAR_SIZE, MELEE_RANGE, MOVEMENT_STEPS_PER_TICK, TICK_MS, TREE_COOLDOWN_TICKS } from './constants';
+import { chebyshev } from './grid';
+import { getItemDef, STICK_ITEM_ID } from './items';
+import { Pending, PlayerState, type Slot, type Tile } from './types';
+
+export type GoalStepId = 'pick-berry' | 'eat-berry' | 'find-stick' | 'wield-stick' | 'reach-coast';
+/** Done-set marker recorded once all First Day steps are complete. */
+export const FIRST_DAY_DONE = 'first-day';
+export type GoalDoneId = GoalStepId | typeof FIRST_DAY_DONE;
+
+export const GOAL_STEPS: readonly GoalStepId[] = ['pick-berry', 'eat-berry', 'find-stick', 'wield-stick', 'reach-coast'];
+
+/** One claim cycle of a tree: the harvest plus its regrowth. */
+export const CLAIM_CYCLE_TICKS = HARVEST_TICKS + TREE_COOLDOWN_TICKS;
+
+export type GoalAction =
+  | { kind: 'harvest'; treeId: number }
+  | { kind: 'eat'; slot: number }
+  | { kind: 'wield'; slot: number }
+  | { kind: 'move'; x: number; z: number };
+
+export interface Goal {
+  id: GoalStepId;
+  text: string;
+  hint: string;
+  /** What tapping the chip does; null while busy (walking, waiting, harvesting). */
+  action: GoalAction | null;
+  /** Set while parked next to a claimed or regrowing tree. */
+  waiting?: { treeId: number; ripeInTicks: number };
+}
+
+export interface GoalPlayer extends Tile {
+  hp: number;
+  maxHp: number;
+  state: number;
+  weapon: string;
+  pending: number;
+  pendingId: number | bigint;
+  harvestTreeId: number;
+  harvestEndTick: number;
+  respawnTick: number;
+  lastInputTick: number;
+  online?: boolean;
+}
+
+export interface GoalTree extends Tile {
+  id: number;
+  itemId: string;
+  cooldownUntilTick: number;
+  /** Anything truthy while someone is harvesting it. */
+  harvester?: unknown;
+}
+
+export interface GoalInput {
+  me: GoalPlayer;
+  slots: readonly Slot[];
+  trees: readonly GoalTree[];
+  /** Everyone else (used to estimate queues at trees). */
+  others: readonly GoalPlayer[];
+  tick: number;
+  /** Whether this player may fight; without it the wield step is skipped. */
+  canFight: boolean;
+  done: readonly string[];
+  /** Events seen by the client: a finished harvest or an eat by this player. */
+  seen?: { harvested?: boolean; ate?: boolean };
+}
+
+export interface GoalResult {
+  goal: Goal | null;
+  /** The updated done set, to remember. */
+  done: GoalDoneId[];
+}
+
+function edibleSlot(slots: readonly Slot[]): number {
+  let best = -1;
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i];
+    if (!s || (getItemDef(s.itemId)?.healthRestore ?? 0) <= 0) continue;
+    if (best === -1 || (i < HOTBAR_SIZE && best >= HOTBAR_SIZE)) best = i;
+    if (i < HOTBAR_SIZE) break;
+  }
+  return best;
+}
+
+function sameNum(a: number | bigint, b: number): boolean {
+  return Number(a) === b;
+}
+
+/** Tick at which `tree` is next free to claim, ignoring waiters. */
+export function treeReadyTick(tree: GoalTree, players: readonly GoalPlayer[], tick: number): number {
+  if (tree.harvester) {
+    const h = players.find((p) => p.harvestTreeId === tree.id);
+    const end = h ? Math.max(h.harvestEndTick, tick) : tick + HARVEST_TICKS;
+    return end + TREE_COOLDOWN_TICKS;
+  }
+  return Math.max(tree.cooldownUntilTick, tick);
+}
+
+/** Estimated tick at which `me` could claim `tree`: max(ripening, arrival) + one cycle per waiter ahead. */
+export function claimEstimate(me: GoalPlayer, tree: GoalTree, others: readonly GoalPlayer[], tick: number): number {
+  const ready = treeReadyTick(tree, [me, ...others], tick);
+  const walk = Math.ceil(Math.max(0, chebyshev(me, tree) - MELEE_RANGE) / MOVEMENT_STEPS_PER_TICK);
+  const meWaiting = me.pending === Pending.Harvest && sameNum(me.pendingId, tree.id);
+  const meNew = isNewcomer(me, tick);
+  let ahead = 0;
+  for (const o of others) {
+    if (o.online === false || o.state !== PlayerState.Alive) continue;
+    if (o.pending !== Pending.Harvest || !sameNum(o.pendingId, tree.id)) continue;
+    const oNew = isNewcomer(o, tick);
+    if (oNew && !meNew) ahead++;
+    else if (oNew === meNew && (!meWaiting || o.lastInputTick <= me.lastInputTick)) ahead++;
+  }
+  return Math.max(ready, tick + walk) + ahead * CLAIM_CYCLE_TICKS;
+}
+
+/** The tree with the soonest claim for `me`, then nearest, then lowest id. */
+export function bestTree(me: GoalPlayer, trees: readonly GoalTree[], others: readonly GoalPlayer[], tick: number): { tree: GoalTree; claimAt: number } | null {
+  let best: { tree: GoalTree; claimAt: number } | null = null;
+  for (const tree of trees) {
+    const claimAt = claimEstimate(me, tree, others, tick);
+    if (!best
+      || claimAt < best.claimAt
+      || (claimAt === best.claimAt && (chebyshev(me, tree) < chebyshev(me, best.tree)
+        || (chebyshev(me, tree) === chebyshev(me, best.tree) && tree.id < best.tree.id)))) {
+      best = { tree, claimAt };
+    }
+  }
+  return best;
+}
+
+function seconds(ticks: number): number {
+  return Math.max(0, Math.ceil((ticks * TICK_MS) / 1000));
+}
+
+function treeName(tree: GoalTree): string {
+  return (getItemDef(tree.itemId)?.name ?? 'berry').toLowerCase();
+}
+
+/** Gathering half of steps 1 and 3: walk, wait, harvest or pick the best tree. */
+function gatherGoal(id: GoalStepId, text: string, idleHint: string, input: GoalInput): Goal {
+  const { me, trees, others, tick } = input;
+  if (me.harvestTreeId !== 0) {
+    const tree = trees.find((t) => t.id === me.harvestTreeId);
+    return { id, text, hint: `Picking the ${tree ? treeName(tree) + ' ' : ''}tree…`, action: null };
+  }
+  const best = bestTree(me, trees, others, tick);
+  const current = me.pending === Pending.Harvest ? trees.find((t) => sameNum(me.pendingId, t.id)) : undefined;
+  if (current) {
+    const currentAt = claimEstimate(me, current, others, tick);
+    const retarget = best && best.tree.id !== current.id && best.claimAt + CLAIM_CYCLE_TICKS <= currentAt;
+    if (!retarget) {
+      if (chebyshev(me, current) <= MELEE_RANGE) {
+        const ripeIn = treeReadyTick(current, [me, ...others], tick) - tick;
+        return {
+          id, text,
+          hint: ripeIn > 0 ? `Waiting: ripe in ${seconds(ripeIn)} s` : 'Waiting for your turn…',
+          action: null,
+          waiting: { treeId: current.id, ripeInTicks: Math.max(0, ripeIn) },
+        };
+      }
+      return { id, text, hint: `Walking to the ${treeName(current)} tree…`, action: null };
+    }
+  }
+  if (!best) return { id, text, hint: idleHint, action: null };
+  const wait = best.claimAt - tick;
+  return {
+    id, text,
+    hint: wait > Math.ceil(Math.max(0, chebyshev(me, best.tree) - MELEE_RANGE) / MOVEMENT_STEPS_PER_TICK) + 1
+      ? `Tap: the ${treeName(best.tree)} tree ripens in about ${seconds(wait)} s`
+      : `Tap to pick the ${treeName(best.tree)} tree`,
+    action: { kind: 'harvest', treeId: best.tree.id },
+  };
+}
+
+function nearestCoastTile(me: Tile): Tile {
+  let best = HEDGE_CROSSINGS[0];
+  for (const c of HEDGE_CROSSINGS) if (chebyshev(me, c) < chebyshev(me, best)) best = c;
+  return coastPastCrossing(best);
+}
+
+export function firstDayGoal(input: GoalInput): GoalResult {
+  const { me, slots, canFight } = input;
+  const done = new Set<string>(input.done);
+  const hasStick = holdsItem(slots, me.weapon, STICK_ITEM_ID);
+  const food = edibleSlot(slots);
+
+  if (input.seen?.harvested || food !== -1) done.add('pick-berry');
+  if (input.seen?.ate || me.hp >= me.maxHp) done.add('eat-berry');
+  if (hasStick) done.add('find-stick');
+  if (!canFight || me.weapon === STICK_ITEM_ID) done.add('wield-stick');
+  if (areaOf(me) === 'coast') done.add('reach-coast');
+  if (GOAL_STEPS.every((s) => done.has(s))) done.add(FIRST_DAY_DONE);
+  // After First Day, losing the key (a death drop) brings back "find" and "push through".
+  if (done.has(FIRST_DAY_DONE) && !hasStick) {
+    done.delete('find-stick');
+    if (areaOf(me) !== 'coast') done.delete('reach-coast');
+  }
+
+  const out = GOAL_STEPS.concat().filter((s) => done.has(s)) as GoalDoneId[];
+  if (done.has(FIRST_DAY_DONE)) out.push(FIRST_DAY_DONE);
+  const result = (goal: Goal | null): GoalResult => ({ goal, done: out });
+
+  if (me.state !== PlayerState.Alive) return result(null);
+  const step = GOAL_STEPS.find((s) => !done.has(s));
+  switch (step) {
+    case 'pick-berry':
+      return result(gatherGoal(step, 'Pick a berry', 'No tree is free right now', input));
+    case 'eat-berry': {
+      const name = food !== -1 ? getItemDef(slots[food]!.itemId)?.name ?? 'berry' : 'berry';
+      return result({
+        id: step,
+        text: `Eat it: tap the ${name} in your quick bar`,
+        hint: food !== -1 && food < HOTBAR_SIZE ? `Or press ${food + 1}` : 'Tap to eat',
+        action: food !== -1 ? { kind: 'eat', slot: food } : null,
+      });
+    }
+    case 'find-stick':
+      return result(gatherGoal(step, 'Search the berry trees for a sturdy stick', 'About 1 harvest in 4 turns one up', input));
+    case 'wield-stick': {
+      const slot = slots.findIndex((s, i) => i < HOTBAR_SIZE && s?.itemId === STICK_ITEM_ID);
+      return result({
+        id: step,
+        text: 'Wield your stick: tap it',
+        hint: slot !== -1 ? `Or press ${slot + 1}. Hits twice as hard` : 'Move it to your quick bar first',
+        action: slot !== -1 ? { kind: 'wield', slot } : null,
+      });
+    }
+    case 'reach-coast': {
+      const to = nearestCoastTile(me);
+      return result({
+        id: step,
+        text: 'Push through the brambles to the Coast',
+        hint: 'Tap to walk through the hedge at the nearest path',
+        action: { kind: 'move', x: to.x, z: to.z },
+      });
+    }
+    default:
+      return result(null);
+  }
+}

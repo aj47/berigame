@@ -374,7 +374,7 @@ canvas {
   box-shadow: none;
   color: var(--ink-soft);
 }
-.gather-shortcut {
+.goal-chip {
   position: absolute;
   top: calc(max(16px, env(safe-area-inset-top)) + 56px);
   left: max(18px, env(safe-area-inset-left));
@@ -387,10 +387,10 @@ canvas {
   background: #f7f1e3f2;
   box-shadow: 0 2px 8px #211a1526;
 }
-.gather-shortcut img { width: 30px; height: 30px; object-fit: contain; }
-.gather-shortcut strong { display: block; font-size: 12px; }
-.gather-shortcut small { display: block; font-size: 10px; color: var(--ink-soft); margin-top: 3px; }
-.gather-shortcut:disabled { opacity: .85; }
+.goal-chip img { width: 30px; height: 30px; object-fit: contain; }
+.goal-chip strong { display: block; font-size: 12px; }
+.goal-chip small { display: block; font-size: 10px; color: var(--ink-soft); margin-top: 3px; }
+.goal-chip:disabled { opacity: .85; }
 .reset-view-button { width: 100%; margin-bottom: 14px; font-size: 12px; }
 .hud-opponent { min-width: 0; flex: 1; height: 21px; text-align: right; line-height: 1; }
 .hud-opponent strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: #fff1cc; }
@@ -1379,3 +1379,48 @@ canvas {
 }
 .adventurer-name.self { color: #fff4bb; background: #443b2ce8; }
 .adventurer-name.targeted { color: #ffe6dc; background: #743923e8; }
+
+/* M1 "The Grove": goal chip states, the stick-find banner, the Safe badge. */
+.goal-chip.busy { opacity: 1; }
+.goal-chip.busy small { color: #6d5a2e; }
+.find-banner {
+  position: absolute;
+  top: calc(max(16px, env(safe-area-inset-top)) + 116px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #3b2a12;
+  background: linear-gradient(#fff4c9, #f1d98a);
+  border: 1px solid #b98f3a;
+  border-radius: 8px;
+  box-shadow: 0 3px 12px #211a1540;
+  z-index: 6;
+  pointer-events: none;
+  animation: find-pop 0.35s ease-out;
+}
+.find-banner img { width: 28px; height: 28px; object-fit: contain; }
+@keyframes find-pop { from { transform: translateX(-50%) scale(0.85); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+.safe-badge {
+  font-style: normal;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #1f3322;
+  background: #d9e9b8;
+  border-radius: 3px;
+  padding: 1px 5px;
+  text-shadow: none;
+}
+.hotbar-slot.sparkle { animation: slot-sparkle 0.9s ease-in-out 5; border-color: #f2c94c; }
+@keyframes slot-sparkle { 0%, 100% { box-shadow: 0 0 0 0 #f2c94c00; } 50% { box-shadow: 0 0 0 3px #f2c94ccc, 0 0 14px 2px #ffe89a; } }
+@media (prefers-reduced-motion: reduce) {
+  .find-banner, .hotbar-slot.sparkle { animation: none; }
+}

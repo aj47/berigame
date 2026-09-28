@@ -2,9 +2,10 @@ import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import {
   EAT_COOLDOWN_TICKS, EAT_SWING_DELAY_TICKS, EventKind, INVENTORY_SIZE, MELEE_RANGE, Pending,
-  chebyshev, getItemDef, inHotbar, moveItem as moveSlots, nearestReachableTile, removeFromSlot, type Slot,
+  STICK_ITEM_ID, chebyshev, getItemDef, inHotbar, moveItem as moveSlots, removeFromSlot, type Slot,
 } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
+import { interactionTile } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
 import { dropOnGround, readSlots, takeGroundItem, writeSlots } from '../lib/inventory';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
@@ -84,11 +85,13 @@ export const pickupItem = spacetimedb.reducer(
     touchInput(p, T);
     clearInteractions(ctx, p);
     if (chebyshev(p, item) <= MELEE_RANGE) {
-      takeGroundItem(ctx, p.identity, item);
+      const taken = takeGroundItem(ctx, p.identity, item);
+      // A stick ends first-spawn grace: 10 more ticks to wield it and step back.
+      if (taken > 0 && item.itemId === STICK_ITEM_ID && p.respawnTick > T) p.respawnTick = T;
     } else {
+      const dest = interactionTile(ctx, p, item, blockedTiles(ctx), MELEE_RANGE);
       p.pending = Pending.Pickup;
       p.pendingId = item.id;
-      const dest = nearestReachableTile(p, item, blockedTiles(ctx));
       p.targetX = dest.x;
       p.targetZ = dest.z;
     }

@@ -50,9 +50,13 @@ export function inHotbar(slots: readonly Slot[], itemId: string): boolean {
   return false;
 }
 
-/** `roll` is a uniform [0, 1) draw from the server's deterministic ctx.random. */
-export function harvestFindsStick(roll: number): boolean {
-  return roll < STICK_DROP_CHANCE;
+/**
+ * `roll` is a uniform [0, 1) draw from the server's deterministic ctx.random,
+ * drawn on every finished berry harvest. A player already holding a stick never
+ * finds a spare one.
+ */
+export function harvestFindsStick(roll: number, holdsStick = false): boolean {
+  return !holdsStick && roll < STICK_DROP_CHANCE;
 }
 
 export interface TreeSeed extends Tile {

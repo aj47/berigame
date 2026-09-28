@@ -4,9 +4,11 @@ import { tickSchedule } from '../tables';
 import {
   DEATH_TICKS, EventKind, HARVEST_TICKS, MELEE_RANGE, Pending, PlayerState, SPAWN_TILE,
   MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS, TREE_COOLDOWN_TICKS,
-  bfsPath, blockedSetFromTiles, chebyshev, facingFromDelta, goalAdjacentTo,
-  goalIsTile, harvestFindsStick, inHotbar, neighbors8, swingDamage, tileKey,
+  bfsPath, blockedSetFromTiles, chebyshev, enterRule, facingFromDelta, goalAdjacentTo,
+  goalIsTile, harvestFindsStick, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
+  neighbors8, swingDamage, tileKey,
 } from '../../../shared/sim';
+import { holdsStick } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
 import { clearInteractions, hex, sameId } from '../lib/players';
@@ -94,8 +96,8 @@ function resolvePending(s: TickState, p: PlayerRow): void {
       return;
     }
     if (chebyshev(p, tree) <= MELEE_RANGE) {
-      tryClaimTree(s, p, tree);
-      p.pending = Pending.None; p.pendingId = 0n;
+      // A regrowing or claimed tree keeps you waiting beside it (wait-and-claim).
+      if (tryClaimTree(s, p, tree)) { p.pending = Pending.None; p.pendingId = 0n; }
       p.targetX = undefined; p.targetZ = undefined;
       mark(s, p);
     }
@@ -108,7 +110,8 @@ function resolvePending(s: TickState, p: PlayerRow): void {
       return;
     }
     if (chebyshev(p, item) <= MELEE_RANGE) {
-      takeGroundItem(s.ctx, p.identity, item);
+      const taken = takeGroundItem(s.ctx, p.identity, item);
+      if (taken > 0 && item.itemId === STICK_ITEM_ID && p.respawnTick > s.T) p.respawnTick = s.T;
       p.pending = Pending.None; p.pendingId = 0n;
       p.targetX = undefined; p.targetZ = undefined;
       mark(s, p);
@@ -116,7 +119,36 @@ function resolvePending(s: TickState, p: PlayerRow): void {
   }
 }
 
+/**
+ * Wait-and-claim: every free tree goes to one of the players waiting beside
+ * it: newcomers (first-spawn grace) first, then the earliest last input, then
+ * tick order.
+ */
+function phaseClaims(s: TickState): void {
+  const rank = new Map(s.order.map((h, i) => [h, i]));
+  for (const tree of s.trees.values()) {
+    if (tree.harvester !== undefined || tree.cooldownUntilTick > s.T) continue;
+    let best: PlayerRow | undefined;
+    for (const h of s.order) {
+      const p = s.players.get(h)!;
+      if (!alive(p) || p.pending !== Pending.Harvest || Number(p.pendingId) !== tree.id) continue;
+      if (chebyshev(p, tree) > MELEE_RANGE || p.harvestTreeId !== 0) continue;
+      if (!best) { best = p; continue; }
+      const pn = isNewcomer(p, s.T), bn = isNewcomer(best, s.T);
+      if (pn !== bn) { if (pn) best = p; continue; }
+      if (p.lastInputTick !== best.lastInputTick) { if (p.lastInputTick < best.lastInputTick) best = p; continue; }
+      if (rank.get(h)! < rank.get(hex(best.identity))!) best = p;
+    }
+    if (best && tryClaimTree(s, best, tree)) {
+      best.pending = Pending.None; best.pendingId = 0n;
+      best.targetX = undefined; best.targetZ = undefined;
+      mark(s, best);
+    }
+  }
+}
+
 function phaseMovement(s: TickState): void {
+  phaseClaims(s);
   for (const h of s.order) {
     const p = s.players.get(h)!;
     if (!alive(p)) continue;
@@ -144,7 +176,9 @@ function phaseMovement(s: TickState): void {
       // The path validates every intermediate tile and both sides of a
       // diagonal. Taking its first two steps cannot tunnel through a tree or
       // overshoot the first tile satisfying a melee/follow goal.
-      const path = bfsPath(p, goal, s.blocked);
+      // One-way brambles. Recomputed every tick, so dropping the stick mid-route
+      // makes the path fail and the player stops where they are.
+      const path = bfsPath(p, goal, s.blocked, enterRule(holdsStick(s.ctx, p)));
       if (!path || path.length === 0) {
         if (!p.combatTarget) { p.targetX = undefined; p.targetZ = undefined; }
         if (p.pending !== Pending.None) { p.pending = Pending.None; p.pendingId = 0n; }
@@ -163,7 +197,7 @@ function phaseMovement(s: TickState): void {
           // including when that is the first half of this tick's travel.
           if (p.pending !== Pending.None) {
             resolvePending(s, p);
-            if (p.pending === Pending.None) break;
+            if (p.pending === Pending.None || p.targetX === undefined) break;
           }
         }
       }
@@ -185,8 +219,13 @@ function phaseHarvest(s: TickState): void {
       markTree(s, tree);
       emitEvent(s.ctx, { tick: s.T, kind: EventKind.HarvestDone, attacker: p.identity, defender: p.identity, itemId: tree.itemId, defenderHp: p.hp });
       // ctx.random is seeded from the tick timestamp and drawn in s.order, so replays agree.
-      if (harvestFindsStick(s.ctx.random())) {
+      // Draw on every harvest (the draw order never changes); holders find no spare.
+      const roll = s.ctx.random();
+      const holding = p.weapon === STICK_ITEM_ID || holdsItem(readSlots(s.ctx, p.identity).slots, '', STICK_ITEM_ID);
+      if (harvestFindsStick(roll, holding)) {
         giveItem(s.ctx, p.identity, STICK_ITEM_ID, 1, p, s.T);
+        // A find ends first-spawn grace: 10 more ticks to wield it and step back.
+        if (p.respawnTick > s.T) p.respawnTick = s.T;
         emitEvent(s.ctx, { tick: s.T, kind: EventKind.ItemFound, attacker: p.identity, defender: p.identity, itemId: STICK_ITEM_ID, defenderHp: p.hp });
       }
       p.harvestTreeId = 0;
@@ -208,6 +247,8 @@ function phaseSwings(s: TickState): void {
       continue;
     }
     if (chebyshev(a, d) > MELEE_RANGE) continue;
+    // Nothing lands in the safe ring or on a player in grace; the fight waits.
+    if (inSafeRing(a) || inSafeRing(d) || inGrace(d, s.T)) continue;
     const face = facingFromDelta(d.x - a.x, d.z - a.z);
     if (a.facing !== face) { a.facing = face; mark(s, a); }
     if (s.T < a.nextSwingTick) continue;

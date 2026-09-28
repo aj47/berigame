@@ -165,8 +165,8 @@ export function createAgentServer(options: Options) {
             let status = 200;
             let body: unknown;
             try {
-              await deadline(session.game.action(action, input), 5000);
-              body = { accepted: true, action, idempotencyKey, message: 'Read /state to observe the result.' };
+              const result = await deadline(session.game.action(action, input), 5000);
+              body = { accepted: true, action, idempotencyKey, message: 'Read /state to observe the result.', ...(result ?? {}) };
             } catch (err) {
               const error = err instanceof ApiError ? err : new ApiError(422, 'action_rejected', 'The game rejected this action. Inspect state before trying again.');
               status = error.status; body = errorBody(error);
