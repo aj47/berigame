@@ -1,3 +1,10 @@
 /agent.md
   Content-Type: text/plain; charset=utf-8
   X-Content-Type-Options: nosniff
+
+# Character models keep stable URLs (AdventurerModel.tsx modelUrl), so they are
+# not immutable: browsers reuse them for an hour, then revalidate by ETag in the
+# background for up to a day. Rebuilt by `npm run models:optimize`.
+/models/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+  X-Content-Type-Options: nosniff

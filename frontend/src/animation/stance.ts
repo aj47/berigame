@@ -58,7 +58,7 @@ export function mirrorLowerBody(clip: AnimationClip): AnimationClip {
 }
 
 /** Standing clips that get a mirrored stance. Run keeps its own stride; the director starts it on the stance's lead foot. */
-export const STANCE_CLIPS: ReadonlySet<string> = new Set(['Idle', 'StickIdle', 'Stop', 'Strike', 'StickSwing', 'Hit', 'HitHeavy', 'Defeat']);
+export const STANCE_CLIPS: ReadonlySet<string> = new Set(['Idle', 'StickIdle', 'Stop', 'StickStop', 'HitBack', 'GetUp', 'Strike', 'StickSwing', 'Hit', 'HitHeavy', 'Defeat']);
 
 /**
  * Where to start Run from each stance: the phase (0..1) whose planted foot is

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { STICK_SWING_CLIP, withStickSwing } from '../animation/stickSwing';
 import { avatarClips, pruneRestTracks } from '../animation/pruneClips';
@@ -5,8 +6,10 @@ import { stanceSet } from '../animation/stance';
 import { loadAdventurerRig, type AdventurerRig } from './adventurerRig';
 import { makeAvatar, play, type Timeline, type TimelineCue } from './animationTimeline';
 
+// The Blender source, before scripts/optimize-models.mjs drops the same rest-pose channels at build time.
+const SOURCE = path.resolve(__dirname, '../../../docs/art/characters/blender-v4/tousled/starter-adventurer-v4-tousled.glb');
 let rig: AdventurerRig;
-beforeAll(async () => { rig = await loadAdventurerRig(); });
+beforeAll(async () => { rig = await loadAdventurerRig(SOURCE); });
 
 const swing = (seq: number, at: number): TimelineCue => ({ clip: STICK_SWING_CLIP, durationMs: 620, seq, at, role: 'action' });
 const strike = (seq: number, at: number): TimelineCue => ({ clip: 'Strike', durationMs: 500, seq, at, role: 'action' });
@@ -27,6 +30,14 @@ const SEQUENCE: Timeline = {
 };
 
 describe('pruneRestTracks', () => {
+  it('has nothing left to drop in the shipped (build-time pruned) GLBs', async () => {
+    const shipped = await loadAdventurerRig();
+    const count = (clips: { tracks: unknown[] }[]) => clips.reduce((n, clip) => n + clip.tracks.length, 0);
+    expect(count(pruneRestTracks(shipped.scene, shipped.animations))).toBe(count(shipped.animations));
+    // ...and the build dropped exactly what the runtime rule drops from the source.
+    expect(count(shipped.animations)).toBe(count(pruneRestTracks(rig.scene, rig.animations)));
+  });
+
   it('keeps every clip, dropping only channels that hold the rest pose', () => {
     const full = withStickSwing(rig.scene, rig.animations);
     const pruned = avatarClips(rig.scene, rig.animations);

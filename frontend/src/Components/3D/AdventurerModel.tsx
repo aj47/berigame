@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { Mesh, type MeshStandardMaterial } from 'three';
+import { Mesh, type MeshStandardMaterial, type Object3D } from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
 import { PlayerState, HAIR_STYLES, STICK_ITEM_ID, type Appearance } from '@sim';
 import { acquirePalette, paletteKey } from '../../appearance/palette';
@@ -9,6 +9,7 @@ import type { AnimationCue } from '../../animation/combatPresentation';
 import { stickMount } from '../../animation/stickSwing';
 import { avatarClipSet } from '../../animation/stance';
 import { AvatarAnimator, seedFromIdentity, skipBoneEulerSync, type AnimatorInput } from '../../animation/avatarAnimator';
+import { locateAvatar, registerAvatarGroup, unregisterAvatarGroup } from '../../animation/avatarRegistry';
 import { useLoadingStore } from '../../store';
 import { stickGeometry, stickMaterial } from './stickProp';
 
@@ -34,11 +35,14 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
   const model=useMemo(()=>{const clone=SkeletonUtils.clone(scene);skipBoneEulerSync(clone);return clone;},[scene]);
   const base=useMemo(()=>{let material:MeshStandardMaterial;scene.traverse((o:any)=>{if(o.isSkinnedMesh)material=o.material;});return material!;},[scene]);
   const seed=useMemo(()=>seedFromIdentity(identity),[identity]);
-  const animator=useMemo(()=>new AvatarAnimator(model,clipSet,{seed}),[model,clipSet,seed]);
+  const animator=useMemo(()=>new AvatarAnimator(model,clipSet,{seed,locate:locateAvatar}),[model,clipSet,seed]);
   useEffect(()=>()=>animator.dispose(),[animator]);
   // Reused every frame: nothing is allocated per avatar per frame.
   const input=useRef<AnimatorInput>({now:0,dt:0,dead:false,cue:null,moving:false,speed:0,holdMs:0,x:0,z:0,yaw:0,weapon:''});
   const revision=useRef(-1);
+  // This avatar's ground group, registered so defenders can tell a blow from behind (HitBack).
+  const registered=useRef<Object3D|null>(null);
+  useEffect(()=>()=>{if(registered.current)unregisterAvatarGroup(identity,registered.current);registered.current=null;},[identity]);
   const colors=paletteKey(appearance);
   useLayoutEffect(()=>{
     const palette=acquirePalette(base,appearance);
@@ -83,7 +87,10 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
     frame.weapon=weapon;
     // The avatar's group (PlayerAvatar) carries its ground position and facing.
     const group=model.parent;
-    if(group){frame.x=group.position.x;frame.z=group.position.z;frame.yaw=group.rotation.y;}
+    if(group){
+      frame.x=group.position.x;frame.z=group.position.z;frame.yaw=group.rotation.y;
+      if(registered.current!==group){if(registered.current)unregisterAvatarGroup(identity,registered.current);registered.current=group;registerAvatarGroup(identity,group);}
+    }
     animator.update(frame);
     const director=animator.director;
     if(director.revision!==revision.current){

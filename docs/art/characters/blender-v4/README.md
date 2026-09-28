@@ -42,3 +42,10 @@ Linux build (no Blender install; bpy comes from PyPI):
     python3 docs/art/characters/blender-v4/verify_variants.py   # --joints=27; animation compared within 1e-4
 
 Copy `tousled/starter-adventurer-v4-tousled.glb` to `frontend/public/models/starter-adventurer.glb`, and the cropped and topknot GLBs to `starter-adventurer-{cropped,topknot}.glb`.
+
+## Animation batch 3
+
+- **New clips:** `StickStop` (the armed Stop), `HitBack` (a hit from behind: the body pitches forward, the chest arches, the lead foot steps forward and the arms fling back) and `GetUp` (1.1 s from the Defeat end pose back to standing, played on respawn).
+- **Knees:** the thigh and upper shin are now one continuous trouser tube with three knee edge loops, weighted Thigh/Shin 85/15, 50/50 and 15/85. This removes the knee shards in Defeat. It adds 40 triangles: 2,171 / 2,186 / 2,290.
+- **Previews:** the preview PNGs are refreshed. They are rendered at 60 fps frame numbers, and the stale V4 renders were removed.
+- **Shipped GLBs:** copy them with `cd frontend && npm run models:optimize`, not by hand. The script prunes rest channels, resamples, dedups, prunes, quantizes and applies meshopt. It writes `frontend/public/models/*.glb`, and `--check` fails when those files are stale.

@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Ray, Triangle, Vector3, type AnimationClip, type BufferAttribute, type Interpolant, type Object3D, type SkinnedMesh } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
 const MODELS = path.resolve(__dirname, '../../public/models');
 
@@ -51,7 +52,9 @@ const RIGHT_HAND = ['HandR', 'FingersR', 'FingerTipsR', 'ThumbR', 'PropR'];
 
 /** `file` is one of the shipped hair variants in public/models; they share one rig and clip set. */
 export async function loadAdventurerRig(file = 'starter-adventurer.glb'): Promise<AdventurerRig> {
-  const gltf = await new Promise<any>((resolve, reject) => new GLTFLoader().parse(glbWithoutTexture(path.join(MODELS, file)), '', resolve, reject));
+  // The shipped GLBs are meshopt-compressed and quantized (scripts/optimize-models.mjs), as drei's useGLTF decodes them.
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const gltf = await new Promise<any>((resolve, reject) => loader.parse(glbWithoutTexture(path.resolve(MODELS, file)), '', resolve, reject));
   const scene: Object3D = gltf.scene;
   const nodes = new Map<string, Object3D>();
   scene.traverse((object) => { if (!nodes.has(object.name)) nodes.set(object.name, object); });

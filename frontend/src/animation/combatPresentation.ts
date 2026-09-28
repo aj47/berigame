@@ -1,10 +1,14 @@
 import { EventKind, STICK_ITEM_ID } from '@sim';
 import { STICK_SWING_CLIP, STICK_SWING_IMPACT_MS, STICK_SWING_MS } from './stickSwing';
 
-/** Every clip an adventurer plays: locomotion (Stop settles a run), the two attacks, the hit reaction and defeat. */
-export const CLIPS = ['Idle', 'Run', 'Stop', 'Strike', STICK_SWING_CLIP, 'Hit', 'HitHeavy', 'Defeat', 'StickIdle', 'StickRun'] as const;
-/** Idle and Run while a stick is wielded (the arm holds the stick); played in their place by avatarAnimator.ts. */
-export const ARMED_VARIANT: Readonly<Partial<Record<Clip, Clip>>> = { Idle: 'StickIdle', Run: 'StickRun' };
+/**
+ * Every clip an adventurer plays: locomotion (Stop settles a run), the two
+ * attacks, the hit reactions (HitBack when struck from behind), defeat and
+ * GetUp on respawn.
+ */
+export const CLIPS = ['Idle', 'Run', 'Stop', 'Strike', STICK_SWING_CLIP, 'Hit', 'HitHeavy', 'HitBack', 'Defeat', 'GetUp', 'StickIdle', 'StickRun', 'StickStop'] as const;
+/** Idle, Run and Stop while a stick is wielded (the arm holds the stick); played in their place by avatarAnimator.ts. */
+export const ARMED_VARIANT: Readonly<Partial<Record<Clip, Clip>>> = { Idle: 'StickIdle', Run: 'StickRun', Stop: 'StickStop' };
 export type Clip = (typeof CLIPS)[number];
 
 export interface ActionCue {
@@ -22,6 +26,21 @@ export interface AnimationCue extends ActionCue {
   role: 'action' | 'reaction';
   /** Plays once this cue ends: a hit reaction queued behind the defender's own swing. */
   then?: AnimationCue;
+  /** A reaction's attacker (identity hex), so the defender can tell a blow from behind. */
+  attacker?: string;
+}
+
+/** A blow from further behind than this (cosine of the angle off the defender's facing) plays HitBack. */
+export const BEHIND_COS = -0.35;
+/**
+ * Whether an attacker at (ax, az) is behind a defender at (dx, dz) facing
+ * `yaw` (the avatar group's rotation.y: facing is (sin yaw, cos yaw)).
+ * Beside counts as in front, so only a clear rear attack plays HitBack.
+ */
+export function isBehind(dx: number, dz: number, yaw: number, ax: number, az: number): boolean {
+  const x = ax - dx, z = az - dz, length = Math.hypot(x, z);
+  if (length < 1e-6) return false;
+  return (x * Math.sin(yaw) + z * Math.cos(yaw)) / length < BEHIND_COS;
 }
 export interface AttackPresentation {
   attacker: ActionCue;

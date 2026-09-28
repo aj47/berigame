@@ -53,7 +53,7 @@ export const useCombatFxStore = create<CombatFxState>((set, get) => ({
         // The defender flinches when the blow lands. Never cut their own swing short:
         // one still playing at impact wins, and one ending before impact finishes
         // first, with the flinch queued behind it.
-        const reaction: AnimationCue = { ...attack.defender, role: 'reaction', at: at + attack.impactMs, seq };
+        const reaction: AnimationCue = { ...attack.defender, role: 'reaction', at: at + attack.impactMs, seq, attacker };
         const current = cues[defender];
         const swingEnds = current?.role === 'action' ? current.at + current.durationMs : -Infinity;
         if (defender !== attacker && swingEnds <= reaction.at) {
