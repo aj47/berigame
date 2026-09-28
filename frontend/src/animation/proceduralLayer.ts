@@ -250,7 +250,9 @@ export class ProceduralLayer {
     let accel = 0;
     if (h > 0) {
       const dx = input.x - this.groundX, dz = input.z - this.groundZ;
-      if (!this.hasGround || dx * dx + dz * dz > TELEPORT * TELEPORT) {
+      // A frame hitch (hidden tab, stall) moves the avatar a long way in one step;
+      // treat it like a teleport rather than a huge speed and acceleration.
+      if (!this.hasGround || input.dt > 0.1 || dx * dx + dz * dz > TELEPORT * TELEPORT) {
         this.hasGround = true;
         this.forward = 0;
         for (let i = 0; i < this.robes.length; i++) this.robeAngle[i] = this.robeSpeed[i] = 0;

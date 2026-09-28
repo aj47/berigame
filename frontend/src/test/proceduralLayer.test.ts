@@ -2,7 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { Euler, Quaternion, Vector3, type Object3D } from 'three';
 import { avatarClipSet, type AvatarClipSet } from '../animation/stance';
 import { STICK_SWING_CLIP } from '../animation/stickSwing';
-import { LOOK_DEG } from '../animation/proceduralLayer';
+import { LOOK_DEG, ProceduralLayer, type LayerInput } from '../animation/proceduralLayer';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { loadAdventurerRig, type AdventurerRig } from './adventurerRig';
 import { makeAvatar, play, type Timeline, type TimelineCue } from './animationTimeline';
 
@@ -130,5 +131,18 @@ describe('procedural layer', () => {
     expect(peak(1100, 2000, -1)).toBeGreaterThan(2);
     // And settles.
     expect(Math.abs(flap.at(-1)![1])).toBeLessThan(0.5);
+  });
+
+  it('does not kick the robe flaps after a frame hitch', () => {
+    const layer = new ProceduralLayer(SkeletonUtils.clone(rig.scene), 3);
+    const input: LayerInput = { dt: 1 / 60, time: 0, idle: 0, run: 1, combat: 0, swing: 0, defeat: 0, x: 0, z: 0, yaw: 0 };
+    for (let f = 0; f < 120; f++) { layer.restore(); input.time += input.dt; layer.apply(input); }
+    // A hidden tab: 1.2 s pass in one frame and the avatar has moved 4 tiles.
+    layer.restore();
+    Object.assign(input, { dt: 1.2, time: input.time + 1.2, z: 4 });
+    layer.apply(input);
+    const angles = (layer as any).robeAngle as number[];
+    expect(angles.length).toBeGreaterThan(0);
+    for (const a of angles) expect(Math.abs(a)).toBeLessThan(0.05);
   });
 });

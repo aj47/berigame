@@ -200,4 +200,16 @@ describe('clip director', () => {
     expect(d.revision).toBe(r + 1);
     expect([d.clip, d.cueKey]).toEqual(['Hit', '4:reaction']);
   });
+
+  it('plays a hit reaction queued behind the avatar\'s own swing once the swing ends', () => {
+    const d = director();
+    const swing = { ...cue(STICK_SWING_CLIP, 1, 1000), then: cue('Hit', 2, 1660, 'reaction') };
+    d.update(idle(1000, { cue: swing }));
+    d.update(idle(1600, { cue: swing }));
+    expect([d.clip, d.cueKey]).toEqual([STICK_SWING_CLIP, '1:action']);
+    d.update(idle(1670, { cue: swing }));
+    expect([d.clip, d.cueKey]).toEqual(['Hit', '2:reaction']);
+    d.update(idle(2100, { cue: swing }));
+    expect(d.cueKey).toBeNull();
+  });
 });

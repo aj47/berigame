@@ -12,6 +12,8 @@ const PlayerController = (props: { setPlayerRef: (ref: React.MutableRefObject<an
   const bubble = chat.get(me.identity.toHexString());
   return (
     <PlayerAvatar
+      // A new identity is a new character: remount so animation and motion state start fresh.
+      key={me.identity.toHexString()}
       row={me}
       isSelf
       currentTick={tick}

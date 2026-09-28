@@ -1,4 +1,4 @@
-import type { AnimationCue, Clip } from './combatPresentation';
+import { currentCue, type AnimationCue, type Clip } from './combatPresentation';
 import { STICK_SWING_CLIP } from './stickSwing';
 import { holdCadence, runScale } from './locomotion';
 import type { Stance } from './stance';
@@ -176,7 +176,8 @@ export class ClipDirector {
 
     // ---- what should play --------------------------------------------------
     let clip: Clip = 'Idle', seq = -1, role = '', start = 0;
-    const cue = input.cue;
+    // A reaction may be queued behind the avatar's own swing (cue.then).
+    const cue = currentCue(input.cue, now);
     if (!input.dead) this.deadSince = -1;
     else if (this.deadSince < 0) this.deadSince = now;
     // A killing blow: the row says dead as soon as it arrives, before the

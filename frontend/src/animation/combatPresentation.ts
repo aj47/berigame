@@ -45,6 +45,13 @@ export function attackPresentation(kind: number, itemId: string): AttackPresenta
   return { attacker: { clip, durationMs }, defender: HIT_REACTION, impactMs };
 }
 
+/** The cue in a chain that is playing or next up at `now`: follows `then` past cues that have ended. */
+export function currentCue(cue: AnimationCue | null | undefined, now: number): AnimationCue | null {
+  let c = cue ?? null;
+  while (c && c.then && now >= c.at + c.durationMs) c = c.then;
+  return c;
+}
+
 export function cuePose(cue: AnimationCue | null | undefined, now: number): { clip: Clip; key: string; elapsedSeconds: number } | null {
   if (!cue) return null;
   if (now >= cue.at + cue.durationMs) return cuePose(cue.then, now);
