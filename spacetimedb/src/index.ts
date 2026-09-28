@@ -13,3 +13,4 @@ export * from './reducers/inventory';
 export * from './reducers/chat';
 export * from './reducers/appearance';
 export * from './reducers/access';
+export * from './reducers/craft';

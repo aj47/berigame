@@ -82,7 +82,7 @@ function harness() {
         find: (id: typeof A) => players.get(id.toHexString()),
         update: (p: any) => players.set(p.identity.toHexString(), p),
       } },
-      tree: { iter: () => trees.values(), id: { find: (id: number) => trees.get(id), update: (row: any) => trees.set(row.id, row) } },
+      tree: { iter: () => trees.values(), insert: (row: any) => trees.set(row.id, row), id: { find: (id: number) => trees.get(id), update: (row: any) => trees.set(row.id, row) } },
       inventorySlot: {
         owner: { filter: (owner: typeof A) => [...inventory.values()].filter((row) => row.owner.toHexString() === owner.toHexString()) },
         insert: (row: any) => { const id = nextInventoryId++; inventory.set(id, { ...row, id }); },
@@ -879,5 +879,135 @@ describe('First Day acceptance: newcomers following state.goal get harvests', ()
     const { counts } = simulate({ newcomers: 6 });
     expect(counts).toHaveLength(6);
     for (const c of counts) expect(c).toBeGreaterThanOrEqual(5);
+  });
+});
+
+// ---- M2 "The Coast" --------------------------------------------------------
+import { craft as registeredCraft } from '../../../spacetimedb/src/reducers/craft';
+import { init as registeredInit } from '../../../spacetimedb/src/reducers/lifecycle';
+import { NODE_SEEDS, NodeKind } from '../nodes';
+const craftReducer = registeredCraft as unknown as Reducer;
+
+describe('M2: Coast nodes on the server', () => {
+  const events = () => h.ctx.db.combatEvent.insert.mock.calls.map(([e]: any[]) => e);
+  const nodes = () => [...h.trees.values()].filter((t) => t.id > 100);
+
+  it('the tick seeds the 8 missing nodes once; seeding twice is a no-op and keeps node state', () => {
+    for (const t of TREE_SEEDS) h.trees.set(t.id, { ...t, cooldownUntilTick: 0, harvester: undefined, kind: 0 });
+    run();
+    expect(nodes()).toHaveLength(8);
+    expect(nodes().map((n) => [n.id, n.x, n.z, n.kind, n.itemId])).toEqual(NODE_SEEDS.map((n) => [n.id, n.x, n.z, n.kind, n.itemId]));
+    h.trees.get(105).cooldownUntilTick = 999;
+    run(2);
+    expect(nodes()).toHaveLength(8);
+    expect(h.trees.get(105).cooldownUntilTick).toBe(999);
+    expect(h.trees.size).toBe(14);
+  });
+
+  it('init seeds berry trees (kind 0) and nodes, and is idempotent', () => {
+    const init = registeredInit as unknown as Reducer;
+    const ctx = { ...h.ctx, db: { ...h.ctx.db, accessPolicy: { id: { find: () => ({}) } }, tickSchedule: { count: () => 1n } } };
+    init(ctx);
+    init(ctx);
+    expect(h.trees.size).toBe(14);
+    expect(h.trees.get(1).kind).toBe(NodeKind.Berry);
+    expect(h.trees.get(101).kind).toBe(NodeKind.Driftwood);
+  });
+
+  it.each([
+    [101, 'driftwood', 4, 25],
+    [105, 'flint', 6, 40],
+  ])('node %i gives %s after %i ticks and regrows in %i; it never rolls for a stick', (id, itemId, harvestTicks, regrow) => {
+    run(); // seed
+    const node = h.trees.get(id);
+    Object.assign(h.me(), { x: node.x + 1, z: node.z });
+    giveStick();
+    h.tick(worldTick());
+    h.ctx.random.mockReturnValue(0);
+    startHarvest(h.ctx, { treeId: id });
+    const start = worldTick();
+    expect(h.me().harvestEndTick).toBe(start + harvestTicks);
+    run(harvestTicks - 1);
+    expect(slotsOf(A).some((s) => s?.itemId === itemId)).toBe(false);
+    run();
+    expect(slotsOf(A).filter((s) => s?.itemId === itemId)).toEqual([{ itemId, quantity: 1 }]);
+    expect(h.trees.get(id).cooldownUntilTick).toBe(start + harvestTicks + regrow);
+    expect(h.ctx.random).not.toHaveBeenCalled();
+    expect(events().map((e: any) => [e.kind, e.itemId])).toEqual([[EventKind.HarvestDone, itemId]]);
+  });
+
+  it('nodes never find sticks, even for a stickless player', () => {
+    run();
+    Object.assign(h.me(), { x: 26, z: 3 });
+    h.ctx.random.mockReturnValue(0);
+    h.tick(worldTick());
+    startHarvest(h.ctx, { treeId: 101 });
+    run(4);
+    expect(slotsOf(A).some((s) => s?.itemId === STICK_ITEM_ID)).toBe(false);
+    expect(h.ctx.random).not.toHaveBeenCalled();
+  });
+
+  it('a stickless player in the Grove cannot queue a node harvest: brambles message, nothing queued', () => {
+    run();
+    h.tick(worldTick());
+    expect(() => startHarvest(h.ctx, { treeId: 101 })).toThrow(BRAMBLE_MESSAGE);
+    expect(h.me().pending).toBe(Pending.None);
+    expect(h.me().targetX).toBeUndefined();
+  });
+
+  it('a stick holder walks from spawn to a tide rock and gathers flint', () => {
+    run();
+    giveStick();
+    h.tick(worldTick());
+    startHarvest(h.ctx, { treeId: 105 });
+    run(40);
+    expect(slotsOf(A).find((s) => s?.itemId === 'flint')).toEqual({ itemId: 'flint', quantity: 1 });
+  });
+});
+
+describe('M2: craft (the verb "make")', () => {
+  function stock(items: [string, number, number][]) {
+    h.inventory.clear();
+    for (const [itemId, quantity, slot] of items) h.inventory.set(nextRow, { id: nextRow++, owner: A, slot, itemId, quantity });
+  }
+
+  it('1 driftwood + 2 flint makes a stone club; it wields and hits for 8', () => {
+    stock([['stick', 1, 0], ['driftwood', 1, 1], ['flint', 3, 2]]);
+    craftReducer(h.ctx, { recipe: 'stone_club' });
+    const s = slotsOf(A);
+    expect(s.slice(0, 3)).toEqual([{ itemId: 'stick', quantity: 1 }, { itemId: 'stone_club', quantity: 1 }, { itemId: 'flint', quantity: 1 }]);
+    wield(h.ctx, { slot: 1 });
+    expect(h.me().weapon).toBe('stone_club');
+    outsideSafeRing();
+    Object.assign(h.other(), { x: 36 });
+    attack(h.ctx, { target: B });
+    run();
+    const hit = h.ctx.db.combatEvent.insert.mock.calls.map(([e]: any[]) => e).find((e: any) => e.kind === EventKind.Hit);
+    expect(hit).toMatchObject({ damage: 8, itemId: 'stone_club' });
+  });
+
+  it('rejects unknown recipes, missing inputs, the dead, and anyone attacking', () => {
+    stock([['driftwood', 1, 0], ['flint', 1, 1]]);
+    expect(() => craftReducer(h.ctx, { recipe: 'boat' })).toThrow('no such recipe');
+    expect(() => craftReducer(h.ctx, { recipe: 'stone_club' })).toThrow('You need 1 driftwood and 2 flint shard');
+    stock([['driftwood', 1, 0], ['flint', 2, 1]]);
+    h.me().hostile = true;
+    expect(() => craftReducer(h.ctx, { recipe: 'stone_club' })).toThrow('Not while fighting');
+    h.me().hostile = false;
+    h.me().state = PlayerState.Dead;
+    expect(() => craftReducer(h.ctx, { recipe: 'stone_club' })).toThrow('you are dead');
+    expect(slotsOf(A).filter(Boolean)).toHaveLength(2);
+  });
+
+  it('a club that does not fit lands on the ground under you', () => {
+    h.inventory.clear();
+    for (let slot = 0; slot < INVENTORY_SIZE; slot++) {
+      const itemId = slot === 0 ? 'driftwood' : slot === 1 ? 'flint' : 'berry_goldberry';
+      h.inventory.set(nextRow, { id: nextRow++, owner: A, slot, itemId, quantity: 5 });
+    }
+    craftReducer(h.ctx, { recipe: 'stone_club' });
+    expect([...h.ground.values()]).toEqual([expect.objectContaining({ itemId: 'stone_club', quantity: 1, x: 25, z: 25 })]);
+    expect(slotsOf(A)[0]).toEqual({ itemId: 'driftwood', quantity: 4 });
+    expect(slotsOf(A)[1]).toEqual({ itemId: 'flint', quantity: 3 });
   });
 });

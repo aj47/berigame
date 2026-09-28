@@ -10,12 +10,6 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.row({
-  id: __t.u32().primaryKey(),
-  x: __t.i32(),
-  z: __t.i32(),
-  itemId: __t.string().name("item_id"),
-  cooldownUntilTick: __t.u32().name("cooldown_until_tick"),
-  harvester: __t.option(__t.identity()),
-  kind: __t.u8(),
-});
+export default {
+  recipe: __t.string(),
+};

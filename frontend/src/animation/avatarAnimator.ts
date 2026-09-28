@@ -73,7 +73,7 @@ export class AvatarAnimator {
   private readonly clips = new Map<string, AnimationClip>();
   private readonly mirrored: Map<string, AnimationClip>;
   private readonly feet: [Object3D | undefined, Object3D | undefined];
-  /** A stick is wielded: Idle and Run play their armed variants. */
+  /** A stick or club is wielded: Idle and Run play their armed variants. */
   private armed = false;
   private readonly layerInput: LayerInput = { dt: 0, time: 0, idle: 0, run: 0, combat: 0, swing: 0, defeat: 0, x: 0, z: 0, yaw: 0 };
 
@@ -122,7 +122,8 @@ export class AvatarAnimator {
     // 2. Blend: start, weigh and stop actions.
     const director = this.director;
     director.update(input);
-    const armed = input.weapon === 'stick';
+    // Any wielded weapon (stick or stone club) uses the armed Idle/Run.
+    const armed = input.weapon === 'stick' || input.weapon === 'stone_club';
     if (armed !== this.armed) {
       this.armed = armed;
       // Swap playing Idle/Run/Stop actions for their (un)armed variant, keeping phase and weight.

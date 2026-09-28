@@ -37,6 +37,7 @@ import {
 import AttackReducer from "./attack_reducer";
 import CancelReducer from "./cancel_reducer";
 import ConfigureAccessReducer from "./configure_access_reducer";
+import CraftReducer from "./craft_reducer";
 import DropItemReducer from "./drop_item_reducer";
 import EatBerryReducer from "./eat_berry_reducer";
 import FollowReducer from "./follow_reducer";
@@ -180,6 +181,7 @@ const reducersSchema = __reducers(
   __reducerSchema("attack", AttackReducer),
   __reducerSchema("cancel", CancelReducer),
   __reducerSchema("configure_access", ConfigureAccessReducer),
+  __reducerSchema("craft", CraftReducer),
   __reducerSchema("drop_item", DropItemReducer),
   __reducerSchema("eat_berry", EatBerryReducer),
   __reducerSchema("follow", FollowReducer),

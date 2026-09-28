@@ -2,14 +2,15 @@ import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { tickSchedule } from '../tables';
 import {
-  DEATH_TICKS, EventKind, HARVEST_TICKS, MELEE_RANGE, Pending, PlayerState, SPAWN_TILE,
-  MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS, TREE_COOLDOWN_TICKS,
+  DEATH_TICKS, EventKind, MELEE_RANGE, harvestTicksFor, isBerryNode, regrowTicksFor, Pending, PlayerState, SPAWN_TILE,
+  MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS,
   bfsPath, blockedSetFromTiles, chebyshev, enterRule, facingFromDelta, goalAdjacentTo,
   goalIsTile, harvestFindsStick, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
   neighbors8, swingDamage, tileKey,
 } from '../../../shared/sim';
 import { holdsStick } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
+import { seedMissingNodes } from '../lib/nodes';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
 import { clearInteractions, hex, sameId } from '../lib/players';
 import { canPlay } from '../lib/access';
@@ -84,7 +85,7 @@ function tryClaimTree(s: TickState, p: PlayerRow, tree: TreeRow): boolean {
   tree.harvester = p.identity;
   markTree(s, tree);
   p.harvestTreeId = tree.id;
-  p.harvestEndTick = s.T + HARVEST_TICKS;
+  p.harvestEndTick = s.T + harvestTicksFor(tree.kind);
   return true;
 }
 
@@ -214,15 +215,17 @@ function phaseHarvest(s: TickState): void {
     const tree = s.trees.get(p.harvestTreeId);
     if (tree && sameId(tree.harvester, p.identity) && chebyshev(p, tree) <= MELEE_RANGE) {
       giveItem(s.ctx, p.identity, tree.itemId, 1, p, s.T);
-      tree.cooldownUntilTick = s.T + TREE_COOLDOWN_TICKS;
+      tree.cooldownUntilTick = s.T + regrowTicksFor(tree.kind);
       tree.harvester = undefined;
       markTree(s, tree);
       emitEvent(s.ctx, { tick: s.T, kind: EventKind.HarvestDone, attacker: p.identity, defender: p.identity, itemId: tree.itemId, defenderHp: p.hp });
       // ctx.random is seeded from the tick timestamp and drawn in s.order, so replays agree.
-      // Draw on every harvest (the draw order never changes); holders find no spare.
-      const roll = s.ctx.random();
-      const holding = p.weapon === STICK_ITEM_ID || holdsItem(readSlots(s.ctx, p.identity).slots, '', STICK_ITEM_ID);
-      if (harvestFindsStick(roll, holding)) {
+      // Draw on every berry harvest (the draw order never changes); holders find no spare.
+      // Only berry trees find sticks: Coast nodes never draw.
+      const berry = isBerryNode(tree);
+      const roll = berry ? s.ctx.random() : 1;
+      const holding = !berry || p.weapon === STICK_ITEM_ID || holdsItem(readSlots(s.ctx, p.identity).slots, '', STICK_ITEM_ID);
+      if (berry && harvestFindsStick(roll, holding)) {
         giveItem(s.ctx, p.identity, STICK_ITEM_ID, 1, p, s.T);
         // A find ends first-spawn grace: 10 more ticks to wield it and step back.
         if (p.respawnTick > s.T) p.respawnTick = s.T;
@@ -344,6 +347,8 @@ export const tick = spacetimedb.reducer(
     for (const p of ctx.db.player.iter()) players.set(hex(p.identity), { ...p });
     const trees = new Map<number, TreeRow>();
     for (const t of ctx.db.tree.iter()) trees.set(t.id, { ...t });
+    // Coast nodes: seed any missing id (a database published before M2). Idempotent.
+    for (const row of seedMissingNodes(ctx, (id) => trees.has(id))) trees.set(row.id, { ...row });
 
     const s: TickState = {
       ctx,

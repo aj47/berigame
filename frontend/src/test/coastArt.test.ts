@@ -4,6 +4,8 @@ import { tideRockGeometry } from '../Components/3D/nodes/TideRock';
 import { clubGeometry, clubMaterial } from '../Components/3D/clubProp';
 import { coastMaterial, triangleCount } from '../Components/3D/nodes/lowPoly';
 import { STICK_LENGTH } from '../animation/stickSwing';
+import { attackPresentation } from '../animation/combatPresentation';
+import { EventKind } from '@sim';
 
 describe('M2 Coast art', () => {
   const nodes = { driftwood: driftwoodPileGeometry, tideRock: tideRockGeometry };
@@ -32,5 +34,20 @@ describe('M2 Coast art', () => {
     expect(box.max.y).toBeLessThan(STICK_LENGTH + 0.15);
     expect(box.getSize(new Vector3()).x).toBeLessThan(0.4);
     expect(clubMaterial()).toBe(coastMaterial());
+  });
+
+  it('the club swings like the stick and lands as heavily', () => {
+    expect(attackPresentation(EventKind.Hit, 'stone_club')).toEqual(attackPresentation(EventKind.Hit, 'stick'));
+    expect(attackPresentation(EventKind.Hit, 'stone_club')).not.toEqual(attackPresentation(EventKind.Hit, ''));
+  });
+
+  it('the driftwood pile reads on pale sand: darker than the sand, bigger than a tile', () => {
+    const g = driftwoodPileGeometry(true);
+    const c = g.getAttribute('color');
+    let sum = 0;
+    for (let i = 0; i < c.count; i++) sum += (c.getX(i) + c.getY(i) + c.getZ(i)) / 3;
+    expect(sum / c.count).toBeLessThan(0.3);
+    const box = new Box3().setFromBufferAttribute(g.getAttribute('position') as any);
+    expect(box.max.x - box.min.x).toBeGreaterThan(1.4);
   });
 });

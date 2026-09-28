@@ -10,7 +10,6 @@ import { LowPolyBuilder, coastMaterial, linear, seeded } from './lowPoly';
  * poking out of its face. Regrowing: the same rock with the flint gone and
  * pale chipped scars where it was.
  * One shared geometry per state and one shared material; InstancedMesh-ready.
- * Not wired into the game yet (docs/design/ROADMAP.md, M2).
  */
 const STONE = 0x77736b, STONE_LIGHT = 0x8f8b80, STONE_DARK = 0x5c5953, WET = 0x45423d, WEED = 0x5d7a45;
 const FLINT = 0x3a4863, FLINT_LIGHT = 0x5f7599, SCAR = 0xcfc8b6;
