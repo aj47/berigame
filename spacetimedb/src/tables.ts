@@ -136,6 +136,9 @@ export const tree = table(
     itemId: t.string(),
     cooldownUntilTick: t.u32(),
     harvester: t.option(t.identity()),
+    // Appended columns: new columns must go last and carry a default.
+    /** shared/sim NodeKind: 0 berry tree, 1 driftwood pile, 2 tide rock. */
+    kind: t.u8().default(0),
   }
 );
 

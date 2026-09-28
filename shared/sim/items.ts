@@ -14,6 +14,9 @@ export interface ItemDef {
 }
 
 export const STICK_ITEM_ID = 'stick';
+export const DRIFTWOOD_ITEM_ID = 'driftwood';
+export const FLINT_ITEM_ID = 'flint';
+export const STONE_CLUB_ITEM_ID = 'stone_club';
 
 /**
  * Berries started as a copy of shared/itemDefinitions.js (the legacy CommonJS
@@ -25,6 +28,9 @@ export const ITEM_DEFS: Record<string, ItemDef> = {
   berry_greenberry: { id: 'berry_greenberry', name: 'Greenberry', icon: '/items/greenberry.png', healthRestore: 2, weaponDamage: 0, maxStack: MAX_STACK, color: '#22C55E' },
   berry_goldberry: { id: 'berry_goldberry', name: 'Goldberry', icon: '/items/goldberry.png', healthRestore: 10, weaponDamage: 0, maxStack: MAX_STACK, color: '#F59E0B' },
   [STICK_ITEM_ID]: { id: STICK_ITEM_ID, name: 'Stick', icon: '/items/stick.png', healthRestore: 0, weaponDamage: 6, maxStack: 1, color: '#8A6A45' },
+  [DRIFTWOOD_ITEM_ID]: { id: DRIFTWOOD_ITEM_ID, name: 'Driftwood', icon: '/items/driftwood.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#9C8468' },
+  [FLINT_ITEM_ID]: { id: FLINT_ITEM_ID, name: 'Flint Shard', icon: '/items/flint.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#5B6470' },
+  [STONE_CLUB_ITEM_ID]: { id: STONE_CLUB_ITEM_ID, name: 'Stone Club', icon: '/items/stone_club.png', healthRestore: 0, weaponDamage: 8, maxStack: 1, color: '#6E6A62' },
 };
 
 export function getItemDef(itemId: string): ItemDef | undefined {

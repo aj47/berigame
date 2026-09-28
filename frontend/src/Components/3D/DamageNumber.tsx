@@ -1,7 +1,7 @@
 import { Html } from '@react-three/drei';
 import React, { useEffect, useState } from 'react';
 import { Vector3 } from 'three';
-import { EventKind, STICK_ITEM_ID } from '@sim';
+import { EventKind, isWeapon } from '@sim';
 
 interface DamageNumberProps {
   playerPosition: { x: number; y: number; z: number };
@@ -22,7 +22,7 @@ const KIND_CLASS: Record<number, string> = {
 };
 
 const kindClass = (kind: number, itemId?: string) =>
-  kind === EventKind.Hit && itemId === STICK_ITEM_ID ? 'stick-damage' : KIND_CLASS[kind] ?? '';
+  kind === EventKind.Hit && itemId && isWeapon(itemId) ? 'stick-damage' : KIND_CLASS[kind] ?? '';
 
 const DamageNumber = React.memo<DamageNumberProps>((props) => {
   const remaining = () => Math.max(0, (props.appearAt ?? 0) - performance.now());

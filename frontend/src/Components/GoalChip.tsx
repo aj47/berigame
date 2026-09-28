@@ -3,6 +3,7 @@ import {
   HOTBAR_SIZE,
   PlayerState,
   STICK_ITEM_ID,
+  STONE_CLUB_ITEM_ID,
   areaOf,
   firstDayGoal,
   getItemDef,
@@ -28,6 +29,8 @@ export const STICK_FOUND_MESSAGE =
   "You found a sturdy stick! Tap it to wield — hits twice as hard";
 
 function goalIcon(goal: Goal, trees: ReturnType<typeof useTrees>): string {
+  if (goal.id === "make-club" || goal.id === "wield-club")
+    return getItemDef(STONE_CLUB_ITEM_ID)?.icon ?? "/items/stone_club.png";
   if (goal.id === "wield-stick" || goal.id === "reach-coast")
     return getItemDef(STICK_ITEM_ID)?.icon ?? "/items/stick.png";
   if (goal.action?.kind === "harvest") {
@@ -35,6 +38,7 @@ function goalIcon(goal: Goal, trees: ReturnType<typeof useTrees>): string {
     if (tree) return getItemDef(tree.itemId)?.icon ?? "/items/blueberry.png";
   }
   if (goal.id === "find-stick") return getItemDef(STICK_ITEM_ID)?.icon ?? "/items/stick.png";
+  if (goal.id === "gather-coast") return getItemDef("flint")?.icon ?? "/items/flint.png";
   return "/items/blueberry.png";
 }
 
@@ -109,6 +113,10 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
       else if (action.kind === "eat") await actions.eatBerry(action.slot);
       else if (action.kind === "wield") await actions.wieldItem(action.slot);
       else if (action.kind === "move") await actions.setTarget(action.x, action.z);
+      else if (action.kind === "craft") {
+        if (await actions.craft(action.recipe))
+          showToast(`You made a ${(getItemDef(action.recipe)?.name ?? "thing").toLowerCase()}!`);
+      }
     } finally {
       setPending(false);
     }

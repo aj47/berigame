@@ -8,3 +8,4 @@ export * from './inventory';
 export * from './appearance';
 export * from './areas';
 export * from './goals';
+export * from './nodes';

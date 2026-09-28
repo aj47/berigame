@@ -56,5 +56,7 @@ export function useGameActions() {
     sendChat: (text: string) => run('sendChat', (c) => c.reducers.sendChat({ text })),
     setAppearance: (appearance: Appearance) => run('setAppearance', (c) => c.reducers.setAppearance(appearance)),
     setName: (name: string) => run('setName', (c) => c.reducers.setName({ name })),
+    /** The verb "make": craft a recipe from shared/sim RECIPES (e.g. 'stone_club'). */
+    craft: (recipe: string) => run('craft', (c) => c.reducers.craft({ recipe })),
   };
 }

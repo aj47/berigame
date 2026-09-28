@@ -126,6 +126,7 @@ export const Tree = __t.object("Tree", {
   itemId: __t.string(),
   cooldownUntilTick: __t.u32(),
   harvester: __t.option(__t.identity()),
+  kind: __t.u8(),
 });
 export type Tree = __Infer<typeof Tree>;
 

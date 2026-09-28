@@ -78,6 +78,33 @@ npm run beta:deploy   # immediately afterwards
   reordering `player` columns would need a manual migration. The module writes
   0 to them and nothing reads them. Do not "clean them up" with `--delete-data`.
 
+### Breaking schema publishes (M2 "The Coast": `tree.kind`)
+
+M2 appends one column: `tree.kind u8` with default `0` (0 berry tree,
+1 driftwood pile, 2 tide rock). SpacetimeDB auto-migrates it and keeps every
+row, but classifies it as breaking for connected clients, exactly like the
+`player.weapon` release above. Same procedure, same rules:
+
+```sh
+spacetime --config-path .spacetime-data/deploy-beta/cli.toml publish \
+  --server maincloud --module-path spacetimedb --delete-data=never \
+  --yes=remote,skip-login,break-clients berigame-beta
+npm run beta:deploy   # immediately afterwards (new bindings: tree.kind, the craft reducer)
+```
+
+- **Nodes seed themselves.** Existing trees migrate to `kind = 0`. The eight
+  Coast nodes (ids 101-108) are inserted by the next `tick` (and by `init` on a
+  fresh database). Only missing ids are inserted, so re-publishing never
+  duplicates or resets them. No version column, no manual step.
+- **Old bundles misread `tree` rows** until `beta:deploy` finishes. Publish when
+  few people are playing; players reload afterwards.
+- **Agent API 1.2.0** adds `/actions/craft`, `harvest {nodeId | kind}`,
+  `state.nodes` and `state.recipes`. `state.trees` stays for one release as an
+  alias listing only the berry trees.
+- Rehearsed locally: publish the previous module and connect a player, then
+  publish this one with `--delete-data=never --yes=break-clients`; player,
+  inventory and tree rows survive and the eight nodes appear on the next tick.
+
 ### First deployment credentials
 
 The initial deployment stores credentials with mode 0600 beneath the ignored

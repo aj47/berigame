@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CLAIM_CYCLE_TICKS, firstDayGoal, type GoalInput, type GoalPlayer, type GoalTree } from '../goals';
 import { emptySlots } from '../inventory';
 import { TREE_SEEDS } from '../items';
+import { NODE_SEEDS } from '../nodes';
 import { Pending, PlayerState, type Slot } from '../types';
 
 const player = (over: Partial<GoalPlayer> = {}): GoalPlayer => ({
@@ -35,8 +36,35 @@ describe('First Day goal chip', () => {
     r = firstDayGoal(input({ done: r.done, slots: bag('stick'), me: player({ weapon: 'stick' }) }));
     expect(r.goal).toMatchObject({ id: 'reach-coast', text: 'Push through the brambles to the Coast', action: { kind: 'move', x: 25, z: 7 } });
     r = firstDayGoal(input({ done: r.done, slots: bag('stick'), me: player({ weapon: 'stick', x: 3, z: 25 }) }));
-    expect(r.goal).toBeNull();
+    // M2: First Day continues on the Coast.
+    expect(r.goal).toMatchObject({ id: 'gather-coast', text: 'Gather driftwood and 2 flint on the Coast (0/3)' });
     expect(r.done).toContain('first-day');
+  });
+
+  it('after First Day: gather driftwood, then flint, then make and wield the club', () => {
+    const all = ['pick-berry', 'eat-berry', 'find-stick', 'wield-stick', 'reach-coast', 'first-day'];
+    const nodes: GoalTree[] = [...trees(), ...NODE_SEEDS.map((n) => ({ ...n, cooldownUntilTick: 0 }))];
+    const me = player({ weapon: 'stick', x: 5, z: 20 });
+    let r = firstDayGoal(input({ done: all, trees: nodes, me, slots: bag('stick') }));
+    expect(r.goal).toMatchObject({ id: 'gather-coast', text: 'Gather driftwood and 2 flint on the Coast (0/3)', action: { kind: 'harvest', treeId: 104 } });
+    const s = bag('stick', 'driftwood');
+    s[2] = { itemId: 'flint', quantity: 1 };
+    r = firstDayGoal(input({ done: all, trees: nodes, me, slots: s }));
+    expect(r.goal).toMatchObject({ text: 'Gather driftwood and 2 flint on the Coast (2/3)', action: { kind: 'harvest', treeId: 105 } });
+    s[2] = { itemId: 'flint', quantity: 2 };
+    r = firstDayGoal(input({ done: all, trees: nodes, me, slots: s }));
+    expect(r.goal).toMatchObject({ id: 'make-club', text: 'Make a stone club', action: { kind: 'craft', recipe: 'stone_club' } });
+    r = firstDayGoal(input({ done: all, trees: nodes, me, slots: bag('stick', 'stone_club') }));
+    expect(r.goal).toMatchObject({ id: 'wield-club', action: { kind: 'wield', slot: 1 } });
+    r = firstDayGoal(input({ done: all, trees: nodes, me: player({ weapon: 'stone_club' }), slots: bag('stick', 'stone_club') }));
+    expect(r.goal).toBeNull();
+  });
+
+  it('berry steps never target Coast nodes', () => {
+    const nodes: GoalTree[] = [...NODE_SEEDS.map((n) => ({ ...n, cooldownUntilTick: 0 })), ...trees()];
+    const r = firstDayGoal(input({ trees: nodes, me: player({ x: 4, z: 25 }) }));
+    expect(r.goal?.action).toMatchObject({ kind: 'harvest' });
+    expect((r.goal?.action as { treeId: number }).treeId).toBeLessThan(100);
   });
 
   it('skips the wield step without the combat grant', () => {

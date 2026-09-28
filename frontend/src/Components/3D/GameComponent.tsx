@@ -8,6 +8,8 @@ import ClickDropdown from '../ClickDropdown';
 import { useLoadingStore, useUserInputStore } from '../../store';
 import UIComponents from '../UIComponents';
 import BerryTree from './BerryTree';
+import CoastNode from './nodes/CoastNode';
+import { isBerryNode } from '@sim';
 import LoadingScreen from '../LoadingScreen';
 import GroundItem from './GroundItem';
 import DebugBridge from './DebugBridge';
@@ -40,7 +42,14 @@ const GameComponent = () => {
       <Canvas id="three-canvas" dpr={[1, 1.5]} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
         <Suspense fallback={null}>
           <AlphaIsland />
-          {trees.map((tree) => (
+          {trees.map((tree) => !isBerryNode(tree) ? (
+            <CoastNode
+              key={tree.id}
+              node={tree}
+              tick={tick}
+              harvester={tree.harvester ? players.get(tree.harvester.toHexString()) ?? null : null}
+            />
+          ) : (
             <BerryTree
               key={tree.id}
               tree={tree}

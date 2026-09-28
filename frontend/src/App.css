@@ -421,6 +421,9 @@ canvas {
 
 /* Inventory operations share one tap, mouse, and keyboard flow. */
 .inventory-panel { display: flex; flex-direction: column; overflow: hidden; }
+.inventory-panel .recipe-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.inventory-panel .recipe-row button { flex: 0 0 auto; font-size: 0.9rem; padding: 6px 12px; }
+.inventory-panel .recipe-row .fine-print { flex: 1 1 140px; margin: 0; }
 .inventory-panel .panel-heading, .inventory-panel .item-inspector { flex: 0 0 auto; }
 .inventory-panel .inventory-grid { min-height: 0; flex: 0 1 auto; }
 .inventory-grid {

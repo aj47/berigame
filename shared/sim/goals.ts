@@ -10,10 +10,14 @@
 import { areaOf, coastPastCrossing, HEDGE_CROSSINGS, holdsItem, isNewcomer } from './areas';
 import { HARVEST_TICKS, HOTBAR_SIZE, MELEE_RANGE, MOVEMENT_STEPS_PER_TICK, TICK_MS, TREE_COOLDOWN_TICKS } from './constants';
 import { chebyshev } from './grid';
-import { getItemDef, STICK_ITEM_ID } from './items';
+import { DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, getItemDef, STICK_ITEM_ID, STONE_CLUB_ITEM_ID } from './items';
+import { countItem } from './inventory';
+import { canCraft, getRecipe, harvestTicksFor, isBerryNode, NodeKind, regrowTicksFor } from './nodes';
 import { Pending, PlayerState, type Slot, type Tile } from './types';
 
-export type GoalStepId = 'pick-berry' | 'eat-berry' | 'find-stick' | 'wield-stick' | 'reach-coast';
+export type GoalStepId = 'pick-berry' | 'eat-berry' | 'find-stick' | 'wield-stick' | 'reach-coast'
+  // M2, after First Day:
+  | 'gather-coast' | 'make-club' | 'wield-club';
 /** Done-set marker recorded once all First Day steps are complete. */
 export const FIRST_DAY_DONE = 'first-day';
 export type GoalDoneId = GoalStepId | typeof FIRST_DAY_DONE;
@@ -27,7 +31,8 @@ export type GoalAction =
   | { kind: 'harvest'; treeId: number }
   | { kind: 'eat'; slot: number }
   | { kind: 'wield'; slot: number }
-  | { kind: 'move'; x: number; z: number };
+  | { kind: 'move'; x: number; z: number }
+  | { kind: 'craft'; recipe: string };
 
 export interface Goal {
   id: GoalStepId;
@@ -56,6 +61,8 @@ export interface GoalPlayer extends Tile {
 export interface GoalTree extends Tile {
   id: number;
   itemId: string;
+  /** shared/sim NodeKind; absent = berry tree. */
+  kind?: number;
   cooldownUntilTick: number;
   /** Anything truthy while someone is harvesting it. */
   harvester?: unknown;
@@ -100,8 +107,8 @@ function sameNum(a: number | bigint, b: number): boolean {
 export function treeReadyTick(tree: GoalTree, players: readonly GoalPlayer[], tick: number): number {
   if (tree.harvester) {
     const h = players.find((p) => p.harvestTreeId === tree.id);
-    const end = h ? Math.max(h.harvestEndTick, tick) : tick + HARVEST_TICKS;
-    return end + TREE_COOLDOWN_TICKS;
+    const end = h ? Math.max(h.harvestEndTick, tick) : tick + harvestTicksFor(tree.kind);
+    return end + regrowTicksFor(tree.kind);
   }
   return Math.max(tree.cooldownUntilTick, tick);
 }
@@ -120,13 +127,17 @@ export function claimEstimate(me: GoalPlayer, tree: GoalTree, others: readonly G
     if (oNew && !meNew) ahead++;
     else if (oNew === meNew && (!meWaiting || o.lastInputTick <= me.lastInputTick)) ahead++;
   }
-  return Math.max(ready, tick + walk) + ahead * CLAIM_CYCLE_TICKS;
+  return Math.max(ready, tick + walk) + ahead * (harvestTicksFor(tree.kind) + regrowTicksFor(tree.kind));
 }
 
-/** The tree with the soonest claim for `me`, then nearest, then lowest id. */
-export function bestTree(me: GoalPlayer, trees: readonly GoalTree[], others: readonly GoalPlayer[], tick: number): { tree: GoalTree; claimAt: number } | null {
+/**
+ * The node with the soonest claim for `me`, then nearest, then lowest id.
+ * Only berry trees unless `kind` names another node kind.
+ */
+export function bestTree(me: GoalPlayer, trees: readonly GoalTree[], others: readonly GoalPlayer[], tick: number, kind: number = NodeKind.Berry): { tree: GoalTree; claimAt: number } | null {
   let best: { tree: GoalTree; claimAt: number } | null = null;
   for (const tree of trees) {
+    if ((tree.kind ?? NodeKind.Berry) !== kind) continue;
     const claimAt = claimEstimate(me, tree, others, tick);
     if (!best
       || claimAt < best.claimAt
@@ -143,17 +154,20 @@ function seconds(ticks: number): number {
 }
 
 function treeName(tree: GoalTree): string {
-  return (getItemDef(tree.itemId)?.name ?? 'berry').toLowerCase();
+  if (tree.kind === NodeKind.Driftwood) return 'driftwood pile';
+  if (tree.kind === NodeKind.TideRock) return 'tide rock';
+  return (getItemDef(tree.itemId)?.name ?? 'berry').toLowerCase() + ' tree';
 }
 
 /** Gathering half of steps 1 and 3: walk, wait, harvest or pick the best tree. */
-function gatherGoal(id: GoalStepId, text: string, idleHint: string, input: GoalInput): Goal {
-  const { me, trees, others, tick } = input;
+function gatherGoal(id: GoalStepId, text: string, idleHint: string, input: GoalInput, kind: number = NodeKind.Berry): Goal {
+  const { me, others, tick } = input;
+  const trees = input.trees.filter((t) => (t.kind ?? NodeKind.Berry) === kind);
   if (me.harvestTreeId !== 0) {
     const tree = trees.find((t) => t.id === me.harvestTreeId);
-    return { id, text, hint: `Picking the ${tree ? treeName(tree) + ' ' : ''}tree…`, action: null };
+    return { id, text, hint: `${tree && !isBerryNode(tree) ? 'Gathering from' : 'Picking'} the ${tree ? treeName(tree) : 'tree'}…`, action: null };
   }
-  const best = bestTree(me, trees, others, tick);
+  const best = bestTree(me, trees, others, tick, kind);
   const current = me.pending === Pending.Harvest ? trees.find((t) => sameNum(me.pendingId, t.id)) : undefined;
   if (current) {
     const currentAt = claimEstimate(me, current, others, tick);
@@ -168,7 +182,7 @@ function gatherGoal(id: GoalStepId, text: string, idleHint: string, input: GoalI
           waiting: { treeId: current.id, ripeInTicks: Math.max(0, ripeIn) },
         };
       }
-      return { id, text, hint: `Walking to the ${treeName(current)} tree…`, action: null };
+      return { id, text, hint: `Walking to the ${treeName(current)}…`, action: null };
     }
   }
   if (!best) return { id, text, hint: idleHint, action: null };
@@ -176,8 +190,8 @@ function gatherGoal(id: GoalStepId, text: string, idleHint: string, input: GoalI
   return {
     id, text,
     hint: wait > Math.ceil(Math.max(0, chebyshev(me, best.tree) - MELEE_RANGE) / MOVEMENT_STEPS_PER_TICK) + 1
-      ? `Tap: the ${treeName(best.tree)} tree ripens in about ${seconds(wait)} s`
-      : `Tap to pick the ${treeName(best.tree)} tree`,
+      ? `Tap: the ${treeName(best.tree)} ${isBerryNode(best.tree) ? 'ripens' : 'is ready'} in about ${seconds(wait)} s`
+      : `Tap to ${isBerryNode(best.tree) ? 'pick' : 'gather from'} the ${treeName(best.tree)}`,
     action: { kind: 'harvest', treeId: best.tree.id },
   };
 }
@@ -197,7 +211,7 @@ export function firstDayGoal(input: GoalInput): GoalResult {
   if (input.seen?.harvested || food !== -1) done.add('pick-berry');
   if (input.seen?.ate || me.hp >= me.maxHp) done.add('eat-berry');
   if (hasStick) done.add('find-stick');
-  if (!canFight || me.weapon === STICK_ITEM_ID) done.add('wield-stick');
+  if (!canFight || me.weapon === STICK_ITEM_ID || me.weapon === STONE_CLUB_ITEM_ID) done.add('wield-stick');
   if (areaOf(me) === 'coast') done.add('reach-coast');
   if (GOAL_STEPS.every((s) => done.has(s))) done.add(FIRST_DAY_DONE);
   // After First Day, losing the key (a death drop) brings back "find" and "push through".
@@ -245,6 +259,35 @@ export function firstDayGoal(input: GoalInput): GoalResult {
       });
     }
     default:
-      return result(null);
+      return result(coastGoal(input, hasStick));
   }
+}
+
+const CLUB_RECIPE = getRecipe(STONE_CLUB_ITEM_ID)!;
+
+/**
+ * After First Day (M2): "Gather driftwood and 2 flint on the Coast" (n/3),
+ * then "Make a stone club", then wield it. M3 continues with the boulders.
+ */
+function coastGoal(input: GoalInput, hasStick: boolean): Goal | null {
+  const { me, slots, canFight } = input;
+  if (holdsItem(slots, me.weapon, STONE_CLUB_ITEM_ID)) {
+    if (!canFight || me.weapon === STONE_CLUB_ITEM_ID) return null;
+    const slot = slots.findIndex((s, i) => i < HOTBAR_SIZE && s?.itemId === STONE_CLUB_ITEM_ID);
+    return {
+      id: 'wield-club',
+      text: 'Wield your stone club: tap it',
+      hint: slot !== -1 ? `Or press ${slot + 1}. Hits for 8` : 'Move it to your quick bar first',
+      action: slot !== -1 ? { kind: 'wield', slot } : null,
+    };
+  }
+  if (canCraft(slots, CLUB_RECIPE)) {
+    return { id: 'make-club', text: 'Make a stone club', hint: 'Tap to make it: 1 driftwood + 2 flint', action: { kind: 'craft', recipe: CLUB_RECIPE.id } };
+  }
+  if (!hasStick) return null;
+  const wood = Math.min(1, countItem(slots, DRIFTWOOD_ITEM_ID));
+  const flint = Math.min(2, countItem(slots, FLINT_ITEM_ID));
+  const text = `Gather driftwood and 2 flint on the Coast (${wood + flint}/3)`;
+  const kind = wood < 1 ? NodeKind.Driftwood : NodeKind.TideRock;
+  return gatherGoal('gather-coast', text, 'Nothing to gather yet', input, kind);
 }

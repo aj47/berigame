@@ -1,12 +1,12 @@
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { HARVEST_TICKS, MELEE_RANGE, Pending, chebyshev } from '../../../shared/sim';
+import { MELEE_RANGE, Pending, chebyshev, harvestTicksFor } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
 
 /**
- * Walk next to a berry tree and pick from it. A regrowing or claimed tree is
+ * Walk next to a berry tree (or a Coast node: driftwood pile, tide rock) and pick from it. A regrowing or claimed tree is
  * not an error: the player waits next to it and claims it when it ripens
  * (newcomers first, then whoever has waited longest).
  */
@@ -24,7 +24,7 @@ export const startHarvest = spacetimedb.reducer(
       if (free) {
         ctx.db.tree.id.update({ ...tree, harvester: p.identity });
         p.harvestTreeId = tree.id;
-        p.harvestEndTick = T + HARVEST_TICKS;
+        p.harvestEndTick = T + harvestTicksFor(tree.kind);
       } else {
         p.pending = Pending.Harvest;
         p.pendingId = BigInt(tree.id);
