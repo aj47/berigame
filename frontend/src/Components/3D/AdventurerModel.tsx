@@ -1,12 +1,14 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { useAnimations, useGLTF } from '@react-three/drei';
+import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { LoopOnce, LoopRepeat, Mesh, type MeshStandardMaterial } from 'three';
+import { Mesh, type MeshStandardMaterial } from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
 import { PlayerState, HAIR_STYLES, STICK_ITEM_ID, type Appearance } from '@sim';
 import { acquirePalette, paletteKey } from '../../appearance/palette';
-import { CLIPS, cuePose, type Clip, type AnimationCue } from '../../animation/combatPresentation';
-import { STICK_SWING_CLIP, stickMount, withStickSwing } from '../../animation/stickSwing';
+import type { AnimationCue } from '../../animation/combatPresentation';
+import { stickMount } from '../../animation/stickSwing';
+import { avatarClipSet } from '../../animation/stance';
+import { AvatarAnimator, seedFromIdentity, skipBoneEulerSync, type AnimatorInput } from '../../animation/avatarAnimator';
 import { useLoadingStore } from '../../store';
 import { stickGeometry, stickMaterial } from './stickProp';
 
@@ -20,24 +22,23 @@ interface Props {
   state:number;
   /** The public player.weapon column: '' for bare fists, 'stick' while one is wielded. */
   weapon:string;
-  motion:React.MutableRefObject<{ moving:boolean; speed?:number }>;
+  motion:React.MutableRefObject<{ moving:boolean; speed?:number; holdMs?:number }>;
   transient:React.MutableRefObject<AnimationCue|null>;
 }
-const LOOPING=new Set<Clip>(['Idle','Run']);
-/** A rig without a synthesized swing (should never happen) still attacks with the baked jab. */
-const FALLBACK:Partial<Record<Clip,Clip>>={[STICK_SWING_CLIP]:'Strike'};
-// The baked Run cycle's feet travel ~1.92 units/s at native cadence. Match them to ground speed.
-const runScale=(speed?:number)=>Math.max(.85,Math.min(2.5,(speed??3.33)/1.92));
 const STICK_MOUNT=stickMount();
 
 const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,transient}:Props) => {
   const {scene,animations}=useGLTF(url) as any;
-  // The GLB's clips plus the synthesized StickSwing: built once per GLB, and a stable array for useAnimations.
-  const clips=useMemo(()=>withStickSwing(scene,animations),[scene,animations]);
-  const model=useMemo(()=>SkeletonUtils.clone(scene),[scene]);
+  // Every clip (the GLB's, the synthesized StickSwing, rest-pose channels pruned, both stances): built once per GLB.
+  const clipSet=useMemo(()=>avatarClipSet(scene,animations),[scene,animations]);
+  const model=useMemo(()=>{const clone=SkeletonUtils.clone(scene);skipBoneEulerSync(clone);return clone;},[scene]);
   const base=useMemo(()=>{let material:MeshStandardMaterial;scene.traverse((o:any)=>{if(o.isSkinnedMesh)material=o.material;});return material!;},[scene]);
-  const {actions}=useAnimations(clips,model);
-  const current=useRef('');
+  const seed=useMemo(()=>seedFromIdentity(identity),[identity]);
+  const animator=useMemo(()=>new AvatarAnimator(model,clipSet,{seed}),[model,clipSet,seed]);
+  useEffect(()=>()=>animator.dispose(),[animator]);
+  // Reused every frame: nothing is allocated per avatar per frame.
+  const input=useRef<AnimatorInput>({now:0,dt:0,dead:false,cue:null,moving:false,speed:0,holdMs:0,x:0,z:0,yaw:0});
+  const revision=useRef(-1);
   const colors=paletteKey(appearance);
   useLayoutEffect(()=>{
     const palette=acquirePalette(base,appearance);
@@ -59,36 +60,30 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
     return ()=>{hand.remove(stick);};
   },[model,weapon]);
   useEffect(()=>{
-    current.current='';
+    revision.current=-1;
     // This key represents the required local character, including its chosen hair variant.
     if (isSelf) useLoadingStore.getState().addLoadedAsset(BASE_MODEL_URL);
     return ()=>{model.traverse((object:any)=>{if(object.isSkinnedMesh)object.skeleton.dispose();});};
   },[model,isSelf]);
-  useFrame(()=>{
-    const pose=cuePose(transient.current,performance.now()),dead=state===PlayerState.Dead;
-    const wanted:Clip=dead?'Defeat':pose?pose.clip:motion.current.moving?'Run':'Idle';
-    const desired:Clip=actions[wanted]?wanted:FALLBACK[wanted]??wanted;
-    const key=desired+(pose&&!dead?pose.key:'');
-    const next=actions[desired];
-    if(desired==='Run'&&next)next.timeScale=runScale(motion.current.speed);
-    if(key===current.current)return;
-    // Resume the gait where it was if travel restarts during its fade-out; never restart each server tick.
-    const run=actions.Run;
-    const phase=run?.isRunning()?run.time/run.getClip().duration:0;
-    const fade=pose?.05:.09;
-    // Only the clips we play: touching every action would instantiate one per GLB clip.
-    for(const clip of CLIPS)actions[clip]?.fadeOut(fade);
-    if(next){
-      const once=!LOOPING.has(desired);
-      next.reset().setLoop(once?LoopOnce:LoopRepeat,once?1:Infinity);next.clampWhenFinished=once;
-      next.timeScale=desired==='Run'?runScale(motion.current.speed):1;
-      if(pose&&!dead)next.time=Math.min(pose.elapsedSeconds,next.getClip().duration);
-      else if(desired==='Run')next.time=(phase%1)*next.getClip().duration;
-      next.fadeIn(fade).play();
+  useFrame((_,delta)=>{
+    const frame=input.current, travel=motion.current;
+    frame.now=performance.now();
+    frame.dead=state===PlayerState.Dead;
+    frame.cue=transient.current;
+    frame.moving=travel.moving;
+    frame.speed=travel.speed??0;
+    frame.holdMs=travel.holdMs??0;
+    frame.dt=delta;
+    // The avatar's group (PlayerAvatar) carries its ground position and facing.
+    const group=model.parent;
+    if(group){frame.x=group.position.x;frame.z=group.position.z;frame.yaw=group.rotation.y;}
+    animator.update(frame);
+    const director=animator.director;
+    if(director.revision!==revision.current){
+      revision.current=director.revision;
+      model.userData.berigameAvatar.clip=director.clip;
+      model.userData.berigameAvatar.cue=director.cueKey;
     }
-    model.userData.berigameAvatar.clip=desired;
-    model.userData.berigameAvatar.cue=pose?.key??null;
-    current.current=key;
   });
   return <primitive object={model} dispose={null} />;
 };

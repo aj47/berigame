@@ -1,8 +1,8 @@
 import { EventKind, STICK_ITEM_ID } from '@sim';
 import { STICK_SWING_CLIP, STICK_SWING_IMPACT_MS, STICK_SWING_MS } from './stickSwing';
 
-/** Every clip an adventurer plays: locomotion, the two attacks, the hit reaction and defeat. */
-export const CLIPS = ['Idle', 'Run', 'Strike', STICK_SWING_CLIP, 'Hit', 'Defeat'] as const;
+/** Every clip an adventurer plays: locomotion (Stop settles a run), the two attacks, the hit reaction and defeat. */
+export const CLIPS = ['Idle', 'Run', 'Stop', 'Strike', STICK_SWING_CLIP, 'Hit', 'Defeat'] as const;
 export type Clip = (typeof CLIPS)[number];
 
 export interface ActionCue {
