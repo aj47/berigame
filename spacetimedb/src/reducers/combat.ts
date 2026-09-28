@@ -1,6 +1,6 @@
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { HOTBAR_SIZE, PlayerState, isWeapon, retaliationSwingTick } from '../../../shared/sim';
+import { HOTBAR_SIZE, PlayerState, inGrace, inSafeRing, isWeapon, retaliationSwingTick } from '../../../shared/sim';
 import { readSlots } from '../lib/inventory';
 import { clearInteractions, currentTick, findPlayer, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { requireCapability } from '../lib/access';
@@ -44,7 +44,11 @@ export const attack = spacetimedb.reducer(
     const tgt = findPlayer(ctx, target);
     if (!tgt || !tgt.online || tgt.state !== PlayerState.Alive) throw new SenderError('target unavailable');
     const T = currentTick(ctx);
+    if (inSafeRing(p) || inSafeRing(tgt)) throw new SenderError('No fighting in the safe ring');
+    if (inGrace(tgt, T)) throw new SenderError('They are protected for a moment');
     touchInput(p, T);
+    // An accepted attack ends your own grace.
+    p.respawnTick = 0;
     // Re-selecting the current opponent must not reset or postpone the rally.
     if (p.hostile && sameId(p.combatTarget, target)) {
       savePlayer(ctx, p);

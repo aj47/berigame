@@ -1,4 +1,7 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import type { CombatEvent } from '../module_bindings/types';
+import { useMyIdentityHex } from './hooks';
+import { useFirstDayStore } from './stores/firstDayStore';
 import { SpacetimeDBProvider, useTable } from 'spacetimedb/react';
 import { tables } from '../module_bindings';
 import { buildConnection } from './connection';
@@ -14,8 +17,15 @@ const TableSync = () => {
     onUpdate: (_old, row) => onWorldTick(row.tick),
   });
   const pushEvent = useCombatFxStore((s) => s.pushEvent);
+  const me = useMyIdentityHex();
+  const meRef = useRef(me);
+  meRef.current = me;
   // combat_event is an event table: rows only ever arrive through onInsert.
-  useTable(tables.combatEvent, { onInsert: pushEvent });
+  const onEvent = useCallback((row: CombatEvent) => {
+    pushEvent(row);
+    useFirstDayStore.getState().onEvent(meRef.current, row);
+  }, [pushEvent]);
+  useTable(tables.combatEvent, { onInsert: onEvent });
   return null;
 };
 

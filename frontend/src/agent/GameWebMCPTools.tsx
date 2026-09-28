@@ -1,6 +1,18 @@
 import { useEffect, useRef } from "react";
 import {
-  chebyshev,
+  areaOf,
+  bestTree,
+  blockedSetFromTiles,
+  BRAMBLE_MESSAGE,
+  enterRule,
+  firstDayGoal,
+  HEDGE_RING,
+  holdsItem,
+  isSafe,
+  nearestReachableTile,
+  SAFE_RADIUS,
+  SPAWN_TILE,
+  STICK_ITEM_ID,
   getItemDef,
   GRID_SIZE,
   HOTBAR_SIZE,
@@ -20,6 +32,8 @@ import {
   useTrees,
 } from "../spacetime/hooks";
 import { identityHex } from "../spacetime/identity";
+import { useFirstDayStore } from "../spacetime/stores/firstDayStore";
+import { slotsFromRows } from "../Components/itemUi";
 import { useLoadingStore } from "../store";
 
 export type WebMCPStatus = "checking" | "ready" | "unsupported" | "error";
@@ -129,7 +143,17 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
               wielded: !!player?.weapon && slot.slot < HOTBAR_SIZE && slot.itemId === player.weapon,
             };
           });
+          const slots = slotsFromRows(state.inventory);
+          const memory = useFirstDayStore.getState();
+          const goal = player
+            ? firstDayGoal({ me: player, slots, trees: state.trees, others: state.players.filter((row: any) => row !== player), tick: state.tick, canFight: true, done: memory.done, seen: memory.seen }).goal
+            : null;
           return JSON.stringify({
+            goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action } : null,
+            world: {
+              brambles: { center: SPAWN_TILE, ring: HEDGE_RING, key: STICK_ITEM_ID, rule: "Tiles at Chebyshev distance 17 from the center are thorny brambles: step onto one only while holding a stick, or from the Coast. You can always walk home." },
+              safeRing: { center: SPAWN_TILE, radius: SAFE_RADIUS },
+            },
             connection: {
               online: typeof navigator === "undefined" ? true : navigator.onLine,
               connected: state.websocketConnected && state.gameDataLoaded && !state.worldUpdatesStalled,
@@ -145,6 +169,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                   maxHealth: player.maxHp,
                   ...describeWeapon(player.weapon ?? ""),
                   alive: player.state === PlayerState.Alive,
+                  area: areaOf(player),
+                  safe: isSafe(player, state.tick),
                   hostile: player.hostile,
                   target: targetId ? byIdentity.get(targetId)?.name ?? targetId : null,
                   action: player.harvestEndTick > state.tick
@@ -197,7 +223,17 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           if (error) return error;
           if (!Number.isInteger(x) || !Number.isInteger(z) || x < 0 || x >= GRID_SIZE || z < 0 || z >= GRID_SIZE)
             return `Choose integer tile coordinates from 0 through ${GRID_SIZE - 1}.`;
-          return reportAction(await live.current.actions.setTarget(x, z), `Walking toward tile ${x}, ${z}.`);
+          const blocked = blockedSetFromTiles(live.current.trees);
+          const hasStick = holdsItem(slotsFromRows(live.current.inventory), player.weapon ?? "", STICK_ITEM_ID);
+          const dest = nearestReachableTile(player, { x, z }, blocked, enterRule(hasStick));
+          const open = nearestReachableTile(player, { x, z }, blocked);
+          const clamped = dest.x !== open.x || dest.z !== open.z;
+          return reportAction(
+            await live.current.actions.setTarget(x, z),
+            clamped
+              ? `${BRAMBLE_MESSAGE}. Walking to tile ${dest.x}, ${dest.z} instead (blockedBy: brambles).`
+              : `Walking toward tile ${x}, ${z}.`,
+          );
         },
       ),
       tool(
@@ -247,17 +283,15 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
       ),
       tool(
         "harvest_nearest_tree",
-        "Walk to and harvest the nearest ripe berry tree. Harvesting takes a few seconds and adds berries to your inventory when it completes, sometimes with a stick you can wield.",
+        "Walk to and harvest the berry tree with the soonest turn (a regrowing or busy tree is fine: you wait beside it and pick it when it ripens). Harvesting takes a few seconds and adds a berry; while you hold no stick, about 1 harvest in 4 also finds a sturdy stick, the key through the bramble hedge.",
         {},
         [],
         async () => {
           const { player, error } = requirePlayer() as any;
           if (error) return error;
           if (player.hostile) return "You are in combat. Finish or stop combat before harvesting.";
-          const tree = live.current.trees
-            .filter((row: any) => !row.harvester && row.cooldownUntilTick <= live.current.tick)
-            .sort((a: any, b: any) => chebyshev(player, a) - chebyshev(player, b) || a.id - b.id)[0];
-          if (!tree) return "No berry trees are ripe right now. Inspect the game state and try again after they regrow.";
+          const tree = bestTree(player, live.current.trees, live.current.players.filter((row: any) => row !== player), live.current.tick)?.tree as any;
+          if (!tree) return "There is no berry tree to harvest.";
           const berry = getItemDef(tree.itemId)?.name ?? "berries";
           return reportAction(await live.current.actions.startHarvest(tree.id), `Walking to a ${berry.toLowerCase()} tree to harvest.`);
         },

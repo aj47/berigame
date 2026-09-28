@@ -4,10 +4,13 @@ import {
   MELEE_RANGE,
   PUNCH_DAMAGE,
   PlayerState,
+  STICK_ITEM_ID,
   chebyshev,
   getItemDef,
+  isSafe,
   isWeapon,
 } from "@sim";
+import { useFirstDayStore } from "../spacetime/stores/firstDayStore";
 import { useGameActions } from "../spacetime/actions";
 import {
   useInventoryRows,
@@ -37,6 +40,7 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
   const rows = useInventoryRows();
   const { eatBerry, wieldItem, unwield, cancel } = useGameActions();
   const showToast = useToastStore((s) => s.show);
+  const sparkle = useFirstDayStore((s) => s.stickFoundAt !== null);
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
   const slots = useMemo(() => slotsFromRows(rows, HOTBAR_SIZE), [rows]);
@@ -94,7 +98,8 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
   }, []);
 
   if (!me) return null;
-  const hp = Math.max(0, Math.min(100, (me.hp / Math.max(1, me.maxHp)) * 100));
+  const safe = !dead && isSafe(me, tick);
+  const hp =Math.max(0, Math.min(100, (me.hp / Math.max(1, me.maxHp)) * 100));
   const target = me.combatTarget
     ? players.get(me.combatTarget.toHexString())
     : undefined;
@@ -143,6 +148,11 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
           />
           <span>
             HP{" "}
+            {safe && (
+              <em className="safe-badge" title="Nobody can hit you here or right now">
+                Safe
+              </em>
+            )}
             <strong>
               {me.hp} / {me.maxHp}
             </strong>
@@ -194,7 +204,7 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
             <button
               key={index}
               data-slot={index}
-              className={`hotbar-slot ${slot ? "filled" : "empty"} ${inHand ? "active" : ""} ${pending ? "busy" : ""}`}
+              className={`hotbar-slot ${slot ? "filled" : "empty"} ${inHand ? "active" : ""} ${pending ? "busy" : ""} ${sparkle && slot?.itemId === STICK_ITEM_ID ? "sparkle" : ""}`}
               // Only unusable slots are disabled: disabling the focused button while a
               // request is in flight would drop keyboard focus. pendingRef blocks re-entry.
               disabled={dead || !slot || (!weaponSlot && !food)}
@@ -244,7 +254,7 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
           ? "Eat or wield from your quick slots between swings."
           : weaponDef
             ? `${weaponName} wielded. Press its key again to punch instead.`
-            : "Punching. Harvest berry trees to find a stick."}
+            : "Punching. Harvest berry trees to find a sturdy stick."}
       </p>
     </section>
   );

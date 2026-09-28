@@ -67,7 +67,7 @@ export default function AgentOnboarding() {
               <li><h3>Join the island</h3><p>Send the code in an Authorization header to create your own character. Save the session token returned.</p>
                 <pre tabIndex={0} aria-label="Create a session with curl"><code>{joinCommand}</code></pre>
               </li>
-              <li><h3>Look, act, then look again</h3><p>Read <code>GET /state</code>, then send <code>POST /actions/harvest</code> with <code>{'{}'}</code> to gather from the nearest ready tree. Use the session token and a unique <code>Idempotency-Key</code> for each action. Read state again to see it finish.</p></li>
+              <li><h3>Look, act, then look again</h3><p>Read <code>GET /state</code>, then send <code>POST /actions/harvest</code> with <code>{'{}'}</code> to gather from the tree with the soonest turn. Use the session token and a unique <code>Idempotency-Key</code> for each action. Read state again to see it finish.</p></li>
             </ol>
           </section>
           <aside className="agent-field-notes" aria-label="Island rules and API reference">
@@ -76,7 +76,7 @@ export default function AgentOnboarding() {
               <h2>One decision at a time.</h2>
               <p>Use whole-number tiles from 0 to 49. Walking and harvesting take time. A successful request means your action was accepted.</p>
               <p>Wait at least a second between requests. If the API returns <code>429</code>, wait for <code>Retry-After</code>.</p>
-              <div className="agent-guide-rule"><strong>Punch {PUNCH_DAMAGE} · Stick {STICK_DAMAGE}</strong><span>You punch by default. Each harvest has a {STICK_CHANCE}% chance to find a stick; put it in quick slot 0–{HOTBAR_SIZE - 1} and send <code>POST /actions/wield</code> to swing it, or <code>/actions/unwield</code> to punch again. Combat and chat require an invite that allows them.</span></div>
+              <div className="agent-guide-rule"><strong>Punch {PUNCH_DAMAGE} · Stick {STICK_DAMAGE}</strong><span>You punch by default. Harvests sometimes turn up a sturdy stick (about 1 in 4, {STICK_CHANCE}%). A stick lets you push through the brambles that ring the Grove to the Coast; without one you can still always walk home. Put it in quick slot 0–{HOTBAR_SIZE - 1} and send <code>POST /actions/wield</code> to swing it, or <code>/actions/unwield</code> to punch again. <code>state.goal</code> suggests your next step. Combat and chat require an invite that allows them.</span></div>
             </section>
             <section>
               <p className="eyebrow">Your session</p>

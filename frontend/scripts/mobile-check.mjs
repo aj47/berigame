@@ -5,7 +5,8 @@ const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const out=process.env.SHOT_DIR ?? '../docs/art/game-review';fs.mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({channel:'chrome'});
-const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+const [vw,vh]=(process.env.MOBILE_VIEWPORT??'390x844').split('x').map(Number);
+const ctx=await browser.newContext({viewport:{width:vw,height:vh},deviceScaleFactor:2,isMobile:true,hasTouch:true});
 const page=await ctx.newPage();const errors=[],checks=[];
 page.on('pageerror',e=>errors.push(e.message));
 const check=(name,value)=>{checks.push({name,passed:Boolean(value)});if(!value)throw new Error(name);};
@@ -18,17 +19,17 @@ try {
   const quick=await page.locator('.combat-hud .hotbar-slot').evaluateAll(els=>els.map(el=>el.getAttribute('aria-label')));
   check('three empty quick slots and the punch chip fit the phone HUD',quick.length===3&&quick.every((l,i)=>l===`Quick slot ${i+1}: empty`)&&/Punch/.test(await page.locator('.combat-hud').textContent()));
   for(const box of await page.locator('.combat-hud .hotbar-slot, .combat-hud .stop-button').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().toJSON())))
-    check('quick slot and Stop touch targets are on screen and at least 40px tall',box.left>=0&&box.right<=390&&box.bottom<=844&&box.height>=40);
+    check('quick slot and Stop touch targets are on screen and at least 40px tall',box.left>=0&&box.right<=vw&&box.bottom<=vh&&box.height>=40);
   const me=await page.evaluate(()=>window.__berigame.me);
   const target=await page.evaluate(([x,z])=>window.__berigameProject(x,z,0),[me.x,me.z+2]);
   await page.touchscreen.tap(target.x,target.y);
   await page.waitForFunction(z=>window.__berigame.me.z===z,me.z+2,{timeout:7000});
   check('touch ground movement reaches chosen tile',true);
-  await page.locator('.gather-shortcut').tap();
+  await page.locator('.goal-chip').tap();
   await page.getByRole('button',{name:/^Bag/}).tap();
   await page.locator('.inventory-slot.filled').first().waitFor({timeout:16000});
   // A harvest may add a stick next to the berry in the same update, so pick rows by name.
-  check('Gather shortcut harvests a real berry',/^Slot 1: \w+berry, 1\b/.test(await page.locator('.inventory-slot').first().getAttribute('aria-label')));
+  check('Goal chip harvests a real berry',/^Slot 1: \w+berry, 1\b/.test(await page.locator('.inventory-slot').first().getAttribute('aria-label')));
   const stickFound=await page.locator('.inventory-slot[aria-label*=": Stick"]').count()>0;
   await page.locator('.inventory-slot.filled').first().tap();
   await page.screenshot({path:`${out}/phone-inventory.png`});

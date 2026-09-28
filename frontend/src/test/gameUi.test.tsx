@@ -14,7 +14,9 @@ import CombatHud from "../Components/CombatHud";
 import { isWieldedSlot, slotsFromRows } from "../Components/itemUi";
 import { useToastStore } from "../spacetime/stores/toastStore";
 import LoadingScreen from "../Components/LoadingScreen";
-import GatherShortcut from "../Components/GatherShortcut";
+import GoalChip from "../Components/GoalChip";
+import { useFirstDayStore } from "../spacetime/stores/firstDayStore";
+import { BRAMBLE_MESSAGE } from "@sim";
 
 const mock = vi.hoisted(() => ({
   rows: [{ slot: 0, itemId: "berry_blueberry", quantity: 3 }] as any[],
@@ -22,6 +24,7 @@ const mock = vi.hoisted(() => ({
   moveItem: vi.fn().mockResolvedValue(undefined),
   dropItem: vi.fn().mockResolvedValue(undefined),
   wieldItem: vi.fn().mockResolvedValue(true),
+  setTarget: vi.fn().mockResolvedValue(true),
   unwield: vi.fn().mockResolvedValue(true),
   cancel: vi.fn(),
   startHarvest: vi.fn().mockResolvedValue(true),
@@ -55,6 +58,8 @@ vi.mock("../spacetime/hooks", () => ({
   usePlayersByHex: () => mock.players,
   useTick: () => mock.tick,
   useTrees: () => mock.trees,
+  useMyIdentityHex: () => "me",
+  usePlayers: () => [...mock.players.values()],
 }));
 vi.mock("../spacetime/actions", () => ({ useGameActions: () => mock }));
 vi.mock("../store", () => ({ useLoadingStore: () => mock.loading }));
@@ -397,41 +402,97 @@ describe("connection recovery", () => {
   });
 });
 
-describe("guided gathering", () => {
-  it("only sends a harvest when clicked and selects the nearest available tree", async () => {
+describe("First Day goal chip", () => {
+  beforeEach(() => {
+    try { window.localStorage.clear(); } catch { /* ignore */ }
+    useFirstDayStore.setState({ owner: null, done: [], seen: {}, stickFoundAt: null });
+    mock.player = { ...mock.player, respawnTick: 380, lastInputTick: 0, harvestTreeId: 0, pendingId: 0n };
+    mock.rows = [];
+  });
+
+  it("starts at 'Pick a berry' and only harvests when tapped, choosing the soonest claim", async () => {
     mock.trees = [
-      {
-        id: 1,
-        x: 26,
-        z: 25,
-        itemId: "berry_greenberry",
-        cooldownUntilTick: 110,
-      },
-      {
-        id: 2,
-        x: 25,
-        z: 26,
-        itemId: "berry_goldberry",
-        cooldownUntilTick: 0,
-        harvester: {},
-      },
+      { id: 1, x: 26, z: 25, itemId: "berry_greenberry", cooldownUntilTick: 110 },
+      { id: 2, x: 25, z: 26, itemId: "berry_goldberry", cooldownUntilTick: 0, harvester: {} },
       { id: 3, x: 28, z: 25, itemId: "berry_strawberry", cooldownUntilTick: 0 },
       { id: 4, x: 32, z: 25, itemId: "berry_blueberry", cooldownUntilTick: 0 },
     ];
-    render(<GatherShortcut visible solo />);
+    render(<GoalChip visible />);
     expect(mock.startHarvest).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: /Gather Strawberry/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Pick a berry/ }));
     await waitFor(() => expect(mock.startHarvest).toHaveBeenCalledWith(3));
   });
-  it("does not interrupt combat and disables harvesting while all trees regrow", () => {
+
+  it("then asks you to eat it from the quick bar", async () => {
+    mock.rows = [{ slot: 0, itemId: "berry_blueberry", quantity: 1 }];
+    render(<GoalChip visible />);
+    fireEvent.click(screen.getByRole("button", { name: /Eat it: tap the Blueberry in your quick bar/ }));
+    await waitFor(() => expect(mock.eatBerry).toHaveBeenCalledWith(0));
+  });
+
+  it("shows 'Waiting: ripe in N s' beside a regrowing tree and does nothing on tap", () => {
+    mock.trees = [{ id: 1, x: 26, z: 25, itemId: "berry_greenberry", cooldownUntilTick: 110 }];
+    mock.player = { ...mock.player, x: 27, z: 25, pending: 1, pendingId: 1n };
+    render(<GoalChip visible />);
+    const chip = screen.getByRole("button", { name: /Waiting: ripe in 6 s/ });
+    expect(chip).toBeDisabled();
+  });
+
+  it("stays out of combat and closed panels", () => {
     mock.player.hostile = true;
-    const { rerender } = render(<GatherShortcut visible solo />);
+    const { rerender } = render(<GoalChip visible />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     mock.player.hostile = false;
-    rerender(<GatherShortcut visible solo />);
-    expect(
-      screen.getByRole("button", { name: /No trees ready/ }),
-    ).toBeDisabled();
+    rerender(<GoalChip visible={false} />);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("celebrates a stick find, then asks to wield it and push through the brambles", async () => {
+    useFirstDayStore.setState({ owner: "me", done: ["pick-berry", "eat-berry"], seen: { harvested: true, ate: true }, stickFoundAt: performance.now() });
+    mock.rows = [{ slot: 1, itemId: "stick", quantity: 1 }];
+    const { rerender } = render(<GoalChip visible />);
+    expect(screen.getByText(/You found a sturdy stick! Tap it to wield/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Wield your stick: tap it \(key 2\)/ }));
+    await waitFor(() => expect(mock.wieldItem).toHaveBeenCalledWith(1));
+    mock.player = { ...mock.player, weapon: "stick", x: 30, z: 20 };
+    rerender(<GoalChip visible />);
+    fireEvent.click(screen.getByRole("button", { name: /Push through the brambles to the Coast/ }));
+    await waitFor(() => expect(mock.setTarget).toHaveBeenCalledWith(25, 7));
+  });
+
+  it("toasts once on first reaching the Coast", () => {
+    useFirstDayStore.setState({ owner: "me", done: ["pick-berry", "eat-berry", "find-stick", "wield-stick"], seen: {}, stickFoundAt: null });
+    mock.rows = [{ slot: 0, itemId: "stick", quantity: 1 }];
+    mock.player = { ...mock.player, weapon: "stick", x: 8, z: 25 };
+    const { rerender } = render(<GoalChip visible />);
+    mock.player = { ...mock.player, x: 7 };
+    rerender(<GoalChip visible />);
+    expect(useToastStore.getState().message).toBe("You pushed through to the Coast");
+    expect(useFirstDayStore.getState().done).toContain("reach-coast");
+  });
+
+  it("remembers the done set per identity in localStorage", () => {
+    mock.rows = [{ slot: 0, itemId: "berry_blueberry", quantity: 1 }];
+    render(<GoalChip visible />);
+    expect(JSON.parse(window.localStorage.getItem("berigame.firstDay.me")!).done).toContain("pick-berry");
+  });
+
+  it("uses the bramble copy shared with the server", () => {
+    expect(BRAMBLE_MESSAGE).toBe("Thorny brambles — you need a sturdy stick to push through");
+  });
+});
+
+describe("the Safe badge", () => {
+  it("shows in the safe ring and hides outside it without grace", () => {
+    mock.player = { ...mock.player, respawnTick: 0 };
+    const { rerender } = render(<CombatHud />);
+    expect(screen.getByText("Safe")).toBeInTheDocument();
+    mock.player = { ...mock.player, x: 30 };
+    rerender(<CombatHud />);
+    expect(screen.queryByText("Safe")).not.toBeInTheDocument();
+    mock.player = { ...mock.player, respawnTick: 95 };
+    rerender(<CombatHud />);
+    expect(screen.getByText("Safe")).toBeInTheDocument();
   });
 });
 

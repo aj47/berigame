@@ -129,9 +129,45 @@ the scoped `attack` and `chat`. OpenAPI has the exact schemas.
   the same slots behind the game's 1/2/3 keys. State reports `hotbarSize`,
   `punchDamage`, and a `hotbar`, `wielded` and `weaponDamage` value on every
   inventory row.
-- **Getting a stick.** Each completed harvest has a `STICK_DROP_CHANCE` (25%)
-  chance to add a stick next to the berry. One harvest can therefore add two
+- **Getting a stick.** While you hold no stick (bag or wielded), each completed
+  berry harvest has a `STICK_DROP_CHANCE` (25%, about 1 in 4) chance to add a
+  sturdy stick next to the berry. It is pure luck: no meter, no guarantee. A
+  player already holding a stick never finds a spare. One harvest can add two
   inventory rows, so find rows by `itemId`.
+- **The Grove and the bramble hedge.** You spawn at (25,25) in the Grove.
+  `ring(t)` is the Chebyshev distance from (25,25). Ring 17 (x or z = 8 or 42,
+  136 tiles) is a thorny bramble hedge; ring 18 and beyond is the Coast.
+  You may step onto a bramble tile only while holding a stick, or when stepping
+  in from the Coast. Stepping off is always allowed, so brambles keep a
+  stickless player in the Grove but never keep anyone out: you can always walk
+  home. Diagonals also need both orthogonal tiles to be enterable. State
+  reports `world.brambles {center, ring: 17, key: 'stick', rule}`,
+  `player.area` (`grove`, `hedge` or `coast`, also on every listed player) and
+  `me {area, safe, graceTicks, hasBrambleKey}`.
+- **Moving into the hedge.** `move` beyond the hedge without a stick is accepted
+  but clamped to the nearest reachable Grove tile; the receipt then contains
+  `destination` and `blockedBy: "brambles"`. `harvest` or `pickup` of something
+  you cannot reach because of the brambles is rejected with `422` and error code
+  `brambles` ("Thorny brambles — you need a sturdy stick to push through") and
+  queues nothing. Dropping the stick mid-walk stops you where you are.
+- **Busy trees: wait and claim.** `harvest` on a regrowing or claimed tree is
+  not an error: you walk next to it and wait. On the tick it ripens, waiters
+  claim it in this order: newcomers (in first-spawn grace), then the earliest
+  last input (any new action resets yours), then server order. The receipt has
+  `waiting {treeId, ripeInTicks}` when the tree is not ready yet. Without
+  `treeId`, `harvest` picks the tree with the soonest claim for you.
+- **Safety.** No attack starts or lands while either player is inside the safe
+  ring (`world.safeRing`, radius 2 around spawn). A player is also protected for
+  10 ticks after respawning, and a new character is protected until it gets a
+  stick (then 10 more ticks), attacks, or 3:00 (300 ticks) pass. Attacking ends
+  your own protection. New characters start at 20/30 HP.
+- **The goal.** `state.goal {id, text, hint, action, waiting?}` is the same
+  "First Day" chip the browser shows: `pick-berry`, `eat-berry`, `find-stick`,
+  `wield-stick` (only with combat access), `reach-coast`. `action` is the next
+  step as an action (`harvest {treeId}`, `eat {slot}`, `wield {slot}`,
+  `move {x, z}`) or `null` while you walk, wait or harvest. After First Day it
+  is `null` unless you lost your stick, when `find-stick` and `reach-coast`
+  return.
 - **Wielding.** `POST /actions/wield {"slot": n}` wields the weapon in quick slot
   `n`. Slots outside 0..2 get `400`. A slot without a weapon gets `422`.
   `POST /actions/unwield {}` goes back to punching.

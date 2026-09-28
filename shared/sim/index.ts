@@ -6,3 +6,5 @@ export * from './combat';
 export * from './items';
 export * from './inventory';
 export * from './appearance';
+export * from './areas';
+export * from './goals';

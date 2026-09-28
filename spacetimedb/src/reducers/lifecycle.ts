@@ -2,7 +2,7 @@ import { ScheduleAt } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import {
-  MAX_HP, PlayerState, Pending, SPAWN_TILE, TICK_MS, TREE_SEEDS,
+  FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, MAX_HP, PlayerState, RESPAWN_GRACE_TICKS, Pending, SPAWN_TILE, TICK_MS, TREE_SEEDS,
 } from '../../../shared/sim';
 import { clearInteractions, findPlayer, hex, sameId, savePlayer } from '../lib/players';
 import { requireAdmission } from '../lib/access';
@@ -55,10 +55,11 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     facing: 0,
     targetX: undefined,
     targetZ: undefined,
-    hp: MAX_HP,
+    // New characters wash ashore tired, protected until a stick, an attack or 3:00.
+    hp: FIRST_SPAWN_HP,
     maxHp: MAX_HP,
     state: PlayerState.Alive,
-    respawnTick: 0,
+    respawnTick: (ctx.db.world.id.find(0)?.tick ?? 0) + FIRST_SPAWN_GRACE_TICKS - RESPAWN_GRACE_TICKS,
     stance: 0,
     fightState: 0,
     combatTarget: undefined,

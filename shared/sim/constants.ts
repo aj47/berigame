@@ -56,3 +56,15 @@ export const NAME_MAX_LEN = 16;
 /** Ticks a chat bubble stays above a head (8s). */
 export const CHAT_BUBBLE_TICKS = 13;
 export const MAX_INPUTS_PER_TICK = 5;
+
+// ---- Areas / safety (M1 "The Grove") ---------------------------------------
+/** Chebyshev ring around SPAWN_TILE holding the one-tile bramble hedge. Inside: the Grove; outside: the Coast. */
+export const HEDGE_RING = 17;
+/** Tiles within this Chebyshev radius of spawn are the safe ring: no attacks start or land there. */
+export const SAFE_RADIUS = 2;
+/** Ticks after a respawn during which nobody can hit you. */
+export const RESPAWN_GRACE_TICKS = 10;
+/** A new character is protected until it finds a stick, attacks, or this many ticks pass (3:00). */
+export const FIRST_SPAWN_GRACE_TICKS = 300;
+/** New characters wash ashore tired, so the first berry heals for real. */
+export const FIRST_SPAWN_HP = 20;

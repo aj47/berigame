@@ -1,5 +1,6 @@
 import React from 'react';
 import IslandDetails from './IslandDetails';
+import BrambleHedge from './BrambleHedge';
 import GroundPlane from '../../Objects/GroundPlane';
 
 /** Lights and the ground. Trees now come from the server's `tree` table. */
@@ -11,6 +12,7 @@ const AlphaIsland = () => (
     <hemisphereLight args={['#d4edff', '#81704f', 0.65]} />
     <GroundPlane />
     <IslandDetails />
+    <BrambleHedge />
   </>
 );
 

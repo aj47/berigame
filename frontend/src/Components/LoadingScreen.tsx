@@ -106,8 +106,9 @@ const LoadingScreen = () => {
           <img src="/items/stick.png" alt="" />
           <img src="/items/blueberry.png" alt="" />
           <p>
-            Punch by default. Harvesting can turn up a stick. Keys 1–3 use your
-            first three bag slots.
+            Harvests sometimes turn up a sturdy stick (about 1 in 4). A stick
+            lets you push through the brambles. Keys 1–3 use your first three
+            bag slots.
           </p>
         </div>
         <p className="fine-print">
