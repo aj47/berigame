@@ -103,9 +103,14 @@ bpy.ops.object.mode_set(mode='OBJECT');rig.show_in_front=True
 # Torso, neck and simple faceted head.
 rings([((0,0,1.01),.20,.14),((0,0,1.16),.22,.15),((0,0,1.36),.29,.17),((0,0,1.47),.26,.145)],10,[0,0,0,1,2],[{'Hips':1},{'Spine':1},{'Chest':1},{'Chest':1}])
 torso_surface=[[(Vector(V[i]),W[i]) for i in f] for f in F if len(f)==3]
+neck_faces=range(len(F),len(F)+7)  # neck side quads; the end caps stay flat
 tube((0,0,1.47),(0,0,1.69),[(0,.105,.095),(1,.105,.095)],7,'Neck')
 head_faces_start=len(F)
 ellipsoid((0,-.005,1.84),(.267,.222,.281),[7,7,7,8], 'Head',12,7)
+# Smooth-face pass: one even skin cell over the skull (the random 7/8 patchwork
+# read as panels); skull and neck are shaded smooth below. RNG use is unchanged.
+for i in range(head_faces_start,len(F)):C[i]=7
+SMOOTH_FACES=set(range(head_faces_start,len(F)))|set(neck_faces)
 scalp_faces=[tuple(Vector(V[i]) for i in f) for f in F[head_faces_start:]]
 for s in [-1,1]:ellipsoid((s*.267,.005,1.83),(.055,.055,.085),7,'Head',6,3)
 # Eyes: opaque inset ovals (1.5x the V4 strips, so they stay >=2x4 px at game
@@ -238,6 +243,7 @@ for s,label in [(1,'L'),(-1,'R')]:
     for center,rad,wt in [(sh.lerp(el,.55),.093,{'UpperArm.'+label:1}), (sh.lerp(el,.75),.088,{'UpperArm.'+label:1}), (el,.081,{'UpperArm.'+label:.5,'Forearm.'+label:.5}), (el.lerp(wr,.35),.079,{'Forearm.'+label:1}), (wr,.062,{'Forearm.'+label:.8,'Hand.'+label:.2})]:
         axis=(wr-sh).normalized();q=Vector((0,0,1)).rotation_difference(axis)
         joint_ids.append([vert(center+q@Vector((rad*cos(i*pi/4),rad*sin(i*pi/4),0)),wt) for i in range(8)])
+    SMOOTH_FACES.update(range(len(F),len(F)+8*(len(joint_ids)-1)))
     for j in range(len(joint_ids)-1):
         for i in range(8):face((joint_ids[j][i],joint_ids[j][(i+1)%8],joint_ids[j+1][(i+1)%8],joint_ids[j+1][i]),7)
     # Shoulder overlap and chest-weighted inner sleeve prevent exposed joint caps.
@@ -299,6 +305,10 @@ mat.node_tree.links.new(tex.outputs['Color'],bs.inputs['Base Color']);obj.data.m
 # Recalculate normals, preserving intentional flat shading.
 bpy.ops.object.select_all(action='DESELECT');obj.select_set(True);bpy.context.view_layer.objects.active=obj
 bpy.ops.object.mode_set(mode='EDIT');bpy.ops.mesh.select_all(action='SELECT');bpy.ops.mesh.normals_make_consistent(inside=False);bpy.ops.object.mode_set(mode='OBJECT')
+# Smooth shading only on the skin of skull, neck and bare forearms. Everything
+# else (ears, eyes, brows, hair locks, clothing, hands, stick) stays flat, and the
+# pieces are separate vertex islands, so every silhouette keeps its hard edge.
+for poly in mesh.polygons:poly.use_smooth=poly.index in SMOOTH_FACES
 
 # Animation helpers. Limbs use analytic two-bone IK while authoring; exported rig is FK-only.
 def reset():
