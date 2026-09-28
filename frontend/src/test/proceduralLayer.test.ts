@@ -54,7 +54,7 @@ describe('procedural layer', () => {
     let frames = 0;
     play([layered, reference], tenMinutes(), 60, () => { frames++; shown.add(layered.animator.director.clip); }, false);
     expect(frames).toBe(36_001);
-    expect([...shown].sort()).toEqual(['Defeat', 'Hit', 'Idle', 'Run', STICK_SWING_CLIP, 'Stop', 'Strike'].sort());
+    expect([...shown].sort()).toEqual(['Defeat', 'GetUp', 'Hit', 'Idle', 'Run', STICK_SWING_CLIP, 'Stop', 'Strike'].sort());
     expect(reference.animator.director.clip).toBe('Idle');
     // The layer is on: the pose differs...
     expect(angle(layered.bone('Chest').quaternion, reference.bone('Chest').quaternion) + angle(layered.bone('Head').quaternion, reference.bone('Head').quaternion)).toBeGreaterThan(1e-4);

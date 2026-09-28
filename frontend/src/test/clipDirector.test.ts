@@ -212,4 +212,44 @@ describe('clip director', () => {
     d.update(idle(2100, { cue: swing }));
     expect(d.cueKey).toBeNull();
   });
+
+  it('plays HitBack when the attacker stands behind the defender, Hit otherwise (judged once per blow)', () => {
+    const durations = { ...DURATIONS, HitBack: 0.45, HitHeavy: 0.55 };
+    const where: Record<string, { x: number; z: number }> = { front: { x: 0, z: 1 }, back: { x: 0, z: -1 }, side: { x: 1, z: 0 } };
+    const shown = (attacker: string, clip: Clip = 'Hit', yaw = 0) => {
+      const d = new ClipDirector({ has: (c) => c in durations, duration: (c) => durations[c as keyof typeof durations] ?? 0, locate: (id) => where[id] ?? null });
+      d.update(idle(0, { x: 0, z: 0, yaw }));
+      d.update(idle(100, { x: 0, z: 0, yaw, cue: { ...cue(clip, 1, 100, 'reaction', 400), attacker } }));
+      return d.clip;
+    };
+    // yaw 0 faces +Z.
+    expect(shown('front')).toBe('Hit');
+    expect(shown('side')).toBe('Hit');
+    expect(shown('back')).toBe('HitBack');
+    expect(shown('back', 'HitHeavy')).toBe('HitBack');
+    expect(shown('front', 'Hit', Math.PI)).toBe('HitBack');
+    expect(shown('nobody')).toBe('Hit');
+    // A rig without HitBack keeps Hit.
+    const d = director({ locate: (id) => where[id] ?? null });
+    d.update(idle(0, { x: 0, z: 0, yaw: 0 }));
+    d.update(idle(100, { x: 0, z: 0, yaw: 0, cue: { ...cue('Hit', 1, 100, 'reaction'), attacker: 'back' } }));
+    expect(d.clip).toBe('Hit');
+  });
+
+  it('gets up from Defeat on respawn, then settles to Idle', () => {
+    const durations = { ...DURATIONS, GetUp: 1.1 };
+    const d = new ClipDirector({ has: (c) => c in durations, duration: (c) => durations[c as keyof typeof durations] ?? 0 });
+    run(d, 0, 2000, (now) => idle(now, { dead: true }));
+    expect(d.clip).toBe('Defeat');
+    run(d, 2001, 2100, (now) => idle(now));
+    expect(d.clip).toBe('GetUp');
+    expect(total(d)).toBeCloseTo(1, 9);
+    run(d, 2101, 3200, (now) => idle(now));
+    expect(d.clip).toBe('Idle');
+    // Moving right away wins over GetUp.
+    const e = new ClipDirector({ has: (c) => c in durations, duration: (c) => durations[c as keyof typeof durations] ?? 0 });
+    run(e, 0, 2000, (now) => idle(now, { dead: true }));
+    e.update(idle(2010, { moving: true, speed: 3 }));
+    expect(e.clip).toBe('Run');
+  });
 });

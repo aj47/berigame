@@ -57,6 +57,8 @@ export interface AnimatorOptions {
   seed?: number;
   /** Layer procedural idle and secondary motion over the clips (default true). */
   procedural?: boolean;
+  /** Where another avatar stands (identity hex), so a blow from behind plays HitBack. */
+  locate?: (identity: string) => { x: number; z: number } | null;
 }
 
 /**
@@ -89,6 +91,7 @@ export class AvatarAnimator {
       mirrorable: (clip) => this.mirrored.has(clip),
       leadStance: () => this.leadStance(),
       runStart: set.runStart,
+      locate: options.locate,
     });
     this.layer = options.procedural === false ? null : new ProceduralLayer(model, seed);
   }
@@ -122,7 +125,7 @@ export class AvatarAnimator {
     const armed = input.weapon === 'stick';
     if (armed !== this.armed) {
       this.armed = armed;
-      // Swap playing Idle/Run actions for their (un)armed variant, keeping phase and weight.
+      // Swap playing Idle/Run/Stop actions for their (un)armed variant, keeping phase and weight.
       for (let i = 0; i < director.count; i++) {
         const layer = director.layers[i];
         const old = layer.handle as AnimationAction | null;
@@ -130,7 +133,8 @@ export class AvatarAnimator {
         const next = this.action(layer.clip, layer.mirror, layer.slot);
         if (!next || next === old) continue;
         next.reset();
-        next.setLoop(LoopRepeat, Infinity);
+        next.setLoop(layer.loop ? LoopRepeat : LoopOnce, layer.loop ? Infinity : 1);
+        next.clampWhenFinished = !layer.loop;
         next.time = old.time % next.getClip().duration;
         next.play();
         old.stop();

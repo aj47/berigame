@@ -43,4 +43,15 @@ describe('wielded stick', () => {
     // The director still reports the logical clip.
     expect(avatar.animator.director.clip).toBe('Idle');
   });
+
+  it('stops with the stick in hand: StickStop, never the unarmed Stop or Idle', () => {
+    const avatar = makeAvatar(rig.scene, set, { seed: 9 });
+    const seen = new Set<string>();
+    play([avatar], { endMs: 3400, weapon: [[0, 'stick']], travels: [{ startMs: 500, tiles: 3, msPerTile: 300 }] }, 60, (ms) => {
+      if (ms > 600) for (const name of playing(avatar)) seen.add(name);
+    });
+    expect(seen.has('StickStop')).toBe(true);
+    expect(seen.has('Stop')).toBe(false);
+    expect(seen.has('Idle')).toBe(false);
+  });
 });

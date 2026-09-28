@@ -1,4 +1,4 @@
-import { currentCue, type AnimationCue, type Clip } from './combatPresentation';
+import { currentCue, isBehind, type AnimationCue, type Clip } from './combatPresentation';
 import { STICK_SWING_CLIP } from './stickSwing';
 import { holdCadence, runScale } from './locomotion';
 import type { Stance } from './stance';
@@ -30,6 +30,10 @@ export interface DirectorInput {
   speed: number;
   /** How long the body has waited at its destination with the gait held; 0 while travelling. */
   holdMs: number;
+  /** Ground position and facing (group rotation.y), to tell a blow from behind. */
+  x?: number;
+  z?: number;
+  yaw?: number;
 }
 
 export interface BlendLayer {
@@ -70,6 +74,8 @@ export const FADE = {
   hit: 0.04,
   /** Into Defeat. */
   defeat: 0.12,
+  /** Defeat -> GetUp on respawn (the poses match: GetUp starts at Defeat's end). */
+  getUp: 0.1,
   /** Back to Idle after an attack, a hit, a stop or a respawn. */
   settle: 0.2,
 } as const;
@@ -84,11 +90,13 @@ export const DEFEAT_DELAY_CAP_MS = 500;
  */
 export const DEFEAT_AFTER_HIT_S = 0.25;
 
-const COMBAT: ReadonlySet<Clip> = new Set<Clip>(['Strike', STICK_SWING_CLIP, 'Hit', 'HitHeavy', 'Defeat']);
+const COMBAT: ReadonlySet<Clip> = new Set<Clip>(['Strike', STICK_SWING_CLIP, 'Hit', 'HitHeavy', 'HitBack', 'Defeat', 'GetUp']);
+const isHit = (clip: Clip | '' | null) => clip === 'Hit' || clip === 'HitHeavy' || clip === 'HitBack';
 
 export function fadeSeconds(from: Clip, to: Clip): number {
   switch (to) {
-    case 'Hit': case 'HitHeavy': return FADE.hit;
+    case 'Hit': case 'HitHeavy': case 'HitBack': return FADE.hit;
+    case 'GetUp': return FADE.getUp;
     case 'Strike': case STICK_SWING_CLIP: return FADE.attack;
     case 'Defeat': return FADE.defeat;
     case 'Stop': return FADE.stop;
@@ -111,6 +119,8 @@ export interface DirectorOptions {
   leadStance?: () => Stance;
   /** Run start phase (fraction of the cycle) that plants each stance's lead foot. */
   runStart?: readonly [number, number];
+  /** Where another avatar stands (identity hex), for HitBack; null when unknown. */
+  locate?: (identity: string) => { x: number; z: number } | null;
 }
 
 const MAX_LAYERS = 6;
@@ -149,6 +159,11 @@ export class ClipDirector {
   private deadSince = -1;
   /** While Stop plays: when it hands over to Idle. */
   private stopUntil = 0;
+  /** While GetUp plays after a respawn: when it hands over to Idle. */
+  private getUpUntil = 0;
+  /** The reaction cue whose direction was judged, and whether it came from behind (judged once per blow). */
+  private behindCue: AnimationCue | null = null;
+  private behind = false;
   /** Which foot the standing clips put forward: 0 as authored (right), 1 mirrored (left). */
   stance: Stance = 0;
 
@@ -179,6 +194,10 @@ export class ClipDirector {
     let clip: Clip = 'Idle', seq = -1, role = '', start = 0;
     // A reaction may be queued behind the avatar's own swing (cue.then).
     const cue = currentCue(input.cue, now);
+    // Respawn: stand back up from the Defeat pose (unless already moving or cued).
+    if (!input.dead && this.deadSince >= 0 && this.targetClip === 'Defeat' && this.options.has('GetUp')) {
+      this.getUpUntil = now + Math.max(0, this.options.duration('GetUp') - FADE.settle) * 1000;
+    }
     if (!input.dead) this.deadSince = -1;
     else if (this.deadSince < 0) this.deadSince = now;
     // A killing blow: the row says dead as soon as it arrives, before the
@@ -189,18 +208,24 @@ export class ClipDirector {
       clip = 'Defeat';
     } else if (cue !== null && now >= cue.at && now < cue.at + cue.durationMs) {
       clip = cue.clip; seq = cue.seq; role = cue.role; start = (now - cue.at) / 1000;
+      if (isHit(clip) && cue.attacker) {
+        if (this.behindCue !== cue) { this.behindCue = cue; this.behind = this.fromBehind(cue.attacker, input); }
+        if (this.behind && this.options.has('HitBack')) clip = 'HitBack';
+      }
     } else if (input.moving) {
       clip = 'Run';
     } else if (this.targetClip === 'Run' && this.weightOf('Run') >= 0.5 && this.options.has('Stop')) {
       clip = 'Stop';
     } else if (this.targetClip === 'Stop' && now < this.stopUntil) {
       clip = 'Stop';
+    } else if (now < this.getUpUntil && (this.targetClip === 'Defeat' || this.targetClip === 'GetUp')) {
+      clip = 'GetUp';
     }
     clip = this.resolve(clip);
 
     if (clip !== this.targetClip || seq !== this.targetSeq || role !== this.targetRole) {
       const previous = this.targetClip === '' ? null : this.targetClip;
-      if (clip === 'Defeat' && (previous === 'Hit' || previous === 'HitHeavy')) start = DEFEAT_AFTER_HIT_S;
+      if (clip === 'Defeat' && isHit(previous)) start = DEFEAT_AFTER_HIT_S;
       if (clip === 'Stop') this.stopUntil = now + Math.max(0, this.options.duration('Stop') - FADE.settle) * 1000;
       // Leaving a stride: stand on whichever foot is already forward.
       if (previous === 'Run' && clip !== 'Run') this.stance = this.options.leadStance?.() ?? 0;
@@ -233,13 +258,19 @@ export class ClipDirector {
       // A fading-out Run keeps its last cadence.
       if (layer.clip === 'Run' && running) layer.timeScale = cadence;
       // The killing blow's recoil holds while the fall takes over, instead of recovering towards upright.
-      else if ((layer.clip === 'Hit' || layer.clip === 'HitHeavy') && falling) layer.timeScale = 0;
+      else if (isHit(layer.clip) && falling) layer.timeScale = 0;
       if (layer.clip === 'Idle') this.idleWeight += layer.weight;
       else if (layer.clip === 'Run') this.runWeight += layer.weight;
       if (COMBAT.has(layer.clip)) this.combatWeight += layer.weight;
       if (layer.clip === STICK_SWING_CLIP) this.swingWeight += layer.weight;
       else if (layer.clip === 'Defeat') this.defeatWeight += layer.weight;
     }
+  }
+
+  private fromBehind(attacker: string, input: DirectorInput): boolean {
+    const at = this.options.locate?.(attacker);
+    if (!at || input.x === undefined || input.z === undefined || input.yaw === undefined) return false;
+    return isBehind(input.x, input.z, input.yaw, at.x, at.z);
   }
 
   /** Forget every layer (their actions are already released); the next update starts at full weight. */
@@ -252,6 +283,8 @@ export class ClipDirector {
     this.targetSeq = -1;
     this.targetRole = '';
     this.fadeMs = 0;
+    this.getUpUntil = 0;
+    this.behindCue = null;
   }
 
   /** Summed weight of a clip's layers. */

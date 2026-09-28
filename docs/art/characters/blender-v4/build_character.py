@@ -221,8 +221,12 @@ for s,label in [(1,'L'),(-1,'R')]:
     surface([(s*.23,-.132,1.13),(s*.23,.132,1.13),(s*.28,.175,.99),(s*.335,.20,.78),(s*.335,-.20,.78),(s*.28,-.175,.99)],[(0,1,2,5),(5,2,3,4)],1,bn)
     # Legs and low boots, joint rings have explicit weights.
     h,k,_=bones['Thigh.'+label]; _,a,_=bones['Shin.'+label]
-    tube(h,k,[(0,.115,.118),(.55,.124,.119),(1,.095,.097)],[12,13],['Thigh.'+label]*2+[{'Thigh.'+label:.6,'Shin.'+label:.4}],8)
-    tube(k,a,[(0,.098,.098),(.3,.10,.098),(.50,.085,.087)],[12,13],[{'Thigh.'+label:.3,'Shin.'+label:.7},'Shin.'+label,'Shin.'+label],8)
+    # One continuous trouser tube from hip to mid-shin with three knee edge loops
+    # (85/15, 50/50, 15/85), so a deep bend (Defeat, GetUp) folds instead of the
+    # separately capped thigh and shin ends splitting into shards.
+    kt=(k-h).length/((k-h).length+(a-k).length)
+    tube(h,a,[(0,.115,.118),(.55*kt,.124,.119),(kt-.075,.108,.108),(kt,.100,.100),(kt+.075,.100,.098),(kt+.145,.097,.096),(kt+.5*(1-kt),.085,.087)],[12,13],
+         ['Thigh.'+label]*2+[{'Thigh.'+label:.85,'Shin.'+label:.15},{'Thigh.'+label:.5,'Shin.'+label:.5},{'Thigh.'+label:.15,'Shin.'+label:.85},'Shin.'+label,'Shin.'+label],8)
     tube(k,a,[(.48,.071,.072),(1,.061,.064)],7,'Shin.'+label,8)
     rings([((s*.18,-.080,.015),.119,.209),((s*.18,-.080,.070),.126,.215),((s*.18,-.068,.158),.105,.190),((s*.18,-.015,.210),.081,.11)],8,[9,10,10],'Foot.'+label)
     tube((s*.18,0,.15),(s*.18,0,.31),[(0,.087,.093),(.85,.089,.096),(1,.106,.11)],[9,10],'Foot.'+label,8)
@@ -425,6 +429,10 @@ def defeat_curve(t):
     if t<.75:u=(t-.25)/.5;return .15+.85*u*u
     if t<.88:return 1-.05*math.sin(pi*(t-.75)/.13)
     return 1.0
+def getup_curve(t):
+    """GetUp: 1 = the Defeat end pose. Stays down a beat, pushes up, settles."""
+    if t<.12:return 1.0
+    return 1-smooth((t-.12)/.72)
 
 # The robe bones' local X turn sign that swings a flap's hem forward (-Y).
 def _robe_forward_sign():
@@ -444,11 +452,12 @@ def pose(t=0,mode='Idle',strength=0,sec=0):
     brace=pulse(t,0,.20,.56) if mode in ['Block','BlockCounter'] else 0
     counter=pulse(t,.18,.48,.94) if mode=='BlockCounter' else 0
     # Hit peaks at 55 ms (V4: 88 ms); HitHeavy (a stick blow) at 60 ms and harder.
-    recoil=(pulse(sec,0,.055,.40) if mode=='Hit' else pulse(sec,0,.06,.55) if mode=='HitHeavy'
+    recoil=(pulse(sec,0,.055,.40) if mode=='Hit' else pulse(sec,0,.06,.55) if mode=='HitHeavy' else pulse(sec,0,.07,.45) if mode=='HitBack'
             else pulse(t,0,.22,1) if mode in ['Stagger','Grabbed'] else 0)
     heavy=mode=='HitHeavy'
-    headsnap=(pulse(sec,.01,.07,.40) if mode=='Hit' else pulse(sec,.01,.08,.55) if heavy else 0)
-    hitstep=(pulse(sec,.02,.16,.40) if mode=='Hit' else pulse(sec,.02,.20,.55) if heavy else 0)
+    back=mode=='HitBack'   # struck from behind: pitched forward, catches it with a step
+    headsnap=(pulse(sec,.01,.07,.40) if mode=='Hit' else pulse(sec,.01,.08,.55) if heavy else pulse(sec,.02,.10,.45) if back else 0)
+    hitstep=(pulse(sec,.02,.16,.40) if mode=='Hit' else pulse(sec,.02,.20,.55) if heavy else pulse(sec,.03,.19,.45) if back else 0)
     rootz=-.035+(.014*cos(phase*2) if moving else .005*sin(phase))
     hipsy=0
     lean=.15 if moving else 0
@@ -464,7 +473,8 @@ def pose(t=0,mode='Idle',strength=0,sec=0):
     if swing:
         lean=track(SW['lean'],sec);rootz=track(SW['rootz'],sec);hipsy=track(SW['hipsy'],sec)
     if mode=='Strike':rootz-=.03*strike_in;hipsy=-.04*strike_in
-    if mode=='Defeat':rootz-=.55*strength;lean=.85*strength
+    if mode in ['Defeat','GetUp']:rootz-=.55*strength;lean=.85*strength
+    if back:lean=.58*recoil;rootz-=.12*recoil;hipsy=-.15*recoil
     if mode in ['Hit','Stagger']:lean=-.22*recoil;rootz-=.06*recoil;hipsy=.05*recoil
     if heavy:lean=-.36*recoil;rootz-=.11*recoil;hipsy=.09*recoil
     if mode=='Grabbed':lean=.30*recoil;rootz-=.12*recoil
@@ -495,7 +505,8 @@ def pose(t=0,mode='Idle',strength=0,sec=0):
     if mode in ['Hit','HitHeavy']:
         p['Head'].rotation_euler.x=-(.40 if mode=='Hit' else .52)*headsnap
         if heavy:p['Spine'].rotation_euler.y=.18*recoil;p['Head'].rotation_euler.y=.15*headsnap
-    if mode=='Stop':p['Spine'].rotation_euler.x=-.12*strength
+    if back:p['Chest'].rotation_euler.x=-.22*recoil;p['Head'].rotation_euler.x=-.45*headsnap
+    if mode in ['Stop','StickStop']:p['Spine'].rotation_euler.x=-.12*strength
     bpy.context.view_layer.update()
     for s,lab in [(1,'L'),(-1,'R')]:
         sign=sway*s;lift=max(0,sign)*(.105 if moving else 0)
@@ -509,7 +520,8 @@ def pose(t=0,mode='Idle',strength=0,sec=0):
             # Rear-foot pivot: the heel peels up as the hips drive the punch.
             lift=.035*strike_in;pitch=.45*strike_in
         if mode=='Defeat':fy=s*.19;fx=s*.29
-        if mode in ['StickIdle','StickSwing']:fy=s*.12;fx=s*.24
+        if mode=='GetUp':fy=s*(.09+.10*strength);fx=s*(.23+.06*strength)
+        if mode in ['StickIdle','StickSwing','StickStop']:fy=s*.12;fx=s*.24
         if swing:
             if lab=='R':fy=track(SW['leadfy'],sec);lift=track(SW['leadlift'],sec)
             else:h=track(SW['rearheel'],sec);lift=.04*h;pitch=.40*h
@@ -517,6 +529,9 @@ def pose(t=0,mode='Idle',strength=0,sec=0):
             # Step back with the rear foot to take the blow.
             fy+=(.10 if mode=='Hit' else .17)*hitstep;lift=(.05 if mode=='Hit' else .08)*pulse(sec,.02,.08,.16 if mode=='Hit' else .2)
         if heavy and lab=='R':fy+=.05*hitstep
+        if back and lab=='R':
+            # The lead foot steps forward to catch the shove.
+            fy-=.24*hitstep;lift=.09*pulse(sec,.03,.11,.21)
         foot_target=Vector((fx,fy,.17+lift));knee_pole=Vector((fx,-1,.6))
         foot_direction=Matrix.Rotation(pitch,3,'X')@Vector((0,-.19,-.09))
         tip=limb('Thigh.'+lab,'Shin.'+lab,'Foot.'+lab,foot_target,knee_pole)
@@ -561,10 +576,14 @@ def pose(t=0,mode='Idle',strength=0,sec=0):
         if mode in ['Hit','Stagger','HitHeavy']:
             k=1.6 if heavy else 1
             target.y+=.09*recoil*k;target.z+=.07*recoil*k
+        if back:
+            # Arms fling back and out behind the pitching torso.
+            target.y+=.24*recoil;target.z+=.10*recoil;target.x+=s*.10*recoil
         stick=None
-        if lab=='R' and mode in ['StickIdle','StickRun','StickSwing']:
+        if lab=='R' and mode in ['StickIdle','StickRun','StickSwing','StickStop']:
             r=STICK_READY;target=Vector(r['hand']);pole=r['pole'];plane=Vector(r['plane']);cock=r['cock']
             if mode=='StickIdle':target=target+Vector((0,0,.012*sin(phase*2-.4)))
+            if mode=='StickStop':target=target+Vector((0,-.04*strength,-.03*strength));cock=80-10*strength
             if mode=='StickRun':
                 own=gait_foot(uR-.07)[0]/RUN_A
                 target=target+Vector((0,-.10*own,.04*max(0,own)));cock=62+8*own
@@ -574,7 +593,7 @@ def pose(t=0,mode='Idle',strength=0,sec=0):
         if swing and lab=='L':target=track(SW['lhand'],sec);pole=(.70,.05,1.15)
         if mode=='Grabbed':
             target=target.lerp(Vector((s*.37,-.37,1.16)),recoil);curl=.5
-        if mode=='Defeat':target=target.lerp(Vector((s*.50,-.26,.52)),strength)
+        if mode in ['Defeat','GetUp']:target=target.lerp(Vector((s*.50,-.26,.52)),strength)
         wrist=limb('UpperArm.'+lab,'Forearm.'+lab,'Hand.'+lab,target,pole)
         if stick is not None:
             forearm=wrist-p['Forearm.'+lab].head
@@ -597,7 +616,7 @@ def pose(t=0,mode='Idle',strength=0,sec=0):
         elif moving:p['Robe.'+lab].rotation_euler.x=.30*sin(phase-.6)*s
         else:
             flare=strike_in+(track(SW['lean'],sec)/.2 if swing else 0)
-            p['Robe.'+lab].rotation_euler.x=-.10*flare+.12*recoil+(.10*recoil if heavy else 0)
+            p['Robe.'+lab].rotation_euler.x=-.10*flare+(-.14 if back else .12)*recoil+(.10*recoil if heavy else 0)
     if mode=='Turn':
         p['Root'].rotation_mode='XYZ';p['Root'].rotation_euler.y=pi/2*strength
     bpy.context.view_layer.update()
@@ -607,9 +626,9 @@ def pose(t=0,mode='Idle',strength=0,sec=0):
 # density), so only the fast clips pay for the extra keys.
 fps=FPS;scene.render.fps=fps
 specs={'StickSwing':(SWING_END,False,1),'StickIdle':(2.0,True,2),'StickRun':(RUN_T,True,2),'Idle':(2.0,True,2),'Run':(RUN_T,True,2),
-       'RunGrab':(RUN_T,True,2),'RunGuard':(RUN_T,True,2),'Walk':(28/30,True,2),'Stop':(.5,False,2),'Turn':(.6,False,2),'Strike':(.5,False,1),
+       'RunGrab':(RUN_T,True,2),'RunGuard':(RUN_T,True,2),'Walk':(28/30,True,2),'Stop':(.5,False,2),'StickStop':(.5,False,2),'Turn':(.6,False,2),'Strike':(.5,False,1),
        'Grab':(.7,False,2),'GrabReady':(2.0,True,2),'Guard':(2.0,True,2),'Block':(.4,False,2),'BlockCounter':(.6,False,2),'Grabbed':(.5,False,2),
-       'Hit':(.4,False,1),'HitHeavy':(.55,False,1),'Stagger':(.5,False,2),'Defeat':(1.2,False,1)}
+       'Hit':(.4,False,1),'HitHeavy':(.55,False,1),'Stagger':(.5,False,2),'Defeat':(1.2,False,1),'HitBack':(.45,False,1),'GetUp':(1.1,False,2)}
 rig.animation_data_create();actions={}
 for name,(seconds,loop,step) in specs.items():
     frames=round(seconds*fps);step=max(1,round(step*fps/60))
@@ -620,8 +639,9 @@ for name,(seconds,loop,step) in specs.items():
         if name in ['Strike','Grab']:strength=max(0,1-abs(t-.40)/.25)
         elif name=='Guard':strength=1
         elif name=='Defeat':strength=defeat_curve(t)
+        elif name=='GetUp':strength=getup_curve(t)
         elif name=='Turn':strength=t*t*(3-2*t)
-        elif name in ['Hit','Stagger','Stop']:strength=sin(pi*t)
+        elif name in ['Hit','Stagger','Stop','StickStop']:strength=sin(pi*t)
         else:strength=0
         pose(t,name,strength,sec)
         for pb in rig.pose.bones:
@@ -678,6 +698,6 @@ for screen in bpy.data.screens:
             area.spaces.active.shading.color_type='TEXTURE'
 bpy.context.preferences.filepaths.save_version=0
 bpy.ops.wm.save_as_mainfile(filepath=str(OUT/('starter-adventurer-v4-'+HAIR_ID+'.blend')))
-for name,frame in ([] if '--skip-renders' in sys.argv else [('Run',10),('Strike',8),('StickSwing',18),('Grab',14),('Grab',26),('GrabReady',2),('Guard',2),('BlockCounter',18),('Grabbed',8)]):
+for name,frame in ([] if '--skip-renders' in sys.argv else [('Run',10),('Strike',8),('StickSwing',18),('Grab',14),('Grab',26),('GrabReady',2),('Guard',2),('BlockCounter',18),('Grabbed',8),('StickStop',10),('HitBack',8),('GetUp',30),('Defeat',60)]):
     rig.animation_data.action=actions[name];scene.frame_set(frame);scene.render.filepath=str(OUT/(name.lower()+'-'+str(frame)+'-preview.png'));bpy.ops.render.render(write_still=True)
 print('BUILD_COMPLETE',str(OUT))

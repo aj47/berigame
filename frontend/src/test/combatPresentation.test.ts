@@ -58,7 +58,7 @@ describe('combat fx store', () => {
     push(event(EventKind.Hit, { damage: 3 }));
     const s = useCombatFxStore.getState();
     expect(s.cues[a]).toEqual({ clip: 'Strike', durationMs: 500, role: 'action', at: 1000, seq: 1 });
-    expect(s.cues[d]).toEqual({ clip: 'Hit', durationMs: 400, role: 'reaction', at: 1160, seq: 1 });
+    expect(s.cues[d]).toEqual({ clip: 'Hit', durationMs: 400, role: 'reaction', at: 1160, seq: 1, attacker: a });
     expect(s.numbers[d]).toMatchObject({ text: '3', kind: EventKind.Hit, itemId: '', at: 1000, delayMs: 160 });
     expect(cuePose(s.cues[d], 1100)).toBeNull(); // Not hit yet.
     expect(cuePose(s.cues[d], 1160)?.key).toBe('1:reaction');
