@@ -2,7 +2,9 @@ import { EventKind, STICK_ITEM_ID } from '@sim';
 import { STICK_SWING_CLIP, STICK_SWING_IMPACT_MS, STICK_SWING_MS } from './stickSwing';
 
 /** Every clip an adventurer plays: locomotion (Stop settles a run), the two attacks, the hit reaction and defeat. */
-export const CLIPS = ['Idle', 'Run', 'Stop', 'Strike', STICK_SWING_CLIP, 'Hit', 'Defeat'] as const;
+export const CLIPS = ['Idle', 'Run', 'Stop', 'Strike', STICK_SWING_CLIP, 'Hit', 'HitHeavy', 'Defeat', 'StickIdle', 'StickRun'] as const;
+/** Idle and Run while a stick is wielded (the arm holds the stick); played in their place by avatarAnimator.ts. */
+export const ARMED_VARIANT: Readonly<Partial<Record<Clip, Clip>>> = { Idle: 'StickIdle', Run: 'StickRun' };
 export type Clip = (typeof CLIPS)[number];
 
 export interface ActionCue {
@@ -33,6 +35,8 @@ export const PUNCH_ATTACK = { clip: 'Strike', durationMs: 500, impactMs: 160 } a
 /** A wielded stick: the synthesized overhead chop (animation/stickSwing.ts). */
 export const STICK_ATTACK = { clip: STICK_SWING_CLIP, durationMs: STICK_SWING_MS, impactMs: STICK_SWING_IMPACT_MS } as const;
 const HIT_REACTION: ActionCue = { clip: 'Hit', durationMs: 400 };
+/** A stick blow: a harder recoil with a bigger step back (falls back to Hit on a rig without it). */
+const HEAVY_HIT_REACTION: ActionCue = { clip: 'HitHeavy', durationMs: 550 };
 
 /**
  * How one swing looks, from the committed event: `itemId` is what the
@@ -42,7 +46,7 @@ const HIT_REACTION: ActionCue = { clip: 'Hit', durationMs: 400 };
 export function attackPresentation(kind: number, itemId: string): AttackPresentation | null {
   if (kind !== EventKind.Hit) return null;
   const { clip, durationMs, impactMs } = itemId === STICK_ITEM_ID ? STICK_ATTACK : PUNCH_ATTACK;
-  return { attacker: { clip, durationMs }, defender: HIT_REACTION, impactMs };
+  return { attacker: { clip, durationMs }, defender: itemId === STICK_ITEM_ID ? HEAVY_HIT_REACTION : HIT_REACTION, impactMs };
 }
 
 /** The cue in a chain that is playing or next up at `now`: follows `then` past cues that have ended. */

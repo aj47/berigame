@@ -8,10 +8,14 @@ import { stickGeometry } from '../Components/3D/stickProp';
 import { loadAdventurerRig, type AdventurerRig } from './adventurerRig';
 
 let rig: AdventurerRig;
+/** The runtime-synthesized chop (the fallback for rigs without a baked StickSwing). */
 let swing: AnimationClip;
+/** The clip the game plays: the GLB's baked StickSwing. */
+let baked: AnimationClip;
 beforeAll(async () => {
   rig = await loadAdventurerRig();
   swing = buildStickSwing(rig.scene, rig.clip('Strike'))!;
+  baked = rig.clip(STICK_SWING_CLIP);
 });
 
 /** Butt, tip and pointing direction of the held stick in the current pose. */
@@ -77,9 +81,36 @@ describe('StickSwing clip', () => {
     expect(near.bone).toBe('Head');
   });
 
+  it('is baked into the GLB with the same length and impact timing as the runtime chop', () => {
+    expect(baked).toBeDefined();
+    expect(baked.duration * 1000).toBeGreaterThan(STICK_SWING_MS - 10);
+    expect(baked.duration * 1000).toBeLessThanOrEqual(STICK_SWING_MS);
+    // Wind-up: the stick is raised high over the right shoulder.
+    const windUp = at(baked, 0.18);
+    expect(windUp.tip.y).toBeGreaterThan(2.1);
+    expect(windUp.butt.x).toBeLessThan(-0.2);
+    // Impact: the tip meets an opponent one tile ahead at head/shoulder height.
+    const impact = at(baked, STICK_SWING_IMPACT_MS / 1000);
+    expect(impact.tip.z).toBeGreaterThan(0.8);
+    expect(impact.tip.y).toBeGreaterThan(1.1);
+    expect(impact.tip.y).toBeLessThan(1.9);
+    // Follow-through: low and across to the left.
+    const through = at(baked, 0.42);
+    expect(through.tip.y).toBeLessThan(impact.tip.y);
+    expect(through.tip.x).toBeGreaterThan(impact.tip.x);
+    // The stick sweeps fastest just before impact: the tip moves more over the last 50 ms than over the first 50 ms.
+    const early = at(baked, 0.05).tip.distanceTo(at(baked, 0).tip), late = at(baked, 0.3).tip.distanceTo(at(baked, 0.25).tip);
+    expect(late).toBeGreaterThan(3 * early);
+    // It ends on the StickIdle grip, so the crossfade back is seamless.
+    const idle = at(rig.clip('StickIdle'), 0), end = at(baked, baked.duration);
+    expect(end.wrist.distanceTo(idle.wrist)).toBeLessThan(0.02);
+    expect(end.direction.angleTo(idle.direction)).toBeLessThan(0.05);
+  });
+
   it('keeps the stick out of the head, body and ground in the swing and every clip it is carried in', () => {
     const grip = (pose: ReturnType<typeof held>, s: number) => pose.butt.clone().addScaledVector(pose.direction, STICK_BUTT + s);
-    const clips = [swing, rig.clip('Idle'), rig.clip('Run'), rig.clip('Walk'), rig.clip('Hit'), rig.clip('Defeat')];
+    // While wielded the game plays StickIdle/StickRun in place of Idle/Run.
+    const clips = [baked, swing, rig.clip('StickIdle'), rig.clip('StickRun'), rig.clip('Hit'), rig.clip('HitHeavy'), rig.clip('Defeat')];
     for (const clip of clips) {
       for (const t of samples(clip, clip.duration > 1 ? 0.05 : 1 / 60)) {
         const pose = at(clip, t);
@@ -95,8 +126,7 @@ describe('StickSwing clip', () => {
 
   it.each(['starter-adventurer-topknot.glb', 'starter-adventurer-cropped.glb'])('clears the %s hair too', async (file) => {
     const variant = await loadAdventurerRig(file);
-    const chop = buildStickSwing(variant.scene, variant.clip('Strike'))!;
-    for (const clip of [chop, variant.clip('Idle'), variant.clip('Run'), variant.clip('Hit')]) {
+    for (const clip of [variant.clip(STICK_SWING_CLIP), variant.clip('StickIdle'), variant.clip('StickRun'), variant.clip('Hit')]) {
       for (const t of samples(clip, clip.duration > 1 ? 0.1 : 1 / 60)) {
         variant.pose(clip, t);
         const [butt, tip] = stickSegment(variant.node('HandR').matrixWorld);
@@ -110,12 +140,16 @@ describe('StickSwing clip', () => {
 
 describe('withStickSwing', () => {
   it('appends StickSwing once and hands back the same array for the same GLB', () => {
-    const clips = withStickSwing(rig.scene, rig.animations);
-    expect(withStickSwing(rig.scene, rig.animations)).toBe(clips);
-    expect(clips).toHaveLength(rig.animations.length + 1);
-    expect(clips.slice(0, -1)).toEqual(rig.animations);
+    const unbaked = rig.animations.filter((clip) => clip.name !== STICK_SWING_CLIP);
+    const clips = withStickSwing(rig.scene, unbaked);
+    expect(withStickSwing(rig.scene, unbaked)).toBe(clips);
+    expect(clips).toHaveLength(unbaked.length + 1);
+    expect(clips.slice(0, -1)).toEqual(unbaked);
     expect(clips.at(-1)!.name).toBe(STICK_SWING_CLIP);
-    expect(rig.animations.some((clip) => clip.name === STICK_SWING_CLIP)).toBe(false);
+  });
+
+  it('keeps a baked StickSwing instead of synthesizing one', () => {
+    expect(withStickSwing(rig.scene, rig.animations)).toBe(rig.animations);
   });
 
   it('leaves a rig without the adventurer arm untouched', () => {

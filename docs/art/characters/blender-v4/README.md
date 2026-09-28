@@ -11,3 +11,34 @@ Build each variant with Blender in an isolated background process:
     /Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python docs/art/characters/blender-v4/build_character.py -- --hair=tousled
 
 Use --skip-renders for the other hair IDs. Run verify_variants.py to compare body/animation signatures. The browser viewer uses the game's Three.js0.149.0; web-validation.json records finite deformation, floor clearance and extent checks for all17 clips plus sampled exported foot positions. Paired screenshots show four stages of each winning exchange at cardinal melee spacing; actual game checks live under docs/art/game-review/motion-v4 and combat-v4. Desktop browser evidence does not qualify physical-phone performance.
+
+## V5 rebuild (model batch 2)
+
+This is the same script with these additions:
+
+- **Stick socket.** A `Prop.R` socket bone brings the rig to 27 joints. The stick is skinned into the body mesh. The GLB gives PropR a rest scale of 0, so the stick is hidden. The game scales PropR to 1 while `player.weapon` is `stick`.
+- **New baked clips:**
+  - `StickSwing`: 0.617 s, impact at 0.300 s. It is a whole-body chop: wind-up, lead-foot step, hips-to-chest-to-wrist uncoil, follow-through.
+  - `StickIdle`, `StickRun` and `HitHeavy`.
+- **Re-authored clips:**
+  - `Run`: a 0.6 s cycle. The feet stay planted at 3.3 units/s, and there is an airborne phase.
+  - `Strike`: wind-up, snap, hold, then overshoot.
+  - `Hit`: peaks at 55 ms and steps back.
+  - `Defeat`: an accelerating fall with a bounce.
+- **Faces and hair:**
+  - Eyes are 1.5x larger, with catchlights and hair-coloured brows.
+  - The tousled fringe locks sit above the brows.
+  - Cropped and topknot get a broken hairline and sideburns.
+  - The topknot is bigger.
+- **Palette.** Trouser cells 12-14 are lighter; the same change is in `frontend/src/appearance/palette.ts`. Cells 24-27 hold the stick colours.
+- **Keys.** Keys are baked at 60 fps. Attacks, hits and Defeat get a key every frame; other clips get one every other frame. Only rotations are keyed, plus the Hips location.
+
+The preview PNGs in the variant folders are still the V4 renders, because this build used `--skip-renders`. The review media is in `docs/art/game-review/model-batch2/`.
+
+Linux build (no Blender install; bpy comes from PyPI):
+
+    uv venv --python /usr/bin/python3.13 venv-bpy && uv pip install --python venv-bpy bpy==5.2.1
+    venv-bpy/bin/python docs/art/characters/blender-v4/build_character.py --hair=tousled --skip-renders [--out=DIR] [--fps=60]
+    python3 docs/art/characters/blender-v4/verify_variants.py   # --joints=27; animation compared within 1e-4
+
+Copy `tousled/starter-adventurer-v4-tousled.glb` to `frontend/public/models/starter-adventurer.glb`, and the cropped and topknot GLBs to `starter-adventurer-{cropped,topknot}.glb`.

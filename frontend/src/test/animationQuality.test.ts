@@ -116,9 +116,10 @@ describe('animation quality', () => {
     const lowest = Math.min(...rows.filter((r) => r.ms >= hit.ms + 50 && r.ms <= fall.ms).map((r) => r.head));
     expect(lowest).toBeLessThan(standing - 0.04);
     for (const r of rows.filter((x) => x.ms >= hit.ms + 50)) expect(r.head, `${r.ms}ms`).toBeLessThan(standing - 0.03);
-    // ...and from the moment the fall takes over it only goes down.
+    // ...and from the moment the fall takes over it only goes down, apart from a small bounce on landing.
     const falling = rows.filter((r) => r.ms >= fall.ms);
-    for (let i = 1; i < falling.length; i++) expect(falling[i].head).toBeLessThanOrEqual(falling[i - 1].head + 1e-3);
+    let low = falling[0].head;
+    for (const r of falling) { expect(r.head, `${r.ms}ms`).toBeLessThanOrEqual(low + 0.05); low = Math.min(low, r.head); }
     expect(falling.at(-1)!.head).toBeLessThan(1);
   });
 });
