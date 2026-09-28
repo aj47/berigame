@@ -50,11 +50,15 @@ export const useCombatFxStore = create<CombatFxState>((set, get) => ({
       const attack = attackPresentation(e.kind, e.itemId);
       if (attack) {
         cues[attacker] = { ...attack.attacker, role: 'action', at, seq };
-        // The defender flinches when the blow lands, unless they are still
-        // mid-swing themselves then: never cut another attack short.
+        // The defender flinches when the blow lands. Never cut their own swing short:
+        // one still playing at impact wins, and one ending before impact finishes
+        // first, with the flinch queued behind it.
+        const reaction: AnimationCue = { ...attack.defender, role: 'reaction', at: at + attack.impactMs, seq };
         const current = cues[defender];
-        const swinging = current?.role === 'action' && current.at + current.durationMs > at + attack.impactMs;
-        if (defender !== attacker && !swinging) cues[defender] = { ...attack.defender, role: 'reaction', at: at + attack.impactMs, seq };
+        const swingEnds = current?.role === 'action' ? current.at + current.durationMs : -Infinity;
+        if (defender !== attacker && swingEnds <= reaction.at) {
+          cues[defender] = swingEnds > at ? { ...current!, then: reaction } : reaction;
+        }
         setTimeout(() => set((state) => {
           const next = { ...state.cues };
           for (const hex of [attacker, defender]) if (next[hex]?.seq === seq) delete next[hex];

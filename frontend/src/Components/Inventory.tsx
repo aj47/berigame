@@ -2,7 +2,7 @@ import React, { memo, useEffect, useMemo, useState } from "react";
 import { HOTBAR_SIZE, INVENTORY_SIZE, getItemDef, isWeapon } from "@sim";
 import { useGameActions } from "../spacetime/actions";
 import { useInventoryRows, useMyPlayer } from "../spacetime/hooks";
-import { slotsFromRows, wieldedSlotIndex } from "./itemUi";
+import { isWieldedSlot, slotsFromRows } from "./itemUi";
 
 interface Props {
   open: boolean;
@@ -19,7 +19,7 @@ const Inventory = memo(({ open, onClose }: Props) => {
   const [pending, setPending] = useState(false);
   const slots = useMemo(() => slotsFromRows(rows), [rows]);
   const weapon: string = me?.weapon ?? "";
-  const wieldedIndex = wieldedSlotIndex(slots, weapon, HOTBAR_SIZE);
+  const wielded = (index: number) => isWieldedSlot(slots, index, weapon, HOTBAR_SIZE);
   useEffect(() => {
     if (!open) setMovingFrom(null);
   }, [open]);
@@ -32,7 +32,7 @@ const Inventory = memo(({ open, onClose }: Props) => {
   const def = item ? getItemDef(item.itemId) : undefined;
   const occupied = slots.filter(Boolean).length;
   const weaponSelected = !!item && isWeapon(item.itemId);
-  const selectedWielded = selected !== null && selected === wieldedIndex;
+  const selectedWielded = selected !== null && wielded(selected);
   const inQuickBar = selected !== null && selected < HOTBAR_SIZE;
   const run = async (action: () => Promise<unknown>) => {
     if (pending) return;
@@ -77,11 +77,11 @@ const Inventory = memo(({ open, onClose }: Props) => {
           return (
             <button
               key={index}
-              className={`inventory-slot ${slot ? "filled" : ""} ${index < HOTBAR_SIZE ? "quick" : ""} ${index === wieldedIndex ? "wielded" : ""} ${selected === index ? "selected" : ""} ${movingFrom !== null && movingFrom !== index ? "move-target" : ""}`}
+              className={`inventory-slot ${slot ? "filled" : ""} ${index < HOTBAR_SIZE ? "quick" : ""} ${wielded(index) ? "wielded" : ""} ${selected === index ? "selected" : ""} ${movingFrom !== null && movingFrom !== index ? "move-target" : ""}`}
               onClick={() => selectSlot(index)}
               disabled={pending}
               aria-pressed={selected === index}
-              aria-label={`Slot ${index + 1}: ${slot ? `${definition?.name ?? slot.itemId}, ${slot.quantity}${index === wieldedIndex ? ", wielded" : ""}` : "empty"}${movingFrom !== null ? ", move here" : ""}`}
+              aria-label={`Slot ${index + 1}: ${slot ? `${definition?.name ?? slot.itemId}, ${slot.quantity}${wielded(index) ? ", wielded" : ""}` : "empty"}${movingFrom !== null ? ", move here" : ""}`}
             >
               {index < HOTBAR_SIZE && (
                 <span className="quick-slot-number" aria-hidden="true">

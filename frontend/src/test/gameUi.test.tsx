@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayerState, PUNCH_DAMAGE, getItemDef } from "@sim";
 import Inventory from "../Components/Inventory";
 import CombatHud from "../Components/CombatHud";
-import { slotsFromRows, wieldedSlotIndex } from "../Components/itemUi";
+import { isWieldedSlot, slotsFromRows } from "../Components/itemUi";
 import { useToastStore } from "../spacetime/stores/toastStore";
 import LoadingScreen from "../Components/LoadingScreen";
 import GatherShortcut from "../Components/GatherShortcut";
@@ -131,6 +131,19 @@ describe("cross-platform inventory actions", () => {
     expect(mock.eatBerry).not.toHaveBeenCalled();
   });
 
+  it("agrees with the quick bar when two sticks are in quick slots", async () => {
+    mock.rows = [
+      { slot: 1, itemId: "stick", quantity: 1 },
+      { slot: 2, itemId: "stick", quantity: 1 },
+    ];
+    mock.player = { ...mock.player, weapon: "stick" };
+    render(<Inventory open onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Slot 3: Stick, 1, wielded/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Unwield" }));
+    await waitFor(() => expect(mock.unwield).toHaveBeenCalledOnce());
+    expect(mock.wieldItem).not.toHaveBeenCalled();
+  });
+
   it("only wields from the quick bar and explains slots 1-3", () => {
     mock.rows = [{ slot: 5, itemId: "stick", quantity: 1 }];
     render(<Inventory open onClose={() => {}} />);
@@ -185,13 +198,15 @@ describe("combat quick slots", () => {
     expect(berry).toHaveTextContent("Blueberry");
     expect(berry).toHaveTextContent("Eat +5");
     expect(berry).toHaveTextContent("3");
-    expect(berry).toHaveAttribute("aria-pressed", "false");
-    expect(
-      screen.getByRole("button", { name: "Quick slot 2: Stick" }),
-    ).toHaveTextContent("Wield");
-    expect(
-      screen.getByRole("button", { name: "Quick slot 3: empty" }),
-    ).toBeDisabled();
+    // Eating is a one-shot action, not a toggle; the hint describes what it does.
+    expect(berry).not.toHaveAttribute("aria-pressed");
+    expect(berry).toHaveAccessibleDescription("Eat +5");
+    const stick = screen.getByRole("button", { name: "Quick slot 2: Stick" });
+    expect(stick).toHaveTextContent("Wield");
+    expect(stick).toHaveAttribute("aria-pressed", "false");
+    const empty = screen.getByRole("button", { name: "Quick slot 3: empty" });
+    expect(empty).toBeDisabled();
+    expect(empty).not.toHaveAttribute("aria-pressed");
   });
 
   it("key 1 eats the berry in slot 0, but not at full health", async () => {
@@ -283,7 +298,7 @@ describe("combat quick slots", () => {
     expect(mock.wieldItem).not.toHaveBeenCalled();
   });
 
-  it("marks only the first quick slot holding the wielded item", () => {
+  it("treats every quick slot holding the wielded item as wielded", () => {
     const slots = slotsFromRows(
       [
         { slot: 2, itemId: "stick", quantity: 1 },
@@ -297,8 +312,46 @@ describe("combat quick slots", () => {
       "stick",
       "stick",
     ]);
-    expect(wieldedSlotIndex(slots, "stick", 3)).toBe(1);
-    expect(wieldedSlotIndex(slots, "", 3)).toBe(-1);
+    expect([0, 1, 2].map((i) => isWieldedSlot(slots, i, "stick", 3))).toEqual([false, true, true]);
+    expect(isWieldedSlot(slots, 1, "", 3)).toBe(false);
+    const bag = slotsFromRows([{ slot: 5, itemId: "stick", quantity: 1 }]);
+    expect(isWieldedSlot(bag, 5, "stick", 3)).toBe(false);
+  });
+
+  it("with two sticks in the quick bar, either one reads Wielded and puts the weapon away", async () => {
+    mock.rows = [
+      { slot: 0, itemId: "berry_blueberry", quantity: 3 },
+      { slot: 1, itemId: "stick", quantity: 1 },
+      { slot: 2, itemId: "stick", quantity: 1 },
+    ];
+    mock.player = { ...mock.player, weapon: "stick" };
+    render(<CombatHud />);
+    for (const n of [2, 3]) {
+      const stick = screen.getByRole("button", { name: `Quick slot ${n}: Stick, wielded` });
+      expect(stick).toHaveAttribute("aria-pressed", "true");
+      expect(stick).toHaveTextContent("Wielded");
+    }
+    fireEvent.keyDown(window, { key: "3" });
+    await waitFor(() => expect(mock.unwield).toHaveBeenCalledOnce());
+    expect(mock.wieldItem).not.toHaveBeenCalled();
+  });
+
+  it("keeps a used quick slot focusable while its request is in flight", async () => {
+    stickAndBerries();
+    let finish!: () => void;
+    mock.wieldItem.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve; }));
+    render(<CombatHud />);
+    const stick = screen.getByRole("button", { name: "Quick slot 2: Stick" });
+    stick.focus();
+    fireEvent.click(stick);
+    await waitFor(() => expect(stick).toHaveAttribute("aria-busy", "true"));
+    expect(stick).not.toBeDisabled();
+    expect(document.activeElement).toBe(stick);
+    // A second press while busy is ignored rather than queued.
+    fireEvent.click(stick);
+    expect(mock.wieldItem).toHaveBeenCalledOnce();
+    await act(async () => finish());
+    expect(stick).not.toHaveAttribute("aria-busy");
   });
 });
 

@@ -99,6 +99,21 @@ describe('combat fx store', () => {
     expect(useCombatFxStore.getState().cues[a]).toMatchObject({ clip: 'Hit', role: 'reaction', at: 3160 });
   });
 
+  it("lets a defender's swing that ends before impact finish, then flinch", () => {
+    push(event(EventKind.Hit, { damage: 6, itemId: STICK_ITEM_ID })); // chop 1000..1620
+    // The punch back arrives at 1500 and lands at 1660, after the chop is over.
+    now = 1500;
+    push(event(EventKind.Hit, { attacker: defender, defender: attacker, damage: 3 }));
+    const cue = useCombatFxStore.getState().cues[a];
+    expect(cuePose(cue, 1600)).toMatchObject({ clip: STICK_SWING_CLIP, key: '1:action' });
+    expect(cuePose(cue, 1640)).toBeNull();
+    expect(cuePose(cue, 1660)).toMatchObject({ clip: 'Hit', key: '2:reaction', elapsedSeconds: 0 });
+    expect(cuePose(cue, 2060)).toBeNull();
+    // The chained flinch outlives nothing: both cues are cleared by their timers.
+    vi.runAllTimers();
+    expect(useCombatFxStore.getState().cues).toEqual({});
+  });
+
   it('clears cues and numbers once they have played', () => {
     push(event(EventKind.Hit, { damage: 6, itemId: STICK_ITEM_ID }));
     push(event(EventKind.HarvestDone, { attacker: defender, itemId: 'berry_blueberry' }));

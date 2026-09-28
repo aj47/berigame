@@ -738,6 +738,11 @@ canvas {
   background: #3a332a;
   border-style: dashed;
 }
+/* A request is in flight: stays focusable (not disabled) but reads as busy. */
+.hotbar-slot.busy {
+  cursor: progress;
+  opacity: 0.75;
+}
 .hotbar-icon {
   flex: 0 0 auto;
   width: 34px;

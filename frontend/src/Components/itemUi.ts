@@ -25,14 +25,16 @@ export function slotsFromRows(
   return out;
 }
 
-/** The first quick slot holding the wielded item, or -1 when punching. */
-export function wieldedSlotIndex(
+/**
+ * Whether slot `index` shows as wielded. The server tracks the wielded item
+ * id, not a slot, so every quick slot holding that item counts: two sticks in
+ * the quick bar are both "in hand", and pressing either puts the weapon away.
+ */
+export function isWieldedSlot(
   slots: readonly Slot[],
+  index: number,
   weapon: string | undefined,
   hotbarSize: number,
-): number {
-  if (!weapon) return -1;
-  for (let i = 0; i < hotbarSize && i < slots.length; i++)
-    if (slots[i]?.itemId === weapon) return i;
-  return -1;
+): boolean {
+  return !!weapon && index >= 0 && index < hotbarSize && slots[index]?.itemId === weapon;
 }

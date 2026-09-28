@@ -18,6 +18,8 @@ export interface AnimationCue extends ActionCue {
   seq: number;
   at: number;
   role: 'action' | 'reaction';
+  /** Plays once this cue ends: a hit reaction queued behind the defender's own swing. */
+  then?: AnimationCue;
 }
 export interface AttackPresentation {
   attacker: ActionCue;
@@ -43,7 +45,9 @@ export function attackPresentation(kind: number, itemId: string): AttackPresenta
   return { attacker: { clip, durationMs }, defender: HIT_REACTION, impactMs };
 }
 
-export function cuePose(cue: AnimationCue | null, now: number): { clip: Clip; key: string; elapsedSeconds: number } | null {
-  if (!cue || now < cue.at || now >= cue.at + cue.durationMs) return null;
+export function cuePose(cue: AnimationCue | null | undefined, now: number): { clip: Clip; key: string; elapsedSeconds: number } | null {
+  if (!cue) return null;
+  if (now >= cue.at + cue.durationMs) return cuePose(cue.then, now);
+  if (now < cue.at) return null;
   return { clip: cue.clip, key: `${cue.seq}:${cue.role}`, elapsedSeconds: (now - cue.at) / 1000 };
 }

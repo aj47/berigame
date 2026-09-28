@@ -116,10 +116,6 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           const byIdentity = new Map(state.players.map((row: any) => [identityHex(row.identity), row]));
           const targetId = player?.combatTarget ? identityHex(player.combatTarget) : null;
           const sortedInventory = [...state.inventory].sort((a: any, b: any) => a.slot - b.slot);
-          // Only the first quick slot holding the wielded item is the one in hand.
-          const wieldedSlot = player?.weapon
-            ? sortedInventory.find((row: any) => row.slot < HOTBAR_SIZE && row.itemId === player.weapon)?.slot
-            : undefined;
           const inventoryRows = sortedInventory.map((slot: any) => {
             const item = getItemDef(slot.itemId);
             return {
@@ -129,7 +125,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
               healthRestored: item?.healthRestore ?? 0,
               weaponDamage: item?.weaponDamage ?? 0,
               quickSlot: slot.slot < HOTBAR_SIZE,
-              wielded: slot.slot === wieldedSlot,
+              // The server tracks the wielded item, so every quick slot holding it counts.
+              wielded: !!player?.weapon && slot.slot < HOTBAR_SIZE && slot.itemId === player.weapon,
             };
           });
           return JSON.stringify({

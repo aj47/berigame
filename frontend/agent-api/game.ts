@@ -123,8 +123,6 @@ export async function createGameService(credential: Credential, options: Connect
           const self = me();
           const tick = conn.db.world.id.find(0)?.tick ?? 0;
           const inventory = [...conn.db.inventorySlot.iter()].filter(row => row.owner.toHexString() === player.identity).sort((a, b) => a.slot - b.slot);
-          // Only the first quick slot holding the wielded item counts as the one in hand.
-          const wieldedSlot = self.weapon ? inventory.find(row => row.slot < HOTBAR_SIZE && row.itemId === self.weapon)?.slot : undefined;
           return {
             tick, tickMs: TICK_MS, gridSize: GRID_SIZE, player: describePlayer(self),
             permissions: { combat: invite.combat, chat: invite.chat },
@@ -133,7 +131,7 @@ export async function createGameService(credential: Credential, options: Connect
             punchDamage: PUNCH_DAMAGE,
             inventory: inventory.map(row => ({ slot: row.slot, itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity,
               healthRestored: getItemDef(row.itemId)?.healthRestore, weaponDamage: getItemDef(row.itemId)?.weaponDamage ?? 0,
-              hotbar: row.slot < HOTBAR_SIZE, wielded: row.slot === wieldedSlot })),
+              hotbar: row.slot < HOTBAR_SIZE, wielded: !!self.weapon && row.slot < HOTBAR_SIZE && row.itemId === self.weapon })),
             players: [...conn.db.player.iter()].filter(p => p.online).slice(0, 128).map(describePlayer),
             trees: [...conn.db.tree.iter()].map(tree => ({ id: tree.id, tile: { x: tree.x, z: tree.z }, berry: getItemDef(tree.itemId)?.name,
               ready: tree.cooldownUntilTick <= tick && !tree.harvester, regrowTicks: Math.max(0, tree.cooldownUntilTick - tick), harvesting: !!tree.harvester })),

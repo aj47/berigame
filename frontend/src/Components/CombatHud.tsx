@@ -17,7 +17,7 @@ import {
 } from "../spacetime/hooks";
 import { useToastStore } from "../spacetime/stores/toastStore";
 import { isTyping } from "./keyboard";
-import { PUNCH_ICON, slotsFromRows, wieldedSlotIndex } from "./itemUi";
+import { PUNCH_ICON, isWieldedSlot, slotsFromRows } from "./itemUi";
 
 const QUICK_KEYS = Array.from({ length: HOTBAR_SIZE }, (_, i) => String(i + 1));
 
@@ -43,7 +43,7 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
 
   const dead = !!me && me.state === PlayerState.Dead;
   const weapon: string = me?.weapon ?? "";
-  const wieldedIndex = wieldedSlotIndex(slots, weapon, HOTBAR_SIZE);
+  const wielded = (index: number) => isWieldedSlot(slots, index, weapon, HOTBAR_SIZE);
 
   const run = async (action: () => Promise<unknown>) => {
     if (pendingRef.current) return;
@@ -61,7 +61,7 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
     const slot = slots[index];
     if (!me || !slot || dead || pendingRef.current) return;
     if (isWeapon(slot.itemId)) {
-      void run(() => (weapon === slot.itemId ? unwield() : wieldItem(index)));
+      void run(() => (wielded(index) ? unwield() : wieldItem(index)));
       return;
     }
     const def = getItemDef(slot.itemId);
@@ -170,12 +170,12 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
           const def = slot ? getItemDef(slot.itemId) : undefined;
           const weaponSlot = !!slot && isWeapon(slot.itemId);
           const food = !!def?.healthRestore;
-          const wielded = index === wieldedIndex;
+          const inHand = wielded(index);
           const name = slot ? (def?.name ?? slot.itemId) : "";
           const hint = !slot
             ? "Empty"
             : weaponSlot
-              ? wielded
+              ? inHand
                 ? "Wielded"
                 : "Wield"
               : food
@@ -184,7 +184,7 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
           const title = !slot
             ? "Empty — move a berry or stick here from your bag"
             : weaponSlot
-              ? wielded
+              ? inHand
                 ? `Put away ${name} and punch`
                 : `Wield ${name} (${def?.weaponDamage} damage)`
               : food
@@ -194,10 +194,15 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
             <button
               key={index}
               data-slot={index}
-              className={`hotbar-slot ${slot ? "filled" : "empty"} ${wielded ? "active" : ""}`}
-              disabled={dead || pending || !slot || (!weaponSlot && !food)}
-              aria-pressed={wielded}
-              aria-label={`Quick slot ${index + 1}: ${slot ? `${name}${wielded ? ", wielded" : ""}` : "empty"}`}
+              className={`hotbar-slot ${slot ? "filled" : "empty"} ${inHand ? "active" : ""} ${pending ? "busy" : ""}`}
+              // Only unusable slots are disabled: disabling the focused button while a
+              // request is in flight would drop keyboard focus. pendingRef blocks re-entry.
+              disabled={dead || !slot || (!weaponSlot && !food)}
+              aria-busy={pending || undefined}
+              // Only a weapon is an on/off toggle; eating is a one-shot action.
+              aria-pressed={weaponSlot ? inHand : undefined}
+              aria-label={`Quick slot ${index + 1}: ${slot ? `${name}${inHand ? ", wielded" : ""}` : "empty"}`}
+              aria-describedby={slot ? `hotbar-hint-${index}` : undefined}
               title={title}
               onClick={() => activate(index)}
             >
@@ -215,7 +220,7 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
               )}
               <span className="hotbar-copy">
                 <span className="hotbar-name">{slot ? name : `Slot ${index + 1}`}</span>
-                <span className="hotbar-hint">{hint}</span>
+                <span className="hotbar-hint" id={`hotbar-hint-${index}`}>{hint}</span>
               </span>
               {slot && slot.quantity > 1 && (
                 <span className="hotbar-qty">{slot.quantity}</span>
