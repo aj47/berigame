@@ -156,8 +156,8 @@ try {
     check(`${label}: damage ${item.damage}`, event.damage===item.damage);
     const attackerAction = sequences[0].find((s:any)=>s.cue?.endsWith(':action'));
     check(`${label}: attacker plays ${item.attackerClip}`, attackerAction?.clip===item.attackerClip);
-    const reaction = sequences[1].find((s:any)=>s.clip==='Hit' && s.cue?.endsWith(':reaction'));
-    check(`${label}: defender reacts with Hit`, !!reaction && reaction.atMs >= (attackerAction?.atMs ?? 0));
+    const reaction = sequences[1].find((s:any)=>['Hit','HitHeavy','HitBack'].includes(s.clip) && s.cue?.endsWith(':reaction'));
+    check(`${label}: defender reacts with a hit clip`, !!reaction && reaction.atMs >= (attackerAction?.atMs ?? 0));
     // The reaction waits for impact. Only assert the delay when frames are fine enough to resolve it:
     // software-GL headless Chrome can render every ~400ms, so swing and reaction share the first sample.
     const gaps = active.slice(1).map((f:any,i:number)=>f.cueElapsed-active[i].cueElapsed).sort((x:number,y:number)=>x-y);
