@@ -1,15 +1,44 @@
 import React from 'react';
+import { useFrame } from '@react-three/fiber';
+import { BackSide, ShaderMaterial, SphereGeometry } from 'three';
 import IslandDetails from './IslandDetails';
 import BrambleHedge from './BrambleHedge';
 import GroundPlane from '../../Objects/GroundPlane';
+import { envTime } from './envArt';
 
-/** Lights and the ground. Trees now come from the server's `tree` table. */
+/** Horizon tone shared by the sky, fog and clear colour so the ocean melts into the sky. */
+const HORIZON = '#cdeef0';
+
+/** A stylised gradient sky: one low-poly dome, no texture. */
+const skyGeo = new SphereGeometry(160, 16, 8);
+const skyMat = new ShaderMaterial({
+  side: BackSide, depthWrite: false, fog: false,
+  vertexShader: 'varying float vH; void main(){ vH = normalize(position).y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `varying float vH;
+    void main(){
+      vec3 horizon = vec3(0.804, 0.933, 0.941);
+      vec3 mid = vec3(0.494, 0.796, 0.910);
+      vec3 zenith = vec3(0.235, 0.588, 0.835);
+      float h = clamp(vH, 0.0, 1.0);
+      vec3 c = mix(horizon, mid, smoothstep(0.0, 0.25, h));
+      c = mix(c, zenith, smoothstep(0.25, 0.9, h));
+      gl_FragColor = vec4(c, 1.0);
+    }`,
+});
+
+/** Advances the one shared wind/wave clock; no allocations per frame. */
+const Clock = () => { useFrame((_, dt) => { envTime.value += Math.min(dt, 0.1); }); return null; };
+
+/** Lights, sky and the ground. Trees now come from the server's `tree` table. */
 const AlphaIsland = () => (
   <>
-    <color attach="background" args={['#abcbd0']} />
-    <fog attach="fog" args={['#abcbd0', 48, 120]} />
-    <directionalLight position={[-12, 24, 10]} intensity={0.95} color="#fff0d0" />
-    <hemisphereLight args={['#d4edff', '#81704f', 0.65]} />
+    <color attach="background" args={[HORIZON]} />
+    <fog attach="fog" args={[HORIZON, 55, 150]} />
+    <mesh geometry={skyGeo} material={skyMat} renderOrder={-1} raycast={() => null} frustumCulled={false} />
+    {/* Warm late-morning sun as the key, cool sky bounce as the fill. */}
+    <directionalLight position={[-12, 24, 10]} intensity={1.0} color="#ffe2b8" />
+    <hemisphereLight args={['#cfe8ff', '#8c7a52', 0.55]} />
+    <Clock />
     <GroundPlane />
     <IslandDetails />
     <BrambleHedge />
