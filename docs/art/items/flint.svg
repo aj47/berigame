@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Flint Shard item icon: hand-drawn source for frontend/public/items/flint.png (render at 128x128, transparent). Dark blue-grey knapped shard with a pale chalky cortex. -->
+  <defs>
+    <linearGradient id="flint" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8A9AB0"/>
+      <stop offset="0.5" stop-color="#55657C"/>
+      <stop offset="1" stop-color="#2F3A4C"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#1C2230" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M64 10 L 96 38 L 104 76 L 80 116 L 44 110 L 24 70 L 36 32 Z" fill="url(#flint)" stroke-width="4.5"/>
+    <path d="M24 70 L 44 110 L 58 112 C 50 98, 42 84, 38 66 Z" fill="#D9D2C2" stroke-width="3"/>
+  </g>
+  <!-- facet shading -->
+  <path d="M64 12 L 62 46 L 38 34 Z" fill="#B7C4D6" opacity="0.7"/>
+  <path d="M62 50 L 76 80 L 100 76 L 95 42 Z" fill="#3E4B60" opacity="0.5"/>
+  <!-- knapped facet ridges -->
+  <g fill="none" stroke="#1C2230" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.85">
+    <path d="M64 10 L 62 48 L 96 38"/>
+    <path d="M62 48 L 38 66"/>
+    <path d="M62 48 L 76 80 L 104 76"/>
+    <path d="M76 80 L 70 112"/>
+  </g>
+  <!-- edge glints -->
+  <path d="M40 34 L 62 14" stroke="#EEF3FA" stroke-width="3" stroke-linecap="round"/>
+  <path d="M66 52 L 72 68" stroke="#C9D5E5" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <!-- sparkles -->
+  <path d="M104 14 l 3 8 l 8 3 l -8 3 l -3 8 l -3 -8 l -8 -3 l 8 -3 Z" fill="#FFE27A" stroke="#C99A2E" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M16 30 l 2 5 l 5 2 l -5 2 l -2 5 l -2 -5 l -5 -2 l 5 -2 Z" fill="#FFE27A" stroke="#C99A2E" stroke-width="1" stroke-linejoin="round"/>
+</svg>
