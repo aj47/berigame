@@ -129,14 +129,14 @@ The goal chip (M1) replaces the GatherShortcut button: one line, "tap to do it".
 | 6 | Future PvE Giant open to players without the combat grant | Yes, in the future | F3, in Area 3 |
 | 7 | Guaranteed stick (meter or pity) | **No: pure chance per harvest** | M1 |
 | 8 | A way to progress after the stick | **Yes: the stick opens the next area** | M1 (hedge), M2 (Coast) |
+| 9 | Brambles one-way or a strict wall | **One-way: you can always walk home without a stick** | M1 |
 
 Owner direction: the base is very simple, easy to understand, and meaningful in the first 3 minutes. Sticks are the first meaningful reward and are not easy.
 
 **Open questions:**
 1. **`STICK_DROP_CHANCE` stays 0.25?** *Default yes (quiet median 0:20; busy near-worst 76% by 3:00). If the p75 time-to-stick passes 3:00 on live, raise it to 0.30 (near-worst 83%).*
-2. **One-way brambles (you can always come home) or a strict wall?** *Default one-way: no stranded players, no rescue mechanic. Strict is simpler to say but needs an escape (e.g. driftwood finding sticks).*
-3. **Club recipe: 1 driftwood + 2 flint (default) or 1 stick + 2 flint?** *Default driftwood: the stick stays your Grove key and driftwood has a use now that the Beacon is parked. If the stick is consumed, the club must also count as a bramble key.*
-4. **Area 3: grow the grid or carve it out of the Coast?** *Default grow (§6 M3).*
+2. **Club recipe: 1 driftwood + 2 flint (default) or 1 stick + 2 flint?** *Default driftwood: the stick stays your Grove key and driftwood has a use now that the Beacon is parked. If the stick is consumed, the club must also count as a bramble key.*
+3. **Area 3: grow the grid or carve it out of the Coast?** *Default grow (§6 M3).*
 
 ## 5. Progression model
 
