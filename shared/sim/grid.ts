@@ -70,16 +70,3 @@ export function blockedSetFromTiles(tiles: Iterable<Tile>): Set<number> {
   for (const t of tiles) s.add(tileKey(t));
   return s;
 }
-
-/**
- * Tile the defender is pushed to when knocked back by the attacker: one step
- * directly away. Returns null when that tile is out of bounds or blocked.
- */
-export function knockbackTile(defender: Tile, attacker: Tile, blocked: Set<number>): Tile | null {
-  const dx = Math.sign(defender.x - attacker.x);
-  const dz = Math.sign(defender.z - attacker.z);
-  if (dx === 0 && dz === 0) return null;
-  const t = { x: defender.x + dx, z: defender.z + dz };
-  if (!inBounds(t) || blocked.has(tileKey(t))) return null;
-  return t;
-}

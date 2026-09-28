@@ -20,9 +20,10 @@ import RevokePlayerReducer from "../revoke_player_reducer";
 import SendChatReducer from "../send_chat_reducer";
 import SetAppearanceReducer from "../set_appearance_reducer";
 import SetNameReducer from "../set_name_reducer";
-import SetStanceReducer from "../set_stance_reducer";
 import SetTargetReducer from "../set_target_reducer";
 import StartHarvestReducer from "../start_harvest_reducer";
+import UnwieldReducer from "../unwield_reducer";
+import WieldItemReducer from "../wield_item_reducer";
 
 export type AttackParams = __Infer<typeof AttackReducer>;
 export type CancelParams = __Infer<typeof CancelReducer>;
@@ -38,7 +39,8 @@ export type RevokePlayerParams = __Infer<typeof RevokePlayerReducer>;
 export type SendChatParams = __Infer<typeof SendChatReducer>;
 export type SetAppearanceParams = __Infer<typeof SetAppearanceReducer>;
 export type SetNameParams = __Infer<typeof SetNameReducer>;
-export type SetStanceParams = __Infer<typeof SetStanceReducer>;
 export type SetTargetParams = __Infer<typeof SetTargetReducer>;
 export type StartHarvestParams = __Infer<typeof StartHarvestReducer>;
+export type UnwieldParams = __Infer<typeof UnwieldReducer>;
+export type WieldItemParams = __Infer<typeof WieldItemReducer>;
 

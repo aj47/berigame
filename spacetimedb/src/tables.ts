@@ -67,9 +67,12 @@ export const player = table(
     respawnTick: t.u32(),
 
     // combat
-    /** shared/sim Stance */
+    /**
+     * Retired rock-paper-scissors columns (stance, fightState, lastExchangeTick,
+     * outOfRangeTicks). SpacetimeDB cannot drop or reorder columns without a
+     * manual migration, so they stay, always 0 and never read.
+     */
     stance: t.u8(),
-    /** shared/sim FightState */
     fightState: t.u8(),
     combatTarget: t.option(t.identity()),
     /** true = attacking combatTarget, false = just following them */
@@ -90,6 +93,10 @@ export const player = table(
     // anti-spam
     lastInputTick: t.u32(),
     inputsThisTick: t.u8(),
+
+    // Appended columns: new columns must go last and carry a default.
+    /** Item id of the wielded weapon, e.g. 'stick'; '' = bare fists (punch). Public so everyone can draw it. */
+    weapon: t.string().default(''),
   }
 );
 
@@ -156,10 +163,8 @@ export const combatEvent = table(
     attacker: t.identity(),
     defender: t.identity(),
     damage: t.u8(),
-    attackerStance: t.u8(),
-    defenderStance: t.u8(),
-    attackerState: t.u8(),
-    defenderState: t.u8(),
+    /** Hit: the attacker's weapon at swing time ('' = punch). HarvestDone / ItemFound: the item gained. */
+    itemId: t.string(),
     defenderHp: t.u8(),
   }
 );

@@ -1,5 +1,5 @@
-import { MAX_STACK } from './constants';
-import type { Tile } from './types';
+import { HOTBAR_SIZE, MAX_STACK, PUNCH_DAMAGE, STICK_DROP_CHANCE } from './constants';
+import type { Slot, Tile } from './types';
 
 export interface ItemDef {
   id: string;
@@ -7,16 +7,24 @@ export interface ItemDef {
   icon: string;
   /** HP restored when eaten; 0 for non-consumables. */
   healthRestore: number;
+  /** Damage per swing while wielded; 0 for items that cannot be wielded. */
+  weaponDamage: number;
   maxStack: number;
   color: string;
 }
 
-/** Mirrors shared/itemDefinitions.js (the legacy CommonJS copy used by the Lambda backend). */
+export const STICK_ITEM_ID = 'stick';
+
+/**
+ * Berries started as a copy of shared/itemDefinitions.js (the legacy CommonJS
+ * file used by the retired Lambda backend); the stick exists only here.
+ */
 export const ITEM_DEFS: Record<string, ItemDef> = {
-  berry_blueberry: { id: 'berry_blueberry', name: 'Blueberry', icon: '/items/blueberry.png', healthRestore: 5, maxStack: MAX_STACK, color: '#4F46E5' },
-  berry_strawberry: { id: 'berry_strawberry', name: 'Strawberry', icon: '/items/strawberry.png', healthRestore: 3, maxStack: MAX_STACK, color: '#EF4444' },
-  berry_greenberry: { id: 'berry_greenberry', name: 'Greenberry', icon: '/items/greenberry.png', healthRestore: 2, maxStack: MAX_STACK, color: '#22C55E' },
-  berry_goldberry: { id: 'berry_goldberry', name: 'Goldberry', icon: '/items/goldberry.png', healthRestore: 10, maxStack: MAX_STACK, color: '#F59E0B' },
+  berry_blueberry: { id: 'berry_blueberry', name: 'Blueberry', icon: '/items/blueberry.png', healthRestore: 5, weaponDamage: 0, maxStack: MAX_STACK, color: '#4F46E5' },
+  berry_strawberry: { id: 'berry_strawberry', name: 'Strawberry', icon: '/items/strawberry.png', healthRestore: 3, weaponDamage: 0, maxStack: MAX_STACK, color: '#EF4444' },
+  berry_greenberry: { id: 'berry_greenberry', name: 'Greenberry', icon: '/items/greenberry.png', healthRestore: 2, weaponDamage: 0, maxStack: MAX_STACK, color: '#22C55E' },
+  berry_goldberry: { id: 'berry_goldberry', name: 'Goldberry', icon: '/items/goldberry.png', healthRestore: 10, weaponDamage: 0, maxStack: MAX_STACK, color: '#F59E0B' },
+  [STICK_ITEM_ID]: { id: STICK_ITEM_ID, name: 'Stick', icon: '/items/stick.png', healthRestore: 0, weaponDamage: 6, maxStack: 1, color: '#8A6A45' },
 };
 
 export function getItemDef(itemId: string): ItemDef | undefined {
@@ -25,6 +33,26 @@ export function getItemDef(itemId: string): ItemDef | undefined {
 
 export function isValidItemId(itemId: string): boolean {
   return itemId in ITEM_DEFS;
+}
+
+export function isWeapon(itemId: string): boolean {
+  return (getItemDef(itemId)?.weaponDamage ?? 0) > 0;
+}
+
+/** Damage of one swing with `weapon` wielded ('' = bare fists). */
+export function swingDamage(weapon: string): number {
+  return weapon ? getItemDef(weapon)?.weaponDamage || PUNCH_DAMAGE : PUNCH_DAMAGE;
+}
+
+/** Whether `itemId` sits in one of the quick-access slots, where it can stay wielded. */
+export function inHotbar(slots: readonly Slot[], itemId: string): boolean {
+  for (let i = 0; i < HOTBAR_SIZE && i < slots.length; i++) if (slots[i]?.itemId === itemId) return true;
+  return false;
+}
+
+/** `roll` is a uniform [0, 1) draw from the server's deterministic ctx.random. */
+export function harvestFindsStick(roll: number): boolean {
+  return roll < STICK_DROP_CHANCE;
 }
 
 export interface TreeSeed extends Tile {

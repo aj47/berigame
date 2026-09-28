@@ -43,10 +43,7 @@ export const CombatEvent = __t.object("CombatEvent", {
   attacker: __t.identity(),
   defender: __t.identity(),
   damage: __t.u8(),
-  attackerStance: __t.u8(),
-  defenderStance: __t.u8(),
-  attackerState: __t.u8(),
-  defenderState: __t.u8(),
+  itemId: __t.string(),
   defenderHp: __t.u8(),
 });
 export type CombatEvent = __Infer<typeof CombatEvent>;
@@ -102,6 +99,7 @@ export const Player = __t.object("Player", {
   eatCooldownUntilTick: __t.u32(),
   lastInputTick: __t.u32(),
   inputsThisTick: __t.u8(),
+  weapon: __t.string(),
 });
 export type Player = __Infer<typeof Player>;
 

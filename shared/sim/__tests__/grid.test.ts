@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  blockedSetFromTiles, chebyshev, facingFromDelta, facingToYaw, inBounds,
-  knockbackTile, neighbors8, tileKey, tileToWorld, worldToTile,
+  chebyshev, facingFromDelta, facingToYaw, inBounds,
+  neighbors8, tileKey, tileToWorld, worldToTile,
 } from '../grid';
 import { GRID_SIZE, TILE_ORIGIN } from '../constants';
 
@@ -48,15 +48,5 @@ describe('grid', () => {
       expect(Math.sign(Math.round(Math.cos(yaw) * 10))).toBe(dz);
     }
     expect(seen.size).toBe(8);
-  });
-
-  it('knockback pushes directly away, null when blocked or off-grid', () => {
-    const none = new Set<number>();
-    expect(knockbackTile({ x: 10, z: 10 }, { x: 9, z: 10 }, none)).toEqual({ x: 11, z: 10 });
-    expect(knockbackTile({ x: 10, z: 10 }, { x: 11, z: 11 }, none)).toEqual({ x: 9, z: 9 });
-    expect(knockbackTile({ x: 0, z: 5 }, { x: 1, z: 5 }, none)).toBeNull();
-    const blocked = blockedSetFromTiles([{ x: 11, z: 10 }]);
-    expect(knockbackTile({ x: 10, z: 10 }, { x: 9, z: 10 }, blocked)).toBeNull();
-    expect(knockbackTile({ x: 10, z: 10 }, { x: 10, z: 10 }, none)).toBeNull();
   });
 });

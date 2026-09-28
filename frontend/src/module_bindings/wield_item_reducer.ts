@@ -11,5 +11,5 @@ import {
 } from "spacetimedb";
 
 export default {
-  stance: __t.u8(),
+  slot: __t.u8(),
 };

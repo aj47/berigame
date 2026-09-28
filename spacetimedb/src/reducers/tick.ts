@@ -2,10 +2,10 @@ import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { tickSchedule } from '../tables';
 import {
-  DEATH_TICKS, EventKind, FightState, HARVEST_TICKS, type Stance, MELEE_RANGE, Pending, PlayerState, SPAWN_TILE,
-  MOVEMENT_STEPS_PER_TICK, SWING_INTERVAL_TICKS, TREE_COOLDOWN_TICKS,
-  bfsPath, blockedSetFromTiles, chebyshev, decayFightState, facingFromDelta, goalAdjacentTo,
-  goalIsTile, knockbackTile, neighbors8, resolveSwing, tileKey,
+  DEATH_TICKS, EventKind, HARVEST_TICKS, MELEE_RANGE, Pending, PlayerState, SPAWN_TILE,
+  MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS, TREE_COOLDOWN_TICKS,
+  bfsPath, blockedSetFromTiles, chebyshev, facingFromDelta, goalAdjacentTo,
+  goalIsTile, harvestFindsStick, inHotbar, neighbors8, swingDamage, tileKey,
 } from '../../../shared/sim';
 import { emitEvent } from '../lib/events';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
@@ -67,14 +67,12 @@ function phaseRespawn(s: TickState): void {
     p.x = SPAWN_TILE.x;
     p.z = SPAWN_TILE.z;
     p.facing = 0;
-    p.fightState = FightState.Neutral;
     p.targetX = undefined;
     p.targetZ = undefined;
     p.combatTarget = undefined;
     p.hostile = false;
     p.pending = Pending.None;
     p.pendingId = 0n;
-    p.outOfRangeTicks = 0;
     mark(s, p);
   }
 }
@@ -185,7 +183,12 @@ function phaseHarvest(s: TickState): void {
       tree.cooldownUntilTick = s.T + TREE_COOLDOWN_TICKS;
       tree.harvester = undefined;
       markTree(s, tree);
-      emitEvent(s.ctx, { tick: s.T, kind: EventKind.HarvestDone, attacker: p.identity, defender: p.identity, defenderHp: p.hp });
+      emitEvent(s.ctx, { tick: s.T, kind: EventKind.HarvestDone, attacker: p.identity, defender: p.identity, itemId: tree.itemId, defenderHp: p.hp });
+      // ctx.random is seeded from the tick timestamp and drawn in s.order, so replays agree.
+      if (harvestFindsStick(s.ctx.random())) {
+        giveItem(s.ctx, p.identity, STICK_ITEM_ID, 1, p, s.T);
+        emitEvent(s.ctx, { tick: s.T, kind: EventKind.ItemFound, attacker: p.identity, defender: p.identity, itemId: STICK_ITEM_ID, defenderHp: p.hp });
+      }
       p.harvestTreeId = 0;
       p.harvestEndTick = 0;
     } else {
@@ -204,64 +207,31 @@ function phaseSwings(s: TickState): void {
       a.combatTarget = undefined; a.hostile = false; mark(s, a);
       continue;
     }
-    if (chebyshev(a, d) > MELEE_RANGE) {
-      a.outOfRangeTicks = Math.min(255, a.outOfRangeTicks + 1);
-      mark(s, a);
-      continue;
-    }
-    if (a.outOfRangeTicks !== 0) { a.outOfRangeTicks = 0; mark(s, a); }
+    if (chebyshev(a, d) > MELEE_RANGE) continue;
     const face = facingFromDelta(d.x - a.x, d.z - a.z);
     if (a.facing !== face) { a.facing = face; mark(s, a); }
     if (s.T < a.nextSwingTick) continue;
 
-    // A passive defender must face the exchange too, so blocks and grabs meet the incoming hands.
+    // The defender turns to face the swing so the hit reaction meets the incoming blow.
     d.facing = facingFromDelta(a.x - d.x, a.z - d.z);
-    const o = resolveSwing(
-      { stance: a.stance as Stance, fightState: a.fightState as FightState },
-      { stance: d.stance as Stance, fightState: d.fightState as FightState }
-    );
-    d.hp = Math.max(0, d.hp - o.damageToDefender);
-    a.hp = Math.max(0, a.hp - o.damageToAttacker);
-    a.fightState = o.attackerState;
-    d.fightState = o.defenderState;
-    a.lastExchangeTick = s.T;
-    d.lastExchangeTick = s.T;
+    // Reducers keep a wielded weapon in the hotbar; re-check so a stale row can only ever punch.
+    if (a.weapon !== '' && !inHotbar(readSlots(s.ctx, a.identity).slots, a.weapon)) a.weapon = '';
+    const damage = swingDamage(a.weapon);
+    d.hp = Math.max(0, d.hp - damage);
     a.nextSwingTick = s.T + SWING_INTERVAL_TICKS;
-
-    let knockedBack = false;
-    if (o.knockback) {
-      const to = knockbackTile(d, a, s.blocked);
-      if (to) { d.x = to.x; d.z = to.z; knockedBack = true; }
-    }
-    if (o.damageToDefender > 0) interrupt(s, d);
-    if (o.damageToAttacker > 0) interrupt(s, a);
+    interrupt(s, d);
 
     emitEvent(s.ctx, {
       tick: s.T,
-      kind: o.kind,
+      kind: EventKind.Hit,
       attacker: a.identity,
       defender: d.identity,
-      damage: o.kind === EventKind.Counter ? o.damageToAttacker : o.damageToDefender,
-      attackerStance: a.stance,
-      defenderStance: d.stance,
-      attackerState: a.fightState,
-      defenderState: d.fightState,
+      damage,
+      itemId: a.weapon,
       defenderHp: d.hp,
     });
-    if (knockedBack) {
-      emitEvent(s.ctx, { tick: s.T, kind: EventKind.Knockback, attacker: a.identity, defender: d.identity, defenderHp: d.hp });
-    }
     mark(s, a);
     mark(s, d);
-  }
-}
-
-function phaseDecay(s: TickState): void {
-  for (const h of s.order) {
-    const p = s.players.get(h)!;
-    if (!alive(p) || p.fightState === FightState.Neutral) continue;
-    const next = decayFightState(p.fightState as FightState, s.T - p.lastExchangeTick, p.outOfRangeTicks);
-    if (next !== p.fightState) { p.fightState = next; mark(s, p); }
   }
 }
 
@@ -286,8 +256,8 @@ function phaseDeath(s: TickState): void {
     p.targetX = undefined; p.targetZ = undefined;
     p.combatTarget = undefined; p.hostile = false;
     p.pending = Pending.None; p.pendingId = 0n;
-    p.fightState = FightState.Neutral;
-    p.outOfRangeTicks = 0;
+    // The whole inventory was just dropped, weapon included.
+    p.weapon = '';
     mark(s, p);
 
     for (const oh of s.order) {
@@ -295,7 +265,6 @@ function phaseDeath(s: TickState): void {
       if (q.combatTarget && sameId(q.combatTarget, p.identity)) {
         q.combatTarget = undefined;
         q.hostile = false;
-        q.fightState = FightState.Neutral;
         mark(s, q);
       }
     }
@@ -350,7 +319,6 @@ export const tick = spacetimedb.reducer(
     phaseMovement(s);
     phaseHarvest(s);
     phaseSwings(s);
-    phaseDecay(s);
     phaseDeath(s);
     phaseExpiry(s);
 

@@ -1,18 +1,34 @@
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { PlayerState, retaliationSwingTick } from '../../../shared/sim';
+import { HOTBAR_SIZE, PlayerState, isWeapon, retaliationSwingTick } from '../../../shared/sim';
+import { readSlots } from '../lib/inventory';
 import { clearInteractions, currentTick, findPlayer, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { requireCapability } from '../lib/access';
 
-/** Strike / Grab / Guard. Takes effect at the next swing that resolves. */
-export const setStance = spacetimedb.reducer(
-  { stance: t.u8() },
-  (ctx, { stance }) => {
-    if (stance > 2) throw new SenderError('unknown stance');
+/**
+ * Hold the weapon in quick slot `slot` (0..HOTBAR_SIZE-1). Takes effect at the
+ * next swing and does not interrupt a fight, so the rally timing is kept.
+ */
+export const wieldItem = spacetimedb.reducer(
+  { slot: t.u8() },
+  (ctx, { slot }) => {
+    if (slot >= HOTBAR_SIZE) throw new SenderError('weapons are wielded from quick slots 1-3');
     const p = requireAlivePlayer(ctx);
-    if (p.stance === stance) return;
     touchInput(p, currentTick(ctx));
-    p.stance = stance;
+    const item = readSlots(ctx, p.identity).slots[slot];
+    if (!item) throw new SenderError('empty slot');
+    if (!isWeapon(item.itemId)) throw new SenderError('not a weapon');
+    p.weapon = item.itemId;
+    savePlayer(ctx, p);
+  }
+);
+
+/** Put the weapon away and fight with bare fists. */
+export const unwield = spacetimedb.reducer(
+  (ctx) => {
+    const p = requireAlivePlayer(ctx);
+    touchInput(p, currentTick(ctx));
+    p.weapon = '';
     savePlayer(ctx, p);
   }
 );
@@ -38,7 +54,6 @@ export const attack = spacetimedb.reducer(
     clearInteractions(ctx, p);
     p.combatTarget = target;
     p.hostile = true;
-    p.outOfRangeTicks = 0;
     // Cooldowns belong to the attacker, not the target. Preserve a swing or
     // eating delay across cancel, movement, following, and target changes.
     if (readyAt > T) {

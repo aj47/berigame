@@ -27,20 +27,8 @@ export const MELEE_RANGE = 1;
 export const SWING_INTERVAL_TICKS = 4;
 /** A retaliating player swings this many ticks after their opponent, so a pair alternates. */
 export const RETALIATE_OFFSET_TICKS = 2;
-/** Damage dealt to the defender when the attacker wins the RPS, by the attacker's fight state. */
-export const DAMAGE = {
-  NEUTRAL: 4,
-  ADVANTAGE: 6,
-  DISADVANTAGE: 3,
-  /** Damage the attacker takes when the defender's stance beats theirs. */
-  COUNTER: 2,
-} as const;
-/** Tiles a defender is pushed when hit by an attacker in Advantage. */
-export const KNOCKBACK_TILES = 1;
-/** Fight state returns to Neutral after this many ticks without an exchange. */
-export const STATE_DECAY_TICKS = 8;
-/** Fight state returns to Neutral after this many consecutive ticks out of range. */
-export const OUT_OF_RANGE_DECAY_TICKS = 2;
+/** Damage of a bare-handed swing. Weapons set their own `weaponDamage` in items.ts. */
+export const PUNCH_DAMAGE = 3;
 /** Ticks spent dead before respawning. */
 export const DEATH_TICKS = 5;
 
@@ -50,9 +38,13 @@ export const TREE_COOLDOWN_TICKS = 50;
 export const EAT_COOLDOWN_TICKS = 3;
 /** Eating pushes the eater's next swing back by this many ticks. */
 export const EAT_SWING_DELAY_TICKS = 3;
+/** Chance that a finished harvest also yields a stick, rolled with the server's ctx.random. */
+export const STICK_DROP_CHANCE = 0.25;
 
 // ---- Items ------------------------------------------------------------------
 export const INVENTORY_SIZE = 28;
+/** Inventory slots 0..HOTBAR_SIZE-1 double as the quick-access bar (keys 1-3). Weapons are wielded from here. */
+export const HOTBAR_SIZE = 3;
 export const MAX_STACK = 99;
 export const GROUND_ITEM_TTL_TICKS = 500;
 

@@ -2,7 +2,7 @@ import { ScheduleAt } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import {
-  FightState, MAX_HP, PlayerState, Pending, SPAWN_TILE, Stance, TICK_MS, TREE_SEEDS,
+  MAX_HP, PlayerState, Pending, SPAWN_TILE, TICK_MS, TREE_SEEDS,
 } from '../../../shared/sim';
 import { clearInteractions, findPlayer, hex, sameId, savePlayer } from '../lib/players';
 import { requireAdmission } from '../lib/access';
@@ -59,8 +59,8 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     maxHp: MAX_HP,
     state: PlayerState.Alive,
     respawnTick: 0,
-    stance: Stance.Strike,
-    fightState: FightState.Neutral,
+    stance: 0,
+    fightState: 0,
     combatTarget: undefined,
     hostile: false,
     nextSwingTick: 0,
@@ -73,6 +73,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     eatCooldownUntilTick: 0,
     lastInputTick: 0,
     inputsThisTick: 0,
+    weapon: '',
   });
 });
 

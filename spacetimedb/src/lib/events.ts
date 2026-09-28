@@ -7,10 +7,7 @@ export interface CombatEventInput {
   attacker: Identity;
   defender: Identity;
   damage?: number;
-  attackerStance?: number;
-  defenderStance?: number;
-  attackerState?: number;
-  defenderState?: number;
+  itemId?: string;
   defenderHp?: number;
 }
 
@@ -21,10 +18,7 @@ export function emitEvent(ctx: Ctx, e: CombatEventInput): void {
     attacker: e.attacker,
     defender: e.defender,
     damage: e.damage ?? 0,
-    attackerStance: e.attackerStance ?? 0,
-    defenderStance: e.defenderStance ?? 0,
-    attackerState: e.attackerState ?? 0,
-    defenderState: e.defenderState ?? 0,
+    itemId: e.itemId ?? '',
     defenderHp: e.defenderHp ?? 0,
   });
 }

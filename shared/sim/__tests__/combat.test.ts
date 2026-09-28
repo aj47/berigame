@@ -1,78 +1,47 @@
 import { describe, expect, it } from 'vitest';
-import { beats, decayFightState, isSwingDue, resolveSwing, retaliationSwingTick, rpsResult } from '../combat';
-import { DAMAGE, OUT_OF_RANGE_DECAY_TICKS, STATE_DECAY_TICKS } from '../constants';
-import { EventKind, FightState, Stance } from '../types';
+import { isSwingDue, retaliationSwingTick } from '../combat';
+import { HOTBAR_SIZE, PUNCH_DAMAGE, STICK_DROP_CHANCE } from '../constants';
+import { ITEM_DEFS, STICK_ITEM_ID, harvestFindsStick, inHotbar, isWeapon, swingDamage } from '../items';
+import { emptySlots } from '../inventory';
 
-describe('rock paper scissors', () => {
-  it('Strike > Grab > Guard > Strike, everything else draws or loses', () => {
-    const table: Array<[Stance, Stance, string]> = [
-      [Stance.Strike, Stance.Grab, 'win'], [Stance.Grab, Stance.Guard, 'win'], [Stance.Guard, Stance.Strike, 'win'],
-      [Stance.Grab, Stance.Strike, 'lose'], [Stance.Guard, Stance.Grab, 'lose'], [Stance.Strike, Stance.Guard, 'lose'],
-      [Stance.Strike, Stance.Strike, 'draw'], [Stance.Grab, Stance.Grab, 'draw'], [Stance.Guard, Stance.Guard, 'draw'],
-    ];
-    for (const [a, b, r] of table) expect(rpsResult(a, b)).toBe(r);
-    expect(beats(Stance.Strike, Stance.Grab)).toBe(true);
-    expect(beats(Stance.Grab, Stance.Strike)).toBe(false);
+describe('swing damage', () => {
+  it('bare fists punch for PUNCH_DAMAGE', () => {
+    expect(swingDamage('')).toBe(PUNCH_DAMAGE);
+  });
+  it('a wielded stick hits harder than a punch', () => {
+    expect(swingDamage(STICK_ITEM_ID)).toBe(ITEM_DEFS[STICK_ITEM_ID].weaponDamage);
+    expect(swingDamage(STICK_ITEM_ID)).toBeGreaterThan(PUNCH_DAMAGE);
+  });
+  it('anything that is not a weapon falls back to a punch', () => {
+    expect(swingDamage('berry_blueberry')).toBe(PUNCH_DAMAGE);
+    expect(swingDamage('no_such_item')).toBe(PUNCH_DAMAGE);
+  });
+  it('only the stick is a weapon, and it is not edible', () => {
+    expect(isWeapon(STICK_ITEM_ID)).toBe(true);
+    expect(isWeapon('berry_goldberry')).toBe(false);
+    expect(isWeapon('')).toBe(false);
+    expect(ITEM_DEFS[STICK_ITEM_ID].healthRestore).toBe(0);
+    expect(ITEM_DEFS[STICK_ITEM_ID].maxStack).toBe(1);
   });
 });
 
-describe('resolveSwing', () => {
-  const c = (stance: Stance, fightState: FightState) => ({ stance, fightState });
-
-  it('neutral hit deals 4 and flips states', () => {
-    const o = resolveSwing(c(Stance.Strike, FightState.Neutral), c(Stance.Grab, FightState.Neutral));
-    expect(o.kind).toBe(EventKind.Hit);
-    expect(o.damageToDefender).toBe(DAMAGE.NEUTRAL);
-    expect(o.damageToAttacker).toBe(0);
-    expect(o.knockback).toBe(false);
-    expect(o.attackerState).toBe(FightState.Advantage);
-    expect(o.defenderState).toBe(FightState.Disadvantage);
-  });
-
-  it('advantage hit deals 6 with knockback', () => {
-    const o = resolveSwing(c(Stance.Guard, FightState.Advantage), c(Stance.Strike, FightState.Disadvantage));
-    expect(o.damageToDefender).toBe(DAMAGE.ADVANTAGE);
-    expect(o.knockback).toBe(true);
-  });
-
-  it('disadvantage (escape) hit deals 3 and takes advantage back', () => {
-    const o = resolveSwing(c(Stance.Grab, FightState.Disadvantage), c(Stance.Guard, FightState.Advantage));
-    expect(o.damageToDefender).toBe(DAMAGE.DISADVANTAGE);
-    expect(o.knockback).toBe(false);
-    expect(o.attackerState).toBe(FightState.Advantage);
-    expect(o.defenderState).toBe(FightState.Disadvantage);
-  });
-
-  it('counter hurts the attacker and gives the defender advantage', () => {
-    const o = resolveSwing(c(Stance.Strike, FightState.Advantage), c(Stance.Guard, FightState.Disadvantage));
-    expect(o.kind).toBe(EventKind.Counter);
-    expect(o.damageToDefender).toBe(0);
-    expect(o.damageToAttacker).toBe(DAMAGE.COUNTER);
-    expect(o.attackerState).toBe(FightState.Disadvantage);
-    expect(o.defenderState).toBe(FightState.Advantage);
-  });
-
-  it('clash does nothing and keeps states', () => {
-    const o = resolveSwing(c(Stance.Guard, FightState.Advantage), c(Stance.Guard, FightState.Neutral));
-    expect(o.kind).toBe(EventKind.Clash);
-    expect(o.damageToDefender).toBe(0);
-    expect(o.damageToAttacker).toBe(0);
-    expect(o.attackerState).toBe(FightState.Advantage);
-    expect(o.defenderState).toBe(FightState.Neutral);
+describe('hotbar', () => {
+  it('covers exactly the first HOTBAR_SIZE slots', () => {
+    const slots = emptySlots();
+    slots[HOTBAR_SIZE - 1] = { itemId: STICK_ITEM_ID, quantity: 1 };
+    expect(inHotbar(slots, STICK_ITEM_ID)).toBe(true);
+    slots[HOTBAR_SIZE - 1] = null;
+    slots[HOTBAR_SIZE] = { itemId: STICK_ITEM_ID, quantity: 1 };
+    expect(inHotbar(slots, STICK_ITEM_ID)).toBe(false);
   });
 });
 
-describe('state decay', () => {
-  it('drops to neutral after the idle threshold', () => {
-    expect(decayFightState(FightState.Advantage, STATE_DECAY_TICKS - 1, 0)).toBe(FightState.Advantage);
-    expect(decayFightState(FightState.Advantage, STATE_DECAY_TICKS, 0)).toBe(FightState.Neutral);
-  });
-  it('drops to neutral after being out of range', () => {
-    expect(decayFightState(FightState.Disadvantage, 1, OUT_OF_RANGE_DECAY_TICKS - 1)).toBe(FightState.Disadvantage);
-    expect(decayFightState(FightState.Disadvantage, 1, OUT_OF_RANGE_DECAY_TICKS)).toBe(FightState.Neutral);
-  });
-  it('neutral stays neutral', () => {
-    expect(decayFightState(FightState.Neutral, 0, 0)).toBe(FightState.Neutral);
+describe('stick drop roll', () => {
+  it('finds a stick for rolls below the drop chance only', () => {
+    expect(harvestFindsStick(0)).toBe(true);
+    expect(harvestFindsStick(STICK_DROP_CHANCE - 1e-9)).toBe(true);
+    expect(harvestFindsStick(STICK_DROP_CHANCE)).toBe(false);
+    expect(harvestFindsStick(0.999)).toBe(false);
   });
 });
 

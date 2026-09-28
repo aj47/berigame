@@ -2,12 +2,18 @@ import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import {
   EAT_COOLDOWN_TICKS, EAT_SWING_DELAY_TICKS, EventKind, INVENTORY_SIZE, MELEE_RANGE, Pending,
-  chebyshev, getItemDef, moveItem as moveSlots, nearestReachableTile, removeFromSlot,
+  chebyshev, getItemDef, inHotbar, moveItem as moveSlots, nearestReachableTile, removeFromSlot, type Slot,
 } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
 import { emitEvent } from '../lib/events';
 import { dropOnGround, readSlots, takeGroundItem, writeSlots } from '../lib/inventory';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
+import type { PlayerRow } from '../lib/types';
+
+/** A weapon is only held while a copy of it sits in the quick slots. Mutates `p`. */
+function sheatheIfGone(p: PlayerRow, slots: readonly Slot[]): void {
+  if (p.weapon !== '' && !inHotbar(slots, p.weapon)) p.weapon = '';
+}
 
 export const eatBerry = spacetimedb.reducer(
   { slot: t.u8() },
@@ -43,7 +49,9 @@ export const moveItem = spacetimedb.reducer(
     touchInput(p, currentTick(ctx));
     const snap = readSlots(ctx, p.identity);
     if (!snap.slots[from]) throw new SenderError('empty slot');
-    writeSlots(ctx, p.identity, snap, moveSlots(snap.slots, from, to));
+    const slots = moveSlots(snap.slots, from, to);
+    writeSlots(ctx, p.identity, snap, slots);
+    sheatheIfGone(p, slots);
     savePlayer(ctx, p);
   }
 );
@@ -60,6 +68,7 @@ export const dropItem = spacetimedb.reducer(
     if (!item) throw new SenderError('empty slot');
     const { slots, removed } = removeFromSlot(snap.slots, slot, quantity);
     writeSlots(ctx, p.identity, snap, slots);
+    sheatheIfGone(p, slots);
     dropOnGround(ctx, p.identity, item.itemId, removed, p, T);
     savePlayer(ctx, p);
   }

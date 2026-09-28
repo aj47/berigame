@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Stick item icon: hand-drawn source for frontend/public/items/stick.png (render at 128x128, transparent). -->
+  <defs>
+    <linearGradient id="bark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#C08A55"/>
+      <stop offset="0.55" stop-color="#9A6638"/>
+      <stop offset="1" stop-color="#6E4424"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9BD86A"/>
+      <stop offset="1" stop-color="#3F8F3A"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#3A2211" stroke-linejoin="round" stroke-linecap="round">
+    <!-- twig with two leaves -->
+    <path d="M72 50 C 78 38, 86 32, 97 28" fill="none" stroke-width="9"/>
+    <path d="M72 50 C 78 38, 86 32, 97 28" fill="none" stroke="#8E5E34" stroke-width="4.5"/>
+    <path d="M96 28 C 104 14, 118 14, 122 18 C 118 30, 106 34, 96 28 Z" fill="url(#leaf)" stroke-width="3.5"/>
+    <path d="M98 27 C 106 23, 113 20, 119 18" fill="none" stroke="#2F6B2C" stroke-width="1.6"/>
+    <path d="M84 36 C 80 22, 86 10, 92 8 C 97 16, 94 30, 84 36 Z" fill="url(#leaf)" stroke-width="3.5"/>
+    <path d="M85 34 C 87 26, 89 18, 91 11" fill="none" stroke="#2F6B2C" stroke-width="1.6"/>
+    <!-- main branch: thick at the grip (bottom left), tapering to the tip -->
+    <path d="M14 118 C 9 113, 10 106, 16 101 L 88 29 C 93 24, 101 22, 105 26 C 109 30, 106 37, 101 42 L 29 114 C 24 119, 18 122, 14 118 Z" fill="url(#bark)" stroke-width="4.5"/>
+  </g>
+  <!-- highlight along the upper edge -->
+  <path d="M19 104 L 89 34 C 92 31, 96 29, 99 29" fill="none" stroke="#E2B37E" stroke-width="3.2" stroke-linecap="round" opacity="0.9"/>
+  <!-- shadow along the lower edge -->
+  <path d="M30 110 L 99 41" fill="none" stroke="#5A351B" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+  <!-- knot -->
+  <ellipse cx="54" cy="70" rx="6.5" ry="4.2" transform="rotate(-45 54 70)" fill="#6E4424" stroke="#3A2211" stroke-width="2.4"/>
+  <ellipse cx="53" cy="69.5" rx="2.6" ry="1.5" transform="rotate(-45 53 69.5)" fill="#C08A55"/>
+  <!-- grain nicks -->
+  <path d="M36 91 l 6 -2 M70 57 l 5 -2 M82 44 l 4 -1.5" stroke="#5A351B" stroke-width="2" stroke-linecap="round"/>
+  <!-- cut end at the grip -->
+  <ellipse cx="18" cy="113" rx="6" ry="7.5" transform="rotate(-45 18 113)" fill="#E8C48E" stroke="#3A2211" stroke-width="3"/>
+  <ellipse cx="18" cy="113" rx="2.6" ry="3.4" transform="rotate(-45 18 113)" fill="none" stroke="#B98A55" stroke-width="1.5"/>
+  <!-- sparkle, like the berry icons -->
+  <path d="M30 30 l 3 8 l 8 3 l -8 3 l -3 8 l -3 -8 l -8 -3 l 8 -3 Z" fill="#FFE27A" stroke="#C99A2E" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M112 62 l 2 5 l 5 2 l -5 2 l -2 5 l -2 -5 l -5 -2 l 5 -2 Z" fill="#FFE27A" stroke="#C99A2E" stroke-width="1" stroke-linejoin="round"/>
+</svg>
