@@ -25,17 +25,42 @@ try {
   // A fresh character's quick slots are empty (disabled), so keyboard activation is checked on Stop:
   // start a long walk, press Enter on the focused Stop button, and the character must halt short of it.
   const start = await page.evaluate(() => ({ x: window.__berigame.me.x, z: window.__berigame.me.z }));
-  const goal = { x: start.x + 10, z: start.z }; // far enough that a slow page presses Stop mid-walk
-  const target = await page.evaluate(({ x, z }) => window.__berigameProject(x, z, 0), goal);
-  await page.mouse.click(target.x, target.y);
-  await page.waitForFunction((s) => window.__berigame.me.x !== s.x || window.__berigame.me.z !== s.z, start, { timeout: 10_000 });
-  await page.locator('.combat-hud .stop-button').focus();
+  // Walk about 10 tiles to an on-screen tile no tree or scenery covers (a covered click opens a
+  // menu instead: close it and try the next one), so a slow page still presses Stop mid-walk.
+  const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
+  let goal, target, walking = false, clickedAt = 0;
+  for (const [dx, dz] of [[10, 0], [-10, 0], [0, 10], [9, 3], [-9, 3]]) {
+    goal = { x: start.x + dx, z: start.z + dz };
+    target = await page.evaluate(({ x, z }) => window.__berigameProject(x, z, 0), goal);
+    if (!(target.x > 20 && target.x < viewport.width - 20 && target.y > 80 && target.y < viewport.height - 180)) continue;
+    clickedAt = Date.now();
+    await page.mouse.click(target.x, target.y);
+    await page.waitForTimeout(400);
+    if (await page.locator('.click-dropdown').count()) { await page.getByRole('button', { name: /^Close/ }).first().click().catch(() => {}); continue; }
+    walking = true;
+    break;
+  }
+  if (!walking) throw new Error(`no clear on-screen tile to walk to from ${JSON.stringify(start)}`);
+  // Press Stop straight away: the walk takes ~5 ticks, and a slow page can take that long to report
+  // the first step. Without Stop the player would reach the goal.
+  // Plain DOM focus: a locator's actionability wait can take seconds on a software renderer.
+  await page.evaluate(() => document.querySelector('.combat-hud .stop-button').focus());
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(1_500);
-  const halted = await page.evaluate(() => ({ x: window.__berigame.me.x, z: window.__berigame.me.z }));
-  await page.waitForTimeout(1_200);
-  const still = await page.evaluate(() => ({ x: window.__berigame.me.x, z: window.__berigame.me.z }));
-  check('Enter activates focused Stop without opening chat', halted.x === still.x && halted.z === still.z
+  const stopMs = Date.now() - clickedAt;
+  const walkMs = Math.ceil(Math.max(Math.abs(goal.x - start.x), Math.abs(goal.z - start.z)) / 2) * 600;
+  const pos = () => page.evaluate(() => ({ x: window.__berigame.me.x, z: window.__berigame.me.z }));
+  // Wait (up to 10 s) until the player stands on one tile for two ticks, then check it is short of the goal.
+  let halted = await pos(), still = halted;
+  for (let i = 0; i < 8; i++) {
+    await page.waitForTimeout(1_300);
+    still = await pos();
+    if (still.x === halted.x && still.z === halted.z) break;
+    halted = still;
+  }
+  // On a lagging software-rendered page the click-to-Enter round trip can outlast the whole walk:
+  // then reaching the goal says nothing about Stop, so skip instead of failing.
+  if (still.x === goal.x && still.z === goal.z && stopMs > walkMs - 600) console.log(`SKIP Enter activates focused Stop: pressing it took ${stopMs}ms, the walk only ${walkMs}ms`);
+  else check('Enter activates focused Stop without opening chat', halted.x === still.x && halted.z === still.z
     && !(still.x === goal.x && still.z === goal.z) && await page.locator('.chat-panel').count() === 0);
   await page.locator('[data-panel="inventory"]').focus();
   await page.keyboard.press('Enter');
