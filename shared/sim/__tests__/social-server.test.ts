@@ -10,6 +10,7 @@ import {
 import { areaOf, isBramble } from '../areas';
 import { emptySlots } from '../inventory';
 import { tileKey } from '../grid';
+import { Cosmetic, hasCosmetic } from '../skills';
 import type { Slot } from '../types';
 
 // Run the real social reducers against an in-memory stand-in for the database
@@ -80,6 +81,7 @@ function harness() {
   const trees = new Map<number, any>();
   const dummies = new Map<number, any>();
   const giants = new Map<number, any>();
+  const cosmetics = new Map<string, any>();
   let rolls: number[] = [];
   const ctx: any = {
     random: vi.fn(() => (rolls.length ? rolls.shift()! : 0.5)),
@@ -122,6 +124,7 @@ function harness() {
       giant: { iter: () => giants.values(), insert: (row: any) => { giants.set(row.id, row); return row; }, id: { find: (id: number) => giants.get(id), update: (row: any) => giants.set(row.id, row) } },
       giantContribution: { iter: () => [][Symbol.iterator](), identity: { find: () => undefined, delete: () => {} } },
       giantEvent: { insert: vi.fn() },
+      playerCosmetic: { insert: (row: any) => cosmetics.set(row.identity.toHexString(), row), identity: { find: (id: any) => cosmetics.get(id.toHexString()), update: (row: any) => cosmetics.set(row.identity.toHexString(), row) } },
       chatMessage: {
         iter: () => chat.values(),
         insert: (row: any) => { const id = nextChat++; chat.set(id, { ...row, id }); },
@@ -142,7 +145,7 @@ function harness() {
   const as = (id: any) => { ctx.sender = id; return ctx; };
   const advance = () => { now += 1; };
   return {
-    ctx, players, trades, friends, codes, notices, chat, give, slotsOf, count, as, advance,
+    ctx, cosmetics, players, trades, friends, codes, notices, chat, give, slotsOf, count, as, advance,
     setMicros: (m: bigint) => { micros = m; }, micros: () => micros, setRolls: (r: number[]) => { rolls = r; },
     runTick: () => { ctx.sender = ctx.identity; scheduledTick(ctx, { timer: {} }); },
     p: (id: any) => players.get(id.toHexString()),
@@ -405,6 +408,8 @@ describe('invite links and friends', () => {
     createInvite(h.as(A));
     redeemInvite(h.as(B), { code: [...h.codes.keys()][0] });
     expect(areaOf(h.p(B))).toBe('coast');
+    // Landing past the hedge earns the Coast Scarf, as walking there does.
+    expect(hasCosmetic(h.cosmetics.get('b')?.unlocked ?? 0, Cosmetic.CoastScarf)).toBe(true);
   });
 
   it('rejects expired, unknown and own codes; never moves a joiner mid-fight', () => {

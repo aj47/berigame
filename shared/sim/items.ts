@@ -18,6 +18,8 @@ export const DRIFTWOOD_ITEM_ID = 'driftwood';
 export const FLINT_ITEM_ID = 'flint';
 export const STONE_CLUB_ITEM_ID = 'stone_club';
 export const OBSIDIAN_ITEM_ID = 'obsidian';
+export const BERRY_MASH_ITEM_ID = 'berry_mash';
+export const FLINT_KNIFE_ITEM_ID = 'flint_knife';
 
 /**
  * Berries started as a copy of shared/itemDefinitions.js (the legacy CommonJS
@@ -33,6 +35,9 @@ export const ITEM_DEFS: Record<string, ItemDef> = {
   [FLINT_ITEM_ID]: { id: FLINT_ITEM_ID, name: 'Flint Shard', icon: '/items/flint.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#5B6470' },
   [STONE_CLUB_ITEM_ID]: { id: STONE_CLUB_ITEM_ID, name: 'Stone Club', icon: '/items/stone_club.png', healthRestore: 0, weaponDamage: 8, maxStack: 1, color: '#6E6A62' },
   [OBSIDIAN_ITEM_ID]: { id: OBSIDIAN_ITEM_ID, name: 'Obsidian', icon: '/items/obsidian.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#2A2238' },
+  // F2 recipes. Mash: 3 berries (7 HP) in one bite, still below a goldberry. Knife: a stick's damage, not a key.
+  [BERRY_MASH_ITEM_ID]: { id: BERRY_MASH_ITEM_ID, name: 'Berry Mash', icon: '/items/berry_mash.png', healthRestore: 7, weaponDamage: 0, maxStack: MAX_STACK, color: '#B0415C' },
+  [FLINT_KNIFE_ITEM_ID]: { id: FLINT_KNIFE_ITEM_ID, name: 'Flint Knife', icon: '/items/flint_knife.png', healthRestore: 0, weaponDamage: 6, maxStack: 1, color: '#56606E' },
 };
 
 export function getItemDef(itemId: string): ItemDef | undefined {

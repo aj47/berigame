@@ -79,5 +79,7 @@ export function useGameActions() {
     cancelTrade: (tradeId: bigint) => run('cancelTrade', (c) => c.reducers.cancelTradeRequest({ tradeId })),
     /** Walk up to the Giant and keep swinging at it (open to everyone; needs the stone club to reach the Boulders). */
     attackGiant: (giantId: number) => run('attackGiant', (c) => c.reducers.attackGiant({ giantId })),
+    /** Wear an earned cosmetic (shared/sim CosmeticSlot; cosmetic id + 1, 0 = take it off). */
+    wearCosmetic: (slot: number, cosmetic: number) => run('wearCosmetic', (c) => c.reducers.wearCosmetic({ slot, cosmetic })),
   };
 }

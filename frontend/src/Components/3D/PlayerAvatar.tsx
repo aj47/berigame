@@ -13,6 +13,8 @@ import { useAvatarLabels } from './AvatarOverlay';
 import AdventurerModel, { BASE_MODEL_URL, modelUrl } from './AdventurerModel';
 import { useAppearancePreview } from '../../appearance/store';
 import { useToastStore } from '../../spacetime/stores/toastStore';
+import { useWornCosmetics } from '../../spacetime/hooks';
+import { useProgressStore, XP_FLOAT_KIND } from '../../spacetime/stores/progressStore';
 import type { AnimationCue } from '../../animation/combatPresentation';
 import { identityHex } from '../../spacetime/identity';
 import { useSocialStore } from '../../spacetime/stores/socialStore';
@@ -68,6 +70,10 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const floating = useCombatFxStore((s) => s.numbers[hex]);
   const found = useCombatFxStore((s) => s.finds[hex]);
   const emote = useSocialStore((s) => s.emotes[hex]);
+  const worn = useWornCosmetics(hex);
+  const head = worn >> 8, neck = worn & 255;
+  // XP floaters are yours alone (other players' XP is not broadcast as events).
+  const xpFloat = useProgressStore((s) => (isSelf ? s.xpFloat : null));
   const dead = row.state === PlayerState.Dead;
   // Moving, fighting, harvesting or dying ends an emote (a Sit holds until then).
   const activity = `${row.x},${row.z},${row.hostile},${row.pending},${row.harvestTreeId},${row.state}`;
@@ -120,9 +126,10 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
       <mesh position={[0, 1.05, 0]} visible={false}><boxGeometry args={[0.9, 2.1, 0.8]} /><meshBasicMaterial /></mesh>
       {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} itemId={floating.itemId} appearAt={floating.at + floating.delayMs} />}
       {found && <DamageNumber key={`find-${hex}-${found.seq}`} playerPosition={origin} yOffset={1.8} kind={found.kind} text={found.text} itemId={found.itemId} appearAt={found.at + found.delayMs} />}
+      {xpFloat && <DamageNumber key={`xp-${xpFloat.seq}`} playerPosition={origin} yOffset={2.25} kind={XP_FLOAT_KIND} text={xpFloat.text} appearAt={xpFloat.at} />}
       <Suspense fallback={<mesh position={[0,1,0]}><capsuleGeometry args={[.25,1,4,6]} /><meshStandardMaterial color="#42699c" /></mesh>}>
-        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} motion={motion} transient={transient} />}>
-          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} motion={motion} transient={transient} />
+        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} motion={motion} transient={transient} head={head} neck={neck} />}>
+          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} motion={motion} transient={transient} head={head} neck={neck} />
         </HairBoundary>
       </Suspense>
     </group>

@@ -8,6 +8,7 @@ import {
   CHAT_NEARBY_RADIUS, INVITE_PARAM, TRADE_BREAK_RANGE, TRADE_RANGE, chatVisible, normalizeInviteCode, parseOffer, formatOffer,
   BOULDER_KEY_ITEM, BOULDER_LINE, BOULDER_MESSAGE, BOULDERS_ENTRY, BOULDERS_MIN, GIANT_ID, GIANT_AGGRO_RANGE, GIANT_MIN_CONTRIBUTION,
   GIANT_REACH, GIANT_RESPAWN_TICKS, GIANT_REWARD, GiantAttack, GiantState, attackDamage, attackRadius, giantHpAt, isLandTile,
+  COSMETICS, CosmeticSlot, SKILLS, SKILL_MAX_LEVEL, Skill, harvestTickBonus, hasCosmetic, levelForXp, levelProgress,
 } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
 import { ApiError, type Invite } from './portable';
@@ -76,6 +77,8 @@ export function connect(credential: Credential, control = false, options: Connec
             tables.appearance.where(row => row.identity.eq(identity)), tables.giant,
             // Row-level security narrows these to your own rows.
             tables.friend, tables.trade, tables.inviteCode, tables.socialEvent,
+            tables.playerSkill.where(row => row.identity.eq(identity)),
+            tables.playerCosmetic.where(row => row.identity.eq(identity)),
           ]);
         }).build();
     } catch (error) { settled = true; clearTimeout(timer); reject(error); }
@@ -170,6 +173,28 @@ export async function createGameService(credential: Credential, options: Connect
         close,
         state() {
           const self = me();
+          const skillLevels = () => {
+            const row = conn.db.playerSkill.identity.find(id);
+            return { foraging: levelForXp(row?.foragingXp ?? 0), beachcombing: levelForXp(row?.beachcombingXp ?? 0), crafting: levelForXp(row?.craftingXp ?? 0) };
+          };
+          const describeSkills = () => {
+            const row = conn.db.playerSkill.identity.find(id);
+            const xp = [row?.foragingXp ?? 0, row?.beachcombingXp ?? 0, row?.craftingXp ?? 0];
+            return SKILLS.map(def => {
+              const p = levelProgress(xp[def.id]);
+              return { id: def.key, name: def.name, xp: xp[def.id], level: p.level, maxLevel: SKILL_MAX_LEVEL, xpToNext: p.toNext,
+                ...(def.id === Skill.Crafting ? {} : { harvestTicksSaved: harvestTickBonus(p.level) }) };
+            });
+          };
+          const describeCosmetics = () => {
+            const row = conn.db.playerCosmetic.identity.find(id);
+            const unlocked = row?.unlocked ?? 0;
+            return {
+              worn: { head: row?.head ? COSMETICS[row.head - 1]?.key ?? null : null, neck: row?.neck ? COSMETICS[row.neck - 1]?.key ?? null : null },
+              all: COSMETICS.map(c => ({ id: c.key, name: c.name, slot: c.slot === CosmeticSlot.Head ? 'head' : 'neck', unlocked: hasCosmetic(unlocked, c.id), how: c.how })),
+              rule: 'Purely visual. Earned by milestones and skill levels; wear one per slot with the wear action.',
+            };
+          };
           const tick = conn.db.world.id.find(0)?.tick ?? 0;
           const inventory = [...conn.db.inventorySlot.iter()].filter(row => row.owner.toHexString() === player.identity).sort((a, b) => a.slot - b.slot);
           const goal = goalFor(self, tick);
@@ -212,7 +237,10 @@ export async function createGameService(credential: Credential, options: Connect
             /** @deprecated alias of the berry trees in nodes; kept for one release. */
             trees: [...conn.db.tree.iter()].filter(tree => tree.kind === NodeKind.Berry).map(tree => ({ id: tree.id, tile: { x: tree.x, z: tree.z }, berry: getItemDef(tree.itemId)?.name,
               ready: tree.cooldownUntilTick <= tick && !tree.harvester, regrowTicks: Math.max(0, tree.cooldownUntilTick - tick), harvesting: !!tree.harvester })),
-            recipes: recipeStatus(slotsOf()).map(r => ({ id: r.id, name: r.name, inputs: r.inputs, canCraft: r.canCraft, missing: r.missing })),
+            recipes: recipeStatus(slotsOf(), skillLevels().crafting).map(r => ({ id: r.id, name: r.name, inputs: r.inputs, output: r.output, cosmetic: r.cosmetic === null ? null : COSMETICS[r.cosmetic]?.key ?? null,
+              level: r.level, locked: r.locked, xp: r.xp, canCraft: r.canCraft, missing: r.missing })),
+            skills: describeSkills(),
+            cosmetics: describeCosmetics(),
             groundItems: [...conn.db.groundItem.iter()].slice(0, 128).map(row => ({ id: row.id.toString(), itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity, tile: { x: row.x, z: row.z },
               ...(row.droppedOnDeath && row.droppedBy.toHexString() === player.identity ? { yourDeathDrop: true, expiresInTicks: Math.max(0, row.expiresTick - tick) } : {}) })),
             dummies: [...conn.db.trainingDummy.iter()].map(d => ({ id: d.id, tile: { x: d.x, z: d.z }, health: dummyHpAt(d, tick), maxHealth: d.maxHp,
@@ -299,6 +327,13 @@ export async function createGameService(credential: Credential, options: Connect
             case 'inventory_move': await r.moveItem({ from: input.from, to: input.to }); break;
             case 'name': await r.setName({ name: input.name }); break;
             case 'appearance': await r.setAppearance(input as any); break;
+            case 'wear': {
+              const slot = input.slot === 'head' ? CosmeticSlot.Head : CosmeticSlot.Neck;
+              const def = input.cosmetic === 'none' ? null : COSMETICS.find(c => c.key === input.cosmetic);
+              if (input.cosmetic !== 'none' && (!def || def.slot !== slot)) throw new ApiError(422, 'wrong_slot', 'That keepsake does not go in that slot.');
+              await r.wearCosmetic({ slot, cosmetic: def ? def.id + 1 : 0 });
+              break;
+            }
             case 'chat': await r.sendChat({ text: input.text }); break;
             case 'invite_create': {
               await r.createInvite({});

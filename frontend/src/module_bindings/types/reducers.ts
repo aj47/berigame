@@ -37,6 +37,7 @@ import SetTargetReducer from "../set_target_reducer";
 import SetTradeOfferReducer from "../set_trade_offer_reducer";
 import StartHarvestReducer from "../start_harvest_reducer";
 import UnwieldReducer from "../unwield_reducer";
+import WearCosmeticReducer from "../wear_cosmetic_reducer";
 import WieldItemReducer from "../wield_item_reducer";
 
 export type AddFriendParams = __Infer<typeof AddFriendReducer>;
@@ -70,5 +71,6 @@ export type SetTargetParams = __Infer<typeof SetTargetReducer>;
 export type SetTradeOfferParams = __Infer<typeof SetTradeOfferReducer>;
 export type StartHarvestParams = __Infer<typeof StartHarvestReducer>;
 export type UnwieldParams = __Infer<typeof UnwieldReducer>;
+export type WearCosmeticParams = __Infer<typeof WearCosmeticReducer>;
 export type WieldItemParams = __Infer<typeof WieldItemReducer>;
 

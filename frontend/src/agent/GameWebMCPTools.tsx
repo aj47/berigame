@@ -36,11 +36,14 @@ import {
   chebyshev,
   giantHpAt,
   isLandTile,
+  SKILLS,
+  levelForXp,
 } from "@sim";
 import { useGameActions } from "../spacetime/actions";
 import {
   useGiants,
   useInventoryRows,
+  useMySkills,
   useMyPlayer,
   usePlayers,
   useTick,
@@ -67,6 +70,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
   const players = usePlayers();
   const trees = useTrees();
   const inventory = useInventoryRows();
+  const skills = useMySkills();
   const tick = useTick();
   const giants = useGiants();
   const actions = useGameActions();
@@ -77,6 +81,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
 
   live.current = {
     me,
+    skills,
     players,
     trees,
     inventory,
@@ -243,6 +248,10 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
             })),
             quickSlots: `Inventory slots 0-${HOTBAR_SIZE - 1} are quick slots; wield a weapon there. Bare fists punch for ${PUNCH_DAMAGE}.`,
             inventory: inventoryRows,
+            skills: SKILLS.map((def) => {
+              const xp = state.skills?.[(["foragingXp", "beachcombingXp", "craftingXp"] as const)[def.id]] ?? 0;
+              return { id: def.key, name: def.name, xp, level: levelForXp(xp) };
+            }),
           }, null, 2);
         },
         { readOnlyHint: true, untrustedContentHint: true },

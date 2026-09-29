@@ -1,0 +1,76 @@
+/* ---- F2 skills, recipes and keepsakes ------------------------------------ */
+.damage-number.xp-gain {
+  color: #9fe3ff;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-shadow: -1px -1px 0 #13324a, 1px -1px 0 #13324a, -1px 1px 0 #13324a, 1px 1px 0 #13324a, 0 0 6px #6cc8ff88;
+}
+.panel-tabs { display: flex; gap: 4px; margin: 0 0 10px; flex: 0 0 auto; }
+.panel-tabs button { flex: 1 1 0; padding: 6px 8px; font-size: 12px; }
+.panel-tabs button[aria-selected=true] { background: var(--blue); color: white; border-color: #243e56; }
+.skills-panel { display: flex; flex-direction: column; overflow: hidden; }
+.skill-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; }
+.skill-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 4px; border-bottom: 1px solid #c9b58e; border-radius: 5px; }
+.skill-row img { width: 34px; height: 34px; flex: 0 0 34px; }
+.skill-row.just-leveled { background: #fff3c4; box-shadow: inset 0 0 0 2px var(--gold); }
+.skill-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.skill-title { display: flex; justify-content: space-between; align-items: baseline; }
+.skill-level { font-weight: bold; color: var(--blue); }
+.skill-level small { font-weight: normal; color: var(--ink-soft); }
+.skill-bar { height: 8px; border: 1px solid #8a6a45; border-radius: 4px; background: #e6d7b8; overflow: hidden; }
+.skill-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #5aa3c8, #8fd0ef); }
+.skill-perk { color: var(--blue); }
+.recipe-list { margin-top: 10px; border-top: 1px solid #c9b58e; padding-top: 6px; }
+.inventory-panel .recipe-row button { display: inline-flex; align-items: center; gap: 5px; }
+.inventory-panel .recipe-row button img { width: 20px; height: 20px; }
+.inventory-panel .recipe-row.locked button { opacity: 0.75; border-style: dashed; }
+.inventory-panel .recipe-row.locked .fine-print { color: #8a5a3a; }
+.keepsakes .keepsake-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-bottom: 6px; }
+.keepsake-slot { flex: 0 0 38px; font-size: 11px; color: var(--ink-soft); }
+.keepsake { padding: 6px 8px; font-size: 11px; min-height: 32px; }
+.keepsake[aria-pressed=true] { background: var(--blue); color: white; border-color: #243e56; }
+.keepsake.locked { opacity: 0.6; border-style: dashed; }
+.keepsake.locked small { font-weight: bold; margin-right: 2px; }
+.milestone-banner {
+  position: absolute;
+  top: calc(max(16px, env(safe-area-inset-top)) + 104px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 16px;
+  border: 2px solid var(--gold);
+  border-radius: 9px;
+  background: linear-gradient(#3a3226f7, #2a241cf7);
+  color: #fff0cb;
+  box-shadow: 0 6px 22px #0005, 0 0 18px #f4cb6355;
+  z-index: 31;
+  pointer-events: none;
+  animation: milestone-pop 6s ease-out forwards;
+}
+.milestone-banner strong { display: block; font-size: 16px; color: var(--gold); }
+.milestone-banner span { font-size: 12px; }
+.milestone-star { font-size: 26px; color: var(--gold); text-shadow: 0 0 8px #f4cb63aa; }
+@keyframes milestone-pop {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.7); }
+  8% { opacity: 1; transform: translateX(-50%) scale(1.06); }
+  14% { transform: translateX(-50%) scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .milestone-banner { animation: none; }
+}
+@media (max-width: 600px) {
+  .game-panel.skills-panel {
+    top: auto;
+    bottom: calc(max(10px, env(safe-area-inset-bottom)) + 162px);
+    width: calc(100vw - 24px);
+    max-height: 38dvh;
+    padding: 10px 12px;
+  }
+  .skills-panel .eyebrow { display: none; }
+  .milestone-banner { top: calc(max(12px, env(safe-area-inset-top)) + 96px); }
+}

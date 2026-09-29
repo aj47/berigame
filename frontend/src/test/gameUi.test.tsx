@@ -61,6 +61,8 @@ vi.mock("../spacetime/hooks", () => ({
   useGiants: () => [],
   useMyIdentityHex: () => "me",
   usePlayers: () => [...mock.players.values()],
+  useMySkills: () => null,
+  useMyCosmetics: () => null,
 }));
 vi.mock("../spacetime/actions", () => ({ useGameActions: () => mock }));
 vi.mock("../store", () => ({ useLoadingStore: () => mock.loading }));

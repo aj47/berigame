@@ -6,7 +6,7 @@
  */
 
 export const SFX = [
-  'footstep', 'punch', 'stick', 'club', 'whoosh', 'pop', 'chime', 'craft', 'eat', 'rustle', 'thud', 'respawn', 'click',
+  'footstep', 'punch', 'stick', 'club', 'whoosh', 'pop', 'chime', 'craft', 'eat', 'rustle', 'thud', 'respawn', 'click', 'levelup',
 ] as const;
 export type SfxName = (typeof SFX)[number];
 export const AMBIENT = ['ocean', 'wind'] as const;
@@ -14,7 +14,7 @@ export type AmbientName = (typeof AMBIENT)[number];
 
 /** Round-robin variants per sound, so repeats (footsteps above all) don't sound machine-gunned. */
 export const VARIANTS: Record<SfxName, number> = {
-  footstep: 4, punch: 2, stick: 2, club: 2, whoosh: 2, pop: 2, chime: 1, craft: 1, eat: 1, rustle: 2, thud: 1, respawn: 1, click: 1,
+  footstep: 4, punch: 2, stick: 2, club: 2, whoosh: 2, pop: 2, chime: 1, craft: 1, eat: 1, rustle: 2, thud: 1, respawn: 1, click: 1, levelup: 1,
 };
 
 /** Deterministic PRNG (mulberry32) so a sound renders identically every time. */
@@ -55,7 +55,8 @@ function sweep(out: Float32Array, sr: number, start: number, f0: number, f1: num
   let phase = 0;
   for (let i = Math.floor(start * sr); i < out.length; i++) {
     const t = i / sr - start;
-    const f = t < glide ? f0 * Math.pow(f1 / f0, t / glide) : f1;
+    // glide 0 (a fixed pitch) must never reach pow(1, -Infinity) when t rounds just below 0.
+    const f = glide > 0 && t < glide ? f0 * Math.pow(f1 / f0, Math.max(0, t) / glide) : f1;
     phase += TAU * f / sr;
     out[i] += Math.sin(phase) * env(t, attack, decay) * amp;
   }
@@ -88,11 +89,11 @@ function normalize(out: Float32Array, peak: number): Float32Array {
 
 /** Duration in seconds of each sound. */
 const LENGTH: Record<SfxName, number> = {
-  footstep: 0.14, punch: 0.2, stick: 0.26, club: 0.4, whoosh: 0.3, pop: 0.14, chime: 0.9, craft: 0.85, eat: 0.36, rustle: 0.5, thud: 0.6, respawn: 1.0, click: 0.05,
+  footstep: 0.14, punch: 0.2, stick: 0.26, club: 0.4, whoosh: 0.3, pop: 0.14, chime: 0.9, craft: 0.85, eat: 0.36, rustle: 0.5, thud: 0.6, respawn: 1.0, click: 0.05, levelup: 1.3,
 };
 /** Peak level of each sound relative to full scale: the mix is set here, the engine only scales. */
 const PEAK: Record<SfxName, number> = {
-  footstep: 0.32, punch: 0.75, stick: 0.8, club: 0.95, whoosh: 0.4, pop: 0.55, chime: 0.5, craft: 0.6, eat: 0.5, rustle: 0.45, thud: 0.85, respawn: 0.5, click: 0.3,
+  footstep: 0.32, punch: 0.75, stick: 0.8, club: 0.95, whoosh: 0.4, pop: 0.55, chime: 0.5, craft: 0.6, eat: 0.5, rustle: 0.45, thud: 0.85, respawn: 0.5, click: 0.3, levelup: 0.55,
 };
 
 export function renderSound(name: SfxName, sr: number, variant = 0): Float32Array {
@@ -168,6 +169,13 @@ export function renderSound(name: SfxName, sr: number, variant = 0): Float32Arra
         sweep(out, sr, i * 0.09, f, f, 0, 0.02, 0.35, 0.5);
         sweep(out, sr, i * 0.09, f * 2.001, f * 2.001, 0, 0.02, 0.15, 0.12);
       });
+      break;
+    case 'levelup': // skill level-up: a bright rising arpeggio landing on a bell chord
+      [523.25, 659.25, 784, 1046.5, 1318.5].forEach((f, i) => {
+        sweep(out, sr, i * 0.07, f, f, 0, 0.005, 0.18, 0.45);
+        sweep(out, sr, i * 0.07, f * 2.001, f * 2.001, 0, 0.005, 0.08, 0.1);
+      });
+      for (const f of [1046.5, 1318.5, 1568]) knock(out, sr, 0.375, [[f, 0.55, 0.35], [f * 2.76, 0.15, 0.08]]);
       break;
     case 'click':
       sweep(out, sr, 0, 1500, 1100, 0.02, 0.0005, 0.008, 1);

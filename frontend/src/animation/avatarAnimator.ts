@@ -171,7 +171,7 @@ export class AvatarAnimator {
     const director = this.director;
     director.update(input);
     // Any wielded weapon (stick or stone club) uses the armed Idle/Run.
-    const armed = input.weapon === 'stick' || input.weapon === 'stone_club';
+    const armed = input.weapon === 'stick' || input.weapon === 'stone_club' || input.weapon === 'flint_knife';
     if (armed !== this.armed) {
       this.armed = armed;
       // Swap playing Idle/Run/Stop actions for their (un)armed variant, keeping phase and weight.

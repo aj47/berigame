@@ -123,7 +123,7 @@ progress; read state to observe completion.
 ### Gameplay through the API
 
 Actions mirror the browser controls: `move`, `harvest`, `craft`, `eat`, `wield`, `unwield`,
-`stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`,
+`stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`, `wear`,
 `attack_dummy`, `attack_giant`, `emote`, the social actions `invite_create`, `invite_redeem`,
 `friend_add`, `friend_remove`, `trade_request`, `trade_respond`, `trade_offer`,
 `trade_confirm`, `trade_cancel`, and the scoped `attack` and `chat`. OpenAPI has
@@ -239,6 +239,27 @@ the exact schemas.
   bag drops, club included). When it falls, everyone who dealt at least 16
   damage that life gets 3 obsidian (equal shares; online players only), and it
   rises again 500 ticks later (`respawnInTicks`).
+- **Skills (F2).** `state.skills[] {id, name, xp, level, maxLevel, xpToNext, harvestTicksSaved?}`
+  for `foraging` (every finished berry harvest, 8 XP), `beachcombing` (driftwood 6 XP,
+  flint 10 XP) and `crafting` (every make: club 40, mash 15, knife 25, crown 30).
+  `level` follows `xpForLevel(L) = 25·(L−1)²`, capped at 30 (21 025 XP). Levels are
+  persistent per identity and never change damage, HP, area access or the gold tree:
+  Foraging/Beachcombing 10 and 20 each shave one harvest tick (never below 3 ticks;
+  the goldberry tree is never faster), and Crafting levels unlock recipes.
+- **Recipes.** `state.recipes[] {id, name, inputs, output, cosmetic, level, locked, xp,
+  canCraft, missing}`. `stone_club` (1 driftwood + 2 flint, 8 damage) and `berry_mash`
+  (2 greenberry + 1 strawberry, eaten for +7 HP) are open to everyone; `flint_knife`
+  (1 driftwood + 1 flint, 6 damage, wielded like the stick but not a bramble key) needs
+  Crafting 2; `driftwood_crown` (3 driftwood + 1 flint) needs Crafting 5 and makes no
+  item: it unlocks the Driftwood Crown keepsake (once). A locked recipe is rejected
+  with "Needs Crafting level N".
+- **Keepsakes (cosmetics).** `state.cosmetics {worn {head, neck}, all[] {id, name, slot,
+  unlocked, how}}`. Earned by milestones: `straw_hat` (your first stick), `coast_scarf`
+  (stepping onto the Coast), `flower_crown` (Foraging 10), `shell_necklace`
+  (Beachcombing 10), `driftwood_crown` (the recipe), `woven_sash` (Crafting 10). A new
+  one is worn at once if that slot is empty. `POST /actions/wear {"slot": "head" |
+  "neck", "cosmetic": "<id>" | "none"}` changes what you wear. Purely visual; everyone
+  sees it.
 - **Busy trees: wait and claim.** `harvest` on a regrowing or claimed tree is
   not an error: you walk next to it and wait. On the tick it ripens, waiters
   claim it in this order: newcomers (in first-spawn grace), then the earliest
@@ -268,7 +289,8 @@ the exact schemas.
   `{ itemId, name, damage }`. Other players' weapons are public, because the stick
   is drawn in their hand. Inventories stay private.
 
-API version **1.2.0** (M2) added `craft`, `harvest {nodeId | kind}`,
+API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
+fields `output`, `cosmetic`, `level`, `locked` and `xp`. API version **1.2.0** (M2) added `craft`, `harvest {nodeId | kind}`,
 `state.nodes` and `state.recipes`. API version **1.1.0** removed the rock-paper-scissors `stance` action and the
 `stance`/`fightState` player fields. `/actions/stance` now returns 404
 (`unknown_action` from the Node gateway, `not_found` at the Cloudflare edge).

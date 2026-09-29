@@ -65,6 +65,7 @@ import SetTargetReducer from "./set_target_reducer";
 import SetTradeOfferReducer from "./set_trade_offer_reducer";
 import StartHarvestReducer from "./start_harvest_reducer";
 import UnwieldReducer from "./unwield_reducer";
+import WearCosmeticReducer from "./wear_cosmetic_reducer";
 import WieldItemReducer from "./wield_item_reducer";
 
 // Import all procedure arg schemas
@@ -83,6 +84,8 @@ import GroundItemRow from "./ground_item_table";
 import InventorySlotRow from "./inventory_slot_table";
 import InviteCodeRow from "./invite_code_table";
 import PlayerRow from "./player_table";
+import PlayerCosmeticRow from "./player_cosmetic_table";
+import PlayerSkillRow from "./player_skill_table";
 import SocialEventRow from "./social_event_table";
 import TradeRow from "./trade_table";
 import TrainingDummyRow from "./training_dummy_table";
@@ -238,6 +241,28 @@ const tablesSchema = __schema({
       { name: 'player_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerRow),
+  playerCosmetic: __table({
+    name: 'player_cosmetic',
+    indexes: [
+      { accessor: 'identity', name: 'player_cosmetic_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_cosmetic_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerCosmeticRow),
+  playerSkill: __table({
+    name: 'player_skill',
+    indexes: [
+      { accessor: 'identity', name: 'player_skill_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_skill_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerSkillRow),
   socialEvent: __table({
     name: 'social_event',
     indexes: [
@@ -331,6 +356,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_trade_offer", SetTradeOfferReducer),
   __reducerSchema("start_harvest", StartHarvestReducer),
   __reducerSchema("unwield", UnwieldReducer),
+  __reducerSchema("wear_cosmetic", WearCosmeticReducer),
   __reducerSchema("wield_item", WieldItemReducer),
 );
 

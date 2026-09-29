@@ -37,6 +37,12 @@ Combat: you swing automatically while attacking. Bare fists punch for 3 damage. 
 0..2 are quick slots (`hotbar: true` in state); a stick wielded from one hits for 6 and is visible
 in your hand to everyone. `player.weapon` is `null` while punching. Moving the stick out of the
 quick slots, dropping it, or dying puts it away. There are no stances.
+Skills: harvesting berries trains Foraging, gathering driftwood and flint trains Beachcombing,
+and making things (`/actions/craft`) trains Crafting. `state.skills` has your levels (1..30); they
+persist for your identity. Levels unlock recipes (`state.recipes[].locked` / `level`), keepsakes and
+at most two ticks off a harvest (never below 3, never the gold tree); never damage, HP or areas.
+Keepsakes are cosmetic: `state.cosmetics` lists them; wear one with `/actions/wear`
+`{"slot": "head", "cosmetic": "straw_hat"}` (or `"none"`).
 Practice on the training dummy at (28,28) with `attack_dummy` (no combat access needed; it never dies
 and hurts nobody). `emote` plays wave, cheer, sit or point for everyone to see.
 

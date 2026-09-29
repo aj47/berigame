@@ -200,6 +200,14 @@ export const Player = __t.object("Player", {
 });
 export type Player = __Infer<typeof Player>;
 
+export const PlayerCosmetic = __t.object("PlayerCosmetic", {
+  identity: __t.identity(),
+  unlocked: __t.u32(),
+  head: __t.u8(),
+  neck: __t.u8(),
+});
+export type PlayerCosmetic = __Infer<typeof PlayerCosmetic>;
+
 export const PlayerGrant = __t.object("PlayerGrant", {
   identity: __t.identity(),
   issuer: __t.identity(),
@@ -209,6 +217,14 @@ export const PlayerGrant = __t.object("PlayerGrant", {
   chat: __t.bool(),
 });
 export type PlayerGrant = __Infer<typeof PlayerGrant>;
+
+export const PlayerSkill = __t.object("PlayerSkill", {
+  identity: __t.identity(),
+  foragingXp: __t.u32(),
+  beachcombingXp: __t.u32(),
+  craftingXp: __t.u32(),
+});
+export type PlayerSkill = __Infer<typeof PlayerSkill>;
 
 export const SocialEvent = __t.object("SocialEvent", {
   tick: __t.u32(),

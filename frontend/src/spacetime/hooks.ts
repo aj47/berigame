@@ -222,3 +222,48 @@ export function useTradeRows() {
 export function useInviteCodeRows() {
   return useRows<any>(tables.inviteCode) as readonly import('../module_bindings/types').InviteCode[];
 }
+
+// ---- F2 skills and milestone cosmetics -----------------------------------------
+
+type SkillRow = import('../module_bindings/types').PlayerSkill;
+type CosmeticRow = import('../module_bindings/types').PlayerCosmetic;
+
+/** Your player_skill row (null until your first XP). Re-renders only when it changes. */
+export function useMySkills(): SkillRow | null {
+  const { identity } = useSpacetimeDB<DbConnection>();
+  const id = identity?.__identity__;
+  const select = useCallback((rows: readonly any[]): SkillRow | null => {
+    if (id === undefined) return null;
+    for (const r of rows) if (r.identity.__identity__ === id) return r;
+    return null;
+  }, [id]);
+  return useTableSelector(tables.playerSkill, select);
+}
+
+/** Your player_cosmetic row (null until your first unlock). */
+export function useMyCosmetics(): CosmeticRow | null {
+  const { identity } = useSpacetimeDB<DbConnection>();
+  const id = identity?.__identity__;
+  const select = useCallback((rows: readonly any[]): CosmeticRow | null => {
+    if (id === undefined) return null;
+    for (const r of rows) if (r.identity.__identity__ === id) return r;
+    return null;
+  }, [id]);
+  return useTableSelector(tables.playerCosmetic, select);
+}
+
+const wornCache = new WeakMap<readonly any[], Map<string, number>>();
+const buildWorn = (rows: readonly any[]) => {
+  const m = new Map<string, number>();
+  for (const r of rows) if (r.head || r.neck) m.set(identityHex(r.identity), r.head * 256 + r.neck);
+  return m;
+};
+
+/**
+ * What one avatar wears, packed as head * 256 + neck (0 = nothing). A number,
+ * so the avatar re-renders only when its own cosmetics change.
+ */
+export function useWornCosmetics(hex: string): number {
+  const select = useCallback((rows: readonly any[]) => derived(wornCache, rows, buildWorn).get(hex) ?? 0, [hex]);
+  return useTableSelector(tables.playerCosmetic, select);
+}

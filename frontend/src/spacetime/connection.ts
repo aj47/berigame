@@ -113,6 +113,8 @@ export function buildConnection() {
           tables.socialEvent,
           tables.giant,
           tables.giantEvent,
+          tables.playerSkill,
+          tables.playerCosmetic,
         ]);
     })
     .onConnectError((ctx, _err) => {
