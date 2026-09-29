@@ -17,7 +17,7 @@ describe('grid', () => {
 
   it('clamps world positions into the grid', () => {
     expect(worldToTile(-100, 100)).toEqual({ x: 0, z: GRID_SIZE - 1 });
-    expect(worldToTile(TILE_ORIGIN + 3, 0)).toEqual({ x: GRID_SIZE - 1, z: 25 });
+    expect(worldToTile(GRID_SIZE - TILE_ORIGIN + 3, 0)).toEqual({ x: GRID_SIZE - 1, z: 25 });
   });
 
   it('rounds fractional world coords to the nearest tile', () => {

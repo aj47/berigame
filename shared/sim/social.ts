@@ -5,6 +5,7 @@
 import { SPAWN_TILE } from './constants';
 import { blockedSetFromTiles, chebyshev, tileKey } from './grid';
 import type { Tile } from './types';
+import { giantFootprint } from './giant';
 
 // ---- Training dummy ---------------------------------------------------------
 export const DUMMY_ID = 1;
@@ -19,12 +20,15 @@ export const DUMMY_MAX_HP = 60;
 /** Left alone this long, the dummy is back to full (computed lazily: no tick writes while idle). */
 export const DUMMY_IDLE_RESET_TICKS = 25;
 
-/** Every static blocker the client and server path around: the trees and nodes plus the dummy. */
+/** Every static blocker the client and server path around: the trees and nodes, the dummy and the Giant's footprint. */
 export function worldBlockedSet(nodes: Iterable<Tile>): Set<number> {
   const s = blockedSetFromTiles(nodes);
   s.add(tileKey(DUMMY_TILE));
+  for (const t of GIANT_BLOCKED) s.add(tileKey(t));
   return s;
 }
+
+const GIANT_BLOCKED = giantFootprint();
 
 export interface DummyHpState { hp: number; maxHp: number; lastHitTick: number }
 

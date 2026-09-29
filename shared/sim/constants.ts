@@ -5,8 +5,15 @@
  */
 
 // ---- World / grid -----------------------------------------------------------
-/** The island is a GRID_SIZE x GRID_SIZE grid of 1-unit tiles. */
-export const GRID_SIZE = 50;
+/**
+ * The server grid is GRID_SIZE x GRID_SIZE 1-unit tiles. The original island
+ * (the Grove and the Coast) is the ISLAND_SIZE square at the origin; M3 grew
+ * the grid east and south, where most new tiles are water (areas.ts) and the
+ * south-east L is the Boulders.
+ */
+export const GRID_SIZE = 64;
+/** The original 50x50 island: tiles 0..49 on both axes. */
+export const ISLAND_SIZE = 50;
 /** world = tile - TILE_ORIGIN. Integer world coords are tile centres. */
 export const TILE_ORIGIN = 25;
 export const SPAWN_TILE = { x: 25, z: 25 } as const;
@@ -68,3 +75,9 @@ export const RESPAWN_GRACE_TICKS = 10;
 export const FIRST_SPAWN_GRACE_TICKS = 300;
 /** New characters wash ashore tired, so the first berry heals for real. */
 export const FIRST_SPAWN_HP = 20;
+
+// ---- Areas (M3 "The Boulders") ---------------------------------------------
+/** max(x, z) of the one-tile boulder line on the old south-east shoreline. */
+export const BOULDER_LINE = 50;
+/** The Boulders plateau starts at this x and z (an L past the old shoreline). */
+export const BOULDERS_MIN = 36;

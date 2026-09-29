@@ -36,6 +36,7 @@ import {
 // Import all reducer arg schemas
 import AttackReducer from "./attack_reducer";
 import AttackDummyReducer from "./attack_dummy_reducer";
+import AttackGiantReducer from "./attack_giant_reducer";
 import CancelReducer from "./cancel_reducer";
 import ConfigureAccessReducer from "./configure_access_reducer";
 import CraftReducer from "./craft_reducer";
@@ -66,6 +67,8 @@ import ChatMessageRow from "./chat_message_table";
 import CombatEventRow from "./combat_event_table";
 import DummyEventRow from "./dummy_event_table";
 import EmoteEventRow from "./emote_event_table";
+import GiantRow from "./giant_table";
+import GiantEventRow from "./giant_event_table";
 import GroundItemRow from "./ground_item_table";
 import InventorySlotRow from "./inventory_slot_table";
 import PlayerRow from "./player_table";
@@ -134,6 +137,25 @@ const tablesSchema = __schema({
     ],
     event: true,
   }, EmoteEventRow),
+  giant: __table({
+    name: 'giant',
+    indexes: [
+      { accessor: 'id', name: 'giant_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'giant_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, GiantRow),
+  giantEvent: __table({
+    name: 'giant_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, GiantEventRow),
   groundItem: __table({
     name: 'ground_item',
     indexes: [
@@ -213,6 +235,7 @@ const tablesSchema = __schema({
 const reducersSchema = __reducers(
   __reducerSchema("attack", AttackReducer),
   __reducerSchema("attack_dummy", AttackDummyReducer),
+  __reducerSchema("attack_giant", AttackGiantReducer),
   __reducerSchema("cancel", CancelReducer),
   __reducerSchema("configure_access", ConfigureAccessReducer),
   __reducerSchema("craft", CraftReducer),

@@ -236,3 +236,63 @@ export const appearance = table(
     wrapColor: t.u8(),
   }
 );
+
+/**
+ * F3: the Boulders' world boss (one row, shared/sim GIANT_ID). Written only on
+ * AI transitions and landed swings; idle regeneration is computed lazily from
+ * `lastHitTick` (shared/sim giantHpAt).
+ */
+export const giant = table(
+  { name: 'giant', public: true },
+  {
+    id: t.u32().primaryKey(),
+    x: t.i32(),
+    z: t.i32(),
+    hp: t.u32(),
+    maxHp: t.u32(),
+    /** shared/sim GiantState */
+    state: t.u8(),
+    /** shared/sim GiantAttack of the current (or last) attack */
+    attack: t.u8(),
+    /** Windup: the tick the blow lands. Recover: the tick it may act again. */
+    stateUntilTick: t.u32(),
+    /** Centre of the telegraphed area (radius from shared/sim attackRadius). */
+    slamX: t.i32(),
+    slamZ: t.i32(),
+    attackCount: t.u32(),
+    /** Defeated: the tick it rises again. */
+    respawnTick: t.u32(),
+    lastHitTick: t.u32(),
+  }
+);
+
+/** Private: damage each player dealt to the Giant this life, for the reward. Cleared on defeat and regeneration. */
+export const giantContribution = table(
+  { name: 'giant_contribution' },
+  {
+    identity: t.identity().primaryKey(),
+    giantId: t.u32(),
+    damage: t.u32(),
+    lastHitTick: t.u32(),
+  }
+);
+
+/** Event table: Giant hits, telegraphs, blows, defeats, rewards and respawns (shared/sim GiantEventKind). */
+export const giantEvent = table(
+  { name: 'giant_event', public: true, event: true },
+  {
+    tick: t.u32(),
+    giantId: t.u32(),
+    kind: t.u8(),
+    /** Hit: the attacker. PlayerHit / Reward: the player. Otherwise the module identity. */
+    player: t.identity(),
+    damage: t.u8(),
+    /** Hit: the attacker's weapon. Reward: the item given. */
+    itemId: t.string(),
+    quantity: t.u8(),
+    /** Hit: the Giant's HP after it. PlayerHit: the player's HP after it. */
+    hp: t.u32(),
+    x: t.i32(),
+    z: t.i32(),
+  }
+);

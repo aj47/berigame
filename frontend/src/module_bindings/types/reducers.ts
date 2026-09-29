@@ -8,6 +8,7 @@ import { type Infer as __Infer } from "spacetimedb";
 // Import all reducer arg schemas
 import AttackReducer from "../attack_reducer";
 import AttackDummyReducer from "../attack_dummy_reducer";
+import AttackGiantReducer from "../attack_giant_reducer";
 import CancelReducer from "../cancel_reducer";
 import ConfigureAccessReducer from "../configure_access_reducer";
 import CraftReducer from "../craft_reducer";
@@ -31,6 +32,7 @@ import WieldItemReducer from "../wield_item_reducer";
 
 export type AttackParams = __Infer<typeof AttackReducer>;
 export type AttackDummyParams = __Infer<typeof AttackDummyReducer>;
+export type AttackGiantParams = __Infer<typeof AttackGiantReducer>;
 export type CancelParams = __Infer<typeof CancelReducer>;
 export type ConfigureAccessParams = __Infer<typeof ConfigureAccessReducer>;
 export type CraftParams = __Infer<typeof CraftReducer>;
