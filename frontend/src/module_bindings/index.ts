@@ -45,6 +45,7 @@ import GrantAgentReducer from "./grant_agent_reducer";
 import GrantPlayerReducer from "./grant_player_reducer";
 import MoveItemReducer from "./move_item_reducer";
 import PickupItemReducer from "./pickup_item_reducer";
+import RenewGrantReducer from "./renew_grant_reducer";
 import RevokePlayerReducer from "./revoke_player_reducer";
 import SendChatReducer from "./send_chat_reducer";
 import SetAppearanceReducer from "./set_appearance_reducer";
@@ -189,6 +190,7 @@ const reducersSchema = __reducers(
   __reducerSchema("grant_player", GrantPlayerReducer),
   __reducerSchema("move_item", MoveItemReducer),
   __reducerSchema("pickup_item", PickupItemReducer),
+  __reducerSchema("renew_grant", RenewGrantReducer),
   __reducerSchema("revoke_player", RevokePlayerReducer),
   __reducerSchema("send_chat", SendChatReducer),
   __reducerSchema("set_appearance", SetAppearanceReducer),

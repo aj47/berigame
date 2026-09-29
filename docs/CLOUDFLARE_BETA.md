@@ -139,10 +139,65 @@ HTTP agents should send `User-Agent: BeriGame-Agent/1.0`. The zone's browser
 integrity check rejects the default Python urllib user agent with HTTP 403/1010;
 the descriptive agent header is accepted. Normal browser requests work unchanged.
 
-Invites expire after 24 hours and can be redeemed once. Every visit lasts at most
+Invites expire after 24 hours and can be redeemed once. Every permit lasts at most
 one hour. API sessions close after ten idle minutes. Browser visits use the same
-bounded gateway permits enforced in SpacetimeDB; refreshing preserves the current
-character for the remaining visit. A new invite creates a new guest character.
+bounded gateway permits enforced in SpacetimeDB. A browser that redeemed a player
+invite keeps its character (identity, name, appearance, HP and inventory unless
+dropped on death) across reloads and hourly renewals for 30 days after its last
+visit; see "Returning players" below. A new invite, or cleared browser storage,
+creates a new guest character.
+
+## Returning players (persistent identity, F1)
+
+**Flow.** Redeeming a player invite (`POST /api/play/v1/sessions`) returns the
+SpacetimeDB token of a fresh guest identity plus a renewal token `bgr_…`. The
+browser keeps both in localStorage under keys scoped to the server and database.
+Five minutes before the one-hour permit ends (or on load, if it already ended) a
+tab calls `POST /api/play/v1/renewals` with `Authorization: Bearer bgr_…`. The
+Worker looks the token up, calls the gateway-only `renew_grant` reducer to extend
+that identity's permit by the invite's lifetime (one hour), rotates the renewal
+token and returns the new one with the new expiry. The browser reconnects with the
+same SpacetimeDB token, so the character row is found and reused: no new player
+row, and the first-spawn newcomer grace is not applied again. Combat and chat
+scopes stay those of the original invite. The admin `sessionId` stays the same
+across renewals, so `npm run beta:revoke -- SESSION_ID` works at any time.
+
+**Threat model.**
+- *Forgery.* Renewal tokens carry 256 random bits. The Durable Object stores only
+  their SHA-256 digest. They never name an identity: the digest maps to exactly
+  one identity server-side, so a caller cannot point a token at another character.
+- *Theft/transfer.* The token is a bearer secret in the same localStorage as the
+  SpacetimeDB token, which already controls the character; it adds no new
+  exposure beyond XSS or device access. Each use rotates it. The previous token is
+  answered with 409 for two minutes (a racing tab), and any later replay deletes
+  the renewal record, ending renewal for both copies. A stolen token is useful for
+  at most one hour per renewal and dies when the owner next renews.
+- *Revocation.* `beta:revoke` (by sessionId) revokes the permit in SpacetimeDB and
+  deletes the renewal record, even between visits. `renew_grant` refuses revoked
+  permits (`expires_at_micros = 0`), permits the gateway did not issue and
+  owner-issued permits, so a revoked character cannot come back through a replay
+  or a stale Worker. Changing the gateway invalidates every renewal.
+- *Expiry.* Renewal records expire 30 days after the last renewal, and are capped
+  at 10,000. Renewals count against the 16 browser visits and 4-per-IP limits and
+  the per-IP join rate limit, but not the 100 new visits per day.
+- *Agents* keep their own flow. `bgr_` tokens are rejected by agent endpoints,
+  agent sessions get no renewal token, and closing an agent session still revokes
+  its permit immediately.
+- *Multiple tabs* serialize renewal through a Web Lock and re-read storage; other
+  tabs adopt the result through `storage` events. Up to four tabs may connect as
+  one character.
+- *Lost storage* just means a new guest on the next invite. There is no account
+  recovery by design.
+- *Privacy.* No names, emails or other personal data are collected. The renewal
+  record holds the token digest, SpacetimeDB identity, sessionId, invite scopes
+  and expiry. Browser session rows no longer store the browser's SpacetimeDB
+  token, only its identity.
+
+**Publishing.** The module change adds one reducer (`renew_grant`) and no table
+or column, so the normal data-preserving publish above applies (no
+`break-clients`). Publish the module first, then `npm run beta:deploy`; the
+Worker adds its `renewals` table itself. Browsers admitted before the deploy have
+no renewal token and behave as before until their next invite.
 
 ## Abuse and persistence limits
 

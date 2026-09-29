@@ -7,7 +7,7 @@ vi.mock('../../../spacetimedb/src/schema', () => ({ default: {
   reducer: (...args: unknown[]) => args.at(-1), init: (fn: unknown) => fn,
   clientConnected: (fn: unknown) => fn, clientDisconnected: (fn: unknown) => fn,
 } }));
-import { configureAccess, grantAgent, grantPlayer, revokePlayer } from '../../../spacetimedb/src/reducers/access';
+import { configureAccess, grantAgent, grantPlayer, renewGrant, revokePlayer } from '../../../spacetimedb/src/reducers/access';
 import { onConnect } from '../../../spacetimedb/src/reducers/lifecycle';
 import { requirePlayer } from '../../../spacetimedb/src/lib/players';
 import { sendChat } from '../../../spacetimedb/src/reducers/chat';
@@ -92,5 +92,57 @@ describe('world admission and operator authority', () => {
     for (let i = 0; i < 4; i++) call(onConnect, w.ctx);
     expect(() => call(onConnect, w.ctx)).toThrow('too many connections');
     expect(w.players.get('guest').connections).toBe(4);
+  });
+
+  it('renewal keeps the same character across permit expiry, and returning players are not newcomers', () => {
+    const w = world(); w.ctx.sender = gateway;
+    call(grantAgent, w.ctx, { identity: guest, lifetimeSeconds: 60, combat: false, chat: false });
+    w.ctx.sender = guest; call(onConnect, w.ctx);
+    const first = w.players.get('guest');
+    w.players.set('guest', { ...first, hp: 3, connections: 0, online: false });
+    w.ctx.timestamp = { microsSinceUnixEpoch: 200_000_000n }; // permit ended
+    expect(() => call(onConnect, w.ctx)).toThrow('access required');
+    w.ctx.sender = gateway;
+    call(renewGrant, w.ctx, { identity: guest, lifetimeSeconds: 3600 });
+    expect(w.grants.get('guest').expiresAtMicros).toBe(200_000_000n + 3_600_000_000n);
+    w.ctx.sender = guest; call(onConnect, w.ctx);
+    expect(w.players.size).toBe(1);
+    const back = w.players.get('guest');
+    expect(back.name).toBe(first.name);
+    expect(back.hp).toBe(3);
+    expect(back.respawnTick).toBe(first.respawnTick);
+    expect(back.online).toBe(true);
+  });
+
+  it('only the issuing gateway renews, never unknown, owner-issued or revoked permits', () => {
+    const w = world();
+    const args = { identity: guest, lifetimeSeconds: 3600 };
+    w.ctx.sender = gateway;
+    expect(() => call(renewGrant, w.ctx, args)).toThrow('no renewable permit');
+    expect(() => call(renewGrant, w.ctx, { ...args, lifetimeSeconds: 3601 })).toThrow('lifetime');
+    w.ctx.sender = owner;
+    call(grantPlayer, w.ctx, { identity: guest, lifetimeSeconds: 60, combat: false, chat: false });
+    w.ctx.sender = gateway;
+    expect(() => call(renewGrant, w.ctx, args)).toThrow('no renewable permit');
+    w.grants.clear();
+    call(grantAgent, w.ctx, { identity: guest, lifetimeSeconds: 60, combat: false, chat: false });
+    for (const sender of [guest, owner]) {
+      w.ctx.sender = sender;
+      expect(() => call(renewGrant, w.ctx, args)).toThrow('gateway required');
+    }
+    w.ctx.sender = gateway;
+    call(revokePlayer, w.ctx, { identity: guest });
+    expect(() => call(renewGrant, w.ctx, args)).toThrow('revoked');
+    w.ctx.sender = guest;
+    expect(() => call(onConnect, w.ctx)).toThrow('access required');
+  });
+
+  it('renewing a lapsed permit respects the active permit cap', () => {
+    const w = world(); w.ctx.sender = gateway;
+    call(grantAgent, w.ctx, { identity: guest, lifetimeSeconds: 60, combat: false, chat: false });
+    w.ctx.timestamp = { microsSinceUnixEpoch: 200_000_000n };
+    for (let i = 0; i < 32; i++) call(grantAgent, w.ctx, { identity: id(String(i)), lifetimeSeconds: 60, combat: false, chat: false });
+    expect(() => call(renewGrant, w.ctx, { identity: guest, lifetimeSeconds: 3600 })).toThrow('capacity');
+    call(renewGrant, w.ctx, { identity: id('0'), lifetimeSeconds: 3600 });
   });
 });

@@ -205,7 +205,7 @@ What a new player sees: movement and camera; the goal chip; the stick-find banne
 
 ### Future (owner-approved, not scheduled)
 
-- **F1 Persistent identity (the gate).** Returning browsers keep their identity via a scoped token reused across the 1-hour grant renewals. Nothing below starts before this.
+- **F1 Persistent identity (the gate). Done.** Returning browsers keep their identity via a scoped, rotating renewal token reused across the 1-hour grant renewals (30 days after the last visit; design and threat model in `docs/CLOUDFLARE_BETA.md`). Nothing below starts before this.
 - **F2 XP skills:** Foraging, Beachcombing, Crafting; `xpForLevel(L) = 25·(L−1)²`, capped at L30 (21 025 XP, about 5 h per skill). Levels unlock recipes, cosmetics and at most −2 harvest ticks (never below 3); never damage, HP, area access or the gold tree.
 - **F3 The Giant.** A PvE world boss in Area 3, open to every player including those without the combat grant.
 

@@ -5,6 +5,7 @@ import { ACTIONS, openapi, validateAction, validateObject } from '../agent-api/c
 import { ApiError, digest, secret, type Invite } from '../agent-api/portable';
 import { createGameService, deadline, type Credential, type GameSession } from '../agent-api/game';
 import { openCloudflareSocket } from './socket';
+import { issueRenewal, lookupRenewal, MAX_RENEWALS, renewedElsewhere, rotateRenewal, visitEnded, type RenewalRow, type RenewalStore } from '../agent-api/renewal';
 
 interface Env {
   ASSETS: Fetcher;
@@ -36,7 +37,7 @@ function send(status: number, body?: unknown, retryAfter?: number) {
 }
 function bearer(request: Request) {
   const value = request.headers.get('Authorization');
-  if (!value || !/^Bearer bg[isha]_[A-Za-z0-9_-]{43}$/.test(value)) throw unauthorized();
+  if (!value || !/^Bearer bg[ishar]_[A-Za-z0-9_-]{43}$/.test(value)) throw unauthorized();
   return value.slice(7);
 }
 function isAdmin(request: Request, env: Env) {
@@ -83,7 +84,7 @@ export default {
         throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       }
       if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/sessions`, `${PREFIX}/session`, `${PREFIX}/state`,
-        '/api/play/v1/sessions', '/api/admin/invites', '/api/admin/revoke'].includes(url.pathname)
+        '/api/play/v1/sessions', '/api/play/v1/renewals', '/api/admin/invites', '/api/admin/revoke'].includes(url.pathname)
         && !Object.keys(ACTIONS).some(name => url.pathname === `${PREFIX}/actions/${name}`)) {
         throw new ApiError(404, 'not_found', 'Unknown endpoint. See /api/agent/v1/openapi.json.');
       }
@@ -111,6 +112,7 @@ export class AgentGateway extends DurableObject<Env> {
   private busy = new Set<string>();
   private reaping?: Promise<void>;
   private inflight = 0;
+  private renewing = new Set<string>();
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     const sql = ctx.storage.sql;
@@ -120,9 +122,29 @@ export class AgentGateway extends DurableObject<Env> {
     sql.exec('CREATE TABLE IF NOT EXISTS buckets (key TEXT PRIMARY KEY, tokens REAL NOT NULL, updated INTEGER NOT NULL, expires_at INTEGER NOT NULL)');
     sql.exec('CREATE TABLE IF NOT EXISTS daily (day TEXT PRIMARY KEY, joins INTEGER NOT NULL DEFAULT 0, requests INTEGER NOT NULL DEFAULT 0)');
     sql.exec('CREATE INDEX IF NOT EXISTS buckets_expiry ON buckets(expires_at)');
+    // Returning browsers (F1): token digests only, bound to one identity each. No IP or other personal data.
+    sql.exec('CREATE TABLE IF NOT EXISTS renewals (key TEXT PRIMARY KEY, prev_key TEXT, prev_until INTEGER NOT NULL, identity TEXT NOT NULL UNIQUE, session_id TEXT NOT NULL, config TEXT NOT NULL, expires_at INTEGER NOT NULL)');
+    sql.exec('CREATE INDEX IF NOT EXISTS renewals_prev ON renewals(prev_key)');
+    sql.exec('CREATE INDEX IF NOT EXISTS renewals_session ON renewals(session_id)');
   }
   private one<T extends Record<string, any>>(query: string, ...args: (string | number | null)[]): T | undefined {
     return this.ctx.storage.sql.exec<T>(query, ...args).toArray()[0];
+  }
+  private renewals(): RenewalStore {
+    const sql = this.ctx.storage.sql;
+    return {
+      byKey: key => this.one<RenewalRow>('SELECT * FROM renewals WHERE key = ?', key),
+      byPrev: key => this.one<RenewalRow>('SELECT * FROM renewals WHERE prev_key = ?', key),
+      count: () => this.count('SELECT COUNT(*) AS n FROM renewals'),
+      put: row => { sql.exec('INSERT OR REPLACE INTO renewals VALUES (?, ?, ?, ?, ?, ?, ?)', row.key, row.prev_key, row.prev_until, row.identity, row.session_id, row.config, row.expires_at); },
+      removeIdentity: identity => { sql.exec('DELETE FROM renewals WHERE identity = ?', identity); },
+    };
+  }
+  private humanCapacity(ip: string) {
+    if (this.count("SELECT COUNT(*) AS n FROM sessions WHERE kind = 'human'") >= 16
+      || this.count('SELECT COUNT(*) AS n FROM sessions WHERE ip = ?', ip) >= 4) {
+      throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
+    }
   }
   private count(query: string, ...args: (string | number | null)[]) { return this.one<{ n: number }>(query, ...args)?.n ?? 0; }
   private take(key: string, capacity: number, perSecond: number, now: number) {
@@ -188,6 +210,7 @@ export class AgentGateway extends DurableObject<Env> {
       const rows = this.ctx.storage.sql.exec<SessionRow>("SELECT * FROM sessions WHERE expires_at <= ? OR state = 'closing' OR (kind = 'agent' AND last_seen <= ?) OR (state = 'pending' AND last_seen <= ?)", now, now - IDLE_MS, now - 30_000).toArray();
       for (const row of rows) { try { await this.remove(row); } catch { /* Retry; the permit also expires in SpacetimeDB. */ } }
       this.ctx.storage.sql.exec('DELETE FROM invites WHERE expires_at <= ?', now);
+      this.ctx.storage.sql.exec('DELETE FROM renewals WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM buckets WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM daily WHERE day < ?', new Date(now - 7 * 86400_000).toISOString().slice(0, 10));
     })();
@@ -223,6 +246,12 @@ export class AgentGateway extends DurableObject<Env> {
           const value = validateObject(input, { sessionId: { type: 'string', minLength: 36, maxLength: 36 } }, ['sessionId']);
           const row = this.one<SessionRow>('SELECT * FROM sessions WHERE id = ?', value.sessionId);
           if (row) await this.remove(row);
+          // A returning browser keeps its sessionId across renewals; revoking it ends renewal for good.
+          const renewal = this.one<RenewalRow>('SELECT * FROM renewals WHERE session_id = ?', value.sessionId);
+          if (renewal) {
+            await (await this.game()).revoke(renewal.identity);
+            this.renewals().removeIdentity(renewal.identity);
+          }
           return send(204);
         }
         const value = validateObject(input, { kind: { type: 'string', minLength: 5, maxLength: 5, enum: ['agent', 'human'] },
@@ -254,6 +283,9 @@ export class AgentGateway extends DurableObject<Env> {
           || this.count('SELECT joins AS n FROM daily WHERE day = ?', day) >= 100) {
           throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
         }
+        if (kind === 'human' && this.count('SELECT COUNT(*) AS n FROM renewals') >= MAX_RENEWALS) {
+          throw new ApiError(429, 'renewal_capacity', 'Returning-player capacity reached.', 3600);
+        }
         const service = await this.game();
         // Claim and reserve synchronously after the last await. Racing requests cannot reuse an invite or oversubscribe slots.
         if (!this.one('SELECT key FROM invites WHERE key = ?', digest(token))) throw new ApiError(401, 'invalid_invite', 'This invite has already been used.');
@@ -273,14 +305,57 @@ export class AgentGateway extends DurableObject<Env> {
         await this.ctx.storage.setAlarm(Date.now() + 30_000);
         try {
           const credential = await service.provision(invite);
-          row.credential = JSON.stringify(credential);
+          // Browsers hold their own SpacetimeDB token; the gateway keeps only the identity for revocation.
+          row.credential = JSON.stringify(kind === 'agent' ? credential : { identity: credential.identity });
           this.ctx.storage.sql.exec('UPDATE sessions SET credential = ? WHERE key = ?', row.credential, key);
           if (kind === 'agent') this.live.set(key, await service.resume(invite, credential));
+          const renewToken = kind === 'human' ? issueRenewal(this.renewals(), credential.identity, row.id, row.config, now) : undefined;
           this.ctx.storage.sql.exec("UPDATE sessions SET state = 'active' WHERE key = ?", key);
-          return send(201, { ...(kind === 'agent' ? { token: sessionToken } : { token: credential.token, uri: credential.uri, database: credential.database }),
+          return send(201, { ...(kind === 'agent' ? { token: sessionToken } : { token: credential.token, uri: credential.uri, database: credential.database, renewToken }),
             sessionId: row.id, playerId: credential.identity, expiresAt: new Date(row.expires_at).toISOString(),
             permissions: { combat: invite.combat, chat: invite.chat }, pollIntervalMs: 1000 });
-        } catch (error) { try { await this.remove(row); } catch { /* Alarm retries revocation. */ } throw error; }
+        } catch (error) {
+          if (row.credential) this.renewals().removeIdentity((JSON.parse(row.credential) as Credential).identity);
+          try { await this.remove(row); } catch { /* Alarm retries revocation. */ }
+          throw error;
+        }
+      }
+      if (path === '/api/play/v1/renewals' && request.method === 'POST') {
+        this.take(`join:${ip}`, 5, 1 / 60, now);
+        const token = bearer(request);
+        validateObject(await readJson(request), {}, []);
+        const store = this.renewals();
+        const found = lookupRenewal(store, token, now);
+        if (this.renewing.has(found.identity)) throw renewedElsewhere();
+        const invite = JSON.parse(found.config) as Invite;
+        const visit = () => this.one<SessionRow>("SELECT * FROM sessions WHERE id = ? AND kind = 'human'", found.session_id);
+        if (visit() && visit()!.state !== 'active') throw visitEnded();
+        if (!visit()) this.humanCapacity(ip);
+        this.renewing.add(found.identity);
+        try {
+          const service = await this.game();
+          try { await service.renew(found.identity, invite.lifetimeSeconds); }
+          catch (error) {
+            if (error instanceof ApiError) throw error;
+            const message = error instanceof Error ? error.message : String(error);
+            if (/capacity/.test(message)) throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
+            if (/revoked|no renewable permit/.test(message)) { store.removeIdentity(found.identity); throw visitEnded(); }
+            throw unavailable();
+          }
+          // Synchronous from here: rotation and the visit slot commit together.
+          const at = Date.now();
+          const current = visit();
+          if (current && current.state !== 'active') throw visitEnded();
+          if (!current) this.humanCapacity(ip);
+          const renewToken = rotateRenewal(store, found, at);
+          const expiresAt = at + invite.lifetimeSeconds * 1000;
+          if (current) this.ctx.storage.sql.exec('UPDATE sessions SET expires_at = ?, last_seen = ?, ip = ? WHERE key = ?', expiresAt, at, ip, current.key);
+          else this.ctx.storage.sql.exec("INSERT INTO sessions (key,id,ip,kind,expires_at,last_seen,config,credential,state) VALUES (?,?,?,'human',?,?,?,?,'active')",
+            digest(secret('bgs_')), found.session_id, ip, expiresAt, at, found.config, JSON.stringify({ identity: found.identity }));
+          await this.ctx.storage.setAlarm(Date.now() + 30_000);
+          return send(200, { renewToken, sessionId: found.session_id, playerId: found.identity, expiresAt: new Date(expiresAt).toISOString(),
+            permissions: { combat: invite.combat, chat: invite.chat } });
+        } finally { this.renewing.delete(found.identity); }
       }
       const token = bearer(request);
       if (!token.startsWith('bgs_')) throw unauthorized();
