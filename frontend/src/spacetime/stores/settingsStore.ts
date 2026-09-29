@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { hitReactionPrefs } from '../../fx/hitReaction';
 
 /** Player preferences. Persisted per browser; never sent to the server. */
 export interface Settings {
@@ -14,7 +15,13 @@ export interface Settings {
   showNameplates: boolean;
   /** Multiplier for camera drag/zoom speed, 0.5..2 */
   cameraSensitivity: number;
+  /** Skip knockback, hitstop and fleeing wildlife bursts. Defaults to the OS preference. */
+  reduceMotion: boolean;
 }
+
+const prefersReduced = (): boolean => {
+  try { return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+};
 
 export const DEFAULT_SETTINGS: Settings = {
   masterVolume: 0.8,
@@ -24,6 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
   graphics: 'auto',
   showNameplates: true,
   cameraSensitivity: 1,
+  reduceMotion: prefersReduced(),
 };
 
 const KEY = 'berigame.settings.v1';
@@ -56,3 +64,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   reset: () => get().set({ ...DEFAULT_SETTINGS }),
 }));
+
+// Presentation code reads this every frame without subscribing.
+hitReactionPrefs.reduced = useSettingsStore.getState().reduceMotion;
+useSettingsStore.subscribe((s) => { hitReactionPrefs.reduced = s.reduceMotion; });
