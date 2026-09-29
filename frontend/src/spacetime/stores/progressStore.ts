@@ -4,7 +4,7 @@ import { COSMETICS, RECIPES, SKILLS, Skill, getCosmetic, hasCosmetic, levelForXp
 /** DamageNumber kind for an XP floater (no EventKind uses it). */
 export const XP_FLOAT_KIND = 100;
 const XP_FLOAT_MS = 1600;
-const BANNER_MS = 4200;
+const BANNER_MS = 6000;
 /** Floaters follow the harvest "+1" rather than covering it. */
 const XP_DELAY_MS = 350;
 

@@ -48,7 +48,7 @@
   box-shadow: 0 6px 22px #0005, 0 0 18px #f4cb6355;
   z-index: 31;
   pointer-events: none;
-  animation: milestone-pop 4.2s ease-out forwards;
+  animation: milestone-pop 6s ease-out forwards;
 }
 .milestone-banner strong { display: block; font-size: 16px; color: var(--gold); }
 .milestone-banner span { font-size: 12px; }

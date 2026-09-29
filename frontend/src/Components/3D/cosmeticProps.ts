@@ -15,8 +15,8 @@ import { LowPolyBuilder, coastMaterial, linear, seeded } from './nodes/lowPoly';
 export const HEAD_BONE = 'Head';
 export const NECK_BONE = 'Neck';
 /** Crown of the head above the Head bone, and the brim height a hat sits at (rig units). */
-const HEAD_TOP = 0.3;
-const BRIM_Y = 0.22;
+const HEAD_TOP = 0.42;
+const BRIM_Y = 0.34;
 
 const STRAW = 0xe2c27a, STRAW_DARK = 0xc29a52, STRAW_BAND = 0xb4533f;
 const SCARF = 0x3f8fa8, SCARF_DARK = 0x2e6c80, SCARF_STRIPE = 0xe9dcc0;
