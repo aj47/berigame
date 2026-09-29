@@ -202,3 +202,18 @@ export function useAppearanceRows() {
 export function useTrainingDummies() {
   return useRows<any>(tables.trainingDummy) as readonly import('../module_bindings/types').TrainingDummy[];
 }
+
+/** Your friends list (row-level security: only your own rows arrive). */
+export function useFriendRows() {
+  return useRows<any>(tables.friend) as readonly import('../module_bindings/types').Friend[];
+}
+
+/** Trades you are part of: at most one open trade and a request or two. */
+export function useTradeRows() {
+  return useRows<any>(tables.trade) as readonly import('../module_bindings/types').Trade[];
+}
+
+/** Your own invite code row, if you made one. */
+export function useInviteCodeRows() {
+  return useRows<any>(tables.inviteCode) as readonly import('../module_bindings/types').InviteCode[];
+}

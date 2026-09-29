@@ -124,7 +124,33 @@ progress; read state to observe completion.
 
 Actions mirror the browser controls: `move`, `harvest`, `craft`, `eat`, `wield`, `unwield`,
 `stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`,
-`attack_dummy`, `emote`, and the scoped `attack` and `chat`. OpenAPI has the exact schemas.
+`attack_dummy`, `emote`, the social actions `invite_create`, `invite_redeem`,
+`friend_add`, `friend_remove`, `trade_request`, `trade_respond`, `trade_offer`,
+`trade_confirm`, `trade_cancel`, and the scoped `attack` and `chat`. OpenAPI has
+the exact schemas.
+
+- **Invite links.** `invite_create` makes (or replaces) your 8-character code,
+  valid for one hour (`state.invite`: `code`, `expiresInSeconds`, `linkQuery`
+  such as `?join=K7M2Q9XA`). The browser link is the game URL with only that
+  query; it never carries an identity or token. `invite_redeem` with someone's
+  code makes you friends both ways and places you beside them, unless you are
+  fighting or down. Without a stick you never land past the brambles: if the
+  inviter is on the hedge or the Coast you land on the nearest Grove tile, and
+  `state.notices` explains why.
+- **Friends.** `friend_add` / `friend_remove` (one-way list). `state.friends`
+  gives each friend's `online`, `area` and `tile`; walk to one with `follow`.
+- **Trading.** `trade_request` a player within 3 tiles (if they already asked
+  you, it accepts); they answer with `trade_respond` (`accept`/`decline`).
+  Both then `trade_offer` everything they give as `itemId:qty` pairs joined by
+  commas (`""` for nothing). Items stay in the bags and must not be wielded.
+  Any offer change clears both confirmations. `trade_confirm` agrees to the
+  trade exactly as `state.trade` shows it; when both have confirmed the swap
+  runs at once, all or nothing. A full bag, a missing or wielded item leaves
+  both bags unchanged, clears confirmations and adds a notice. Walking more
+  than 6 tiles apart, dying, leaving, or an unanswered request (30 s) cancels.
+- **Chat filter.** Each `state.chat` row has `nearby`: said within 12 tiles
+  (Chebyshev) of where you stand now. `state.notices` holds your last 10
+  personal notices (trade and invite results).
 
 - **Training dummy.** `attack_dummy` walks you to the practice post at (28,28)
   (`state.dummies`) and keeps swinging with your punch or wielded weapon. No

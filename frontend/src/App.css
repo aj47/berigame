@@ -926,6 +926,29 @@ canvas {
   border-radius: 6px;
   padding: 6px 9px;
   pointer-events: none;
+  /* Lift clear of the nameplate; at most three lines (the text is capped too). */
+  top: -8px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  line-height: 1.3;
+  box-shadow: 0 2px 4px #0003;
+}
+/* One CSS animation per chat line: pop in, hold, fade over the last second (13 ticks = 7.8 s). */
+.player-chat-bubble.speaking {
+  animation: chat-bubble-life 7.8s linear forwards;
+}
+@keyframes chat-bubble-life {
+  0% { opacity: 0; transform: translate(-50%, -92%) scale(0.92); }
+  3% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+  85% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -100%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-chat-bubble.speaking { animation-name: chat-bubble-fade; }
+  @keyframes chat-bubble-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
 }
 .damage-number {
   pointer-events: none;

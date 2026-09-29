@@ -13,6 +13,8 @@ vi.mock('../Components/Toast', () => ({ default: () => null }));
 vi.mock('../Components/GoalChip', () => ({ default: () => null }));
 vi.mock('../Components/TickDebug', () => ({ default: () => null }));
 vi.mock('../Components/Minimap', () => ({ default: () => null }));
+vi.mock('../Components/FriendsPanel', () => ({ default: () => null, FriendSync: () => null, InviteRedeemer: () => null }));
+vi.mock('../Components/TradeWindow', () => ({ default: () => null }));
 afterEach(cleanup);
 
 describe('panel keyboard shortcuts respect native controls', () => {
