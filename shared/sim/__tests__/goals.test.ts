@@ -57,7 +57,25 @@ describe('First Day goal chip', () => {
     r = firstDayGoal(input({ done: all, trees: nodes, me, slots: bag('stick', 'stone_club') }));
     expect(r.goal).toMatchObject({ id: 'wield-club', action: { kind: 'wield', slot: 1 } });
     r = firstDayGoal(input({ done: all, trees: nodes, me: player({ weapon: 'stone_club' }), slots: bag('stick', 'stone_club') }));
+    expect(r.goal).toMatchObject({ id: 'reach-boulders', text: 'Take your club to the Boulders', action: { kind: 'move', x: 51, z: 51 } });
+  });
+
+  it('M3/F3: in the Boulders, face the Giant; while it rests, chip obsidian; done once you hold obsidian', () => {
+    const all = ['pick-berry', 'eat-berry', 'find-stick', 'wield-stick', 'reach-coast', 'first-day'];
+    const nodes: GoalTree[] = [...trees(), ...NODE_SEEDS.map((n) => ({ ...n, cooldownUntilTick: 0 }))];
+    const me = player({ weapon: 'stone_club', x: 52, z: 52 });
+    let r = firstDayGoal(input({ done: all, trees: nodes, me, slots: bag('stick', 'stone_club'), giant: { id: 1, state: 0 } }));
+    expect(r.goal).toMatchObject({ id: 'face-giant', action: { kind: 'giant', giantId: 1 } });
+    r = firstDayGoal(input({ done: all, trees: nodes, me: player({ weapon: 'stone_club', x: 52, z: 52, pending: 4, pendingId: 1n }), slots: bag('stick', 'stone_club'), giant: { id: 1, state: 0 } }));
+    expect(r.goal).toMatchObject({ id: 'face-giant', action: null });
+    r = firstDayGoal(input({ done: all, trees: nodes, me, slots: bag('stick', 'stone_club'), giant: { id: 1, state: 3 } }));
+    expect(r.goal).toMatchObject({ id: 'gather-obsidian', action: { kind: 'harvest' } });
+    expect([109, 110]).toContain((r.goal!.action as any).treeId);
+    r = firstDayGoal(input({ done: all, trees: nodes, me, slots: bag('stick', 'stone_club', 'obsidian'), giant: { id: 1, state: 0 } }));
     expect(r.goal).toBeNull();
+    // Without the combat grant the club never needs wielding; the Boulders are still the next step.
+    r = firstDayGoal(input({ done: all, trees: nodes, canFight: false, me: player({ x: 5, z: 20 }), slots: bag('stick', 'stone_club') }));
+    expect(r.goal).toMatchObject({ id: 'reach-boulders' });
   });
 
   it('berry steps never target Coast nodes', () => {

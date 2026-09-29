@@ -8,11 +8,11 @@
  */
 import { HARVEST_TICKS, TREE_COOLDOWN_TICKS } from './constants';
 import { addItem, countItem, removeFromSlot } from './inventory';
-import { DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, STONE_CLUB_ITEM_ID, getItemDef } from './items';
+import { DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, OBSIDIAN_ITEM_ID, STONE_CLUB_ITEM_ID, getItemDef } from './items';
 import type { Slot, Tile } from './types';
 
 /** `tree.kind` on the wire (u8). */
-export const NodeKind = { Berry: 0, Driftwood: 1, TideRock: 2 } as const;
+export const NodeKind = { Berry: 0, Driftwood: 1, TideRock: 2, /** M3: the Boulders' rare resource. */ Obsidian: 3 } as const;
 export type NodeKind = (typeof NodeKind)[keyof typeof NodeKind];
 
 export interface NodeKindDef {
@@ -25,6 +25,8 @@ export const NODE_KINDS: Record<NodeKind, NodeKindDef> = {
   [NodeKind.Berry]: { name: 'Berry tree', harvestTicks: HARVEST_TICKS, regrowTicks: TREE_COOLDOWN_TICKS },
   [NodeKind.Driftwood]: { name: 'Driftwood pile', harvestTicks: 4, regrowTicks: 25 },
   [NodeKind.TideRock]: { name: 'Tide rock', harvestTicks: 6, regrowTicks: 40 },
+  // Rare: two outcrops, 8 ticks to chip, 150 to reform (about 1.3 a minute world-wide).
+  [NodeKind.Obsidian]: { name: 'Obsidian outcrop', harvestTicks: 8, regrowTicks: 150 },
 };
 
 /** Unknown kinds (a newer server) harvest like berry trees. */
@@ -66,7 +68,13 @@ export const NODE_SEEDS: readonly NodeSeed[] = [
   { id: 106, x: 46, z: 3, kind: NodeKind.TideRock, itemId: FLINT_ITEM_ID },
   { id: 107, x: 3, z: 46, kind: NodeKind.TideRock, itemId: FLINT_ITEM_ID },
   { id: 108, x: 46, z: 46, kind: NodeKind.TideRock, itemId: FLINT_ITEM_ID },
+  // M3: obsidian at the far ends of the Boulders' L, well away from the Giant.
+  { id: 109, x: 60, z: 40, kind: NodeKind.Obsidian, itemId: OBSIDIAN_ITEM_ID },
+  { id: 110, x: 40, z: 60, kind: NodeKind.Obsidian, itemId: OBSIDIAN_ITEM_ID },
 ];
+
+/** The M2 Coast nodes (driftwood and tide rocks). */
+export const COAST_NODE_SEEDS: readonly NodeSeed[] = NODE_SEEDS.filter((s) => s.kind === NodeKind.Driftwood || s.kind === NodeKind.TideRock);
 
 /** The seeds whose id is not in `existing`: what the tick inserts. Seeding twice is a no-op. */
 export function missingNodeSeeds(existing: (id: number) => boolean): NodeSeed[] {

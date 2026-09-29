@@ -1508,6 +1508,7 @@ canvas {
 .minimap-legend .lg-berry { background: #4F46E5; }
 .minimap-legend .lg-coast { background: #b08a5c; border-radius: 1px; }
 .minimap-legend .lg-hedge { background: #2f4a23; border-radius: 1px; }
+.minimap-legend .lg-boulders { background: #8a7d6b; border: 2px solid #5d5550; border-radius: 1px; }
 .minimap-legend .lg-bag { background: #fff; border: 2px solid #c0392b; }
 /* Phones: a compact map under the toolbar; the smallest screens get a thumbnail to tap open. */
 @media (max-width: 600px) {
@@ -1618,3 +1619,35 @@ canvas {
 .connection-banner button { min-height: 32px; padding: 4px 12px; font-size: 12px; }
 @keyframes connection-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .connection-banner .spinner { animation: none; } }
+/* F3: the Giant's name and HP bar (and the training dummy's bar, which shares the look). */
+.giant-hp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+}
+.giant-hp-name {
+  background: #302a23ee;
+  color: #f7f1e3;
+  padding: 3px 8px;
+  border: 1px solid #b3966b;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.giant-hp-bar, .dummy-hp {
+  width: 120px;
+  height: 8px;
+  background: #181612;
+  border: 1px solid #f7f1e3aa;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.dummy-hp { width: 54px; height: 6px; }
+.giant-hp-fill, .dummy-hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c0392b, #e8603c);
+  transition: width 0.25s ease-out;
+}

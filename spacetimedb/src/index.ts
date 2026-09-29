@@ -17,3 +17,4 @@ export * from './reducers/craft';
 export * from './reducers/social';
 export * from './reducers/friends';
 export * from './reducers/trade';
+export * from './reducers/giant';

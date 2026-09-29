@@ -16,6 +16,7 @@ import { onWorldTick } from './tickClock';
 import { startWorldLivenessMonitor } from './worldLivenessMonitor';
 import { useCombatFxStore } from './stores/combatFxStore';
 import { useSocialStore } from './stores/socialStore';
+import { useGiantStore } from './stores/giantStore';
 
 /** Feeds the tick clock and the combat FX store from table updates. */
 const TableSync = () => {
@@ -41,6 +42,9 @@ const TableSync = () => {
   useTable(tables.socialEvent, { onInsert: useCallback((row: SocialEvent) => {
     if (meRef.current && identityHex(row.to) === meRef.current) useToastStore.getState().show(row.text);
   }, []) });
+  // The Boulders' Giant: blows, slams, defeats and rewards (an event table).
+  const onGiantEvent = useCallback((row: any) => useGiantStore.getState().pushEvent(row, meRef.current), []);
+  useTable(tables.giantEvent, { onInsert: onGiantEvent });
   return null;
 };
 

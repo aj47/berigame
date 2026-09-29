@@ -4,13 +4,16 @@ import { tickSchedule } from '../tables';
 import {
   DEATH_TICKS, EventKind, MELEE_RANGE, harvestTicksFor, isBerryNode, regrowTicksFor, Pending, PlayerState, SPAWN_TILE,
   MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS,
-  bfsPath, chebyshev, enterRule, facingFromDelta, goalAdjacentTo,
+  bfsPath, chebyshev, facingFromDelta, goalAdjacentTo,
   goalIsTile, harvestFindsStick, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
   neighbors8, swingDamage, tileKey, DUMMY_TILE, dummyAfterHit, worldBlockedSet,
   TRADE_BREAK_RANGE, TRADE_REQUEST_TICKS,
+  GIANT_ID, GIANT_REACH, GIANT_RESPAWN_TICKS as GIANT_RESPAWN, GIANT_REWARD, GIANT_TILE, GiantEventKind, GiantState, giantAfterHit, giantForgot,
+  giantRewardees, inBoulders, stepGiant, type GiantCandidate,
 } from '../../../shared/sim';
+import { emitGiantEvent, ensureGiant } from '../lib/giant';
 import { ensureDummy } from '../lib/dummy';
-import { holdsStick } from '../lib/brambles';
+import { playerEnterRule } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
 import { seedMissingNodes } from '../lib/nodes';
 import { statsDeath, statsPosition } from '../lib/stats';
@@ -18,7 +21,7 @@ import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/invent
 import { clearInteractions, hex, sameId } from '../lib/players';
 import { canPlay } from '../lib/access';
 import { cancelTrade } from '../lib/social';
-import type { Ctx, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
+import type { Ctx, GiantRow, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
 
 interface TickState {
   ctx: Ctx;
@@ -112,6 +115,12 @@ function resolvePending(s: TickState, p: PlayerRow): void {
       p.targetX = undefined; p.targetZ = undefined;
       mark(s, p);
     }
+  } else if (p.pending === Pending.Giant) {
+    // Stop at the first tile touching its footprint; phaseGiant swings.
+    if (chebyshev(p, GIANT_TILE) <= GIANT_REACH && p.targetX !== undefined) {
+      p.targetX = undefined; p.targetZ = undefined;
+      mark(s, p);
+    }
   } else if (p.pending === Pending.Pickup) {
     const item = s.ctx.db.groundItem.id.find(p.pendingId);
     if (!item) {
@@ -187,9 +196,9 @@ function phaseMovement(s: TickState): void {
       // The path validates every intermediate tile and both sides of a
       // diagonal. Taking its first two steps cannot tunnel through a tree or
       // overshoot the first tile satisfying a melee/follow goal.
-      // One-way brambles. Recomputed every tick, so dropping the stick mid-route
-      // makes the path fail and the player stops where they are.
-      const path = bfsPath(p, goal, s.blocked, enterRule(holdsStick(s.ctx, p)));
+      // One-way brambles and boulder line. Recomputed every tick, so dropping the
+      // key mid-route makes the path fail and the player stops where they are.
+      const path = bfsPath(p, goal, s.blocked, playerEnterRule(s.ctx, p));
       if (!path || path.length === 0) {
         if (!p.combatTarget) { p.targetX = undefined; p.targetZ = undefined; }
         if (p.pending !== Pending.None) { p.pending = Pending.None; p.pendingId = 0n; }
@@ -319,6 +328,102 @@ function phaseDummySwings(s: TickState): void {
     mark(s, a);
   }
   if (dummy && dirty) s.ctx.db.trainingDummy.id.update(dummy);
+}
+
+/** Damage each player dealt this life; the private table is tiny (the fighters of one Giant). */
+function addContribution(s: TickState, a: PlayerRow, giantId: number, damage: number): void {
+  const row = s.ctx.db.giantContribution.identity.find(a.identity);
+  if (!row) s.ctx.db.giantContribution.insert({ identity: a.identity, giantId, damage, lastHitTick: s.T });
+  else if (row.giantId !== giantId) s.ctx.db.giantContribution.identity.update({ ...row, giantId, damage, lastHitTick: s.T });
+  else s.ctx.db.giantContribution.identity.update({ ...row, damage: row.damage + damage, lastHitTick: s.T });
+}
+
+function clearContributions(s: TickState): void {
+  for (const row of [...s.ctx.db.giantContribution.iter()]) s.ctx.db.giantContribution.identity.delete(row.identity);
+}
+
+/** The Giant falls: equal rewards for everyone who dealt enough, then it rests until respawnTick. */
+function defeatGiant(s: TickState, g: GiantRow): GiantRow {
+  const rows = [...s.ctx.db.giantContribution.iter()].filter((c) => c.giantId === g.id);
+  for (const c of giantRewardees(rows)) {
+    const p = s.players.get(hex(c.identity));
+    if (!p || !p.online) continue;
+    giveItem(s.ctx, p.identity, GIANT_REWARD.itemId, GIANT_REWARD.quantity, p, s.T);
+    emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Reward, player: p.identity, itemId: GIANT_REWARD.itemId, quantity: GIANT_REWARD.quantity, damage: c.damage, x: p.x, z: p.z });
+  }
+  clearContributions(s);
+  for (const h of s.order) {
+    const p = s.players.get(h)!;
+    if (p.pending === Pending.Giant && Number(p.pendingId) === g.id) {
+      p.pending = Pending.None; p.pendingId = 0n;
+      p.targetX = undefined; p.targetZ = undefined;
+      mark(s, p);
+    }
+  }
+  emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Defeat, x: g.x, z: g.z });
+  return { ...g, hp: 0, state: GiantState.Defeated, stateUntilTick: s.T, respawnTick: s.T + GIANT_RESPAWN, lastHitTick: s.T };
+}
+
+/**
+ * F3: the Giant. Players' swings first (a blow that floors it cancels its
+ * attack), then its AI (shared/sim stepGiant): telegraph, blow, recover,
+ * respawn. One primary-key read a tick; the row is written only on a change.
+ */
+function phaseGiant(s: TickState): void {
+  const row = s.ctx.db.giant.id.find(GIANT_ID) ?? ensureGiant(s.ctx, s.T);
+  let g: GiantRow = row;
+  let dirty = false;
+
+  if (g.state !== GiantState.Defeated) {
+    for (const h of s.order) {
+      const a = s.players.get(h)!;
+      if (!alive(a) || a.pending !== Pending.Giant || a.combatTarget || Number(a.pendingId) !== g.id) continue;
+      if (chebyshev(a, g) > GIANT_REACH) continue;
+      const face = facingFromDelta(g.x - a.x, g.z - a.z);
+      if (a.facing !== face) { a.facing = face; mark(s, a); }
+      if (s.T < a.nextSwingTick) continue;
+      if (a.weapon !== '' && !inHotbar(readSlots(s.ctx, a.identity).slots, a.weapon)) a.weapon = '';
+      // It regenerated since the last blow: old contributions no longer count.
+      if (giantForgot(g, s.T)) clearContributions(s);
+      const damage = swingDamage(a.weapon);
+      const { hp, defeated } = giantAfterHit(g, damage, s.T);
+      g = { ...g, hp, lastHitTick: s.T };
+      dirty = true;
+      a.nextSwingTick = s.T + SWING_INTERVAL_TICKS;
+      mark(s, a);
+      addContribution(s, a, g.id, damage);
+      emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Hit, player: a.identity, damage, itemId: a.weapon, hp, x: a.x, z: a.z });
+      if (defeated) { g = defeatGiant(s, g); break; }
+    }
+  }
+
+  const candidates: GiantCandidate[] = [];
+  if (g.state !== GiantState.Defeated) {
+    s.order.forEach((h, order) => {
+      const p = s.players.get(h)!;
+      if (alive(p) && inBoulders(p) && !inGrace(p, s.T)) candidates.push({ x: p.x, z: p.z, order });
+    });
+  }
+  const step = stepGiant(g, s.T, candidates);
+  if (step.next) { g = step.next; dirty = true; }
+  if (step.respawned) {
+    clearContributions(s);
+    emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Respawn, hp: g.hp, x: g.x, z: g.z });
+  }
+  if (step.windup) emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Windup, quantity: g.attack, x: g.slamX, z: g.slamZ });
+  if (step.blow) {
+    const b = step.blow;
+    for (const h of s.order) {
+      const p = s.players.get(h)!;
+      if (!alive(p) || inGrace(p, s.T) || chebyshev(p, b) > b.radius) continue;
+      p.hp = Math.max(0, p.hp - b.damage);
+      interrupt(s, p);
+      mark(s, p);
+      emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.PlayerHit, player: p.identity, damage: b.damage, hp: p.hp, x: p.x, z: p.z });
+    }
+    emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Slam, quantity: b.attack, damage: b.damage, x: b.x, z: b.z });
+  }
+  if (dirty && !sameRow(row, g)) s.ctx.db.giant.id.update(g);
 }
 
 function phaseDeath(s: TickState): void {
@@ -454,6 +559,7 @@ export const tick = spacetimedb.reducer(
     phaseHarvest(s);
     phaseSwings(s);
     phaseDummySwings(s);
+    phaseGiant(s);
     phaseDeath(s);
     phaseTrades(s);
     phaseExpiry(s);

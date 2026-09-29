@@ -1,9 +1,27 @@
-import { GRID_SIZE, TILE_ORIGIN } from './constants';
+import { BOULDERS_MIN, GRID_SIZE, ISLAND_SIZE, TILE_ORIGIN } from './constants';
 import type { Facing, Tile } from './types';
 
 export function inBounds(t: Tile): boolean {
   return t.x >= 0 && t.x < GRID_SIZE && t.z >= 0 && t.z < GRID_SIZE;
 }
+
+/**
+ * Land, not water: the original island square, or the Boulders L past its
+ * south-east shoreline (both coordinates >= BOULDERS_MIN). Everything else in
+ * the grown grid is sea that nothing walks on.
+ */
+export function isLandTile(t: Tile): boolean {
+  if (!inBounds(t)) return false;
+  if (t.x < ISLAND_SIZE && t.z < ISLAND_SIZE) return true;
+  return t.x >= BOULDERS_MIN && t.z >= BOULDERS_MIN;
+}
+
+/** LAND_MASK[tileKey] === 1 for land tiles, for tight loops (BFS). */
+export const LAND_MASK: Uint8Array = (() => {
+  const m = new Uint8Array(GRID_SIZE * GRID_SIZE);
+  for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) if (isLandTile({ x, z })) m[z * GRID_SIZE + x] = 1;
+  return m;
+})();
 
 export function clampTile(t: Tile): Tile {
   return {
@@ -39,12 +57,12 @@ const DELTAS: ReadonlyArray<readonly [number, number]> = [
   [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1],
 ];
 
-/** The 8 surrounding tiles, in facing order (S, SW, W, NW, N, NE, E, SE), in-bounds only. */
+/** The 8 surrounding tiles, in facing order (S, SW, W, NW, N, NE, E, SE), land only. */
 export function neighbors8(t: Tile): Tile[] {
   const out: Tile[] = [];
   for (const [dx, dz] of DELTAS) {
     const n = { x: t.x + dx, z: t.z + dz };
-    if (inBounds(n)) out.push(n);
+    if (isLandTile(n)) out.push(n);
   }
   return out;
 }

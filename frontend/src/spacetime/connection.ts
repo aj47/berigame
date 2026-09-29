@@ -111,6 +111,8 @@ export function buildConnection() {
           tables.friend,
           tables.trade,
           tables.socialEvent,
+          tables.giant,
+          tables.giantEvent,
         ]);
     })
     .onConnectError((ctx, _err) => {

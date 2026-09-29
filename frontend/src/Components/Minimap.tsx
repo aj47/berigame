@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useGroundItems, useMyIdentityHex, usePlayers, useTick, useTrees } from "../spacetime/hooks";
+import { useGiants, useGroundItems, useMyIdentityHex, usePlayers, useTick, useTrees } from "../spacetime/hooks";
 import { drawMinimap, minimapModel } from "./minimap";
 
 /** Redraws per second: the map is a glance aid, not a per-frame view. */
@@ -33,9 +33,10 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
   const trees = useTrees();
   const groundItems = useGroundItems();
   const tick = useTick();
+  const giants = useGiants();
   const [expanded, setExpanded] = useState(false);
-  const latest = useRef(() => minimapModel({ meHex, players, trees, groundItems, tick }));
-  latest.current = () => minimapModel({ meHex, players, trees, groundItems, tick });
+  const latest = useRef(() => minimapModel({ meHex, players, trees, groundItems, tick, giants }));
+  latest.current = () => minimapModel({ meHex, players, trees, groundItems, tick, giants });
   const source = useRef(() => latest.current());
   const small = useMapCanvas(120, source);
   const big = useMapCanvas(expanded ? 300 : 0, source);
@@ -80,6 +81,7 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
               <li><i className="lg-berry" />Berry trees</li>
               <li><i className="lg-coast" />Driftwood / tide rocks</li>
               <li><i className="lg-hedge" />Bramble hedge</li>
+              <li><i className="lg-boulders" />Boulders / the Giant</li>
               <li><i className="lg-bag" />Your dropped bag</li>
             </ul>
           </div>

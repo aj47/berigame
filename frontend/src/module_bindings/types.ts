@@ -82,6 +82,45 @@ export const Friend = __t.object("Friend", {
 });
 export type Friend = __Infer<typeof Friend>;
 
+export const Giant = __t.object("Giant", {
+  id: __t.u32(),
+  x: __t.i32(),
+  z: __t.i32(),
+  hp: __t.u32(),
+  maxHp: __t.u32(),
+  state: __t.u8(),
+  attack: __t.u8(),
+  stateUntilTick: __t.u32(),
+  slamX: __t.i32(),
+  slamZ: __t.i32(),
+  attackCount: __t.u32(),
+  respawnTick: __t.u32(),
+  lastHitTick: __t.u32(),
+});
+export type Giant = __Infer<typeof Giant>;
+
+export const GiantContribution = __t.object("GiantContribution", {
+  identity: __t.identity(),
+  giantId: __t.u32(),
+  damage: __t.u32(),
+  lastHitTick: __t.u32(),
+});
+export type GiantContribution = __Infer<typeof GiantContribution>;
+
+export const GiantEvent = __t.object("GiantEvent", {
+  tick: __t.u32(),
+  giantId: __t.u32(),
+  kind: __t.u8(),
+  player: __t.identity(),
+  damage: __t.u8(),
+  itemId: __t.string(),
+  quantity: __t.u8(),
+  hp: __t.u32(),
+  x: __t.i32(),
+  z: __t.i32(),
+});
+export type GiantEvent = __Infer<typeof GiantEvent>;
+
 export const GroundItem = __t.object("GroundItem", {
   id: __t.u64(),
   itemId: __t.string(),

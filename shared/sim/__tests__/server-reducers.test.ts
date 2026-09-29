@@ -71,6 +71,8 @@ function harness() {
   const grants = new Map<string, any>();
   const dummies = new Map<number, any>();
   const cooldowns = new Map<string, any>();
+  const giants = new Map<number, any>();
+  const contributions = new Map<string, any>();
   // Ids are never reused, like the real autoInc column, so a delete then insert cannot overwrite a row.
   let nextInventoryId = 100n;
   const ctx = {
@@ -101,10 +103,17 @@ function harness() {
       trainingDummy: { iter: () => dummies.values(), insert: (row: any) => { dummies.set(row.id, row); return row; }, id: { find: (id: number) => dummies.get(id), update: (row: any) => dummies.set(row.id, row) } },
       dummyEvent: { insert: vi.fn() },
       emoteEvent: { insert: vi.fn() },
+      giant: { iter: () => giants.values(), insert: (row: any) => { giants.set(row.id, row); return row; }, id: { find: (id: number) => giants.get(id), update: vi.fn((row: any) => giants.set(row.id, row)) } },
+      giantContribution: {
+        iter: () => contributions.values(),
+        insert: (row: any) => contributions.set(row.identity.toHexString(), row),
+        identity: { find: (id: typeof A) => contributions.get(id.toHexString()), update: (row: any) => contributions.set(row.identity.toHexString(), row), delete: (id: typeof A) => contributions.delete(id.toHexString()) },
+      },
+      giantEvent: { insert: vi.fn() },
       emoteCooldown: { insert: (row: any) => cooldowns.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => cooldowns.get(id.toHexString()), update: (row: any) => cooldowns.set(row.identity.toHexString(), row) } },
     },
   };
-  return { ctx, players, dummies, inventory, ground, trees, appearances, grants, tick: (value: number) => { now = value; }, me: () => players.get('a'), other: () => players.get('b') };
+  return { ctx, players, giants, contributions, dummies, inventory, ground, trees, appearances, grants, tick: (value: number) => { now = value; }, me: () => players.get('a'), other: () => players.get('b') };
 }
 
 let h: ReturnType<typeof harness>;
@@ -916,13 +925,13 @@ describe('M2: Coast nodes on the server', () => {
   it('the tick seeds the 8 missing nodes once; seeding twice is a no-op and keeps node state', () => {
     for (const t of TREE_SEEDS) h.trees.set(t.id, { ...t, cooldownUntilTick: 0, harvester: undefined, kind: 0 });
     run();
-    expect(nodes()).toHaveLength(8);
+    expect(nodes()).toHaveLength(NODE_SEEDS.length);
     expect(nodes().map((n) => [n.id, n.x, n.z, n.kind, n.itemId])).toEqual(NODE_SEEDS.map((n) => [n.id, n.x, n.z, n.kind, n.itemId]));
     h.trees.get(105).cooldownUntilTick = 999;
     run(2);
-    expect(nodes()).toHaveLength(8);
+    expect(nodes()).toHaveLength(NODE_SEEDS.length);
     expect(h.trees.get(105).cooldownUntilTick).toBe(999);
-    expect(h.trees.size).toBe(14);
+    expect(h.trees.size).toBe(6 + NODE_SEEDS.length);
   });
 
   it('init seeds berry trees (kind 0) and nodes, and is idempotent', () => {
@@ -930,7 +939,7 @@ describe('M2: Coast nodes on the server', () => {
     const ctx = { ...h.ctx, db: { ...h.ctx.db, accessPolicy: { id: { find: () => ({}) } }, tickSchedule: { count: () => 1n } } };
     init(ctx);
     init(ctx);
-    expect(h.trees.size).toBe(14);
+    expect(h.trees.size).toBe(6 + NODE_SEEDS.length);
     expect(h.trees.get(1).kind).toBe(NodeKind.Berry);
     expect(h.trees.get(101).kind).toBe(NodeKind.Driftwood);
   });
@@ -1136,5 +1145,129 @@ describe('emotes', () => {
     h.other().state = PlayerState.Dead;
     h.tick(20);
     expect(() => emote(h.ctx, { emote: Emote.Wave })).toThrow('you are dead');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// M3 "The Boulders" and F3 "The Giant" on the server.
+// ---------------------------------------------------------------------------
+import { attackGiant as registeredAttackGiant } from '../../../spacetimedb/src/reducers/giant';
+import {
+  GIANT_ID, GIANT_MAX_HP, GIANT_MIN_CONTRIBUTION, GIANT_REACH, GIANT_RECOVER_TICKS, GIANT_RESPAWN_TICKS, GIANT_REWARD,
+  GIANT_SLAM_DAMAGE, GIANT_SLAM_WINDUP_TICKS, GIANT_TILE, GiantEventKind, GiantState,
+} from '../giant';
+import { BOULDER_MESSAGE } from '../areas';
+import { OBSIDIAN_ITEM_ID, STONE_CLUB_ITEM_ID } from '../items';
+
+describe('M3/F3: the Boulders gate and the Giant', () => {
+  const attackGiant = registeredAttackGiant as unknown as Reducer;
+  const giantEvents = (kind?: number) => (h.ctx.db.giantEvent.insert as any).mock.calls.map((c: any[]) => c[0]).filter((e: any) => kind === undefined || e.kind === kind);
+  function giveClub(owner = A, slot = 0) {
+    const id = nextRow++;
+    h.inventory.set(id, { id, owner, slot, itemId: STONE_CLUB_ITEM_ID, quantity: 1 });
+  }
+  /** A tile in reach, west of the footprint, and one outside the slam from it. */
+  const WEST = { x: GIANT_TILE.x - GIANT_REACH, z: GIANT_TILE.z };
+
+  it('the boulder line needs a stone club: a stick holder on the Coast is stopped with the boulders message', () => {
+    h.inventory.clear();
+    giveStick(A, 0);
+    Object.assign(h.me(), { x: 46, z: 44 });
+    move(h.ctx, { x: 55, z: 44 });
+    expect(h.me()).toMatchObject({ targetX: 49, targetZ: 44 });
+    expect(() => attackGiant(h.ctx, { giantId: GIANT_ID })).toThrow(BOULDER_MESSAGE);
+    expect(h.me().pending).toBe(Pending.None);
+    // Without a stick either, from the Grove, the brambles are named first.
+    h.inventory.clear();
+    Object.assign(h.me(), { x: 25, z: 25 });
+    expect(() => attackGiant(h.ctx, { giantId: GIANT_ID })).toThrow(BRAMBLE_MESSAGE);
+  });
+
+  it('a club holder walks through; without the club the walk back home still works', () => {
+    h.inventory.clear();
+    giveClub();
+    Object.assign(h.me(), { x: 46, z: 44 });
+    move(h.ctx, { x: 55, z: 44 });
+    expect(h.me()).toMatchObject({ targetX: 55, targetZ: 44 });
+    run(6);
+    expect([h.me().x, h.me().z]).toEqual([55, 44]);
+    h.inventory.clear();
+    move(h.ctx, { x: 46, z: 44 });
+    run(6);
+    expect([h.me().x, h.me().z]).toEqual([46, 44]);
+  });
+
+  it('is seeded by the tick and idles without writes while nobody is near', () => {
+    run();
+    expect(h.giants.get(GIANT_ID)).toMatchObject({ x: GIANT_TILE.x, z: GIANT_TILE.z, hp: GIANT_MAX_HP, state: GiantState.Idle });
+    const update = h.ctx.db.giant.id.update as any;
+    update.mockClear();
+    run(10);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('open to players without the combat grant; hitting it never ends grace or makes anyone hostile', () => {
+    h.grants.set('a', { identity: A, issuer: A, agent: false, expiresAtMicros: 200_000_000n, combat: false, chat: false });
+    h.inventory.clear();
+    giveClub();
+    Object.assign(h.me(), { x: GIANT_TILE.x - 5, z: GIANT_TILE.z, weapon: STONE_CLUB_ITEM_ID, respawnTick: 5000 });
+    attackGiant(h.ctx, { giantId: GIANT_ID });
+    expect(h.me()).toMatchObject({ pending: Pending.Giant, targetX: WEST.x, targetZ: WEST.z });
+    run(3);
+    const hits = giantEvents(GiantEventKind.Hit);
+    expect(hits.length).toBeGreaterThanOrEqual(1);
+    expect(hits[0]).toMatchObject({ damage: 8, itemId: STONE_CLUB_ITEM_ID, hp: GIANT_MAX_HP - 8 });
+    expect(h.me()).toMatchObject({ respawnTick: 5000, hostile: false, combatTarget: undefined });
+    expect(h.contributions.get('a').damage).toBe(8 * hits.length);
+  });
+
+  it('telegraphs a slam on a player tile; staying hurts, stepping out in time does not', () => {
+    h.inventory.clear();
+    giveClub(A); giveClub(B);
+    Object.assign(h.me(), { ...WEST, hp: 30 });
+    Object.assign(h.other(), { x: GIANT_TILE.x + 5, z: GIANT_TILE.z, hp: 30 });
+    run(); // A is nearest: the wind-up starts on A's tile
+    const g = h.giants.get(GIANT_ID);
+    expect(g).toMatchObject({ state: GiantState.Windup, slamX: WEST.x, slamZ: WEST.z });
+    expect(giantEvents(GiantEventKind.Windup)).toHaveLength(1);
+    run(GIANT_SLAM_WINDUP_TICKS);
+    expect(h.me().hp).toBe(30 - GIANT_SLAM_DAMAGE);
+    expect(giantEvents(GiantEventKind.PlayerHit)[0]).toMatchObject({ damage: GIANT_SLAM_DAMAGE, hp: 30 - GIANT_SLAM_DAMAGE });
+    expect(h.giants.get(GIANT_ID).state).toBe(GiantState.Recover);
+    // Next wind-up after recovering, on A again; A walks two tiles west this time.
+    run(GIANT_RECOVER_TICKS);
+    expect(h.giants.get(GIANT_ID).state).toBe(GiantState.Windup);
+    move(h.ctx, { x: WEST.x - 2, z: WEST.z });
+    run(GIANT_SLAM_WINDUP_TICKS);
+    expect(h.me().hp).toBe(30 - GIANT_SLAM_DAMAGE);
+    expect(h.other().hp).toBe(30);
+  });
+
+  it('a defeat rewards every contributor who dealt enough, equally, and it respawns after the timer', () => {
+    h.inventory.clear();
+    giveClub(A); giveClub(B);
+    run();
+    Object.assign(h.giants.get(GIANT_ID), { hp: 11, lastHitTick: worldTick() });
+    Object.assign(h.me(), { ...WEST, weapon: STONE_CLUB_ITEM_ID });
+    Object.assign(h.other(), { x: GIANT_TILE.x + GIANT_REACH, z: GIANT_TILE.z, weapon: '' });
+    attackGiant(h.ctx, { giantId: GIANT_ID });
+    as(B, () => attackGiant(h.ctx, { giantId: GIANT_ID }));
+    h.contributions.set('a', { identity: A, giantId: GIANT_ID, damage: GIANT_MIN_CONTRIBUTION, lastHitTick: worldTick() });
+    run(1); // one round: A 8 + B 3 floors 11
+    const down = h.giants.get(GIANT_ID);
+    expect(down.state).toBe(GiantState.Defeated);
+    expect(down.respawnTick).toBeGreaterThan(worldTick());
+    const rewards = giantEvents(GiantEventKind.Reward);
+    expect(rewards.map((r: any) => r.player.toHexString())).toEqual(['a']);
+    expect(slotsOf(A).filter((s) => s?.itemId === OBSIDIAN_ITEM_ID)).toEqual([{ itemId: OBSIDIAN_ITEM_ID, quantity: GIANT_REWARD.quantity }]);
+    expect(slotsOf(B).some((s) => s?.itemId === OBSIDIAN_ITEM_ID)).toBe(false);
+    expect(h.contributions.size).toBe(0);
+    expect(h.me().pending).toBe(Pending.None);
+    expect(() => attackGiant(h.ctx, { giantId: GIANT_ID })).toThrow('The Giant is down');
+    const respawnAt = down.respawnTick;
+    run(respawnAt - worldTick());
+    expect(h.giants.get(GIANT_ID)).toMatchObject({ state: expect.any(Number), hp: GIANT_MAX_HP });
+    expect(giantEvents(GiantEventKind.Respawn)).toHaveLength(1);
+    expect(GIANT_RESPAWN_TICKS).toBeGreaterThan(0);
   });
 });

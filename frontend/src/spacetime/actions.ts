@@ -77,5 +77,7 @@ export function useGameActions() {
     setTradeOffer: (tradeId: bigint, offer: string) => run('setTradeOffer', (c) => c.reducers.setTradeOffer({ tradeId, offer })),
     confirmTrade: (tradeId: bigint, aOffer: string, bOffer: string) => run('confirmTrade', (c) => c.reducers.confirmTrade({ tradeId, aOffer, bOffer })),
     cancelTrade: (tradeId: bigint) => run('cancelTrade', (c) => c.reducers.cancelTradeRequest({ tradeId })),
+    /** Walk up to the Giant and keep swinging at it (open to everyone; needs the stone club to reach the Boulders). */
+    attackGiant: (giantId: number) => run('attackGiant', (c) => c.reducers.attackGiant({ giantId })),
   };
 }

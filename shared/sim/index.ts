@@ -12,3 +12,4 @@ export * from './nodes';
 export * from './social';
 export * from './friends';
 export * from './trade';
+export * from './giant';

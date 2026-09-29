@@ -2,9 +2,9 @@
  * Friends, "join me" invite links and chat filtering. Pure rules shared by the
  * SpacetimeDB module, the browser client and the agent API.
  */
-import { GRID_SIZE, HEDGE_RING, SPAWN_TILE } from './constants';
-import { areaOf, isBramble } from './areas';
-import { chebyshev, tileKey } from './grid';
+import { BOULDER_LINE, HEDGE_RING, SPAWN_TILE } from './constants';
+import { areaOf, isBramble, isBoulderLine, type Area } from './areas';
+import { chebyshev, isLandTile, tileKey } from './grid';
 import type { Tile } from './types';
 
 // ---- Invite codes ----------------------------------------------------------
@@ -50,24 +50,33 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 export interface JoinSpot {
   tile: Tile;
-  /** The inviter stands where the joiner may not go (past the brambles without a stick). */
+  /** The inviter stands where the joiner may not go (past the brambles without a stick, or past the boulder line without a stone club). */
   clamped: boolean;
+  /** When clamped: the barrier the joiner lacks the key for. */
+  barrier?: 'brambles' | 'boulders';
 }
 
 /**
  * Where a joiner lands next to an inviter. Beside them when the joiner may be
- * where they are (a stick, or the inviter is in the Grove); otherwise the
- * nearest Grove tile inside the hedge. Never on a blocked tile or on the
- * inviter; a joiner without a stick never lands on a bramble.
+ * where they are (Grove: always; hedge/Coast: with a stick; boulder line and
+ * Boulders: with a stick and a stone club); otherwise the nearest tile of the
+ * furthest area they may be in (the Grove, or the Coast below the boulder
+ * line). Never on sea, a blocked tile or the inviter; a joiner without a
+ * stick never lands on a bramble, one without a club never on the boulder line.
  */
-export function joinSpot(inviter: Tile, hasStick: boolean, blocked: Set<number>): JoinSpot {
-  const clamped = !hasStick && areaOf(inviter) !== 'grove';
-  const anchor = clamped
-    ? { x: clamp(inviter.x, GROVE_MIN, GROVE_MAX), z: clamp(inviter.z, GROVE_MIN, GROVE_MAX) }
-    : { x: inviter.x, z: inviter.z };
-  const ok = (t: Tile) => t.x >= 0 && t.z >= 0 && t.x < GRID_SIZE && t.z < GRID_SIZE
+export function joinSpot(inviter: Tile, hasStick: boolean, blocked: Set<number>, hasClub = false): JoinSpot {
+  const allowed = (a: Area) => a === 'grove'
+    || ((a === 'hedge' || a === 'coast') && hasStick)
+    || ((a === 'boulder-line' || a === 'boulders') && hasStick && hasClub);
+  const clamped = !allowed(areaOf(inviter));
+  const barrier: JoinSpot['barrier'] = !clamped ? undefined : hasStick ? 'boulders' : 'brambles';
+  const anchor = !clamped ? { x: inviter.x, z: inviter.z }
+    : barrier === 'brambles'
+      ? { x: clamp(inviter.x, GROVE_MIN, GROVE_MAX), z: clamp(inviter.z, GROVE_MIN, GROVE_MAX) }
+      : { x: Math.min(inviter.x, BOULDER_LINE - 1), z: Math.min(inviter.z, BOULDER_LINE - 1) };
+  const ok = (t: Tile) => isLandTile(t)
     && !blocked.has(tileKey(t)) && !(t.x === inviter.x && t.z === inviter.z)
-    && (hasStick || !isBramble(t)) && (!clamped || areaOf(t) === 'grove');
+    && (hasStick || !isBramble(t)) && (hasClub || !isBoulderLine(t)) && allowed(areaOf(t));
   for (let r = clamped ? 0 : 1; r <= 6; r++) {
     // Nearest to the inviter first, then a fixed order (deterministic).
     const ring: Tile[] = [];
@@ -77,9 +86,9 @@ export function joinSpot(inviter: Tile, hasStick: boolean, blocked: Set<number>)
       }
     }
     ring.sort((a, b) => chebyshev(a, inviter) - chebyshev(b, inviter) || a.z - b.z || a.x - b.x);
-    for (const t of ring) if (ok(t)) return { tile: t, clamped };
+    for (const t of ring) if (ok(t)) return { tile: t, clamped, barrier };
   }
-  return { tile: { ...SPAWN_TILE }, clamped: true };
+  return { tile: { ...SPAWN_TILE }, clamped: true, barrier: barrier ?? 'brambles' };
 }
 
 // ---- Chat -------------------------------------------------------------------

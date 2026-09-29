@@ -79,6 +79,7 @@ function harness() {
   let nextChat = 1n;
   const trees = new Map<number, any>();
   const dummies = new Map<number, any>();
+  const giants = new Map<number, any>();
   let rolls: number[] = [];
   const ctx: any = {
     random: vi.fn(() => (rolls.length ? rolls.shift()! : 0.5)),
@@ -118,6 +119,9 @@ function harness() {
         code: { find: (c: string) => codes.get(c), delete: (c: string) => codes.delete(c) },
       },
       socialEvent: { insert: (row: any) => notices.push(row) },
+      giant: { iter: () => giants.values(), insert: (row: any) => { giants.set(row.id, row); return row; }, id: { find: (id: number) => giants.get(id), update: (row: any) => giants.set(row.id, row) } },
+      giantContribution: { iter: () => [][Symbol.iterator](), identity: { find: () => undefined, delete: () => {} } },
+      giantEvent: { insert: vi.fn() },
       chatMessage: {
         iter: () => chat.values(),
         insert: (row: any) => { const id = nextChat++; chat.set(id, { ...row, id }); },
@@ -477,6 +481,22 @@ describe('pure social rules', () => {
     expect(hedge.clamped).toBe(true);
     expect(isBramble(hedge.tile)).toBe(false);
     expect(areaOf(hedge.tile)).toBe('grove');
+  });
+
+  it('joinSpot never lands in the sea or past the boulder line without a club', () => {
+    const noClub = joinSpot({ x: 57, z: 57 }, true, new Set());
+    expect(noClub.clamped).toBe(true);
+    expect(noClub.barrier).toBe('boulders');
+    expect(areaOf(noClub.tile)).toBe('coast');
+    const club = joinSpot({ x: 57, z: 57 }, true, new Set(), true);
+    expect(club.clamped).toBe(false);
+    expect(areaOf(club.tile)).toBe('boulders');
+    const edge = joinSpot({ x: 49, z: 20 }, true, new Set());
+    expect(edge.clamped).toBe(false);
+    expect(areaOf(edge.tile)).not.toBe('sea');
+    const noStick = joinSpot({ x: 57, z: 57 }, false, new Set(), true);
+    expect(noStick.barrier).toBe('brambles');
+    expect(areaOf(noStick.tile)).toBe('grove');
   });
 
   it('offers: canonical format, strict parsing', () => {

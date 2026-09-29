@@ -6,6 +6,8 @@ import {
   STICK_DROP_CHANCE, STICK_ITEM_ID, swingDamage, TICK_MS, treeReadyTick, type Slot,
   NodeKind, nodeKindDef, recipeStatus,
   CHAT_NEARBY_RADIUS, INVITE_PARAM, TRADE_BREAK_RANGE, TRADE_RANGE, chatVisible, normalizeInviteCode, parseOffer, formatOffer,
+  BOULDER_KEY_ITEM, BOULDER_LINE, BOULDER_MESSAGE, BOULDERS_ENTRY, BOULDERS_MIN, GIANT_ID, GIANT_AGGRO_RANGE, GIANT_MIN_CONTRIBUTION,
+  GIANT_REACH, GIANT_RESPAWN_TICKS, GIANT_REWARD, GiantAttack, GiantState, attackDamage, attackRadius, giantHpAt, isLandTile,
 } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
 import { ApiError, type Invite } from './portable';
@@ -22,7 +24,8 @@ export interface GameService { ready(): boolean; create(invite: Invite): Promise
 export type Backend = { uri: string; database: string };
 export type Credential = Backend & { identity: string; token: string };
 /** Agent-facing names of shared/sim NodeKind, indexed by kind. */
-const NODE_KIND_NAMES = ['berry', 'driftwood', 'tide_rock'];
+const NODE_KIND_NAMES = ['berry', 'driftwood', 'tide_rock', 'obsidian'];
+const GIANT_STATE_NAMES = ['idle', 'winding_up', 'recovering', 'defeated'];
 const disconnect = (conn: DbConnection) => { try { conn.disconnect(); } catch { /* already closed */ } };
 const unavailable = () => new ApiError(503, 'world_unavailable', 'The live world is unavailable. Retry shortly.');
 
@@ -70,6 +73,7 @@ export function connect(credential: Credential, control = false, options: Connec
             tables.world, tables.accessPolicy, tables.player.where(row => row.online.eq(true)), tables.tree,
             tables.groundItem, tables.inventorySlot, tables.chatMessage, tables.trainingDummy,
             tables.appearance.where(row => row.identity.eq(identity)),
+            tables.appearance.where(row => row.identity.eq(identity)), tables.giant,
             // Row-level security narrows these to your own rows.
             tables.friend, tables.trade, tables.inviteCode, tables.socialEvent,
           ]);
@@ -143,6 +147,7 @@ export async function createGameService(credential: Credential, options: Connect
         destination: p.targetX === undefined ? null : { x: p.targetX, z: p.targetZ },
         area: areaOf(p),
         action: p.harvestEndTick ? 'harvesting' : p.pending === Pending.Harvest ? (chebyshev(p, conn.db.tree.id.find(Number(p.pendingId)) ?? p) <= 1 ? 'waiting at tree' : 'walking to tree')
+          : p.pending === Pending.Giant ? (p.targetX === undefined ? 'fighting the giant' : 'walking to the giant')
           : p.pending === Pending.Pickup ? 'walking to item' : p.pending === Pending.Dummy ? (p.targetX === undefined ? 'training at dummy' : 'walking to dummy') : p.combatTarget ? (p.hostile ? 'combat' : 'following') : p.targetX === undefined ? 'idle' : 'moving',
       });
       // The First Day chip's memory for this session (see shared/sim/goals.ts).
@@ -156,7 +161,7 @@ export async function createGameService(credential: Credential, options: Connect
       const others = (self: ReturnType<typeof me>) => [...conn.db.player.iter()].filter(p => p.online && p.identity.toHexString() !== player.identity);
       const goalFor = (self: ReturnType<typeof me>, tick: number) => {
         const result = firstDayGoal({ me: self, slots: slotsOf(), trees: [...conn.db.tree.iter()], others: others(self), tick,
-          canFight: invite.combat, done: goalDone, seen: { ate } });
+          canFight: invite.combat, done: goalDone, seen: { ate }, giant: conn.db.giant.id.find(GIANT_ID) ?? null });
         goalDone = result.done;
         return result.goal;
       };
@@ -169,17 +174,30 @@ export async function createGameService(credential: Credential, options: Connect
           const inventory = [...conn.db.inventorySlot.iter()].filter(row => row.owner.toHexString() === player.identity).sort((a, b) => a.slot - b.slot);
           const goal = goalFor(self, tick);
           const hasKey = holdsItem(slotsOf(), self.weapon, BRAMBLE_KEY_ITEM);
+          const hasBoulderKey = holdsItem(slotsOf(), self.weapon, BOULDER_KEY_ITEM);
+          const g = conn.db.giant.id.find(GIANT_ID);
           return {
             tick, tickMs: TICK_MS, gridSize: GRID_SIZE, player: describePlayer(self),
             me: { area: areaOf(self), safe: isSafe(self, tick), graceTicks: inGrace(self, tick) ? Math.max(0, self.respawnTick + RESPAWN_GRACE_TICKS - tick) : 0,
-              hasBrambleKey: hasKey },
+              hasBrambleKey: hasKey, hasBoulderKey },
             goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action, ...(goal.waiting ? { waiting: goal.waiting } : {}) } : null,
             world: {
               brambles: { center: { ...SPAWN_TILE }, ring: HEDGE_RING, key: BRAMBLE_KEY_ITEM,
                 rule: 'Tiles at Chebyshev distance 17 from center are thorny brambles. Step onto one only while holding a stick (bag or wielded), or from the Coast (distance >= 18). Stepping off is always allowed, so you can always walk home.' },
               safeRing: { center: { ...SPAWN_TILE }, radius: SAFE_RADIUS, rule: 'No attack starts or lands while either player is within this Chebyshev radius.' },
               stickChance: STICK_DROP_CHANCE,
+              boulders: { line: BOULDER_LINE, min: BOULDERS_MIN, entry: { ...BOULDERS_ENTRY }, key: BOULDER_KEY_ITEM,
+                rule: `The Boulders are the land with both x and z >= ${BOULDERS_MIN} and max(x, z) > ${BOULDER_LINE}. The boulder line (max(x, z) = ${BOULDER_LINE}) can be entered only while holding a stone club (bag or wielded), or from the Boulders; stepping off is always allowed, so you can always walk home. Other tiles with x or z >= 50 are sea.` },
             },
+            giant: g ? {
+              id: g.id, tile: { x: g.x, z: g.z }, footprint: 1, reach: GIANT_REACH, aggroRange: GIANT_AGGRO_RANGE,
+              state: GIANT_STATE_NAMES[g.state] ?? 'idle', health: giantHpAt(g, tick), maxHealth: g.maxHp,
+              ...(g.state === GiantState.Windup ? { telegraph: { attack: g.attack === GiantAttack.Stomp ? 'stomp' : 'slam', center: { x: g.slamX, z: g.slamZ }, radius: attackRadius(g.attack), damage: attackDamage(g.attack), landsInTicks: Math.max(0, g.stateUntilTick - tick),
+                youAreInside: chebyshev(self, { x: g.slamX, z: g.slamZ }) <= attackRadius(g.attack) } } : {}),
+              ...(g.state === GiantState.Defeated ? { respawnInTicks: Math.max(0, g.respawnTick - tick) } : {}),
+              reward: { itemId: GIANT_REWARD.itemId, quantity: GIANT_REWARD.quantity, minDamage: GIANT_MIN_CONTRIBUTION },
+              rule: `A PvE world boss open to everyone (no combat access needed; it never ends grace or makes you hostile). Attack with attack_giant from any tile within Chebyshev ${GIANT_REACH} of its centre (it blocks the 3x3 around it). It telegraphs each blow: telegraph.center/radius marks the tiles hit when landsInTicks reaches 0; walk out of that square (Chebyshev > radius) in time. Everyone who dealt at least ${GIANT_MIN_CONTRIBUTION} damage when it falls gets ${GIANT_REWARD.quantity} obsidian; it rises again ${GIANT_RESPAWN_TICKS} ticks later.`,
+            } : null,
             permissions: { combat: invite.combat, chat: invite.chat },
             inventorySize: INVENTORY_SIZE,
             hotbarSize: HOTBAR_SIZE,
@@ -238,6 +256,7 @@ export async function createGameService(credential: Credential, options: Connect
           const tick = conn.db.world.id.find(0)?.tick ?? 0;
           const brambles = (e: unknown) => {
             if (String((e as Error)?.message ?? e).includes('brambles')) throw new ApiError(422, 'brambles', BRAMBLE_MESSAGE);
+            if (String((e as Error)?.message ?? e).includes('boulders')) throw new ApiError(422, 'boulders', BOULDER_MESSAGE);
             throw e;
           };
           switch (name) {
@@ -245,10 +264,14 @@ export async function createGameService(credential: Credential, options: Connect
               await r.setTarget({ x: input.x, z: input.z });
               const blocked = worldBlockedSet(conn.db.tree.iter());
               const hasStick = holdsItem(slotsOf(), self.weapon, STICK_ITEM_ID);
-              const destination = nearestReachableTile(self, { x: input.x, z: input.z }, blocked, enterRule(hasStick));
+              const hasClub = holdsItem(slotsOf(), self.weapon, BOULDER_KEY_ITEM);
+              const destination = nearestReachableTile(self, { x: input.x, z: input.z }, blocked, enterRule(hasStick, hasClub));
+              const withStick = nearestReachableTile(self, { x: input.x, z: input.z }, blocked, enterRule(true, hasClub));
               const open = nearestReachableTile(self, { x: input.x, z: input.z }, blocked);
-              const clamped = destination.x !== open.x || destination.z !== open.z;
-              return { destination, ...(clamped ? { blockedBy: 'brambles', message: BRAMBLE_MESSAGE } : {}) };
+              const sea = !isLandTile({ x: input.x, z: input.z });
+              if (destination.x === open.x && destination.z === open.z) return { destination, ...(sea ? { blockedBy: 'sea' } : {}) };
+              const byBrambles = !hasStick && (withStick.x !== destination.x || withStick.z !== destination.z);
+              return { destination, ...(byBrambles ? { blockedBy: 'brambles', message: BRAMBLE_MESSAGE } : { blockedBy: 'boulders', message: BOULDER_MESSAGE }) };
             }
             case 'stop': await r.cancel({}); break;
             case 'harvest': {
@@ -268,6 +291,7 @@ export async function createGameService(credential: Credential, options: Connect
             case 'unwield': await r.unwield({}); break;
             case 'attack': await r.attack({ target: Identity.fromString(input.playerId) }); break;
             case 'attack_dummy': await r.attackDummy({ dummyId: input.dummyId ?? DUMMY_ID }).catch(brambles); break;
+            case 'attack_giant': await r.attackGiant({ giantId: input.giantId ?? GIANT_ID }).catch(brambles); break;
             case 'emote': await r.emote({ emote: emoteByKey(input.emote)!.id }); break;
             case 'follow': await r.follow({ target: Identity.fromString(input.playerId) }); break;
             case 'pickup': await r.pickupItem({ id: BigInt(input.id) }).catch(brambles); break;

@@ -1,5 +1,5 @@
 import { GRID_SIZE } from './constants';
-import { chebyshev, inBounds, tileEquals, tileKey } from './grid';
+import { chebyshev, isLandTile, LAND_MASK, tileEquals, tileKey } from './grid';
 import type { Tile } from './types';
 
 const DELTAS: ReadonlyArray<readonly [number, number]> = [
@@ -14,13 +14,13 @@ const allowAll: EnterRule = () => true;
 
 function canStep(from: Tile, dx: number, dz: number, blocked: Set<number>, enter: EnterRule): Tile | null {
   const to = { x: from.x + dx, z: from.z + dz };
-  if (!inBounds(to) || blocked.has(tileKey(to)) || !enter(from, to)) return null;
+  if (!isLandTile(to) || blocked.has(tileKey(to)) || !enter(from, to)) return null;
   // No corner cutting: a diagonal needs both orthogonal neighbours free (and enterable).
   if (dx !== 0 && dz !== 0) {
     const a = { x: from.x + dx, z: from.z };
     const b = { x: from.x, z: from.z + dz };
-    if (blocked.has(tileKey(a)) || !enter(from, a)) return null;
-    if (blocked.has(tileKey(b)) || !enter(from, b)) return null;
+    if (!isLandTile(a) || blocked.has(tileKey(a)) || !enter(from, a)) return null;
+    if (!isLandTile(b) || blocked.has(tileKey(b)) || !enter(from, b)) return null;
   }
   return to;
 }
@@ -63,13 +63,13 @@ export function bfsPath(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<
       const nx = cx + dx, nz = cz + dz;
       if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) continue;
       const k = nz * GRID_SIZE + nx;
-      if (visitStamp[k] === stamp || blocked.has(k)) continue;
+      if (visitStamp[k] === stamp || LAND_MASK[k] === 0 || blocked.has(k)) continue;
       const to = { x: nx, z: nz };
       if (checkEnter && !enter(from, to)) continue;
       // No corner cutting: a diagonal needs both orthogonal neighbours free (and enterable).
       if (dx !== 0 && dz !== 0) {
-        if (blocked.has(cz * GRID_SIZE + nx) || (checkEnter && !enter(from, { x: nx, z: cz }))) continue;
-        if (blocked.has(nz * GRID_SIZE + cx) || (checkEnter && !enter(from, { x: cx, z: nz }))) continue;
+        if (LAND_MASK[cz * GRID_SIZE + nx] === 0 || blocked.has(cz * GRID_SIZE + nx) || (checkEnter && !enter(from, { x: nx, z: cz }))) continue;
+        if (LAND_MASK[nz * GRID_SIZE + cx] === 0 || blocked.has(nz * GRID_SIZE + cx) || (checkEnter && !enter(from, { x: cx, z: nz }))) continue;
       }
       visitStamp[k] = stamp;
       parentOf[k] = curKey;

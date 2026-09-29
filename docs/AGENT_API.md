@@ -124,7 +124,7 @@ progress; read state to observe completion.
 
 Actions mirror the browser controls: `move`, `harvest`, `craft`, `eat`, `wield`, `unwield`,
 `stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`,
-`attack_dummy`, `emote`, the social actions `invite_create`, `invite_redeem`,
+`attack_dummy`, `attack_giant`, `emote`, the social actions `invite_create`, `invite_redeem`,
 `friend_add`, `friend_remove`, `trade_request`, `trade_respond`, `trade_offer`,
 `trade_confirm`, `trade_cancel`, and the scoped `attack` and `chat`. OpenAPI has
 the exact schemas.
@@ -136,7 +136,8 @@ the exact schemas.
   code makes you friends both ways and places you beside them, unless you are
   fighting or down. Without a stick you never land past the brambles: if the
   inviter is on the hedge or the Coast you land on the nearest Grove tile, and
-  `state.notices` explains why.
+  `state.notices` explains why. Without a stone club you never land past the
+  boulder line: you land on the nearest Coast tile instead.
 - **Friends.** `friend_add` / `friend_remove` (one-way list). `state.friends`
   gives each friend's `online`, `area` and `tile`; walk to one with `follow`.
 - **Trading.** `trade_request` a player within 3 tiles (if they already asked
@@ -203,6 +204,41 @@ the exact schemas.
   1 driftwood + 2 flint into a stone club instantly (rejected while dead or
   attacking; a full bag drops it at your feet). Wield it like the stick: 8
   damage a swing. `state.trees` (berry trees only) is kept for one release.
+- **The Boulders (M3).** The grid is now 64x64 (`state.gridSize`); the old
+  island keeps tiles 0-49 unchanged. Past its south-east corner lies the
+  Boulders: land with both x and z >= 36 and `max(x, z) > 50` (an L, 559
+  tiles). A one-tile **boulder line** (`max(x, z) = 50`, 29 tiles) guards it
+  with the same one-way rule as the brambles, keyed by the **stone club** (bag
+  or wielded): you may step onto it only while holding a club, or from the
+  Boulders; stepping off is always allowed, so you can always walk home. Every
+  other tile with x or z >= 50 is sea and never walkable. `state.world.boulders
+  {line: 50, min: 36, entry: {x: 51, z: 51}, key: 'stone_club', rule}`,
+  `player.area` (`boulder-line`, `boulders`, `sea` join `grove`, `hedge`,
+  `coast`) and `me.hasBoulderKey`. `move` past the line without a club is
+  clamped with `blockedBy: "boulders"` (a sea target gives `blockedBy: "sea"`);
+  `harvest`/`pickup`/`attack_giant` you cannot reach fail with `422` and error
+  code `boulders` ("Huge boulders — you need a stone club to clamber over").
+- **Obsidian.** Two obsidian outcrops (`kind: "obsidian"`) sit at the far ends
+  of the Boulders' L, (60,40) and (40,60): 8 ticks to chip, 150 to reform, 1
+  obsidian (about 1.3 a minute world-wide). `harvest {kind: "obsidian"}` works.
+- **The Giant (F3).** `state.giant {id, tile: {x: 57, z: 57}, footprint: 1,
+  reach: 2, aggroRange: 8, state, health, maxHealth: 400, telegraph?,
+  respawnInTicks?, reward, rule}`. A PvE world boss **open to everyone**: no
+  combat access needed, and hitting it never ends grace or makes you hostile.
+  `attack_giant` walks you within Chebyshev 2 of its centre (it blocks the 3x3
+  around it) and keeps swinging with your punch or weapon; its HP pool is
+  shared by everyone and regenerates after 100 ticks without a hit. It attacks
+  players in the Boulders within 8 tiles: `state` goes `idle` ->
+  `winding_up` (with `telegraph {attack: slam|stomp, center, radius, damage,
+  landsInTicks, youAreInside}`) -> the blow lands -> `recovering`. A slam hits
+  the 3x3 around the targeted player's tile for 9 after a 3-tick wind-up; every
+  third attack is a stomp hitting everyone within 3 of its centre for 6 after 4
+  ticks. **Walk out of the marked square** (Chebyshev > radius) before
+  `landsInTicks` reaches 0 and you take nothing; then `attack_giant` again
+  (moving stops your swings; so does being hit). A blow can kill you (the whole
+  bag drops, club included). When it falls, everyone who dealt at least 16
+  damage that life gets 3 obsidian (equal shares; online players only), and it
+  rises again 500 ticks later (`respawnInTicks`).
 - **Busy trees: wait and claim.** `harvest` on a regrowing or claimed tree is
   not an error: you walk next to it and wait. On the tick it ripens, waiters
   claim it in this order: newcomers (in first-spawn grace), then the earliest

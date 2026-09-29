@@ -8,17 +8,20 @@
  * and after First Day one holding no stick sees "find a stick" and "reach the
  * Coast" again: they respawned in the Grove and need a new key.
  */
-import { areaOf, coastPastCrossing, HEDGE_CROSSINGS, holdsItem, isNewcomer } from './areas';
+import { areaOf, BOULDERS_ENTRY, coastPastCrossing, HEDGE_CROSSINGS, holdsItem, isNewcomer } from './areas';
+import { GIANT_ID, GiantState } from './giant';
 import { HARVEST_TICKS, HOTBAR_SIZE, MELEE_RANGE, MOVEMENT_STEPS_PER_TICK, TICK_MS, TREE_COOLDOWN_TICKS } from './constants';
 import { chebyshev } from './grid';
-import { DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, getItemDef, STICK_ITEM_ID, STONE_CLUB_ITEM_ID } from './items';
+import { DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, getItemDef, OBSIDIAN_ITEM_ID, STICK_ITEM_ID, STONE_CLUB_ITEM_ID } from './items';
 import { countItem } from './inventory';
 import { canCraft, getRecipe, harvestTicksFor, isBerryNode, NodeKind, regrowTicksFor } from './nodes';
 import { Pending, PlayerState, type Slot, type Tile } from './types';
 
 export type GoalStepId = 'pick-berry' | 'eat-berry' | 'find-stick' | 'wield-stick' | 'reach-coast'
   // M2, after First Day:
-  | 'gather-coast' | 'make-club' | 'wield-club';
+  | 'gather-coast' | 'make-club' | 'wield-club'
+  // M3 / F3, after the club:
+  | 'reach-boulders' | 'face-giant' | 'gather-obsidian';
 /** Done-set marker recorded once all First Day steps are complete. */
 export const FIRST_DAY_DONE = 'first-day';
 export type GoalDoneId = GoalStepId | typeof FIRST_DAY_DONE;
@@ -33,7 +36,8 @@ export type GoalAction =
   | { kind: 'eat'; slot: number }
   | { kind: 'wield'; slot: number }
   | { kind: 'move'; x: number; z: number }
-  | { kind: 'craft'; recipe: string };
+  | { kind: 'craft'; recipe: string }
+  | { kind: 'giant'; giantId: number };
 
 export interface Goal {
   id: GoalStepId;
@@ -79,6 +83,8 @@ export interface GoalInput {
   /** Whether this player may fight; without it the wield step is skipped. */
   canFight: boolean;
   done: readonly string[];
+  /** The Giant's row, if known (its state decides between fighting it and chipping obsidian). */
+  giant?: { id: number; state: number } | null;
   /** Events seen by the client: a finished harvest or an eat by this player. */
   seen?: { harvested?: boolean; ate?: boolean };
 }
@@ -157,6 +163,7 @@ function seconds(ticks: number): number {
 function treeName(tree: GoalTree): string {
   if (tree.kind === NodeKind.Driftwood) return 'driftwood pile';
   if (tree.kind === NodeKind.TideRock) return 'tide rock';
+  if (tree.kind === NodeKind.Obsidian) return 'obsidian outcrop';
   return (getItemDef(tree.itemId)?.name ?? 'berry').toLowerCase() + ' tree';
 }
 
@@ -276,7 +283,7 @@ const CLUB_RECIPE = getRecipe(STONE_CLUB_ITEM_ID)!;
 function coastGoal(input: GoalInput, hasStick: boolean): Goal | null {
   const { me, slots, canFight } = input;
   if (holdsItem(slots, me.weapon, STONE_CLUB_ITEM_ID)) {
-    if (!canFight || me.weapon === STONE_CLUB_ITEM_ID) return null;
+    if (!canFight || me.weapon === STONE_CLUB_ITEM_ID) return bouldersGoal(input);
     const slot = slots.findIndex((s, i) => i < HOTBAR_SIZE && s?.itemId === STONE_CLUB_ITEM_ID);
     return {
       id: 'wield-club',
@@ -294,4 +301,33 @@ function coastGoal(input: GoalInput, hasStick: boolean): Goal | null {
   const text = `Gather driftwood and 2 flint on the Coast (${wood + flint}/3)`;
   const kind = wood < 1 ? NodeKind.Driftwood : NodeKind.TideRock;
   return gatherGoal('gather-coast', text, 'Nothing to gather yet', input, kind);
+}
+
+/**
+ * M3 / F3, for a club holder: take it to the Boulders, then face the Giant (or,
+ * while it rests, chip obsidian). Done once you hold obsidian.
+ */
+function bouldersGoal(input: GoalInput): Goal | null {
+  const { me, slots } = input;
+  if (countItem(slots, OBSIDIAN_ITEM_ID) > 0) return null;
+  if (areaOf(me) !== 'boulders') {
+    return {
+      id: 'reach-boulders',
+      text: 'Take your club to the Boulders',
+      hint: 'Tap to climb over the boulders past the Coast\'s south-east corner',
+      action: { kind: 'move', x: BOULDERS_ENTRY.x, z: BOULDERS_ENTRY.z },
+    };
+  }
+  if (input.giant && input.giant.state === GiantState.Defeated) {
+    return gatherGoal('gather-obsidian', 'The Giant rests: chip obsidian from an outcrop', 'No outcrop is ready yet', input, NodeKind.Obsidian);
+  }
+  if (me.pending === Pending.Giant) {
+    return { id: 'face-giant', text: 'Face the Giant', hint: 'Step out of the red mark before it lands', action: null };
+  }
+  return {
+    id: 'face-giant',
+    text: 'Face the Giant (everyone who helps gets obsidian)',
+    hint: 'Tap to fight. Step out of the red mark before it lands',
+    action: { kind: 'giant', giantId: input.giant?.id ?? GIANT_ID },
+  };
 }

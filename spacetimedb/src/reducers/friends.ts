@@ -5,7 +5,7 @@ import {
   INVITE_TTL_MICROS, MAX_FRIENDS, PlayerState, SocialNotice, chebyshev, generateInviteCode, joinSpot, normalizeInviteCode,
 } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
-import { holdsStick } from '../lib/brambles';
+import { heldKeys } from '../lib/brambles';
 import { clearInteractions, currentTick, findPlayer, requirePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { notify } from '../lib/social';
 import type { Ctx } from '../lib/types';
@@ -74,11 +74,14 @@ export const redeemInvite = spacetimedb.reducer(
     } else if (chebyshev(p, inviter) <= 2) {
       text = `${inviter.name} is your friend now.`;
     } else {
-      const spot = joinSpot(inviter, holdsStick(ctx, p), blockedTiles(ctx));
+      const keys = heldKeys(ctx, p);
+      const spot = joinSpot(inviter, keys.stick, blockedTiles(ctx), keys.club);
       clearInteractions(ctx, p);
       p.x = spot.tile.x;
       p.z = spot.tile.z;
-      text = spot.clamped
+      text = spot.barrier === 'boulders'
+        ? `${inviter.name} is past the boulder line. You need a stone club to reach them, so you landed at the nearest spot on the Coast.`
+        : spot.clamped
         ? `${inviter.name} is past the brambles. You need a sturdy stick to reach them, so you washed up at the nearest spot in the Grove.`
         : `You joined ${inviter.name}.`;
     }

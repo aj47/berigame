@@ -198,6 +198,11 @@ export function useAppearanceRows() {
   return useRows<any>(tables.appearance) as readonly import('../module_bindings/types').Appearance[];
 }
 
+/** The Boulders' Giant (one row; absent until the first tick seeds it). */
+export function useGiants() {
+  return useRows<any>(tables.giant) as readonly import('../module_bindings/types').Giant[];
+}
+
 /** The Grove's training dummies (one row). */
 export function useTrainingDummies() {
   return useRows<any>(tables.trainingDummy) as readonly import('../module_bindings/types').TrainingDummy[];

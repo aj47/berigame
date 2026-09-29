@@ -4,6 +4,7 @@ import {
   groundItem, inventorySlot, player, tickSchedule, trainingDummy, tree, world,
   playStats,
   inviteCode, friend, trade, socialEvent,
+  giant, giantContribution, giantEvent,
 } from './tables';
 
 export const spacetimedb = schema({
@@ -27,5 +28,8 @@ export const spacetimedb = schema({
   friend,
   trade,
   socialEvent,
+  giant,
+  giantContribution,
+  giantEvent,
 });
 export default spacetimedb;

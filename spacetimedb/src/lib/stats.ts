@@ -68,7 +68,8 @@ export function statsPosition(ctx: Ctx, id: Identity, at: Tile): void {
   if (area === 'grove') return;
   edit(ctx, id, (row) => {
     if (area === 'hedge' && !row.reachedHedgeAt) return { ...row, reachedHedgeAt: ctx.timestamp, lastStep: furthest(row.lastStep, 'hedge') };
-    if (area === 'coast' && !row.reachedCoastAt) {
+    // Past the boulder line counts as having reached the Coast (no separate Boulders column yet).
+    if ((area === 'coast' || area === 'boulder-line' || area === 'boulders') && !row.reachedCoastAt) {
       return { ...row, reachedHedgeAt: row.reachedHedgeAt ?? ctx.timestamp, reachedCoastAt: ctx.timestamp, lastStep: furthest(row.lastStep, 'coast') };
     }
     return undefined;
