@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { DbConnection, tables } from '../src/module_bindings';
-import { EventKind, HOTBAR_SIZE, STICK_ITEM_ID, TICK_MS, chebyshev } from '../../shared/sim';
+import { EventKind, HOTBAR_SIZE, RESPAWN_GRACE_TICKS, STICK_ITEM_ID, TICK_MS, chebyshev } from '../../shared/sim';
 import { STICK_SWING_MS } from '../src/animation/stickSwing';
 
 const { chromium } = createRequire(path.join(__dirname, 'stick-swing-capture.ts'))(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -50,12 +50,18 @@ const row = (c: any) => c.conn.db.player.identity.find(c.identity);
 const tick = (c: any) => c.conn.db.world.id.find(0)?.tick ?? 0;
 const sticks = (c: any) => [...c.conn.db.inventorySlot.iter()].filter((r: any) => r.owner.toHexString() === c.hex && r.itemId === STICK_ITEM_ID);
 
+const berries = (c: any) => [...c.conn.db.inventorySlot.iter()].filter((r: any) => r.owner.toHexString() === c.hex && r.itemId.startsWith('berry_'));
+const berryCount = (c: any) => berries(c).reduce((n: number, r: any) => n + r.quantity, 0);
+
 /** Harvest the nearest ripe tree until the STICK_DROP_CHANCE roll finds a stick. */
-async function findStick(c: any, timeout = 480_000) {
+const findStick = (c: any) => harvestUntil(c, () => sticks(c).length > 0, 'no stick found');
+
+/** Harvest the nearest free ripe tree until `enough()` holds. */
+async function harvestUntil(c: any, enough: () => boolean, failure: string, timeout = 480_000) {
   const start = Date.now();
   const done = () => c.events.filter((e: any) => e.kind === EventKind.HarvestDone && e.attacker.toHexString() === c.hex).length;
-  while (!sticks(c).length) {
-    if (Date.now() - start > timeout) throw new Error('no stick found');
+  while (!enough()) {
+    if (Date.now() - start > timeout) throw new Error(failure);
     const me = row(c), T = tick(c);
     const tree = [...c.conn.db.tree.iter()].filter((t: any) => !t.harvester && t.cooldownUntilTick <= T)
       .sort((x: any, y: any) => chebyshev(me, x) - chebyshev(me, y) || x.id - y.id)[0];
@@ -72,6 +78,7 @@ async function main() {
   const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL ?? 'chrome', headless: true });
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1.5 });
   const page = await context.newPage();
+  page.setDefaultTimeout(120_000); // software rendering: a screenshot can take tens of seconds
   const errors: string[] = [];
   page.on('pageerror', (e: Error) => errors.push(e.message));
   await page.addInitScript({ content: 'window.__name = value => value;' });
@@ -99,24 +106,42 @@ async function main() {
   const quickLabel = (slot: number) => page.evaluate((slot: number) => document.querySelector(`.combat-hud .hotbar-slot[data-slot="${slot}"]`)?.getAttribute('aria-label') ?? '', slot);
   await page.mouse.move(640, 450); await page.mouse.wheel(0, -420); await sleep(600);
 
-  // Everyone spawns on the same tile; move the dummy off it first so its click box can't cover the stick.
-  // The follow camera sits behind the spawn tile: +x runs down-right on screen and -z up-right. A dummy
+  // M1: spawn is the centre of a safe ring (radius 2) where attacks are rejected, and new characters
+  // are in first-spawn grace until they find or pick up a stick, attack, or 3:00 passes. So the fight
+  // happens at HOME, south of the ring, and the dummy is released from grace by picking up the helper's
+  // stick first (a stick pickup ends grace 10 ticks later), then drops it for the browser player.
+  // The follow camera sits behind the player: +x runs down-right on screen and -z up-right. A dummy
   // at (+1, -1) stands beside the player (the chop is seen side-on) and the stick drops at (-1, +1) on
   // the other side, within pickup range and never behind another avatar's click box.
-  const HOME = { x: 25, z: 25 }, DUMMY = { x: 26, z: 24 }, DROP = { x: 24, z: 26 };
-  await dummy.conn.reducers.setTarget(DUMMY);
+  const HOME = { x: 25, z: 30 }, DUMMY = { x: 26, z: 29 }, DROP = { x: 24, z: 31 };
 
-  // 1. The helper finds a stick and drops it next to the browser player's spawn tile.
-  console.log('helper is harvesting for a stick…');
-  await findStick(helper);
+  // 1. The helper finds a stick and hands it to the dummy (ending the dummy's grace).
+  // New characters start on 20 HP (M1): the dummy gathers berries to eat through the fight.
+  console.log('helper is harvesting for a stick, the dummy for berries…');
+  await Promise.all([findStick(helper), harvestUntil(dummy, () => berryCount(dummy) >= 4, 'dummy found no berries')]);
   await helper.conn.reducers.setTarget(DROP);
-  await waitFor('helper beside spawn', () => row(helper)?.x === DROP.x && row(helper)?.z === DROP.z, 30_000);
+  await dummy.conn.reducers.setTarget({ x: DROP.x + 1, z: DROP.z });
+  await waitFor('helper at the drop tile', () => row(helper)?.x === DROP.x && row(helper)?.z === DROP.z, 30_000);
   await helper.conn.reducers.dropItem({ slot: sticks(helper)[0].slot, quantity: 1 });
-  const ground = await waitFor('stick on the ground', () => [...helper.conn.db.groundItem.iter()].find((g: any) => g.itemId === STICK_ITEM_ID && g.x === DROP.x && g.z === DROP.z));
-  await helper.conn.reducers.setTarget({ x: 22, z: 21 });
+  const handoff = await waitFor('stick on the ground', () => [...helper.conn.db.groundItem.iter()].find((g: any) => g.itemId === STICK_ITEM_ID && g.x === DROP.x && g.z === DROP.z));
+  await helper.conn.reducers.setTarget({ x: 20, z: 36 });
+  await waitFor('dummy beside the stick', () => chebyshev(row(dummy), handoff) <= 1, 30_000);
+  await dummy.conn.reducers.pickupItem({ id: handoff.id });
+  await waitFor('dummy holds the stick', () => sticks(dummy).length > 0, 10_000);
+  await dummy.conn.reducers.setTarget(DROP);
+  await waitFor('dummy at the drop tile', () => row(dummy)?.x === DROP.x && row(dummy)?.z === DROP.z, 30_000);
+  await dummy.conn.reducers.dropItem({ slot: sticks(dummy)[0].slot, quantity: 1 });
+  const ground = await waitFor('stick on the ground again', () => [...dummy.conn.db.groundItem.iter()].find((g: any) => g.itemId === STICK_ITEM_ID && g.x === DROP.x && g.z === DROP.z));
+  await dummy.conn.reducers.setTarget(DUMMY);
+  await waitFor('dummy out of grace', () => tick(dummy) >= row(dummy).respawnTick + RESPAWN_GRACE_TICKS, 20_000);
+
+  // The browser player walks to HOME so the camera frames the drop tile and the dummy.
+  await clickTile(HOME.x, HOME.z);
+  await step('walk home', () => waitFor('at home', async () => { const m = await me(); return m.x === HOME.x && m.z === HOME.z; }, 20_000));
+  await sleep(2500); // let the follow camera settle
 
   // 2. The browser player picks it up through the UI and wields it with key 1.
-  await waitFor('helper walked off', () => chebyshev(row(helper), ground) > 2, 30_000);
+  await waitFor('dummy walked off', () => row(dummy)?.x === DUMMY.x && row(dummy)?.z === DUMMY.z, 30_000);
   await sleep(1000);
   try {
     // The item sprite floats about 0.42 above the tile, next to the player's own click box:
@@ -132,7 +157,7 @@ async function main() {
   } catch (e) {
     await page.screenshot({ path: path.join(OUT, 'debug-pickup.png') });
     console.error(JSON.stringify({
-      helper: { hex: helper.hex.slice(-4), row: { x: row(helper).x, z: row(helper).z } }, ground: { x: ground.x, z: ground.z },
+      dummy: { hex: dummy.hex.slice(-4), row: { x: row(dummy).x, z: row(dummy).z } }, ground: { x: ground.x, z: ground.z },
       click: await project(ground.x, ground.z, 0.42),
       avatars: await page.evaluate(() => (window as any).__berigameAvatars().map((a: any) => ({ id: a.identity.slice(-4), position: a.position }))),
       dropdown: await page.evaluate(() => document.querySelector('.click-dropdown')?.textContent),
@@ -152,23 +177,36 @@ async function main() {
   // 3. The dummy already stands beside the player's tile, so the player swings without moving the camera.
   await waitFor('dummy in place', () => row(dummy)?.x === DUMMY.x && row(dummy)?.z === DUMMY.z, 30_000);
   const mine = await me();
+  const swingsBy = () => dummy.events.filter((e: any) => e.kind === EventKind.Hit && e.attacker.toHexString() === mine.hex);
+  // Pause the page clock before attacking: the first swing's event then arrives while paused and is
+  // stamped with the paused time, so stepping the clock renders every frame of that swing. (Pausing
+  // after a swing instead is far too slow on a software renderer: the 20 HP dummy dies first.)
+  const pauseStart = Date.now();
+  for (const margin of [60, 150, 300, 600, 1200]) {
+    // A target the page clock has already passed is rejected, so widen the margin on retry.
+    const ok = await page.clock.pauseAt(await page.evaluate(() => Date.now()) + margin).then(() => true, (e: Error) => {
+      if (!/past/.test(e.message)) throw e;
+      return false;
+    });
+    if (ok) break;
+  }
+  console.log(`clock paused in ${Date.now() - pauseStart} ms`);
   await clickTile(DUMMY.x, DUMMY.z, 1.0);
   try { await chooseAction('Attack'); } catch (e) {
     await page.screenshot({ path: path.join(OUT, 'debug-attack.png') });
     console.error(JSON.stringify({ me: await me(), dummy: row(dummy) && { x: row(dummy).x, z: row(dummy).z }, click: await project(DUMMY.x, DUMMY.z, 1.0) }));
     throw e;
   }
-  const before = dummy.events.length;
-  await waitFor('player adjacent', async () => { const m = await me(); return Math.max(Math.abs(m.x - DUMMY.x), Math.abs(m.z - DUMMY.z)) <= 1; });
-  await sleep(1200);
-  // Pause the page clock right after one swing; the next swing's event then arrives while paused and
-  // is stamped with the paused time, so stepping the clock renders every frame of that swing.
-  const swingsBy = () => dummy.events.slice(before).filter((e: any) => e.kind === EventKind.Hit && e.attacker.toHexString() === mine.hex);
-  const seen = swingsBy().length;
-  await waitFor('a swing lands', () => swingsBy().length > seen, 10_000);
-  await page.clock.pauseAt(Date.now() + 400);
-  const count = swingsBy().length;
-  const hit = await waitFor('next stick hit', () => swingsBy()[count], 10_000);
+  // The dummy eats whenever it is hurt so it outlives the slow capture below.
+  let eating = true;
+  (async () => {
+    while (eating) {
+      const b = berries(dummy)[0];
+      if (b && row(dummy)?.hp <= 14) await dummy.conn.reducers.eatBerry({ slot: b.slot }).catch(() => {});
+      await sleep(TICK_MS);
+    }
+  })();
+  const hit = await step('first stick hit', () => waitFor('first stick hit', () => swingsBy()[0], 15_000));
   await sleep(400); // the browser's socket delivers the same event
   // The server keeps ticking while the page clock is paused and capturing is slow, so stop attacking
   // (Stop / Esc) to keep later swings, and the dummy's death, out of the frames.
@@ -188,6 +226,7 @@ async function main() {
     frames.push({ file, stepMs: (frames.length + 1) * STEP_MS, clip: avatar?.clip, cue: avatar?.cue, weapon: avatar?.weapon });
   }
   await page.clock.resume();
+  eating = false;
   await page.screenshot({ path: path.join(OUT, '02-after-swing.png') });
   const report = { url: URL, database: DB, event: { kind: hit.kind, damage: hit.damage, itemId: hit.itemId }, stepMs: STEP_MS, frames, errors };
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2));

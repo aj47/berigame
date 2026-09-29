@@ -39,48 +39,45 @@ const clickTile = async (page, x, z, y = 0) => {
 
 // Mirrors shared/sim (constants.ts, items.ts); this plain-node script cannot import TypeScript.
 const PUNCH_DAMAGE = 3;
+const MAX_HP = 30;
+const FIRST_SPAWN_HP = 20;
 const STICK_DAMAGE = 6;
-const TREE_TILES = [[40, 30], [30, 35], [20, 30], [30, 25], [15, 20], [25, 15]];
 const quickSlot = (page, n) => page.locator(`.combat-hud .hotbar-slot[data-slot="${n}"]`);
 const quickLabels = (page) => page.locator('.combat-hud .hotbar-slot').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
 const openBag = async (page) => { if (!(await page.locator('.inventory-panel').count())) await page.click('[data-panel="inventory"]'); await page.waitForSelector('.inventory-panel'); };
 const closeBag = async (page) => { if (await page.locator('.inventory-panel').count()) await page.getByRole('button', { name: 'Close inventory', exact: true }).click(); };
 const bagLabels = async (page) => { await openBag(page); return page.locator('.inventory-slot').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label'))); };
 const stickSlot = async (page) => (await bagLabels(page)).findIndex((label) => /^Slot \d+: Stick\b/.test(label ?? ''));
-const onScreen = (p) => p.x > 60 && p.x < 1220 && p.y > 90 && p.y < 560;
 
-/** Walk toward a tree until it projects inside the clear part of the viewport, then open its menu and harvest if it is ripe. */
-async function harvestTreeViaUi(page, x, z) {
-  for (let step = 0; step < 8 && !onScreen(await project(page, x, z, 1.5)); step++) {
+/** Walk to a tile a few tiles at a time, so every click lands on screen. */
+async function walkViaUi(page, x, z) {
+  for (let step = 0; step < 12; step++) {
     const me = (await state(page)).me;
+    if (me.x === x && me.z === z) return;
     const dx = Math.sign(x - me.x) * Math.min(4, Math.abs(x - me.x));
     const dz = Math.sign(z - me.z) * Math.min(4, Math.abs(z - me.z));
-    // A plain ground click walks; Escape would trigger Stop, so it is not used here.
     await clickTile(page, me.x + dx, me.z + dz);
-    await sleep(1800);
+    await waitFor(page, 'step walked', (s) => s.me.x === me.x + dx && s.me.z === me.z + dz, 8_000).catch(() => {});
   }
-  await clickTile(page, x, z, 1.5);
-  if (!(await page.waitForSelector('.click-dropdown', { timeout: 3_000 }).catch(() => null))) return false;
-  const harvest = page.locator('.click-dropdown button:has-text("Harvest")');
-  if (!(await harvest.count()) || !(await harvest.first().isEnabled())) { await page.keyboard.press('Escape'); return false; }
-  await harvest.first().click();
-  if (!(await page.waitForSelector('.harvest-progress', { timeout: 15_000 }).catch(() => null))) return false;
-  await page.waitForSelector('.harvest-progress', { state: 'detached', timeout: 15_000 }).catch(() => {});
-  await sleep(700);
-  return true;
+  throw new Error(`could not walk to ${x},${z}`);
 }
 
-/** Harvest trees in turn until the 25% bonus roll puts a stick in the bag. Returns the bag slot index or -1. */
-async function findStickViaUi(page, timeout = 420_000) {
+/**
+ * Harvest until the 25% bonus roll puts a stick in the bag, by tapping the goal chip ("Search the berry
+ * trees for a sturdy stick"), which walks to the tree with the soonest claim. Returns the bag slot or -1.
+ */
+async function findStickViaUi(page, timeout = 600_000) {
   const start = Date.now();
-  for (let i = 0; Date.now() - start < timeout; i++) {
-    const slot = await stickSlot(page);
-    await closeBag(page);
-    if (slot >= 0) return slot;
-    const [x, z] = TREE_TILES[i % TREE_TILES.length];
-    if (!(await harvestTreeViaUi(page, x, z))) await sleep(500);
+  const chip = page.locator('.goal-chip');
+  while (Date.now() - start < timeout) {
+    const goal = await chip.getAttribute('data-goal', { timeout: 2_000 }).catch(() => null);
+    if (goal === 'wield-stick' || goal === 'reach-coast') break;
+    if (goal === 'find-stick' && await chip.isEnabled().catch(() => false)) await chip.click().catch(() => {});
+    await sleep(2_000);
   }
-  return -1;
+  const slot = await stickSlot(page);
+  await closeBag(page);
+  return slot;
 }
 
 const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL ?? 'chrome' });
@@ -128,32 +125,24 @@ try {
   const afterKeys = (await state(A)).me;
   check('pressing empty quick-slot keys changes nothing', afterKeys.weapon === '' && afterKeys.hp === beforeKeys.hp, `weapon=${JSON.stringify(afterKeys.weapon)}`);
 
-  // B attacks A: click A's avatar in B's page, choose Attack from the dropdown.
-  const aPos = (await state(B)).players.find((p) => p.hex === meA.hex);
-  await clickTile(B, aPos.x, aPos.z, 1.2);
-  await B.waitForSelector('.click-dropdown', { timeout: 3_000 });
-  await B.screenshot({ path: `${OUT}/03-dropdown-B.png` });
+  // M1: new characters wash ashore on 20 HP, in first-spawn grace, and spawn sits in a safe ring.
+  check(`a new character starts on ${FIRST_SPAWN_HP}/${MAX_HP} HP`, afterKeys.hp === FIRST_SPAWN_HP, `hp=${afterKeys.hp}`);
+  check('the HUD shows the Safe badge at spawn', await B.locator('.combat-hud .safe-badge').count() === 1);
+  check('the goal chip starts at Pick a berry', /Pick a berry/.test((await A.locator('.goal-chip').textContent().catch(() => '')) ?? ''));
+  // B (in the safe ring) tries to attack A: the server refuses and nothing changes.
+  const graceTile = (await state(B)).players.find((p) => p.hex === aHex);
+  await clickTile(B, graceTile.x, graceTile.z, 1.2);
+  await B.waitForSelector('.click-dropdown', { timeout: 10_000 });
+  await B.screenshot({ path: `${OUT}/03a-safe-ring-B.png` });
   await B.click('.click-dropdown button:has-text("Attack")');
-  const bState = await waitFor(B, 'B targets A', (s) => s.me.target === meA.hex && s.me.hostile, 5_000);
-  check('B is now attacking A', bState.me.target === meA.hex);
-  // Every swing is a Hit: B's bare-handed punch costs A exactly PUNCH_DAMAGE.
-  const punched = await waitFor(A, 'A takes a punch', (s) => s.me.hp < 30, 15_000);
-  check(`a punch deals ${PUNCH_DAMAGE}`, (30 - punched.me.hp) % PUNCH_DAMAGE === 0 && punched.me.hp < 30, `hp=${punched.me.hp}`);
-  await A.waitForSelector('.damage-number', { timeout: 5_000 });
-  await A.screenshot({ path: `${OUT}/04-combat-A.png` });
-  const firstNumber = await A.locator('.damage-number').first().textContent();
-  check('the punch renders its damage over A', (firstNumber ?? '').includes(String(PUNCH_DAMAGE)), firstNumber ?? '');
-  const hud = await A.textContent('.combat-hud');
-  check('HUD shows HP and the punch chip', /HP\s+\d+\s*\/\s*30/.test(hud ?? '') && /Punch/.test(hud ?? ''), hud?.replace(/\s+/g, ' '));
-  await B.locator('.stop-button').click();
-  await waitFor(B, 'on-screen Stop ends attack', (s) => !s.me.hostile && s.me.target === null);
-  await A.keyboard.press('Escape');
-  check('on-screen Stop cancels combat', true);
+  await sleep(1500);
+  check('an attack from the safe ring on a newcomer is refused', !(await state(B)).me.hostile && (await state(A)).me.hp === FIRST_SPAWN_HP);
+  await B.keyboard.press('Escape');
 
   // Harvest: click tree 4 (tile 30,25) in A's page.
   await A.keyboard.press('Escape');
   await clickTile(A, 30, 25, 1.5);
-  await A.waitForSelector('.click-dropdown', { timeout: 3_000 });
+  await A.waitForSelector('.click-dropdown', { timeout: 10_000 });
   // A previous local run may have harvested this shared tree recently.
   for (let retry = 0; retry < 35 && !(await A.locator('.click-dropdown .context-action:enabled').count()); retry++) {
     await sleep(1000);
@@ -217,6 +206,35 @@ try {
       found = 0;
       await closeBag(A);
     }
+    // A found a stick, which ends A's grace 10 ticks later. B walks out of the safe ring and punches A
+    // (an accepted attack ends B's own grace too), so A can hit back with the stick below.
+    await clickTile(B, 25, 28);
+    await waitFor(B, 'B leaves the safe ring', (s) => s.me.x === 25 && s.me.z === 28, 10_000);
+    await walkViaUi(A, 27, 28);
+    // The Safe badge shows while in the safe ring or in grace.
+    await A.waitForSelector('.combat-hud .safe-badge', { state: 'detached', timeout: 15_000 });
+    // B attacks A: click A's avatar in B's page, choose Attack from the dropdown.
+    const aPos = (await state(B)).players.find((p) => p.hex === meA.hex);
+    await clickTile(B, aPos.x, aPos.z, 1.2);
+    await B.waitForSelector('.click-dropdown', { timeout: 10_000 });
+    await B.screenshot({ path: `${OUT}/03-dropdown-B.png` });
+    await B.click('.click-dropdown button:has-text("Attack")');
+    const bState = await waitFor(B, 'B targets A', (s) => s.me.target === meA.hex && s.me.hostile, 5_000);
+    check('B is now attacking A', bState.me.target === meA.hex);
+    // Every swing is a Hit: B's bare-handed punch costs A exactly PUNCH_DAMAGE.
+    const aHp = (await state(A)).me.hp;
+    const punched = await waitFor(A, 'A takes a punch', (s) => s.me.hp < aHp, 15_000);
+    check(`a punch deals ${PUNCH_DAMAGE}`, (aHp - punched.me.hp) % PUNCH_DAMAGE === 0 && punched.me.hp < aHp, `hp=${aHp}->${punched.me.hp}`);
+    await A.waitForSelector('.damage-number', { timeout: 5_000 });
+    await A.screenshot({ path: `${OUT}/04-combat-A.png` });
+    const firstNumber = await A.locator('.damage-number').first().textContent();
+    check('the punch renders its damage over A', (firstNumber ?? '').includes(String(PUNCH_DAMAGE)), firstNumber ?? '');
+    const hud = await A.textContent('.combat-hud');
+    check('HUD shows HP and the punch chip', /HP\s+\d+\s*\/\s*30/.test(hud ?? '') && /Punch/.test(hud ?? ''), hud?.replace(/\s+/g, ' '));
+    await B.locator('.stop-button').click();
+    await waitFor(B, 'on-screen Stop ends attack', (s) => !s.me.hostile && s.me.target === null);
+    await A.keyboard.press('Escape');
+    check('on-screen Stop cancels combat', true);
     await A.keyboard.press(String(found + 1));
     await waitFor(A, 'A wields the stick', (s) => s.me.weapon === 'stick', 5_000);
     check('the quick-slot key wields the stick', (await quickSlot(A, found).getAttribute('aria-pressed')) === 'true'

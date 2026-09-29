@@ -54,7 +54,9 @@ try {
   await page.getByRole('button',{name:'Send',exact:true}).tap();
   await page.getByRole('button',{name:'Close chat'}).tap();
   await page.locator('.player-chat-bubble').filter({hasText:'A readable bubble'}).waitFor();
-  const bubble=await page.locator('.player-chat-bubble').filter({hasText:'A readable bubble'}).boundingBox();
+  // A slow renderer can hide the bubble for a frame between waitFor and the measurement: retry briefly.
+  let bubble=null;for(let i=0;i<20&&!bubble;i++){bubble=await page.locator('.player-chat-bubble').filter({hasText:'A readable bubble'}).first().boundingBox();if(!bubble)await page.waitForTimeout(250);}
+  if(!bubble)throw new Error('chat bubble never measurable: '+JSON.stringify(await page.locator('.player-chat-bubble').evaluateAll(els=>els.map(e=>({text:e.textContent,style:e.getAttribute('style'),cls:e.className,parent:getComputedStyle(e.parentElement).display})))));
   check('chat bubble wraps across a readable width',bubble.width>100 && bubble.height<150);
   await page.screenshot({path:`${out}/phone-chat.png`});
   await page.getByRole('button',{name:/^Help/}).tap();

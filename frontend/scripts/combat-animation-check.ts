@@ -10,7 +10,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { DbConnection, tables } from '../src/module_bindings';
-import { chebyshev, EventKind, getItemDef, HOTBAR_SIZE, PUNCH_DAMAGE, STICK_ITEM_ID, TICK_MS } from '../../shared/sim';
+import { chebyshev, EventKind, getItemDef, HOTBAR_SIZE, inGrace, PUNCH_DAMAGE, STICK_ITEM_ID, TICK_MS } from '../../shared/sim';
 import { STICK_SWING_CLIP, STICK_SWING_IMPACT_MS } from '../src/animation/stickSwing';
 const { chromium } = createRequire(path.join(__dirname, 'combat-animation-check.ts'))(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
@@ -51,12 +51,16 @@ const row = (c: any) => c.conn.db.player.identity.find(c.identity);
 const tick = (c: any) => c.conn.db.world.id.find(0)?.tick ?? 0;
 const sticks = (c: any) => [...c.conn.db.inventorySlot.iter()].filter((r: any) => r.owner.toHexString() === c.hex && r.itemId === STICK_ITEM_ID);
 function check(label: string, ok: boolean) { console.log(`${ok?'PASS':'FAIL'} ${label}`); if (!ok) report.failures.push(label); }
+const berries = (c: any) => [...c.conn.db.inventorySlot.iter()].filter((r: any) => r.owner.toHexString() === c.hex && r.itemId.startsWith('berry_'));
+const berryCount = (c: any) => berries(c).reduce((n: number, r: any) => n + r.quantity, 0);
 /** Harvest the nearest ready tree until a stick turns up. Returns the number of completed harvests. */
-async function findStick(c: any, timeout = 420_000) {
+const findStick = (c: any) => harvestUntil(c, () => sticks(c).length > 0, 'no stick');
+/** Harvest the nearest ready tree until `enough()`. Returns the number of completed harvests. */
+async function harvestUntil(c: any, enough: () => boolean, failure: string, timeout = 420_000) {
   const start = Date.now(); let harvests = 0;
   const done = () => c.events.filter((e: any) => e.kind === EventKind.HarvestDone && e.attacker.toHexString() === c.hex).length;
-  while (!sticks(c).length) {
-    if (Date.now() - start > timeout) throw new Error(`no stick after ${harvests} harvests`);
+  while (!enough()) {
+    if (Date.now() - start > timeout) throw new Error(`${failure} after ${harvests} harvests`);
     const me = row(c), T = tick(c);
     const tree = [...c.conn.db.tree.iter()].filter((t: any) => !t.harvester && t.cooldownUntilTick <= T)
       .sort((x: any, y: any) => chebyshev(me, x) - chebyshev(me, y) || x.id - y.id)[0];
@@ -66,6 +70,14 @@ async function findStick(c: any, timeout = 420_000) {
     try { await waitFor('stick-hunt harvest', () => done() > before, 20000); harvests++; } catch { await c.conn.reducers.cancel({}); }
   }
   return harvests;
+}
+/** New characters start on 20 HP (M1): eat back up so a retried case cannot kill the defender. */
+async function topUp(c: any) {
+  while (row(c).hp <= 16 && berries(c).length) {
+    const hp = row(c).hp;
+    await c.conn.reducers.eatBerry({ slot: berries(c)[0].slot }).catch(() => {});
+    await waitFor('ate', () => row(c).hp > hp, 5000).catch(() => {});
+  }
 }
 /** Put the actor's stick into a quick slot (if needed) and wield it. */
 async function wieldStick(c: any) {
@@ -91,19 +103,35 @@ async function main() {
 try {
   const a = await connect(), b = await connect();
   browser = await chromium.launch({ channel: 'chrome', headless: true });
-  context = await browser.newContext({ viewport: { width: 1280, height: 900 }, recordVideo: { dir: OUT, size: { width: 1280, height: 900 } } });
+  // COMBAT_VIEWPORT=WxH shrinks the page on slow software-GL hosts; COMBAT_VIDEO=0 skips the recording.
+  const [vw, vh] = (process.env.COMBAT_VIEWPORT ?? '1280x900').split('x').map(Number);
+  context = await browser.newContext({ viewport: { width: vw, height: vh }, ...(process.env.COMBAT_VIDEO === '0' ? {} : { recordVideo: { dir: OUT, size: { width: vw, height: vh } } }) });
   const page = await context.newPage();
   await page.addInitScript({ content: 'window.__name = value => value;' });
   page.on('pageerror', (e: Error) => report.errors.push(e.message));
   page.on('console', (m: any) => { if(m.type()==='error') report.errors.push(m.text()); });
   await page.goto(URL);
   await page.waitForFunction(() => !!(window as any).__berigameAvatars && !(document.querySelector('.loading-screen')), null, { timeout: 25000 });
-  await page.mouse.move(650,450); await page.mouse.wheel(0,-350); await sleep(500);
+  await page.mouse.move(vw/2,vh/2); await page.mouse.wheel(0,-350); await sleep(500);
+  // M1: new characters are in first-spawn grace (nobody can attack them) until they find or pick up
+  // a stick, attack, or 3:00 passes. A finds a stick, hands it to B and gets it back: each pickup
+  // ends that actor's grace 10 ticks later. The stick stays in A's bag (unwielded) for the punch case.
+  // Meanwhile B gathers berries to eat between cases.
+  [report.stick.harvestsForA] = await Promise.all([findStick(a), harvestUntil(b, () => berryCount(b) >= 4, 'too few berries')]);
+  const handOver = async (from: any, to: any) => {
+    await from.conn.reducers.dropItem({ slot: sticks(from)[0].slot, quantity: 1 });
+    let ground: any;
+    await waitFor('stick on the ground', () => !!(ground = [...to.conn.db.groundItem.iter()].find((g: any) => g.itemId === STICK_ITEM_ID && g.droppedBy.toHexString() === from.hex)));
+    await to.conn.reducers.pickupItem({ id: ground.id });
+    await waitFor('stick picked up', () => sticks(to).length > 0, 30000);
+  };
+  await handOver(a, b);
+  await handOver(b, a);
+  await waitFor('both actors out of grace', () => [a, b].every(c => !inGrace(row(c), tick(c))), 20000);
   for (const item of cases) {
     const label = item.label;
-    if (item.holder === 'a' && !sticks(a).length) {
+    if (item.holder === 'a') {
       await a.conn.reducers.cancel({}); await b.conn.reducers.cancel({});
-      report.stick.harvestsForA = await findStick(a);
       await wieldStick(a);
     }
     if (item.holder === 'b') {
@@ -119,34 +147,45 @@ try {
       report.stick.handedToB = true;
     }
     await a.conn.reducers.cancel({}); await b.conn.reducers.cancel({});
-    await a.conn.reducers.setTarget({ x: 24, z: 27 });
-    await b.conn.reducers.setTarget({ x: 25, z: 27 });
-    await waitFor('actors in place', () => row(a)?.x===24 && row(a)?.z===27 && row(b)?.x===25 && row(b)?.z===27, 30000);
+    // Just south of the safe ring (Chebyshev radius 2 around spawn), in view of the spawn camera.
+    await a.conn.reducers.setTarget({ x: 24, z: 28 });
+    await b.conn.reducers.setTarget({ x: 25, z: 28 });
+    await waitFor('actors in place', () => row(a)?.x===24 && row(a)?.z===28 && row(b)?.x===25 && row(b)?.z===28, 30000);
     await sleep(850); // Let confirmed travel and its short animation hold finish.
-    const before = a.events.length;
-    const beforeRows = [row(a),row(b)].map(p => ({ x:p.x,z:p.z,hp:p.hp,weapon:p.weapon }));
-    await page.evaluate(({ identities, impact }: any) => {
-      const w=window as any; w.__combatFrames=[]; w.__combatDone=false; w.__combatContact=false;
-      const started=performance.now(); let cueAt: number|null=null;
-      const frame=(now: number) => {
-        const actors=identities.map((hex: string) => w.__berigameAvatars().find((p: any)=>p.identity===hex));
-        if(cueAt===null && actors.some((p: any)=>p?.cue)) cueAt=now;
-        w.__combatFrames.push({ at:now-started, cueElapsed:cueAt===null?null:now-cueAt, actors });
-        if(cueAt!==null && now-cueAt>=impact-25) w.__combatContact=true;
-        if((cueAt!==null && now-cueAt>1100)||now-started>6000) w.__combatDone=true;
-        else requestAnimationFrame(frame);
-      };
-      requestAnimationFrame(frame);
-    }, { identities:[a.hex,b.hex], impact:item.impact });
-    await a.conn.reducers.attack({ target:b.identity });
-    const isSwing = (e:any)=>e.attacker.toHexString()===a.hex && e.defender.toHexString()===b.hex && e.kind===EventKind.Hit;
-    await waitFor('authoritative swing',()=>a.events.slice(before).some(isSwing));
-    const event = a.events.slice(before).find(isSwing);
-    await a.conn.reducers.cancel({}); await b.conn.reducers.cancel({});
-    await page.waitForFunction(()=>(window as any).__combatContact,null,{polling:'raf',timeout:6000});
+    let before = 0, beforeRows: any[] = [], event: any;
+    // Software GL can stall for over a second between frames, longer than the 1.4 s cue: a swing
+    // can then come and go between two samples. Retry such a case (the defender has HP to spare).
+    for (let attempt = 1; ; attempt++) {
+      await topUp(a); await topUp(b);
+      before = a.events.length;
+      beforeRows = [row(a),row(b)].map(p => ({ x:p.x,z:p.z,hp:p.hp,weapon:p.weapon }));
+      await page.evaluate(({ identities, impact }: any) => {
+        const w=window as any; w.__combatFrames=[]; w.__combatDone=false; w.__combatContact=false;
+        const started=performance.now(); let cueAt: number|null=null;
+        const frame=(now: number) => {
+          const actors=identities.map((hex: string) => w.__berigameAvatars().find((p: any)=>p.identity===hex));
+          if(cueAt===null && actors.some((p: any)=>p?.cue)) cueAt=now;
+          w.__combatFrames.push({ at:now-started, cueElapsed:cueAt===null?null:now-cueAt, actors });
+          if(cueAt!==null && now-cueAt>=impact-25) w.__combatContact=true;
+          if((cueAt!==null && now-cueAt>1100)||now-started>20000) w.__combatDone=true; // software GL can take ~1s a frame
+          else requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      }, { identities:[a.hex,b.hex], impact:item.impact });
+      await a.conn.reducers.attack({ target:b.identity });
+      const isSwing = (e:any)=>e.attacker.toHexString()===a.hex && e.defender.toHexString()===b.hex && e.kind===EventKind.Hit;
+      await waitFor('authoritative swing',()=>a.events.slice(before).some(isSwing));
+      event = a.events.slice(before).find(isSwing);
+      await a.conn.reducers.cancel({}); await b.conn.reducers.cancel({});
+      const contact = await page.waitForFunction(()=>(window as any).__combatContact,null,{polling:'raf',timeout:30000}).then(()=>true,()=>false);
+      if (contact) break;
+      const info = await page.evaluate(()=>{ const f=(window as any).__combatFrames; return { frames:f.length, maxGapMs:Math.max(0,...f.slice(1).map((x:any,i:number)=>x.at-f[i].at)) }; });
+      if (attempt < 3 && info.maxGapMs > 1000) { console.log(`RETRY ${label}: no cue sampled (${info.frames} frames, max gap ${Math.round(info.maxGapMs)}ms)`); await sleep(3000); continue; }
+      throw new Error(`${label}: the spectator never showed a cue (${JSON.stringify(info)})`);
+    }
     const screenshotAt = await page.evaluate(()=>(window as any).__combatFrames.at(-1));
     await page.screenshot({path:path.join(OUT,`${label}-contact.png`)});
-    await page.waitForFunction(()=>(window as any).__combatDone,null,{polling:'raf',timeout:6000});
+    await page.waitForFunction(()=>(window as any).__combatDone,null,{polling:'raf',timeout:30000});
     const frames = await page.evaluate(()=>(window as any).__combatFrames);
     const active = frames.filter((f:any)=>f.cueElapsed!==null);
     const sequences = [0,1].map(index => active.reduce((out:any[], f:any) => {
@@ -157,12 +196,15 @@ try {
     const attackerAction = sequences[0].find((s:any)=>s.cue?.endsWith(':action'));
     check(`${label}: attacker plays ${item.attackerClip}`, attackerAction?.clip===item.attackerClip);
     const reaction = sequences[1].find((s:any)=>['Hit','HitHeavy','HitBack'].includes(s.clip) && s.cue?.endsWith(':reaction'));
-    check(`${label}: defender reacts with a hit clip`, !!reaction && reaction.atMs >= (attackerAction?.atMs ?? 0));
     // The reaction waits for impact. Only assert the delay when frames are fine enough to resolve it:
     // software-GL headless Chrome can render every ~400ms, so swing and reaction share the first sample.
     const gaps = active.slice(1).map((f:any,i:number)=>f.cueElapsed-active[i].cueElapsed).sort((x:number,y:number)=>x-y);
     const frameMs = gaps.length ? gaps[Math.floor(gaps.length/2)] : Infinity;
+    const maxGapMs = gaps.length ? gaps[gaps.length-1] : Infinity;
     report.frameMs = Math.max(report.frameMs ?? 0, frameMs);
+    // The reaction cue is live from impact until the 1.4 s cue expiry; a coarser sampling can miss it.
+    if (reaction || maxGapMs < 1400 - item.impact) check(`${label}: defender reacts with a hit clip`, !!reaction && reaction.atMs >= (attackerAction?.atMs ?? 0));
+    else console.log(`SKIP ${label}: defender reaction not sampled (frames up to ${Math.round(maxGapMs)}ms apart)`);
     if (frameMs < item.impact / 2) check(`${label}: defender reaction waits for impact`, !!reaction && reaction.atMs > 0);
     else console.log(`SKIP ${label}: reaction delay not resolvable at ${Math.round(frameMs)}ms per frame`);
     check(`${label}: defender does not swing`, !sequences[1].some((s:any)=>s.clip==='Strike' || s.clip===STICK_SWING_CLIP));

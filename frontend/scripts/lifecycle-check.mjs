@@ -25,10 +25,10 @@ try {
   // A fresh character's quick slots are empty (disabled), so keyboard activation is checked on Stop:
   // start a long walk, press Enter on the focused Stop button, and the character must halt short of it.
   const start = await page.evaluate(() => ({ x: window.__berigame.me.x, z: window.__berigame.me.z }));
-  const goal = { x: start.x + 8, z: start.z };
+  const goal = { x: start.x + 10, z: start.z }; // far enough that a slow page presses Stop mid-walk
   const target = await page.evaluate(({ x, z }) => window.__berigameProject(x, z, 0), goal);
   await page.mouse.click(target.x, target.y);
-  await page.waitForFunction((s) => window.__berigame.me.x !== s.x || window.__berigame.me.z !== s.z, start, { timeout: 5_000 });
+  await page.waitForFunction((s) => window.__berigame.me.x !== s.x || window.__berigame.me.z !== s.z, start, { timeout: 10_000 });
   await page.locator('.combat-hud .stop-button').focus();
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1_500);
@@ -65,12 +65,17 @@ try {
 
   // Carry a genuine local legacy credential into a fresh browser storage scope.
   // Credentials stay in this process/browser only and are never written to the report.
+  // The client migrates the unscoped token only for the default local server (port 3000).
+  const localDefault = /^ws:\/\/(localhost|127\.0\.0\.1|\[::1\]):3000$/.test(decodeURIComponent(scopedKey.split(':v2:')[1].split(':').slice(0, -1).join(':')));
+  if (!localDefault) console.log('SKIP legacy token migration: only the default local server (port 3000) migrates');
+  else {
   const legacy = await browser.newContext();
   await legacy.addInitScript((token) => { if (!sessionStorage.getItem('legacy-seeded')) { localStorage.setItem('berigame_stdb_token', token); sessionStorage.setItem('legacy-seeded', 'yes'); } }, originalToken);
   const old = await legacy.newPage(); await old.goto(url); await ready(old);
   check('legacy local token migration preserves the existing character', await identity(old) === originalIdentity);
   check('legacy migration preserves the original token copy', await old.evaluate((key) => localStorage.getItem(key) === localStorage.getItem('berigame_stdb_token'), scopedKey));
   await legacy.close();
+  }
 
   const invalid = await browser.newContext();
   await invalid.addInitScript((key) => { if (!sessionStorage.getItem('invalid-seeded')) { localStorage.setItem(key, 'invalid-audit-token'); sessionStorage.setItem('invalid-seeded', 'yes'); } }, scopedKey);
@@ -89,6 +94,8 @@ try {
   await invalid.close();
 } catch (error) { report.failures.push(String(error)); console.error(error); }
 finally { await browser.close(); }
-const out = new URL('../../docs/art/game-review/lifecycle-validation.json', import.meta.url);
+// OUT_DIR keeps ad-hoc runs out of the committed evidence folder.
+const out = process.env.OUT_DIR ? `${process.env.OUT_DIR}/lifecycle-validation.json` : new URL('../../docs/art/game-review/lifecycle-validation.json', import.meta.url);
+if (process.env.OUT_DIR) fs.mkdirSync(process.env.OUT_DIR, { recursive: true });
 fs.writeFileSync(out, JSON.stringify(report, null, 2) + '\n');
 process.exitCode = report.failures.length ? 1 : 0;

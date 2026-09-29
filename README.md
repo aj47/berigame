@@ -110,6 +110,16 @@ cd frontend && npm run smoke       # drives two SDK clients through every reduce
 against the Vite dev server (movement, quick slots, combat, harvest, eat, chat,
 refresh persistence and death/respawn). `mobile-check.mjs` covers touch interactions, `cross-browser-check.mjs` covers installed WebKit/Firefox engines, and `render-check.ts` records rendering/resource measurements. See [graphics progress and verification](docs/PLAYABLE_GRAPHICS_PROGRESS.md) for local-runtime details and qualification limits.
 
+The browser scripts follow the Grove rules: they fight outside the safe ring
+(Chebyshev radius 2 around spawn) and end first-spawn grace by finding or
+picking up a stick, attacking, or waiting out the 3:00. Point them at any
+server with `GAME_URL`, `SPACETIME_URI` and `SPACETIME_DB`; `SHOT_DIR` (and
+`OUT_DIR`, `RENDER_REPORT`, `COMBAT_REPORT_DIR`, `SWING_CAPTURE_DIR`) keep
+ad-hoc runs out of `docs/art/game-review/`. On a host without a GPU,
+frame-sampling asserts log `SKIP` instead of failing, and
+`COMBAT_VIEWPORT=640x450 COMBAT_VIDEO=0` makes `combat-animation-check.ts`
+render fast enough to sample each swing.
+
 ## Deployment
 
 - **Server**: `spacetime publish berigame` to Maincloud (or a self-hosted
