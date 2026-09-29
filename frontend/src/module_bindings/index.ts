@@ -34,11 +34,15 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AddFriendReducer from "./add_friend_reducer";
 import AttackReducer from "./attack_reducer";
 import AttackDummyReducer from "./attack_dummy_reducer";
 import CancelReducer from "./cancel_reducer";
+import CancelTradeRequestReducer from "./cancel_trade_request_reducer";
 import ConfigureAccessReducer from "./configure_access_reducer";
+import ConfirmTradeReducer from "./confirm_trade_reducer";
 import CraftReducer from "./craft_reducer";
+import CreateInviteReducer from "./create_invite_reducer";
 import DropItemReducer from "./drop_item_reducer";
 import EatBerryReducer from "./eat_berry_reducer";
 import EmoteReducer from "./emote_reducer";
@@ -47,12 +51,17 @@ import GrantAgentReducer from "./grant_agent_reducer";
 import GrantPlayerReducer from "./grant_player_reducer";
 import MoveItemReducer from "./move_item_reducer";
 import PickupItemReducer from "./pickup_item_reducer";
+import RedeemInviteReducer from "./redeem_invite_reducer";
+import RemoveFriendReducer from "./remove_friend_reducer";
 import RenewGrantReducer from "./renew_grant_reducer";
+import RequestTradeReducer from "./request_trade_reducer";
+import RespondTradeReducer from "./respond_trade_reducer";
 import RevokePlayerReducer from "./revoke_player_reducer";
 import SendChatReducer from "./send_chat_reducer";
 import SetAppearanceReducer from "./set_appearance_reducer";
 import SetNameReducer from "./set_name_reducer";
 import SetTargetReducer from "./set_target_reducer";
+import SetTradeOfferReducer from "./set_trade_offer_reducer";
 import StartHarvestReducer from "./start_harvest_reducer";
 import UnwieldReducer from "./unwield_reducer";
 import WieldItemReducer from "./wield_item_reducer";
@@ -66,9 +75,13 @@ import ChatMessageRow from "./chat_message_table";
 import CombatEventRow from "./combat_event_table";
 import DummyEventRow from "./dummy_event_table";
 import EmoteEventRow from "./emote_event_table";
+import FriendRow from "./friend_table";
 import GroundItemRow from "./ground_item_table";
 import InventorySlotRow from "./inventory_slot_table";
+import InviteCodeRow from "./invite_code_table";
 import PlayerRow from "./player_table";
+import SocialEventRow from "./social_event_table";
+import TradeRow from "./trade_table";
 import TrainingDummyRow from "./training_dummy_table";
 import TreeRow from "./tree_table";
 import WorldRow from "./world_table";
@@ -134,6 +147,20 @@ const tablesSchema = __schema({
     ],
     event: true,
   }, EmoteEventRow),
+  friend: __table({
+    name: 'friend',
+    indexes: [
+      { accessor: 'id', name: 'friend_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'owner', name: 'friend_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+    ],
+    constraints: [
+      { name: 'friend_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, FriendRow),
   groundItem: __table({
     name: 'ground_item',
     indexes: [
@@ -159,6 +186,21 @@ const tablesSchema = __schema({
       { name: 'inventory_slot_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, InventorySlotRow),
+  inviteCode: __table({
+    name: 'invite_code',
+    indexes: [
+      { accessor: 'code', name: 'invite_code_code_idx_btree', algorithm: 'btree', columns: [
+        'code',
+      ] },
+      { accessor: 'inviter', name: 'invite_code_inviter_idx_btree', algorithm: 'btree', columns: [
+        'inviter',
+      ] },
+    ],
+    constraints: [
+      { name: 'invite_code_code_key', constraint: 'unique', columns: ['code'] },
+      { name: 'invite_code_inviter_key', constraint: 'unique', columns: ['inviter'] },
+    ],
+  }, InviteCodeRow),
   player: __table({
     name: 'player',
     indexes: [
@@ -174,6 +216,31 @@ const tablesSchema = __schema({
       { name: 'player_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerRow),
+  socialEvent: __table({
+    name: 'social_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, SocialEventRow),
+  trade: __table({
+    name: 'trade',
+    indexes: [
+      { accessor: 'a', name: 'trade_a_idx_btree', algorithm: 'btree', columns: [
+        'a',
+      ] },
+      { accessor: 'b', name: 'trade_b_idx_btree', algorithm: 'btree', columns: [
+        'b',
+      ] },
+      { accessor: 'id', name: 'trade_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'trade_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TradeRow),
   trainingDummy: __table({
     name: 'training_dummy',
     indexes: [
@@ -211,11 +278,15 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("add_friend", AddFriendReducer),
   __reducerSchema("attack", AttackReducer),
   __reducerSchema("attack_dummy", AttackDummyReducer),
   __reducerSchema("cancel", CancelReducer),
+  __reducerSchema("cancel_trade_request", CancelTradeRequestReducer),
   __reducerSchema("configure_access", ConfigureAccessReducer),
+  __reducerSchema("confirm_trade", ConfirmTradeReducer),
   __reducerSchema("craft", CraftReducer),
+  __reducerSchema("create_invite", CreateInviteReducer),
   __reducerSchema("drop_item", DropItemReducer),
   __reducerSchema("eat_berry", EatBerryReducer),
   __reducerSchema("emote", EmoteReducer),
@@ -224,12 +295,17 @@ const reducersSchema = __reducers(
   __reducerSchema("grant_player", GrantPlayerReducer),
   __reducerSchema("move_item", MoveItemReducer),
   __reducerSchema("pickup_item", PickupItemReducer),
+  __reducerSchema("redeem_invite", RedeemInviteReducer),
+  __reducerSchema("remove_friend", RemoveFriendReducer),
   __reducerSchema("renew_grant", RenewGrantReducer),
+  __reducerSchema("request_trade", RequestTradeReducer),
+  __reducerSchema("respond_trade", RespondTradeReducer),
   __reducerSchema("revoke_player", RevokePlayerReducer),
   __reducerSchema("send_chat", SendChatReducer),
   __reducerSchema("set_appearance", SetAppearanceReducer),
   __reducerSchema("set_name", SetNameReducer),
   __reducerSchema("set_target", SetTargetReducer),
+  __reducerSchema("set_trade_offer", SetTradeOfferReducer),
   __reducerSchema("start_harvest", StartHarvestReducer),
   __reducerSchema("unwield", UnwieldReducer),
   __reducerSchema("wield_item", WieldItemReducer),

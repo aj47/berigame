@@ -34,6 +34,8 @@ export const ChatMessage = __t.object("ChatMessage", {
   text: __t.string(),
   tick: __t.u32(),
   sentAt: __t.timestamp(),
+  x: __t.i32(),
+  z: __t.i32(),
 });
 export type ChatMessage = __Infer<typeof ChatMessage>;
 
@@ -72,6 +74,14 @@ export const EmoteEvent = __t.object("EmoteEvent", {
 });
 export type EmoteEvent = __Infer<typeof EmoteEvent>;
 
+export const Friend = __t.object("Friend", {
+  id: __t.u64(),
+  owner: __t.identity(),
+  friend: __t.identity(),
+  since: __t.timestamp(),
+});
+export type Friend = __Infer<typeof Friend>;
+
 export const GroundItem = __t.object("GroundItem", {
   id: __t.u64(),
   itemId: __t.string(),
@@ -93,6 +103,13 @@ export const InventorySlot = __t.object("InventorySlot", {
   quantity: __t.u8(),
 });
 export type InventorySlot = __Infer<typeof InventorySlot>;
+
+export const InviteCode = __t.object("InviteCode", {
+  code: __t.string(),
+  inviter: __t.identity(),
+  expiresAtMicros: __t.u64(),
+});
+export type InviteCode = __Infer<typeof InviteCode>;
 
 export const Player = __t.object("Player", {
   identity: __t.identity(),
@@ -137,11 +154,33 @@ export const PlayerGrant = __t.object("PlayerGrant", {
 });
 export type PlayerGrant = __Infer<typeof PlayerGrant>;
 
+export const SocialEvent = __t.object("SocialEvent", {
+  tick: __t.u32(),
+  kind: __t.u8(),
+  from: __t.identity(),
+  to: __t.identity(),
+  text: __t.string(),
+});
+export type SocialEvent = __Infer<typeof SocialEvent>;
+
 export const TickSchedule = __t.object("TickSchedule", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
 });
 export type TickSchedule = __Infer<typeof TickSchedule>;
+
+export const Trade = __t.object("Trade", {
+  id: __t.u64(),
+  a: __t.identity(),
+  b: __t.identity(),
+  accepted: __t.bool(),
+  aOffer: __t.string(),
+  bOffer: __t.string(),
+  aConfirmed: __t.bool(),
+  bConfirmed: __t.bool(),
+  createdTick: __t.u32(),
+});
+export type Trade = __Infer<typeof Trade>;
 
 export const TrainingDummy = __t.object("TrainingDummy", {
   id: __t.u32(),

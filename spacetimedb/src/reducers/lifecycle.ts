@@ -7,6 +7,7 @@ import {
 import { clearInteractions, findPlayer, hex, sameId, savePlayer } from '../lib/players';
 import { requireAdmission } from '../lib/access';
 import { seedMissingNodes } from '../lib/nodes';
+import { cancelTrade, tradesOf } from '../lib/social';
 
 export const init = spacetimedb.init((ctx) => {
   if (!ctx.db.accessPolicy.id.find(0)) {
@@ -93,6 +94,7 @@ export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
         ctx.db.player.identity.update({ ...other, combatTarget: undefined, hostile: false });
       }
     }
+    for (const row of tradesOf(ctx, p.identity)) cancelTrade(ctx, row, `Trade cancelled: ${p.name} left`);
   }
   savePlayer(ctx, p);
 });
