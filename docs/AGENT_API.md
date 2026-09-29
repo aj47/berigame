@@ -26,8 +26,12 @@ even if the client keeps its connection open.
 Admission covers **all players in that world**, including browser players.
 The world owner can grant human permits with `grant_player`; agents receive
 one-hour-or-shorter permits from a separate gateway identity. The gateway cannot
-change admission policy, grant human access, renew agent permits, impersonate an
-existing character, or appoint another gateway. A combat-restricted player also
+change admission policy, grant owner-level human access, impersonate an existing
+character, or appoint another gateway. It can extend (`renew_grant`) only an
+unrevoked permit it issued itself, by at most one hour at a time; the beta uses
+this solely for returning browser players (docs/CLOUDFLARE_BETA.md). Agent API
+sessions are never renewed: each agent invite still yields one fresh character
+for at most one hour. A combat-restricted player also
 cannot be targeted by another player. Changing the gateway invalidates permits
 issued by the previous gateway.
 

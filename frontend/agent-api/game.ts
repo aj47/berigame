@@ -88,6 +88,11 @@ export async function createGameService(credential: Credential, options: Connect
   const revoke = async (identity: string) => {
     await deadline(control.conn.reducers.revokePlayer({ identity: Identity.fromString(identity) }), 3000);
   };
+  /** Extends a gateway-issued permit that was not revoked (returning browsers, F1). */
+  const renew = async (identity: string, lifetimeSeconds: number) => {
+    if (!ready()) throw unavailable();
+    await deadline(control.conn.reducers.renewGrant({ identity: Identity.fromString(identity), lifetimeSeconds }));
+  };
   const provision = async (invite: Invite) => {
     if (!ready()) throw unavailable();
     const player = await mintIdentity(credential);
@@ -232,7 +237,7 @@ export async function createGameService(credential: Credential, options: Connect
       };
     } catch (error) { await close(); throw error; }
   };
-  return { ready, close: () => disconnect(control.conn), provision, resume, revoke,
+  return { ready, close: () => disconnect(control.conn), provision, renew, resume, revoke,
     async create(invite: Invite) { return resume(invite, await provision(invite)); },
   };
 }
