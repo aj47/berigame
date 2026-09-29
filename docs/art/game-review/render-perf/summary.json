@@ -1,0 +1,14 @@
+{
+  "createdAt": "2026-09-29",
+  "harness": "frontend/perf/avatar-bench.html (real RenderOnlineUsers/PlayerController/DebugBridge over a mocked SpacetimeDB store, game camera polar 0.78 azimuth 0.45 distance 18 fov 42), run by frontend/perf/run-bench.mjs; headless Chromium, SwiftShader, 800x500 CSS px, DPR 1, 15 s per count; odd avatars walk one tile every other tick; spread 3 tiles (outer rows off screen at 64).",
+  "qualification": "Shared 4-core container with other agents' browsers running (load 5-15). SwiftShader rasterizes on the CPU, so frame interval is GPU-emulation bound and noisy; cpuFrameMs (useFrame + gl.render submission, r3f addEffect->addAfterEffect) and reactCommitMsPerSecond (React Profiler around the avatar tree) are the CPU signals. Draw calls are deterministic.",
+  "drawCalls": { "8": [40, 27], "32": [107, 50], "64": [148, 68] },
+  "cpuFrameMsP50": { "8": [2.1, 2.2], "32": [6.1, 5.0], "64": [8.3, 6.6] },
+  "useFrameMsP50": { "8": [0.7, 0.5], "32": [1.9, 1.2], "64": [3.0, 2.1] },
+  "reactCommitMsPerSecond": { "8": [4.5, 1.4], "32": [13.2, 2.8], "64": [24.5, 7.6] },
+  "frameIntervalMsP50": { "8": [288.5, 283.8], "32": [541.9, 295.6], "64": [583.5, 23.5], "note": "SwiftShader-bound and dominated by host contention; not comparable run to run" },
+  "offscreenAnimatorUpdatesSkipped64": [0, 228],
+  "nodeAnimationBench": "src/test/animationCulling.test.ts, 32 avatars x 121 frames, procedural on: 0.509 ms/frame posed vs 0.090 ms/frame all off screen",
+  "adaptivePixelRatio": "?n=32&adaptive at device DPR 1.5: gl pixel ratio 1.5 for the first ~9 s, then PerformanceMonitor onDecline -> 1.0 (stays 1.0)",
+  "screenshots": "before-/after-avatars-{8,32,64}.png (?still, same seed and layout); *-target-ring-crop.png shows the self (cream) and target (orange) rings"
+}

@@ -10,9 +10,10 @@ import { LowPolyBuilder, coastMaterial, linear } from './lowPoly';
  * reads as "driftwood comes here" while it is empty.
  * One shared geometry per state and one shared material: a single draw call,
  * and either geometry can back an InstancedMesh (see driftwoodPileGeometry).
- * Not wired into the game yet (docs/design/ROADMAP.md, M2).
  */
-const PALE = 0xb8a68a, MID = 0x9a8568, DARK = 0x6f5f4c, CUT = 0xe2d2b2, PEBBLE = 0x9a978f, PEBBLE_DARK = 0x77746d;
+// Weathered wood darker than the pale sand, with bright cut ends and a wet-sand
+// shadow under the pile, so it reads at game distance (review: too small and pale).
+const PALE = 0x8e7658, MID = 0x6c573f, DARK = 0x46382a, CUT = 0xe8d4a8, PEBBLE = 0x6f6c66, PEBBLE_DARK = 0x4f4c48, SHADOW = 0x8a7652;
 
 function build(ripe: boolean): BufferGeometry {
   const b = new LowPolyBuilder();
@@ -30,10 +31,17 @@ function build(ripe: boolean): BufferGeometry {
     // One short, half-buried stump of a log.
     b.log(new Vector3(-0.22, 0.01, 0.08), new Vector3(0.2, 0.03, -0.06), 0.1, 0.075, { seed: 11, bark: [linear(MID), linear(DARK)], cap: linear(PALE) });
   }
+  // Damp, darker sand under the pile: an 8-sided patch, 8 tris.
+  const shadow = linear(SHADOW), centre = new Vector3(0, 0.004, 0);
+  for (let i = 0; i < 8; i++) {
+    const a0 = (i / 8) * Math.PI * 2, a1 = ((i + 1) / 8) * Math.PI * 2;
+    const r = ripe ? 0.56 : 0.4;
+    b.triangle(centre, new Vector3(Math.cos(a1) * r, 0.004, Math.sin(a1) * r * 0.85), new Vector3(Math.cos(a0) * r, 0.004, Math.sin(a0) * r * 0.85), shadow);
+  }
   b.rock(new Vector3(0.4, 0.03, 0.28), 0.09, new Vector3(1, 0.55, 0.9), { segments: 5, seed: 21, colors: pebbles });
   b.rock(new Vector3(-0.36, 0.025, -0.24), 0.05, new Vector3(1.1, 0.5, 1), { segments: 5, seed: 22, colors: pebbles });
   // Author at ~1 tile, then enlarge to read next to a 2.8-unit berry tree.
-  return b.build().scale(1.2, 1.2, 1.2);
+  return b.build().scale(1.5, 1.5, 1.5);
 }
 
 const cache: Partial<Record<'ripe' | 'regrowing', BufferGeometry>> = {};

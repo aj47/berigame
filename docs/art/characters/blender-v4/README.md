@@ -49,3 +49,5 @@ Copy `tousled/starter-adventurer-v4-tousled.glb` to `frontend/public/models/star
 - **Knees:** the thigh and upper shin are now one continuous trouser tube with three knee edge loops, weighted Thigh/Shin 85/15, 50/50 and 15/85. This removes the knee shards in Defeat. It adds 40 triangles: 2,171 / 2,186 / 2,290.
 - **Previews:** the preview PNGs are refreshed. They are rendered at 60 fps frame numbers, and the stale V4 renders were removed.
 - **Shipped GLBs:** copy them with `cd frontend && npm run models:optimize`, not by hand. The script prunes rest channels, resamples, dedups, prunes, quantizes and applies meshopt. It writes `frontend/public/models/*.glb`, and `--check` fails when those files are stale.
+
+Smooth-face pass: the skull, neck side and bare-forearm skin quads are shaded smooth (poly.use_smooth) and the skull uses one skin cell (7); ears, eyes, brows, hair, clothing, hands and stick stay flat. Review media: docs/art/game-review/smooth-face/.

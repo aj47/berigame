@@ -1,4 +1,4 @@
-import { EventKind, STICK_ITEM_ID } from '@sim';
+import { EventKind, isWeapon } from '@sim';
 import { STICK_SWING_CLIP, STICK_SWING_IMPACT_MS, STICK_SWING_MS } from './stickSwing';
 
 /**
@@ -64,8 +64,10 @@ const HEAVY_HIT_REACTION: ActionCue = { clip: 'HitHeavy', durationMs: 550 };
  */
 export function attackPresentation(kind: number, itemId: string): AttackPresentation | null {
   if (kind !== EventKind.Hit) return null;
-  const { clip, durationMs, impactMs } = itemId === STICK_ITEM_ID ? STICK_ATTACK : PUNCH_ATTACK;
-  return { attacker: { clip, durationMs }, defender: itemId === STICK_ITEM_ID ? HEAVY_HIT_REACTION : HIT_REACTION, impactMs };
+  // The stone club swings like the stick (StickSwing) and lands as heavily.
+  const armed = !!itemId && isWeapon(itemId);
+  const { clip, durationMs, impactMs } = armed ? STICK_ATTACK : PUNCH_ATTACK;
+  return { attacker: { clip, durationMs }, defender: armed ? HEAVY_HIT_REACTION : HIT_REACTION, impactMs };
 }
 
 /** The cue in a chain that is playing or next up at `now`: follows `then` past cues that have ended. */

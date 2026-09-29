@@ -17,4 +17,5 @@ export default __t.row({
   itemId: __t.string().name("item_id"),
   cooldownUntilTick: __t.u32().name("cooldown_until_tick"),
   harvester: __t.option(__t.identity()),
+  kind: __t.u8(),
 });

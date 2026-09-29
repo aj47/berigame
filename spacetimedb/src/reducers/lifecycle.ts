@@ -2,10 +2,11 @@ import { ScheduleAt } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import {
-  FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, MAX_HP, PlayerState, RESPAWN_GRACE_TICKS, Pending, SPAWN_TILE, TICK_MS, TREE_SEEDS,
+  FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, MAX_HP, PlayerState, RESPAWN_GRACE_TICKS, Pending, SPAWN_TILE, TICK_MS, TREE_SEEDS, NodeKind,
 } from '../../../shared/sim';
 import { clearInteractions, findPlayer, hex, sameId, savePlayer } from '../lib/players';
 import { requireAdmission } from '../lib/access';
+import { seedMissingNodes } from '../lib/nodes';
 
 export const init = spacetimedb.init((ctx) => {
   if (!ctx.db.accessPolicy.id.find(0)) {
@@ -16,9 +17,10 @@ export const init = spacetimedb.init((ctx) => {
   }
   for (const seed of TREE_SEEDS) {
     if (!ctx.db.tree.id.find(seed.id)) {
-      ctx.db.tree.insert({ id: seed.id, x: seed.x, z: seed.z, itemId: seed.itemId, cooldownUntilTick: 0, harvester: undefined });
+      ctx.db.tree.insert({ id: seed.id, x: seed.x, z: seed.z, itemId: seed.itemId, cooldownUntilTick: 0, harvester: undefined, kind: NodeKind.Berry });
     }
   }
+  seedMissingNodes(ctx);
   if (ctx.db.tickSchedule.count() === 0n) {
     ctx.db.tickSchedule.insert({ scheduledId: 0n, scheduledAt: ScheduleAt.interval(BigInt(TICK_MS) * 1000n) });
   }

@@ -8,7 +8,7 @@ import { LowPolyBuilder, coastMaterial, linear } from './nodes/lowPoly';
  * stickProp.ts: modelled along +Y from the butt (y=0) to the tip
  * (y=STICK_LENGTH), so it mounts with stickMount() and swings like the stick.
  * Flat shaded vertex colours; one shared geometry and material, never
- * disposed per avatar (render with dispose={null}). Not wired into the game yet.
+ * disposed per avatar (render with dispose={null}).
  */
 const HAFT = 0xc9b594, HAFT_DARK = 0x9d8a6c, CUT = 0xe6d8bb, GRIP = 0xa8723c, CORD = 0xc9934e;
 const FLINT = 0x4a5870, FLINT_LIGHT = 0x7d8da6, FLINT_DARK = 0x36404f;

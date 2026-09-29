@@ -3,7 +3,7 @@ import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Mesh, type MeshStandardMaterial, type Object3D } from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
-import { PlayerState, HAIR_STYLES, STICK_ITEM_ID, type Appearance } from '@sim';
+import { PlayerState, HAIR_STYLES, STICK_ITEM_ID, STONE_CLUB_ITEM_ID, type Appearance } from '@sim';
 import { acquirePalette, paletteKey } from '../../appearance/palette';
 import type { AnimationCue } from '../../animation/combatPresentation';
 import { stickMount } from '../../animation/stickSwing';
@@ -12,6 +12,7 @@ import { AvatarAnimator, seedFromIdentity, skipBoneEulerSync, type AnimatorInput
 import { locateAvatar, registerAvatarGroup, unregisterAvatarGroup } from '../../animation/avatarRegistry';
 import { useLoadingStore } from '../../store';
 import { stickGeometry, stickMaterial } from './stickProp';
+import { clubGeometry, clubMaterial } from './clubProp';
 
 export const BASE_MODEL_URL='/models/starter-adventurer.glb';
 export const modelUrl=(style:number) => style===0 ? BASE_MODEL_URL : `/models/starter-adventurer-${HAIR_STYLES[style]?.id ?? 'tousled'}.glb`;
@@ -54,20 +55,23 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
   useLayoutEffect(()=>{
     model.userData.berigameAvatar={...model.userData.berigameAvatar,weapon};
     const armed=weapon===STICK_ITEM_ID;
+    const club=weapon===STONE_CLUB_ITEM_ID;
     // Baked rigs skin the stick into the body on the PropR bone (rest scale 0): show it by
     // scaling the bone, with no extra mesh or draw call. No clip keys PropR.
+    // The club is never baked: the PropR stick stays hidden and the club mounts under HandR.
     const prop=model.getObjectByName('PropR');
-    if(prop){prop.scale.setScalar(armed?1:0);return ()=>{prop.scale.setScalar(0);};}
-    // Older rigs: a separate stick mesh in the right hand.
+    if(prop&&!club){prop.scale.setScalar(armed?1:0);return ()=>{prop.scale.setScalar(0);};}
+    if(prop)prop.scale.setScalar(0);
+    // Older rigs (stick) and the club: a separate mesh in the right hand.
     const hand=model.getObjectByName('HandR');
-    if(!armed||!hand)return;
-    // Shared geometry and material, so nothing is disposed when the stick is put away.
-    const stick=new Mesh(stickGeometry(),stickMaterial());
-    stick.name='HeldStick';
-    stick.position.fromArray(STICK_MOUNT.position);
-    stick.quaternion.fromArray(STICK_MOUNT.quaternion);
-    hand.add(stick);
-    return ()=>{hand.remove(stick);};
+    if(!(armed||club)||!hand)return;
+    // Shared geometry and material, so nothing is disposed when the weapon is put away.
+    const held=club?new Mesh(clubGeometry(),clubMaterial()):new Mesh(stickGeometry(),stickMaterial());
+    held.name=club?'HeldClub':'HeldStick';
+    held.position.fromArray(STICK_MOUNT.position);
+    held.quaternion.fromArray(STICK_MOUNT.quaternion);
+    hand.add(held);
+    return ()=>{hand.remove(held);};
   },[model,weapon]);
   useEffect(()=>{
     revision.current=-1;

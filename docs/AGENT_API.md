@@ -118,13 +118,13 @@ progress; read state to observe completion.
 
 ### Gameplay through the API
 
-Actions mirror the browser controls: `move`, `harvest`, `eat`, `wield`, `unwield`,
+Actions mirror the browser controls: `move`, `harvest`, `craft`, `eat`, `wield`, `unwield`,
 `stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`, and
 the scoped `attack` and `chat`. OpenAPI has the exact schemas.
 
 - **Combat is punch-or-stick.** While attacking, you swing automatically. Bare
   fists punch for `PUNCH_DAMAGE` (3). A wielded stick hits for its
-  `weaponDamage` (6). Numbers come from `shared/sim`.
+  `weaponDamage` (6), a wielded stone club 8. Numbers come from `shared/sim`.
 - **Quick slots.** Inventory slots `0..HOTBAR_SIZE-1` (0..2) are the quick slots,
   the same slots behind the game's 1/2/3 keys. State reports `hotbarSize`,
   `punchDamage`, and a `hotbar`, `wielded` and `weaponDamage` value on every
@@ -150,6 +150,20 @@ the scoped `attack` and `chat`. OpenAPI has the exact schemas.
   you cannot reach because of the brambles is rejected with `422` and error code
   `brambles` ("Thorny brambles — you need a sturdy stick to push through") and
   queues nothing. Dropping the stick mid-walk stops you where you are.
+- **The Coast: nodes and the stone club (M2).** `state.nodes` lists every
+  gathering node: `{id, kind, name, tile, gives, ready, regrowTicks, harvesting}`
+  with `kind` `berry`, `driftwood` or `tide_rock`. Four driftwood piles lie on
+  the beach straight past the path crossings, (25,3), (46,25), (25,46), (3,25):
+  4 ticks to gather, 25 to wash up again, 1 driftwood. Four tide rocks sit in
+  the corners, (3,3), (46,3), (3,46), (46,46): 6 ticks, 40 to regrow, 1 flint.
+  Only berry trees find sticks. `harvest {nodeId}` gathers a given node
+  (`treeId` still works); `harvest {kind: "tide_rock"}` picks the node of that
+  kind with the soonest claim. You need a stick to reach them (they are past the
+  brambles). `state.recipes[] {id, name, inputs, canCraft, missing}` lists
+  what you can make; `POST /actions/craft {"recipe": "stone_club"}` turns
+  1 driftwood + 2 flint into a stone club instantly (rejected while dead or
+  attacking; a full bag drops it at your feet). Wield it like the stick: 8
+  damage a swing. `state.trees` (berry trees only) is kept for one release.
 - **Busy trees: wait and claim.** `harvest` on a regrowing or claimed tree is
   not an error: you walk next to it and wait. On the tick it ripens, waiters
   claim it in this order: newcomers (in first-spawn grace), then the earliest
@@ -166,8 +180,10 @@ the scoped `attack` and `chat`. OpenAPI has the exact schemas.
   `wield-stick` (only with combat access), `reach-coast`. `action` is the next
   step as an action (`harvest {treeId}`, `eat {slot}`, `wield {slot}`,
   `move {x, z}`) or `null` while you walk, wait or harvest. After First Day it
-  is `null` unless you lost your stick, when `find-stick` and `reach-coast`
-  return.
+  continues on the Coast: `gather-coast` ("Gather driftwood and 2 flint on the
+  Coast (n/3)", action `harvest {treeId}` on the right node), `make-club`
+  (action `craft {recipe}`), then `wield-club`; after that it is `null`. If
+  you lose your stick, `find-stick` and `reach-coast` return first.
 - **Wielding.** `POST /actions/wield {"slot": n}` wields the weapon in quick slot
   `n`. Slots outside 0..2 get `400`. A slot without a weapon gets `422`.
   `POST /actions/unwield {}` goes back to punching.
@@ -177,7 +193,8 @@ the scoped `attack` and `chat`. OpenAPI has the exact schemas.
   `{ itemId, name, damage }`. Other players' weapons are public, because the stick
   is drawn in their hand. Inventories stay private.
 
-API version **1.1.0** removed the rock-paper-scissors `stance` action and the
+API version **1.2.0** (M2) added `craft`, `harvest {nodeId | kind}`,
+`state.nodes` and `state.recipes`. API version **1.1.0** removed the rock-paper-scissors `stance` action and the
 `stance`/`fightState` player fields. `/actions/stance` now returns 404
 (`unknown_action` from the Node gateway, `not_found` at the Cloudflare edge).
 

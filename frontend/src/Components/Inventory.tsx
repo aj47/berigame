@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useMemo, useState } from "react";
-import { HOTBAR_SIZE, INVENTORY_SIZE, getItemDef, isWeapon } from "@sim";
+import { HOTBAR_SIZE, INVENTORY_SIZE, getItemDef, isWeapon, recipeStatus } from "@sim";
 import { useGameActions } from "../spacetime/actions";
 import { useInventoryRows, useMyPlayer } from "../spacetime/hooks";
 import { isWieldedSlot, slotsFromRows } from "./itemUi";
@@ -13,7 +13,7 @@ interface Props {
 const Inventory = memo(({ open, onClose }: Props) => {
   const rows = useInventoryRows();
   const me = useMyPlayer();
-  const { eatBerry, wieldItem, unwield, moveItem, dropItem } = useGameActions();
+  const { eatBerry, wieldItem, unwield, moveItem, dropItem, craft } = useGameActions();
   const [selected, setSelected] = useState<number | null>(null);
   const [movingFrom, setMovingFrom] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
@@ -189,6 +189,22 @@ const Inventory = memo(({ open, onClose }: Props) => {
             </p>
           </>
         )}
+        {recipeStatus(slots).map((r) => (
+          <div className="recipe-row" key={r.id}>
+            <button
+              type="button"
+              data-recipe={r.id}
+              disabled={pending || !r.canCraft}
+              onClick={() => void run(() => craft(r.id))}
+            >
+              Make {r.name}
+            </button>
+            <span className="fine-print">
+              {r.inputs.map((i) => `${i.quantity} ${i.name}`).join(" + ")}
+              {r.canCraft ? "" : " — gather them on the Coast"}
+            </span>
+          </div>
+        ))}
       </div>
     </section>
   );

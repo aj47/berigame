@@ -1,0 +1,46 @@
+M2 Coast E2E (local server 127.0.0.1:3200, db berigame-m2, vite 5800)
+
+Migration
+1. Published the be3caec (pre-M2) module, connected one player with pre-M2 bindings and named it OldTimer; tree ids 1-6.
+2. Published this module with --delete-data=never --yes=break-clients: tree gained kind (default 0), OldTimer survived,
+   and the next tick seeded ids 101-108 (driftwood kind 1 at (25,3),(46,25),(25,46),(3,25); tide rocks kind 2 in the corners).
+3. Published again: still 14 tree rows and OldTimer present (seeding is idempotent).
+
+Browser play log
+23:16:42 player c2007d2a7f418c3fe64488b40e6ba7c36580ee4a8bfa9f135b9a615657c9df36
+23:16:45 goal pick-berry Pick a berryTap to pick the goldberry tree
+23:16:51 goal pick-berry Pick a berryPicking the goldberry tree…
+23:16:53 goal pick-berry Eat it: tap the Goldberry in your quick barOr press 1
+23:16:55 goal eat-berry Eat it: tap the Goldberry in your quick barOr press 1
+23:17:02 goal find-stick Search the berry trees for a sturdy stickTap to pick the greenberry tree
+23:17:09 goal find-stick Search the berry trees for a sturdy stickWalking to the greenberry tree…
+23:17:12 goal find-stick Wield your stick: tap itOr press 2. Hits twice as hard
+23:17:17 goal wield-stick Wield your stick: tap itOr press 2. Hits twice as hard
+23:17:33 goal reach-coast Push through the brambles to the CoastTap to walk through the hedge at the nearest path
+23:18:05 goal gather-coast Gather driftwood and 2 flint on the Coast (0/3)Tap to gather from the driftwood pile
+23:18:12 goal gather-coast Gather driftwood and 2 flint on the Coast (0/3)Gathering from the driftwood pile…
+23:18:20 goal gather-coast Gather driftwood and 2 flint on the Coast (1/3)Tap to gather from the tide rock
+23:18:26 goal gather-coast Gather driftwood and 2 flint on the Coast (1/3)Walking to the tide rock…
+23:18:30 goal gather-coast Gather driftwood and 2 flint on the Coast (1/3)Gathering from the tide rock…
+23:18:39 goal gather-coast Gather driftwood and 2 flint on the Coast (2/3)Tap to gather from the tide rock
+23:18:45 goal gather-coast Gather driftwood and 2 flint on the Coast (2/3)Walking to the tide rock…
+23:18:59 goal gather-coast Gather driftwood and 2 flint on the Coast (2/3)Gathering from the tide rock…
+23:19:03 goal make-club Make a stone clubTap to make it: 1 driftwood + 2 flint
+23:19:16 goal wield-club Wield your stone club: tap itOr press 3. Hits for 8
+23:19:24 goal null 
+23:20:29 at {
+23:20:44 dropdown at y 1
+23:20:55 dummy hp 20 -> 0 damage 20
+23:21:03 errors []
+23:21:03 RESULT FAIL damage 20
+
+Second SDK player (server combat events)
+23:20:34 dummy c20053f5a9a6f67dbe3f89f749507a47f5e35e0d15a21c5a34da7ffe6d836b53 walking to 10 10
+23:20:39 dummy attacks
+23:20:39 dummy stands down (its grace is over)
+23:20:48 hit c2007d2a -> c20053f5 dmg 8 weapon "stone_club" hp 12
+23:20:51 hit c2007d2a -> c20053f5 dmg 8 weapon "stone_club" hp 4
+23:20:53 hit c2007d2a -> c20053f5 dmg 8 weapon "stone_club" hp 0
+
+The page-side HP poll lagged on a loaded machine (saw 20 -> 0 across three swings);
+the server events above show each stone_club swing dealt exactly 8.

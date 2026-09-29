@@ -4,6 +4,7 @@ import {
   areaOf, bestTree, BRAMBLE_KEY_ITEM, chebyshev, RESPAWN_GRACE_TICKS, BRAMBLE_MESSAGE, blockedSetFromTiles, emptySlots, enterRule, firstDayGoal, getItemDef, GRID_SIZE, HEDGE_RING,
   holdsItem, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, isSafe, nearestReachableTile, Pending, PlayerState, PUNCH_DAMAGE, SAFE_RADIUS, SPAWN_TILE,
   STICK_DROP_CHANCE, STICK_ITEM_ID, swingDamage, TICK_MS, treeReadyTick, type Slot,
+  NodeKind, nodeKindDef, recipeStatus,
 } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
 import { ApiError, type Invite } from './portable';
@@ -19,6 +20,8 @@ export interface GameSession {
 export interface GameService { ready(): boolean; create(invite: Invite): Promise<GameSession>; }
 export type Backend = { uri: string; database: string };
 export type Credential = Backend & { identity: string; token: string };
+/** Agent-facing names of shared/sim NodeKind, indexed by kind. */
+const NODE_KIND_NAMES = ['berry', 'driftwood', 'tide_rock'];
 const disconnect = (conn: DbConnection) => { try { conn.disconnect(); } catch { /* already closed */ } };
 const unavailable = () => new ApiError(503, 'world_unavailable', 'The live world is unavailable. Retry shortly.');
 
@@ -166,8 +169,13 @@ export async function createGameService(credential: Credential, options: Connect
               healthRestored: getItemDef(row.itemId)?.healthRestore, weaponDamage: getItemDef(row.itemId)?.weaponDamage ?? 0,
               hotbar: row.slot < HOTBAR_SIZE, wielded: !!self.weapon && row.slot < HOTBAR_SIZE && row.itemId === self.weapon })),
             players: [...conn.db.player.iter()].filter(p => p.online).slice(0, 128).map(describePlayer),
-            trees: [...conn.db.tree.iter()].map(tree => ({ id: tree.id, tile: { x: tree.x, z: tree.z }, berry: getItemDef(tree.itemId)?.name,
+            nodes: [...conn.db.tree.iter()].map(tree => ({ id: tree.id, kind: NODE_KIND_NAMES[tree.kind] ?? 'berry', name: nodeKindDef(tree.kind).name,
+              tile: { x: tree.x, z: tree.z }, gives: { itemId: tree.itemId, name: getItemDef(tree.itemId)?.name },
               ready: tree.cooldownUntilTick <= tick && !tree.harvester, regrowTicks: Math.max(0, tree.cooldownUntilTick - tick), harvesting: !!tree.harvester })),
+            /** @deprecated alias of the berry trees in nodes; kept for one release. */
+            trees: [...conn.db.tree.iter()].filter(tree => tree.kind === NodeKind.Berry).map(tree => ({ id: tree.id, tile: { x: tree.x, z: tree.z }, berry: getItemDef(tree.itemId)?.name,
+              ready: tree.cooldownUntilTick <= tick && !tree.harvester, regrowTicks: Math.max(0, tree.cooldownUntilTick - tick), harvesting: !!tree.harvester })),
+            recipes: recipeStatus(slotsOf()).map(r => ({ id: r.id, name: r.name, inputs: r.inputs, canCraft: r.canCraft, missing: r.missing })),
             groundItems: [...conn.db.groundItem.iter()].slice(0, 128).map(row => ({ id: row.id.toString(), itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity, tile: { x: row.x, z: row.z } })),
             chat: [...conn.db.chatMessage.iter()].sort((a, b) => a.tick - b.tick).slice(-20).map(row => ({ sender: row.sender.toHexString(), text: row.text, tick: row.tick })),
             appearance: conn.db.appearance.identity.find(id) ? { ...conn.db.appearance.identity.find(id), identity: player.identity } : appearance.DEFAULT_APPEARANCE,
@@ -198,14 +206,16 @@ export async function createGameService(credential: Credential, options: Connect
             case 'harvest': {
               // Default: the tree with the soonest claim (ripening, walk and queue), as state.goal suggests.
               const trees = [...conn.db.tree.iter()];
-              const treeId: number | undefined = input.treeId ?? bestTree(self, trees, others(self), tick)?.tree.id;
-              if (treeId === undefined) throw new ApiError(422, 'no_tree', 'There is no tree to harvest.');
+              const kind = input.kind === undefined ? NodeKind.Berry : NODE_KIND_NAMES.indexOf(input.kind);
+              const treeId: number | undefined = input.nodeId ?? input.treeId ?? bestTree(self, trees, others(self), tick, kind)?.tree.id;
+              if (treeId === undefined) throw new ApiError(422, 'no_tree', 'There is no node of that kind to harvest.');
               await r.startHarvest({ treeId }).catch(brambles);
               const tree = conn.db.tree.id.find(treeId);
               const ripeInTicks = tree ? treeReadyTick(tree, [...conn.db.player.iter()], tick) - tick : 0;
               return ripeInTicks > 0 && tree ? { waiting: { treeId, ripeInTicks } } : undefined;
             }
             case 'eat': await r.eatBerry({ slot: input.slot }); ate = true; break;
+            case 'craft': await r.craft({ recipe: input.recipe }); break;
             case 'wield': await r.wieldItem({ slot: input.slot }); break;
             case 'unwield': await r.unwield({}); break;
             case 'attack': await r.attack({ target: Identity.fromString(input.playerId) }); break;

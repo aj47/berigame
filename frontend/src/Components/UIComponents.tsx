@@ -156,6 +156,12 @@ const UIComponents = memo(() => {
               included.
             </li>
             <li>
+              <strong>Make a stone club.</strong> On the Coast, gather
+              driftwood from the piles past each path and flint from the tide
+              rocks in the corners. With 1 driftwood and 2 flint, tap the goal
+              (or Make in your inventory) for a stone club: it hits for 8.
+            </li>
+            <li>
               <strong>Pick your fights.</strong> Select another adventurer and
               choose Attack. You approach and swing automatically in range.
               Nobody can fight in the sandy safe ring at the centre, and you

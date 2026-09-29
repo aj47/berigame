@@ -109,7 +109,7 @@
       "loop": false
     }
   },
-  "glb_bytes": 723160,
+  "glb_bytes": 699448,
   "orientation": "Blender -Y forward, Z up; glTF +Z forward, Y up",
   "status": "Asset build only; integration and device qualification tracked in docs/PLAYABLE_GRAPHICS_PROGRESS.md"
 }

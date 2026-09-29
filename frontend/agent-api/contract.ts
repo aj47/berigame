@@ -1,6 +1,6 @@
 import { ApiError } from './portable';
 import {
-  GRID_SIZE, HOTBAR_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, PUNCH_DAMAGE, STICK_DROP_CHANCE, STICK_ITEM_ID, getItemDef, validAppearance,
+  GRID_SIZE, HOTBAR_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, PUNCH_DAMAGE, RECIPES, STICK_DROP_CHANCE, STICK_ITEM_ID, STONE_CLUB_ITEM_ID, getItemDef, validAppearance,
 } from '../../shared/sim';
 
 type Field = { type: 'integer'; minimum: number; maximum: number } | { type: 'string'; minLength: number; maxLength: number; pattern?: string; enum?: string[] };
@@ -11,15 +11,18 @@ const playerId = text(64, 64, '^[0-9a-fA-F]{64}$');
 const slot = integer(0, INVENTORY_SIZE - 1);
 const hotbarSlot = integer(0, HOTBAR_SIZE - 1);
 const stickDamage = getItemDef(STICK_ITEM_ID)!.weaponDamage;
+const clubDamage = getItemDef(STONE_CLUB_ITEM_ID)!.weaponDamage;
+const nodeId = integer(1, 4294967295);
 const stickChance = `${Math.round(STICK_DROP_CHANCE * 100)}%`;
 export const ACTIONS: Record<string, Action> = {
   move: { description: 'Walk to a tile. The server paths around trees. A thorny bramble hedge rings the Grove at Chebyshev distance 17 from the spawn tile (state.world.brambles): without a sturdy stick you stop at the last Grove tile and the receipt has blockedBy "brambles" and the clamped destination. From the Coast you can always walk home.', properties: { x: integer(0, GRID_SIZE - 1), z: integer(0, GRID_SIZE - 1) }, required: ['x', 'z'] },
-  harvest: { description: `Walk to and harvest a tree; without treeId, the tree with the soonest claim (as state.goal suggests). A regrowing or busy tree is not an error: you wait beside it and claim it when it ripens (newcomers first, then whoever waited longest); the receipt then has waiting {treeId, ripeInTicks}. Each harvest gives one berry and, while you hold no stick, a ${stickChance} chance (about 1 in 4, no guarantee) to also find a sturdy stick: a weapon and the key through the brambles. Inspect state to confirm completion.`, properties: { treeId: integer(1, 4294967295) }, required: [] },
+  harvest: { description: `Walk to and harvest a node from state.nodes: a berry tree, a driftwood pile or a tide rock (the last two are on the Coast, past the brambles). Pass nodeId (treeId is the old alias), or kind (berry, driftwood or tide_rock) for the node of that kind with the soonest claim; with neither, the berry tree with the soonest claim (as state.goal suggests). A regrowing or busy node is not an error: you wait beside it and claim it when it ripens (newcomers first, then whoever waited longest); the receipt then has waiting {treeId, ripeInTicks}. A berry harvest gives one berry and, while you hold no stick, a ${stickChance} chance (about 1 in 4, no guarantee) to also find a sturdy stick: a weapon and the key through the brambles. Driftwood piles give driftwood, tide rocks flint; they never find sticks. Inspect state to confirm completion.`, properties: { nodeId, treeId: nodeId, kind: { type: 'string', minLength: 1, maxLength: 16, enum: ['berry', 'driftwood', 'tide_rock'] } }, required: [] },
+  craft: { description: `Make an item from a recipe in state.recipes, instantly (the verb "make"). stone_club = 1 driftwood + 2 flint: a one-handed weapon dealing ${clubDamage} damage, wielded like the stick. Rejected while dead or attacking; if the bag is full the result lands on the ground under you.`, properties: { recipe: { type: 'string', minLength: 1, maxLength: 32, enum: RECIPES.map(r => r.id) } }, required: ['recipe'] },
   eat: { description: 'Eat one berry in your inventory slot.', properties: { slot }, required: ['slot'] },
   wield: { description: `Wield the weapon in quick slot 0-${HOTBAR_SIZE - 1} (inventory slots 0-${HOTBAR_SIZE - 1}). A stick deals ${stickDamage} damage per swing instead of the ${PUNCH_DAMAGE}-damage punch and is visible in your hand. Moving it out of the quick slots, dropping it, or dying unwields it.`, properties: { slot: hotbarSlot }, required: ['slot'] },
   unwield: { description: `Put your weapon away and punch for ${PUNCH_DAMAGE} damage.`, properties: {}, required: [] },
   stop: { description: 'Stop movement, harvesting, following, and combat.', properties: {}, required: [] },
-  attack: { description: `Start combat with an online player who also has combat access. You swing every few ticks: a punch deals ${PUNCH_DAMAGE} damage, a wielded stick ${stickDamage}. Rejected while either of you is in the safe ring around spawn (state.world.safeRing) or the target is in grace (10 ticks after a respawn; a newcomer until they find a stick, attack, or 3 minutes pass). Attacking ends your own grace.`, properties: { playerId }, required: ['playerId'], scope: 'combat' },
+  attack: { description: `Start combat with an online player who also has combat access. You swing every few ticks: a punch deals ${PUNCH_DAMAGE} damage, a wielded stick ${stickDamage}, a stone club ${clubDamage}. Rejected while either of you is in the safe ring around spawn (state.world.safeRing) or the target is in grace (10 ticks after a respawn; a newcomer until they find a stick, attack, or 3 minutes pass). Attacking ends your own grace.`, properties: { playerId }, required: ['playerId'], scope: 'combat' },
   follow: { description: 'Follow an online player.', properties: { playerId }, required: ['playerId'] },
   pickup: { description: 'Walk to and pick up a ground item. Use its string ID from state. An item beyond the brambles is rejected (error code brambles) unless you hold a stick.', properties: { id: text(1, 20, '^[0-9]+$') }, required: ['id'] },
   drop: { description: 'Drop items from your own inventory.', properties: { slot, quantity: integer(1, 99) }, required: ['slot', 'quantity'] },
@@ -64,7 +67,7 @@ const sessionResponse = { description: 'Bearer token shown once. Never place it 
   permissions, pollIntervalMs: { type: 'integer', const: 1000 },
 }, ['token', 'sessionId', 'playerId', 'expiresAt', 'permissions', 'pollIntervalMs'])) };
 export const openapi = {
-  openapi: '3.1.0', info: { title: 'BeriGame Agent API', version: '1.1.0' }, servers: [{ url: '/api/agent/v1' }],
+  openapi: '3.1.0', info: { title: 'BeriGame Agent API', version: '1.2.0' }, servers: [{ url: '/api/agent/v1' }],
   components: { securitySchemes: { session: { type: 'http', scheme: 'bearer', description: 'Session token from POST /sessions. Invitations are accepted only at POST /sessions.' }, invite: { type: 'http', scheme: 'bearer', description: 'Single-use invite code provided by the world operator.' } } },
   paths: {
     '/sessions': { post: { operationId: 'join_game', summary: 'Redeem an invite for a player session', security: [{ invite: [] }], requestBody: { required: true, content: json(object({}, [])) }, responses: { '201': sessionResponse, '401': error, '429': error, '503': error } } },

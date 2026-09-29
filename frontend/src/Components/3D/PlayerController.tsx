@@ -1,24 +1,24 @@
 import React from 'react';
 import PlayerAvatar from './PlayerAvatar';
-import { useRecentChatBySender } from './RenderOnlineUsers';
-import { useMyPlayer, useTick } from '../../spacetime/hooks';
+import { useAppearanceByHex, useRecentChatBySender } from './RenderOnlineUsers';
+import { useMyPlayer } from '../../spacetime/hooks';
+import { identityHex } from '../../spacetime/identity';
 
 /** Your own avatar. It is driven by the same server rows as everyone else's. */
 const PlayerController = (props: { setPlayerRef: (ref: React.MutableRefObject<any>) => void }) => {
   const me = useMyPlayer();
-  const tick = useTick();
   const chat = useRecentChatBySender();
+  const appearances = useAppearanceByHex();
   if (!me) return null;
-  const bubble = chat.get(me.identity.toHexString());
+  const hex = identityHex(me.identity);
   return (
     <PlayerAvatar
       // A new identity is a new character: remount so animation and motion state start fresh.
-      key={me.identity.toHexString()}
+      key={hex}
       row={me}
       isSelf
-      currentTick={tick}
-      chatText={bubble?.text}
-      chatTick={bubble?.tick}
+      saved={appearances.get(hex)}
+      chatText={chat.get(hex)?.text}
       setPlayerRef={props.setPlayerRef}
     />
   );
