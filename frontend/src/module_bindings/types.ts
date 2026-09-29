@@ -48,6 +48,30 @@ export const CombatEvent = __t.object("CombatEvent", {
 });
 export type CombatEvent = __Infer<typeof CombatEvent>;
 
+export const DummyEvent = __t.object("DummyEvent", {
+  tick: __t.u32(),
+  dummyId: __t.u32(),
+  attacker: __t.identity(),
+  damage: __t.u8(),
+  itemId: __t.string(),
+  hp: __t.u8(),
+  reset: __t.bool(),
+});
+export type DummyEvent = __Infer<typeof DummyEvent>;
+
+export const EmoteCooldown = __t.object("EmoteCooldown", {
+  identity: __t.identity(),
+  lastTick: __t.u32(),
+});
+export type EmoteCooldown = __Infer<typeof EmoteCooldown>;
+
+export const EmoteEvent = __t.object("EmoteEvent", {
+  tick: __t.u32(),
+  player: __t.identity(),
+  emote: __t.u8(),
+});
+export type EmoteEvent = __Infer<typeof EmoteEvent>;
+
 export const GroundItem = __t.object("GroundItem", {
   id: __t.u64(),
   itemId: __t.string(),
@@ -118,6 +142,16 @@ export const TickSchedule = __t.object("TickSchedule", {
   scheduledAt: __t.scheduleAt(),
 });
 export type TickSchedule = __Infer<typeof TickSchedule>;
+
+export const TrainingDummy = __t.object("TrainingDummy", {
+  id: __t.u32(),
+  x: __t.i32(),
+  z: __t.i32(),
+  hp: __t.u8(),
+  maxHp: __t.u8(),
+  lastHitTick: __t.u32(),
+});
+export type TrainingDummy = __Infer<typeof TrainingDummy>;
 
 export const Tree = __t.object("Tree", {
   id: __t.u32(),

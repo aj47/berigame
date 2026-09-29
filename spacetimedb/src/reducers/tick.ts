@@ -4,17 +4,18 @@ import { tickSchedule } from '../tables';
 import {
   DEATH_TICKS, EventKind, MELEE_RANGE, harvestTicksFor, isBerryNode, regrowTicksFor, Pending, PlayerState, SPAWN_TILE,
   MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS,
-  bfsPath, blockedSetFromTiles, chebyshev, enterRule, facingFromDelta, goalAdjacentTo,
+  bfsPath, chebyshev, enterRule, facingFromDelta, goalAdjacentTo,
   goalIsTile, harvestFindsStick, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
-  neighbors8, swingDamage, tileKey,
+  neighbors8, swingDamage, tileKey, DUMMY_TILE, dummyAfterHit, worldBlockedSet,
 } from '../../../shared/sim';
+import { ensureDummy } from '../lib/dummy';
 import { holdsStick } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
 import { seedMissingNodes } from '../lib/nodes';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
 import { clearInteractions, hex, sameId } from '../lib/players';
 import { canPlay } from '../lib/access';
-import type { Ctx, PlayerRow, TreeRow } from '../lib/types';
+import type { Ctx, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
 
 interface TickState {
   ctx: Ctx;
@@ -99,6 +100,12 @@ function resolvePending(s: TickState, p: PlayerRow): void {
     if (chebyshev(p, tree) <= MELEE_RANGE) {
       // A regrowing or claimed tree keeps you waiting beside it (wait-and-claim).
       if (tryClaimTree(s, p, tree)) { p.pending = Pending.None; p.pendingId = 0n; }
+      p.targetX = undefined; p.targetZ = undefined;
+      mark(s, p);
+    }
+  } else if (p.pending === Pending.Dummy) {
+    // Stop at the first tile in reach; the swing phase does the rest.
+    if (chebyshev(p, DUMMY_TILE) <= MELEE_RANGE && p.targetX !== undefined) {
       p.targetX = undefined; p.targetZ = undefined;
       mark(s, p);
     }
@@ -279,6 +286,38 @@ function phaseSwings(s: TickState): void {
   }
 }
 
+/**
+ * Training dummy swings. The dummy row is read only when someone is due to
+ * hit it this tick, so an idle dummy costs one pass over players and no I/O.
+ */
+function phaseDummySwings(s: TickState): void {
+  let dummy: TrainingDummyRow | undefined;
+  let dirty = false;
+  for (const h of s.order) {
+    const a = s.players.get(h)!;
+    if (!alive(a) || a.pending !== Pending.Dummy || a.combatTarget) continue;
+    if (!dummy) {
+      const row = s.ctx.db.trainingDummy.id.find(Number(a.pendingId));
+      if (!row) { a.pending = Pending.None; a.pendingId = 0n; mark(s, a); continue; }
+      dummy = { ...row };
+    }
+    if (Number(a.pendingId) !== dummy.id || chebyshev(a, dummy) > MELEE_RANGE) continue;
+    const face = facingFromDelta(dummy.x - a.x, dummy.z - a.z);
+    if (a.facing !== face) { a.facing = face; mark(s, a); }
+    if (s.T < a.nextSwingTick) continue;
+    if (a.weapon !== '' && !inHotbar(readSlots(s.ctx, a.identity).slots, a.weapon)) a.weapon = '';
+    const damage = swingDamage(a.weapon);
+    const { hp, reset } = dummyAfterHit(dummy, damage, s.T);
+    dummy.hp = hp;
+    dummy.lastHitTick = s.T;
+    dirty = true;
+    a.nextSwingTick = s.T + SWING_INTERVAL_TICKS;
+    s.ctx.db.dummyEvent.insert({ tick: s.T, dummyId: dummy.id, attacker: a.identity, damage, itemId: a.weapon, hp, reset });
+    mark(s, a);
+  }
+  if (dummy && dirty) s.ctx.db.trainingDummy.id.update(dummy);
+}
+
 function phaseDeath(s: TickState): void {
   for (const h of s.order) {
     const p = s.players.get(h)!;
@@ -349,6 +388,8 @@ export const tick = spacetimedb.reducer(
     for (const t of ctx.db.tree.iter()) trees.set(t.id, { ...t });
     // Coast nodes: seed any missing id (a database published before M2). Idempotent.
     for (const row of seedMissingNodes(ctx, (id) => trees.has(id))) trees.set(row.id, { ...row });
+    // The Grove's training dummy (a database published before it existed gets it here). One index lookup.
+    ensureDummy(ctx);
 
     const s: TickState = {
       ctx,
@@ -358,13 +399,14 @@ export const tick = spacetimedb.reducer(
       dirty: new Set(),
       trees,
       dirtyTrees: new Set(),
-      blocked: blockedSetFromTiles(trees.values()),
+      blocked: worldBlockedSet(trees.values()),
     };
 
     phaseRespawn(s);
     phaseMovement(s);
     phaseHarvest(s);
     phaseSwings(s);
+    phaseDummySwings(s);
     phaseDeath(s);
     phaseExpiry(s);
 

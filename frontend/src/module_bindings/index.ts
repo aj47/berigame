@@ -35,11 +35,13 @@ import {
 
 // Import all reducer arg schemas
 import AttackReducer from "./attack_reducer";
+import AttackDummyReducer from "./attack_dummy_reducer";
 import CancelReducer from "./cancel_reducer";
 import ConfigureAccessReducer from "./configure_access_reducer";
 import CraftReducer from "./craft_reducer";
 import DropItemReducer from "./drop_item_reducer";
 import EatBerryReducer from "./eat_berry_reducer";
+import EmoteReducer from "./emote_reducer";
 import FollowReducer from "./follow_reducer";
 import GrantAgentReducer from "./grant_agent_reducer";
 import GrantPlayerReducer from "./grant_player_reducer";
@@ -62,9 +64,12 @@ import AccessPolicyRow from "./access_policy_table";
 import AppearanceRow from "./appearance_table";
 import ChatMessageRow from "./chat_message_table";
 import CombatEventRow from "./combat_event_table";
+import DummyEventRow from "./dummy_event_table";
+import EmoteEventRow from "./emote_event_table";
 import GroundItemRow from "./ground_item_table";
 import InventorySlotRow from "./inventory_slot_table";
 import PlayerRow from "./player_table";
+import TrainingDummyRow from "./training_dummy_table";
 import TreeRow from "./tree_table";
 import WorldRow from "./world_table";
 
@@ -113,6 +118,22 @@ const tablesSchema = __schema({
     ],
     event: true,
   }, CombatEventRow),
+  dummyEvent: __table({
+    name: 'dummy_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, DummyEventRow),
+  emoteEvent: __table({
+    name: 'emote_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, EmoteEventRow),
   groundItem: __table({
     name: 'ground_item',
     indexes: [
@@ -153,6 +174,17 @@ const tablesSchema = __schema({
       { name: 'player_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerRow),
+  trainingDummy: __table({
+    name: 'training_dummy',
+    indexes: [
+      { accessor: 'id', name: 'training_dummy_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'training_dummy_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TrainingDummyRow),
   tree: __table({
     name: 'tree',
     indexes: [
@@ -180,11 +212,13 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("attack", AttackReducer),
+  __reducerSchema("attack_dummy", AttackDummyReducer),
   __reducerSchema("cancel", CancelReducer),
   __reducerSchema("configure_access", ConfigureAccessReducer),
   __reducerSchema("craft", CraftReducer),
   __reducerSchema("drop_item", DropItemReducer),
   __reducerSchema("eat_berry", EatBerryReducer),
+  __reducerSchema("emote", EmoteReducer),
   __reducerSchema("follow", FollowReducer),
   __reducerSchema("grant_agent", GrantAgentReducer),
   __reducerSchema("grant_player", GrantPlayerReducer),

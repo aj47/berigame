@@ -14,6 +14,8 @@ import { useAppearancePreview } from '../../appearance/store';
 import { useToastStore } from '../../spacetime/stores/toastStore';
 import type { AnimationCue } from '../../animation/combatPresentation';
 import { identityHex } from '../../spacetime/identity';
+import { useSocialStore } from '../../spacetime/stores/socialStore';
+import { emoteCue } from '../../animation/emotes';
 
 class HairBoundary extends React.Component<{ children:React.ReactNode; fallback:React.ReactNode }, { failed:boolean }> {
   state={failed:false};
@@ -62,9 +64,21 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const cue = useCombatFxStore((s) => s.cues[hex]);
   const floating = useCombatFxStore((s) => s.numbers[hex]);
   const found = useCombatFxStore((s) => s.finds[hex]);
-  const transient = useRef<AnimationCue | null>(null);
-  transient.current = cue ?? null;
+  const emote = useSocialStore((s) => s.emotes[hex]);
   const dead = row.state === PlayerState.Dead;
+  // Moving, fighting, harvesting or dying ends an emote (a Sit holds until then).
+  const activity = `${row.x},${row.z},${row.hostile},${row.pending},${row.harvestTreeId},${row.state}`;
+  const lastActivity = useRef(activity);
+  useEffect(() => {
+    if (lastActivity.current === activity) return;
+    lastActivity.current = activity;
+    const current = useSocialStore.getState().emotes[hex];
+    if (current) useSocialStore.getState().clearEmote(hex);
+  }, [activity, hex]);
+  const transient = useRef<AnimationCue | null>(null);
+  // Combat cues win over an emote; an emote plays as a one-off 'action' cue.
+  const emoteClip = emote && !dead ? emoteCue(emote.emote) : null;
+  transient.current = cue ?? (emote && emoteClip ? { clip: emoteClip.clip, durationMs: emote.durationMs, at: emote.at, seq: 100000 + emote.seq, role: 'action' } : null);
   const healthShown = useHealthShown(row.hp, row.maxHp);
   useEffect(() => { if (isSelf && setPlayerRef) setPlayerRef(groupRef); }, [isSelf, setPlayerRef]);
   useAvatarDecal(groupRef, isSelf ? 'self' : targeted ? 'target' : 'other');

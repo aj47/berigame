@@ -57,6 +57,10 @@ export function useGameActions() {
     setAppearance: (appearance: Appearance) => run('setAppearance', (c) => c.reducers.setAppearance(appearance)),
     setName: (name: string) => run('setName', (c) => c.reducers.setName({ name })),
     /** The verb "make": craft a recipe from shared/sim RECIPES (e.g. 'stone_club'). */
+    /** Walk up to a training dummy and keep swinging at it (open to everyone, harms nobody). */
+    attackDummy: (dummyId: number) => run('attackDummy', (c) => c.reducers.attackDummy({ dummyId })),
+    /** A cosmetic emote (shared/sim Emote), seen by everyone nearby. */
+    emote: (emote: number) => run('emote', (c) => c.reducers.emote({ emote })),
     craft: (recipe: string) => run('craft', (c) => c.reducers.craft({ recipe })),
   };
 }

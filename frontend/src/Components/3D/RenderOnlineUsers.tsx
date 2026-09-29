@@ -3,7 +3,9 @@ import PlayerAvatar from './PlayerAvatar';
 import AvatarDecals from './AvatarDecals';
 import { AvatarOverlay } from './AvatarOverlay';
 import AnimationCulling from './AnimationCulling';
-import { useAppearanceRows, useChatMessages, useMyIdentityHex, useMyPlayer, usePlayers, useTick } from '../../spacetime/hooks';
+import TrainingDummy from './TrainingDummy';
+import DeathBagMarker, { CameraLookProbe } from './DeathBagMarker';
+import { useAppearanceRows, useChatMessages, useMyIdentityHex, useMyPlayer, usePlayers, useTick, useTrainingDummies } from '../../spacetime/hooks';
 import { CHAT_BUBBLE_TICKS, type Appearance } from '@sim';
 import { identityHex } from '../../spacetime/identity';
 
@@ -42,9 +44,14 @@ const RenderOnlineUsers = () => {
   const chat = useRecentChatBySender();
   const appearances = useAppearanceByHex();
   const target = useMyTargetHex();
+  const dummies = useTrainingDummies();
+  const tick = useTick();
 
   return (
     <>
+      {dummies.map((d) => <TrainingDummy key={d.id} dummy={d} tick={tick} />)}
+      <DeathBagMarker />
+      <CameraLookProbe />
       {players.map((p) => {
         if (!p.online) return null;
         const hex = identityHex(p.identity);

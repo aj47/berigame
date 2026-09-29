@@ -8,6 +8,7 @@ import { buildConnection } from './connection';
 import { onWorldTick } from './tickClock';
 import { startWorldLivenessMonitor } from './worldLivenessMonitor';
 import { useCombatFxStore } from './stores/combatFxStore';
+import { useSocialStore } from './stores/socialStore';
 
 /** Feeds the tick clock and the combat FX store from table updates. */
 const TableSync = () => {
@@ -26,6 +27,9 @@ const TableSync = () => {
     useFirstDayStore.getState().onEvent(meRef.current, row);
   }, [pushEvent]);
   useTable(tables.combatEvent, { onInsert: onEvent });
+  // Training dummy blows and emotes: event tables too.
+  useTable(tables.dummyEvent, { onInsert: useSocialStore.getState().pushDummyHit });
+  useTable(tables.emoteEvent, { onInsert: useSocialStore.getState().pushEmote });
   return null;
 };
 

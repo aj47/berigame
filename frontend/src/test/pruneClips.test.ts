@@ -2,6 +2,7 @@ import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { STICK_SWING_CLIP, withStickSwing } from '../animation/stickSwing';
 import { avatarClips, pruneRestTracks } from '../animation/pruneClips';
+import { withEmotes } from '../animation/emotes';
 import { stanceSet } from '../animation/stance';
 import { loadAdventurerRig, type AdventurerRig } from './adventurerRig';
 import { makeAvatar, play, type Timeline, type TimelineCue } from './animationTimeline';
@@ -39,7 +40,7 @@ describe('pruneRestTracks', () => {
   });
 
   it('keeps every clip, dropping only channels that hold the rest pose', () => {
-    const full = withStickSwing(rig.scene, rig.animations);
+    const full = withEmotes(rig.scene, withStickSwing(rig.scene, rig.animations));
     const pruned = avatarClips(rig.scene, rig.animations);
     expect(avatarClips(rig.scene, rig.animations)).toBe(pruned);
     expect(pruned.map((clip) => [clip.name, clip.duration])).toEqual(full.map((clip) => [clip.name, clip.duration]));

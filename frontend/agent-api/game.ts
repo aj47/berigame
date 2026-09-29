@@ -1,7 +1,7 @@
 import { Identity } from 'spacetimedb';
 import { DbConnection, tables } from '../src/module_bindings';
 import {
-  areaOf, bestTree, BRAMBLE_KEY_ITEM, chebyshev, RESPAWN_GRACE_TICKS, BRAMBLE_MESSAGE, blockedSetFromTiles, emptySlots, enterRule, firstDayGoal, getItemDef, GRID_SIZE, HEDGE_RING,
+  areaOf, bestTree, BRAMBLE_KEY_ITEM, chebyshev, RESPAWN_GRACE_TICKS, BRAMBLE_MESSAGE, worldBlockedSet, DUMMY_ID, dummyHpAt, emoteByKey, GROUND_ITEM_TTL_TICKS, emptySlots, enterRule, firstDayGoal, getItemDef, GRID_SIZE, HEDGE_RING,
   holdsItem, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, isSafe, nearestReachableTile, Pending, PlayerState, PUNCH_DAMAGE, SAFE_RADIUS, SPAWN_TILE,
   STICK_DROP_CHANCE, STICK_ITEM_ID, swingDamage, TICK_MS, treeReadyTick, type Slot,
   NodeKind, nodeKindDef, recipeStatus,
@@ -67,7 +67,7 @@ export function connect(credential: Credential, control = false, options: Connec
             resolve({ conn: connection, live: () => active && Date.now() - lastTick < TICK_MS * 8 });
           }).subscribe(control ? [tables.world, tables.accessPolicy] : [
             tables.world, tables.accessPolicy, tables.player.where(row => row.online.eq(true)), tables.tree,
-            tables.groundItem, tables.inventorySlot, tables.chatMessage,
+            tables.groundItem, tables.inventorySlot, tables.chatMessage, tables.trainingDummy,
             tables.appearance.where(row => row.identity.eq(identity)),
           ]);
         }).build();
@@ -129,7 +129,7 @@ export async function createGameService(credential: Credential, options: Connect
         destination: p.targetX === undefined ? null : { x: p.targetX, z: p.targetZ },
         area: areaOf(p),
         action: p.harvestEndTick ? 'harvesting' : p.pending === Pending.Harvest ? (chebyshev(p, conn.db.tree.id.find(Number(p.pendingId)) ?? p) <= 1 ? 'waiting at tree' : 'walking to tree')
-          : p.pending === Pending.Pickup ? 'walking to item' : p.combatTarget ? (p.hostile ? 'combat' : 'following') : p.targetX === undefined ? 'idle' : 'moving',
+          : p.pending === Pending.Pickup ? 'walking to item' : p.pending === Pending.Dummy ? (p.targetX === undefined ? 'training at dummy' : 'walking to dummy') : p.combatTarget ? (p.hostile ? 'combat' : 'following') : p.targetX === undefined ? 'idle' : 'moving',
       });
       // The First Day chip's memory for this session (see shared/sim/goals.ts).
       let goalDone: string[] = [];
@@ -181,7 +181,11 @@ export async function createGameService(credential: Credential, options: Connect
             trees: [...conn.db.tree.iter()].filter(tree => tree.kind === NodeKind.Berry).map(tree => ({ id: tree.id, tile: { x: tree.x, z: tree.z }, berry: getItemDef(tree.itemId)?.name,
               ready: tree.cooldownUntilTick <= tick && !tree.harvester, regrowTicks: Math.max(0, tree.cooldownUntilTick - tick), harvesting: !!tree.harvester })),
             recipes: recipeStatus(slotsOf()).map(r => ({ id: r.id, name: r.name, inputs: r.inputs, canCraft: r.canCraft, missing: r.missing })),
-            groundItems: [...conn.db.groundItem.iter()].slice(0, 128).map(row => ({ id: row.id.toString(), itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity, tile: { x: row.x, z: row.z } })),
+            groundItems: [...conn.db.groundItem.iter()].slice(0, 128).map(row => ({ id: row.id.toString(), itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity, tile: { x: row.x, z: row.z },
+              ...(row.droppedOnDeath && row.droppedBy.toHexString() === player.identity ? { yourDeathDrop: true, expiresInTicks: Math.max(0, row.expiresTick - tick) } : {}) })),
+            dummies: [...conn.db.trainingDummy.iter()].map(d => ({ id: d.id, tile: { x: d.x, z: d.z }, health: dummyHpAt(d, tick), maxHealth: d.maxHp,
+              rule: 'Attack with attack_dummy. Harmless practice: open to everyone, never dies, springs back to full HP.' })),
+            groundItemTtlTicks: GROUND_ITEM_TTL_TICKS,
             chat: [...conn.db.chatMessage.iter()].sort((a, b) => a.tick - b.tick).slice(-20).map(row => ({ sender: row.sender.toHexString(), text: row.text, tick: row.tick })),
             appearance: conn.db.appearance.identity.find(id) ? { ...conn.db.appearance.identity.find(id), identity: player.identity } : appearance.DEFAULT_APPEARANCE,
             appearanceOptions: { hairStyle: appearance.HAIR_STYLES, skinTone: appearance.SKIN_TONES,
@@ -200,7 +204,7 @@ export async function createGameService(credential: Credential, options: Connect
           switch (name) {
             case 'move': {
               await r.setTarget({ x: input.x, z: input.z });
-              const blocked = blockedSetFromTiles(conn.db.tree.iter());
+              const blocked = worldBlockedSet(conn.db.tree.iter());
               const hasStick = holdsItem(slotsOf(), self.weapon, STICK_ITEM_ID);
               const destination = nearestReachableTile(self, { x: input.x, z: input.z }, blocked, enterRule(hasStick));
               const open = nearestReachableTile(self, { x: input.x, z: input.z }, blocked);
@@ -224,6 +228,8 @@ export async function createGameService(credential: Credential, options: Connect
             case 'wield': await r.wieldItem({ slot: input.slot }); break;
             case 'unwield': await r.unwield({}); break;
             case 'attack': await r.attack({ target: Identity.fromString(input.playerId) }); break;
+            case 'attack_dummy': await r.attackDummy({ dummyId: input.dummyId ?? DUMMY_ID }).catch(brambles); break;
+            case 'emote': await r.emote({ emote: emoteByKey(input.emote)!.id }); break;
             case 'follow': await r.follow({ target: Identity.fromString(input.playerId) }); break;
             case 'pickup': await r.pickupItem({ id: BigInt(input.id) }).catch(brambles); break;
             case 'drop': await r.dropItem({ slot: input.slot, quantity: input.quantity }); break;

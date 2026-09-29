@@ -1,5 +1,6 @@
 import { AnimationClip, type KeyframeTrack, type Object3D } from 'three';
 import { withStickSwing } from './stickSwing';
+import { withEmotes } from './emotes';
 
 /**
  * Keyframe values are float32: a channel that never moves differs from its
@@ -60,14 +61,14 @@ export function pruneRestTracks(root: Object3D, clips: readonly AnimationClip[])
 const pruned = new WeakMap<readonly AnimationClip[], AnimationClip[]>();
 /**
  * Every clip an adventurer can play: the GLB's clips plus the synthesized
- * StickSwing (withStickSwing), with rest-pose channels pruned. Built once per
+ * StickSwing (withStickSwing) and emotes (withEmotes), with rest-pose channels pruned. Built once per
  * loaded GLB, after the swing is synthesized from the unpruned Strike, and
  * referentially stable like withStickSwing's array.
  */
 export function avatarClips(root: Object3D, clips: AnimationClip[]): AnimationClip[] {
   let cached = pruned.get(clips);
   if (!cached) {
-    cached = pruneRestTracks(root, withStickSwing(root, clips));
+    cached = pruneRestTracks(root, withEmotes(root, withStickSwing(root, clips)));
     pruned.set(clips, cached);
   }
   return cached;

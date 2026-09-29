@@ -5,6 +5,7 @@ import SpacetimeProvider from './spacetime/SpacetimeProvider';
 import GameWebMCPTools from './agent/GameWebMCPTools';
 import AgentOnboarding from './agent/AgentOnboarding';
 import BetaAdmission from './agent/BetaAdmission';
+import SocialHud from './Components/SocialHud';
 
 const isAgentEntry = window.location.pathname.replace(/\/+$/, '') === '/agent';
 const ignoreWebMCPStatus = () => {};
@@ -17,6 +18,7 @@ function App() {
       <SpacetimeProvider>
         <GameWebMCPTools onStatusChange={ignoreWebMCPStatus} />
         <GameComponent />
+        <SocialHud />
       </SpacetimeProvider>
     </BetaAdmission>
   );

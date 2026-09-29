@@ -131,6 +131,7 @@ The goal chip (M1) replaces the GatherShortcut button: one line, "tap to do it".
 | 8 | A way to progress after the stick | **Yes: the stick opens the next area** | M1 (hedge), M2 (Coast) |
 | 9 | Brambles one-way or a strict wall | **One-way: you can always walk home without a stick** | M1 |
 | 10 | Stick chance | **25% per finished berry harvest** | M1 |
+| 11 | Training dummy: who may hit it, and where | **Decided: open to everyone (no combat grant), since it harms nobody. One static post at (28,28): ring 3, diagonal to the safe ring's SE corner, off the four worn paths, more than 2 tiles from every tree (harvest tiles stay clear). It blocks its tile; it takes hits and floats damage but never dies (60 HP that springs back to full, and back to full after 25 idle ticks, computed lazily). Swings work from the safe ring and in grace, and do not end grace. Server: `training_dummy` table plus `dummy_event` event table; the tick does one primary-key lookup (seeding it if missing) and writes only on a landed swing (no idle writes).** | Grove, now |
 
 Owner direction: the base is very simple, easy to understand, and meaningful in the first 3 minutes. Sticks are the first meaningful reward and are not easy.
 
@@ -255,7 +256,7 @@ Item ids are permanent. Materials stack to 99; weapons stack to 1.
 |---|---|
 | Stick meter, pity counter, guaranteed 5th harvest | Owner: the stick is not guaranteed |
 | The Beacon and the Goldberry Bloom (feed driftwood, faster regrow) | The areas are now the solo arc; a second verb in M2. Candidate world goal for Area 3 |
-| "Land a hit" First Day step, training dummy | The Coast is the step after the stick for everyone |
+| "Land a hit" First Day step | The Coast is the step after the stick for everyone. (The training dummy itself shipped: decision 11.) |
 | Driftwood shield, offhand slot, armor | A second slot and a turtle risk; the club is enough gear |
 | Chronicle, Old Maro NPC, seashells, shop | The chip gives direction; a currency needs sinks we do not have |
 | Palm, frond, cord, coconut; flint spear; brace | Extra steps or new concepts that teach nothing new |
