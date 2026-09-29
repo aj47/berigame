@@ -279,6 +279,7 @@ def stick_geometry():
     for i in range(6):face((ids[-1][i],ids[-1][(i+1)%6],tip),26)
     b0=ph+q@Vector((.02,0,.46));b1=b0+q@Vector((.075,.01,.07));side=q@Vector((0,.022,0))
     surface([b0,b1+side,b1-side,b1+q@Vector((.05,0,.06))],[(0,1,2),(1,3,2),(0,2,1),(1,2,3)],24,'Prop.R')
+stick_faces_start=len(F)
 stick_geometry()
 # Mesh and palette atlas: one material, one opaque texture.
 mesh=bpy.data.meshes.new('StarterAdventurerMesh');mesh.from_pydata(V,[],F);mesh.update()
@@ -305,10 +306,15 @@ mat.node_tree.links.new(tex.outputs['Color'],bs.inputs['Base Color']);obj.data.m
 # Recalculate normals, preserving intentional flat shading.
 bpy.ops.object.select_all(action='DESELECT');obj.select_set(True);bpy.context.view_layer.objects.active=obj
 bpy.ops.object.mode_set(mode='EDIT');bpy.ops.mesh.select_all(action='SELECT');bpy.ops.mesh.normals_make_consistent(inside=False);bpy.ops.object.mode_set(mode='OBJECT')
-# Smooth shading only on the skin of skull, neck and bare forearms. Everything
-# else (ears, eyes, brows, hair locks, clothing, hands, stick) stays flat, and the
-# pieces are separate vertex islands, so every silhouette keeps its hard edge.
-for poly in mesh.polygons:poly.use_smooth=poly.index in SMOOTH_FACES
+# Smooth-body pass: the whole character (skin, robe, sleeves, trousers, boots,
+# hands, hair, ears) is shaded smooth, with auto-smooth sharp edges above 62 deg.
+# 8-sided limb tubes (45 deg) and the 12-sided skull stay round, while boot soles,
+# belt buckle, cuff/collar lips, palm ends and hair-lock ridges stay crisp. Open
+# borders (robe hem, sleeve/trouser ends) are naturally hard. Only the stick keeps
+# flat facets. Colour cells are per-face UVs, so palette boundaries stay crisp.
+STICK_FACES=set(range(stick_faces_start,len(F)))
+for poly in mesh.polygons:poly.use_smooth=poly.index not in STICK_FACES
+mesh.set_sharp_from_angle(angle=math.radians(62))
 
 # Animation helpers. Limbs use analytic two-bone IK while authoring; exported rig is FK-only.
 def reset():
