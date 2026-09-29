@@ -2,7 +2,11 @@ import { useEffect, useRef } from "react";
 import {
   areaOf,
   bestTree,
-  blockedSetFromTiles,
+  worldBlockedSet,
+  DUMMY_ID,
+  DUMMY_TILE,
+  EMOTE_LIST,
+  emoteByKey,
   BRAMBLE_MESSAGE,
   enterRule,
   firstDayGoal,
@@ -177,6 +181,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                     ? "harvesting"
                       : player.pending === Pending.Harvest
                       ? "walking to a tree"
+                      : player.pending === Pending.Dummy
+                      ? "training at the dummy"
                       : player.combatTarget
                         ? "combat"
                         : "idle",
@@ -223,7 +229,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           if (error) return error;
           if (!Number.isInteger(x) || !Number.isInteger(z) || x < 0 || x >= GRID_SIZE || z < 0 || z >= GRID_SIZE)
             return `Choose integer tile coordinates from 0 through ${GRID_SIZE - 1}.`;
-          const blocked = blockedSetFromTiles(live.current.trees);
+          const blocked = worldBlockedSet(live.current.trees);
           const hasStick = holdsItem(slotsFromRows(live.current.inventory), player.weapon ?? "", STICK_ITEM_ID);
           const dest = nearestReachableTile(player, { x, z }, blocked, enterRule(hasStick));
           const open = nearestReachableTile(player, { x, z }, blocked);
@@ -279,6 +285,30 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           if (!target || !target.online || target.state !== PlayerState.Alive) return "That player is not currently online and alive. Inspect the game again and choose an available player.";
           if (identityHex(target.identity) === identityHex(player.identity)) return "You cannot attack your own character.";
           return reportAction(await live.current.actions.attack(target.identity), "Attack started. Your character swings automatically; inspect the game state to follow health.");
+        },
+      ),
+      tool(
+        "attack_training_dummy",
+        `Walk to the training dummy in the Grove (tile ${DUMMY_TILE.x}, ${DUMMY_TILE.z}, just outside the safe ring) and keep swinging at it with your punch or wielded weapon. Harmless practice open to everyone: it never dies and hurts nobody. Moving or acting stops it.`,
+        {},
+        [],
+        async () => {
+          const { error } = requirePlayer() as any;
+          if (error) return error;
+          return reportAction(await live.current.actions.attackDummy(DUMMY_ID), "Walking to the training dummy; your character swings at it automatically.");
+        },
+      ),
+      tool(
+        "emote",
+        `Play a cosmetic emote other players see: ${EMOTE_LIST.map((e) => e.key).join(", ")}. Moving or acting ends it; sit holds until then.`,
+        { emote: { type: "string", enum: EMOTE_LIST.map((e) => e.key), description: "Which emote to play." } },
+        ["emote"],
+        async ({ emote }) => {
+          const { error } = requirePlayer() as any;
+          if (error) return error;
+          const def = emoteByKey(String(emote ?? ""));
+          if (!def) return `Choose one of: ${EMOTE_LIST.map((e) => e.key).join(", ")}.`;
+          return reportAction(await live.current.actions.emote(def.id), `${def.name}!`);
         },
       ),
       tool(

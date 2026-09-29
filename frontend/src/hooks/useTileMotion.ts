@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Vector3 } from 'three';
-import { MOVEMENT_STEPS_PER_TICK, bfsPath, blockedSetFromTiles, chebyshev, facingToYaw, goalIsTile, tileToWorld, type Facing, type Tile } from '@sim';
+import { MOVEMENT_STEPS_PER_TICK, bfsPath, worldBlockedSet, chebyshev, facingToYaw, goalIsTile, tileToWorld, type Facing, type Tile } from '@sim';
 import { tickClock } from '../spacetime/tickClock';
 import { useTrees } from '../spacetime/hooks';
 import { MOVEMENT_ANIMATION_GRACE_MS, START_EASE_MS, dampAngle, easedElapsed, easedSpeedFactor, turnFactor } from '../animation/locomotion';
@@ -36,7 +36,7 @@ const stepLength = (a: Vector3, b: Vector3) => Math.max(Math.abs(b.x-a.x), Math.
  */
 export function useTileMotion(tileX: number, tileZ: number, facing: number, groupRef: React.MutableRefObject<any>): React.MutableRefObject<Motion> {
   const trees = useTrees();
-  const blocked = useMemo(() => blockedSetFromTiles(trees), [trees]);
+  const blocked = useMemo(() => worldBlockedSet(trees), [trees]);
   const motion = useRef<Motion>({
     from: new Vector3(), to: new Vector3(), points: [], stepLengths: [], segment: 0,
     durationMs: 0, startedAt: 0, moving: false, speed: 0,

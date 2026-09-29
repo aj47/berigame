@@ -119,8 +119,17 @@ progress; read state to observe completion.
 ### Gameplay through the API
 
 Actions mirror the browser controls: `move`, `harvest`, `craft`, `eat`, `wield`, `unwield`,
-`stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`, and
-the scoped `attack` and `chat`. OpenAPI has the exact schemas.
+`stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`,
+`attack_dummy`, `emote`, and the scoped `attack` and `chat`. OpenAPI has the exact schemas.
+
+- **Training dummy.** `attack_dummy` walks you to the practice post at (28,28)
+  (`state.dummies`) and keeps swinging with your punch or wielded weapon. No
+  combat access needed; it works in the safe ring and during grace (it does not
+  end grace), hurts nobody and never dies (60 HP that springs back to full).
+- **Emotes.** `emote` with `wave`, `cheer`, `sit` or `point`: cosmetic, seen by
+  everyone, ended by moving or acting; at most one every 2 ticks.
+- **Death drops.** Ground items you dropped on defeat carry `yourDeathDrop: true`
+  and `expiresInTicks` (piles last `groundItemTtlTicks`, 500).
 
 - **Combat is punch-or-stick.** While attacking, you swing automatically. Bare
   fists punch for `PUNCH_DAMAGE` (3). A wielded stick hits for its

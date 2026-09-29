@@ -1,6 +1,6 @@
 import { ApiError } from './portable';
 import {
-  GRID_SIZE, HOTBAR_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, PUNCH_DAMAGE, RECIPES, STICK_DROP_CHANCE, STICK_ITEM_ID, STONE_CLUB_ITEM_ID, getItemDef, validAppearance,
+  DUMMY_ID, DUMMY_MAX_HP, DUMMY_TILE, EMOTE_LIST, GRID_SIZE, HOTBAR_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, PUNCH_DAMAGE, RECIPES, STICK_DROP_CHANCE, STICK_ITEM_ID, STONE_CLUB_ITEM_ID, getItemDef, validAppearance,
 } from '../../shared/sim';
 
 type Field = { type: 'integer'; minimum: number; maximum: number } | { type: 'string'; minLength: number; maxLength: number; pattern?: string; enum?: string[] };
@@ -23,6 +23,8 @@ export const ACTIONS: Record<string, Action> = {
   unwield: { description: `Put your weapon away and punch for ${PUNCH_DAMAGE} damage.`, properties: {}, required: [] },
   stop: { description: 'Stop movement, harvesting, following, and combat.', properties: {}, required: [] },
   attack: { description: `Start combat with an online player who also has combat access. You swing every few ticks: a punch deals ${PUNCH_DAMAGE} damage, a wielded stick ${stickDamage}, a stone club ${clubDamage}. Rejected while either of you is in the safe ring around spawn (state.world.safeRing) or the target is in grace (10 ticks after a respawn; a newcomer until they find a stick, attack, or 3 minutes pass). Attacking ends your own grace.`, properties: { playerId }, required: ['playerId'], scope: 'combat' },
+  attack_dummy: { description: `Walk up to the training dummy in the Grove (state.dummies; tile ${DUMMY_TILE.x},${DUMMY_TILE.z}, just outside the safe ring) and keep swinging at it with your punch or wielded weapon. Open to everyone (no combat access needed), allowed in the safe ring and during grace, which it does not end. It harms nobody and never dies: ${DUMMY_MAX_HP} HP that springs back to full. Moving, harvesting, attacking a player or being hit stops it.`, properties: { dummyId: integer(DUMMY_ID, DUMMY_ID) }, required: [] },
+  emote: { description: `A cosmetic emote everyone nearby sees: ${EMOTE_LIST.map(e => e.key).join(', ')}. Moving or acting ends it (sit holds until then). At most one every 2 ticks.`, properties: { emote: { type: 'string', minLength: 2, maxLength: 8, enum: EMOTE_LIST.map(e => e.key) } }, required: ['emote'] },
   follow: { description: 'Follow an online player.', properties: { playerId }, required: ['playerId'] },
   pickup: { description: 'Walk to and pick up a ground item. Use its string ID from state. An item beyond the brambles is rejected (error code brambles) unless you hold a stick.', properties: { id: text(1, 20, '^[0-9]+$') }, required: ['id'] },
   drop: { description: 'Drop items from your own inventory.', properties: { slot, quantity: integer(1, 99) }, required: ['slot', 'quantity'] },

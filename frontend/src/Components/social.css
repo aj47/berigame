@@ -1,0 +1,126 @@
+/* Death panel, bag compass, emote wheel and the training dummy's HP bar. */
+.social-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+.social-hud button { pointer-events: auto; }
+
+.death-panel {
+  position: absolute;
+  left: 50%;
+  top: calc(max(16px, env(safe-area-inset-top)) + 8px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line, #8a6a45);
+  background: #302a23f0;
+  color: var(--parchment, #f7f1e3);
+  font-size: 14px;
+  box-shadow: 0 6px 18px #0006;
+  text-align: center;
+}
+.death-panel.down { border-color: #c2553d; }
+.death-panel.compact { top: auto; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 130px); padding: 6px 12px 6px; font-size: 13px; }
+.death-title { font-size: 18px; color: #ffb49f; letter-spacing: 0.02em; }
+.death-bag-line { display: flex; align-items: center; gap: 8px; }
+.death-bag-line b { color: #ffd36b; }
+.death-respawn { font-size: 12px; opacity: 0.85; }
+.bag-urgent { color: #ff8a70; font-weight: 700; }
+.bag-compass {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  color: #ffd36b;
+  /* The arrow points up the screen at 0; rotation is clockwise from there. */
+}
+.bag-compass svg { width: 20px; height: 20px; fill: currentColor; }
+.death-dismiss {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 0 2px;
+}
+.bag-life { width: 100%; height: 3px; background: #ffffff22; border-radius: 2px; overflow: hidden; }
+.bag-life > div { height: 100%; background: #ffd36b; transition: width 0.6s linear; }
+
+.emote-wheel {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: 64px;
+  height: 64px;
+}
+.emote-toggle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--line, #8a6a45);
+  background: #302a23f0;
+  color: var(--parchment, #f7f1e3);
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+}
+.emote-wheel.open .emote-toggle { border-color: #ffd36b; }
+.emote-toggle kbd, .emote-option kbd {
+  font: inherit;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.emote-ring { position: absolute; inset: 0; }
+.emote-option {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 62px;
+  height: 34px;
+  margin: -17px 0 0 -31px;
+  border-radius: 17px;
+  border: 1px solid var(--line, #8a6a45);
+  background: #f7f1e3f5;
+  color: var(--ink, #2b211a);
+  font-weight: 700;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  /* A quarter circle from the button's left (1) round to straight above it (4). */
+  transform: rotate(calc(-180deg + var(--i) * 30deg)) translate(132px) rotate(calc(180deg - var(--i) * 30deg));
+  box-shadow: 0 3px 10px #0005;
+}
+.emote-option:hover, .emote-option:focus-visible { background: #ffd36b; }
+
+@media (max-width: 700px) {
+  .emote-wheel { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 140px); width: 52px; height: 52px; }
+  .death-panel.compact { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 210px); }
+}
+
+.dummy-hp {
+  width: 64px;
+  height: 7px;
+  border-radius: 4px;
+  background: #302a23d0;
+  border: 1px solid #1d1712;
+  overflow: hidden;
+}
+.dummy-hp-fill { height: 100%; background: #e8b04a; transition: width 0.25s ease-out; }

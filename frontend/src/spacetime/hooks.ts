@@ -69,3 +69,9 @@ export function useAppearanceRows() {
   const [rows] = useTable(tables.appearance);
   return rows;
 }
+
+/** The Grove's training dummies (one row). */
+export function useTrainingDummies() {
+  const [rows] = useTable(tables.trainingDummy);
+  return rows;
+}

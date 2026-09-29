@@ -26,6 +26,8 @@ import { dropItem as registeredDrop, eatBerry as registeredEat, moveItem as regi
 import { setAppearance as registeredAppearance } from '../../../spacetimedb/src/reducers/appearance';
 import { startHarvest as registeredHarvest } from '../../../spacetimedb/src/reducers/harvest';
 import { onConnect as registeredConnect } from '../../../spacetimedb/src/reducers/lifecycle';
+import { attackDummy as registeredAttackDummy, emote as registeredEmote } from '../../../spacetimedb/src/reducers/social';
+import { DUMMY_ID, DUMMY_MAX_HP, DUMMY_TILE, DUMMY_IDLE_RESET_TICKS, Emote } from '../social';
 import { DEFAULT_APPEARANCE } from '../appearance';
 import { BRAMBLE_MESSAGE, inGrace, isBramble } from '../areas';
 import { FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, RESPAWN_GRACE_TICKS } from '../constants';
@@ -67,6 +69,8 @@ function harness() {
   const ground = new Map<bigint, any>();
   const trees = new Map<number, any>();
   const grants = new Map<string, any>();
+  const dummies = new Map<number, any>();
+  const cooldowns = new Map<string, any>();
   // Ids are never reused, like the real autoInc column, so a delete then insert cannot overwrite a row.
   let nextInventoryId = 100n;
   const ctx = {
@@ -94,9 +98,13 @@ function harness() {
         id: { find: (id: bigint) => ground.get(id), update: (row: any) => ground.set(row.id, row), delete: (id: bigint) => ground.delete(id) },
       },
       combatEvent: { insert: vi.fn() },
+      trainingDummy: { iter: () => dummies.values(), insert: (row: any) => { dummies.set(row.id, row); return row; }, id: { find: (id: number) => dummies.get(id), update: (row: any) => dummies.set(row.id, row) } },
+      dummyEvent: { insert: vi.fn() },
+      emoteEvent: { insert: vi.fn() },
+      emoteCooldown: { insert: (row: any) => cooldowns.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => cooldowns.get(id.toHexString()), update: (row: any) => cooldowns.set(row.identity.toHexString(), row) } },
     },
   };
-  return { ctx, players, inventory, ground, trees, appearances, grants, tick: (value: number) => { now = value; }, me: () => players.get('a'), other: () => players.get('b') };
+  return { ctx, players, dummies, inventory, ground, trees, appearances, grants, tick: (value: number) => { now = value; }, me: () => players.get('a'), other: () => players.get('b') };
 }
 
 let h: ReturnType<typeof harness>;
@@ -1009,5 +1017,111 @@ describe('M2: craft (the verb "make")', () => {
     expect([...h.ground.values()]).toEqual([expect.objectContaining({ itemId: 'stone_club', quantity: 1, x: 25, z: 25 })]);
     expect(slotsOf(A)[0]).toEqual({ itemId: 'driftwood', quantity: 4 });
     expect(slotsOf(A)[1]).toEqual({ itemId: 'flint', quantity: 3 });
+  });
+});
+
+describe('the training dummy', () => {
+  const attackDummy = registeredAttackDummy as unknown as Reducer;
+  const hits = () => (h.ctx.db.dummyEvent.insert as any).mock.calls.map((c: any[]) => c[0]);
+  const besideDummy = () => Object.assign(h.me(), { x: DUMMY_TILE.x - 1, z: DUMMY_TILE.z });
+
+  it('is seeded by the tick, blocks its tile, and is written only when hit', () => {
+    run();
+    expect(h.dummies.get(DUMMY_ID)).toMatchObject({ x: DUMMY_TILE.x, z: DUMMY_TILE.z, hp: DUMMY_MAX_HP });
+    const before = { ...h.dummies.get(DUMMY_ID) };
+    const update = vi.spyOn(h.ctx.db.trainingDummy.id, 'update');
+    run(5);
+    expect(update).not.toHaveBeenCalled();
+    expect(h.dummies.get(DUMMY_ID)).toEqual(before);
+    move(h.ctx, { x: DUMMY_TILE.x, z: DUMMY_TILE.z });
+    expect([h.me().targetX, h.me().targetZ]).not.toEqual([DUMMY_TILE.x, DUMMY_TILE.z]);
+  });
+
+  it('anyone can train on it, without a combat grant, even from the safe ring; it never hurts anyone', () => {
+    h.grants.set('a', { identity: A, issuer: A, agent: false, expiresAtMicros: 200_000_000n, combat: false, chat: false });
+    Object.assign(h.me(), { x: 27, z: 27 }); // a safe-ring corner, diagonal to the dummy
+    attackDummy(h.ctx, { dummyId: DUMMY_ID });
+    expect(h.me().pending).toBe(Pending.Dummy);
+    run(1);
+    expect(hits()).toHaveLength(1);
+    expect(hits()[0]).toMatchObject({ dummyId: DUMMY_ID, damage: PUNCH_DAMAGE, hp: DUMMY_MAX_HP - PUNCH_DAMAGE, reset: false });
+    expect(h.me().hp).toBe(20);
+    expect((h.ctx.db.combatEvent.insert as any).mock.calls.filter((c: any[]) => c[0].kind === EventKind.Hit)).toHaveLength(0);
+    run(SWING_INTERVAL_TICKS);
+    expect(hits()).toHaveLength(2);
+    expect(h.dummies.get(DUMMY_ID).hp).toBe(DUMMY_MAX_HP - 2 * PUNCH_DAMAGE);
+  });
+
+  it('walks over first, swings with the wielded stick, and re-selecting keeps the rhythm', () => {
+    Object.assign(h.me(), { x: 20, z: 20, weapon: STICK_ITEM_ID });
+    h.inventory.set(2n, { id: 2n, owner: A, slot: 1, itemId: STICK_ITEM_ID, quantity: 1 });
+    attackDummy(h.ctx, { dummyId: DUMMY_ID });
+    expect(h.me().targetX).toBeDefined();
+    run(6);
+    expect(Math.max(Math.abs(h.me().x - DUMMY_TILE.x), Math.abs(h.me().z - DUMMY_TILE.z))).toBe(1);
+    expect(h.me().targetX).toBeUndefined();
+    expect(hits().length).toBeGreaterThan(0);
+    expect(hits()[0]).toMatchObject({ itemId: STICK_ITEM_ID, damage: ITEM_DEFS[STICK_ITEM_ID].weaponDamage });
+    const next = h.me().nextSwingTick;
+    attackDummy(h.ctx, { dummyId: DUMMY_ID });
+    expect(h.me().nextSwingTick).toBe(next);
+  });
+
+  it('springs back to full instead of dying, and recovers lazily when left alone', () => {
+    besideDummy();
+    run();
+    h.dummies.get(DUMMY_ID).hp = 2;
+    h.dummies.get(DUMMY_ID).lastHitTick = 10;
+    attackDummy(h.ctx, { dummyId: DUMMY_ID });
+    run();
+    expect(hits().at(-1)).toMatchObject({ reset: true, hp: DUMMY_MAX_HP });
+    expect(h.dummies.get(DUMMY_ID).hp).toBe(DUMMY_MAX_HP);
+    h.dummies.get(DUMMY_ID).hp = 10;
+    cancel(h.ctx);
+    run(DUMMY_IDLE_RESET_TICKS);
+    attackDummy(h.ctx, { dummyId: DUMMY_ID });
+    run();
+    expect(hits().at(-1).hp).toBe(DUMMY_MAX_HP - PUNCH_DAMAGE);
+  });
+
+  it('moving stops training', () => {
+    besideDummy();
+    attackDummy(h.ctx, { dummyId: DUMMY_ID });
+    move(h.ctx, { x: 35, z: 25 });
+    expect(h.me().pending).toBe(Pending.None);
+    run(3);
+    expect(hits()).toHaveLength(0);
+  });
+
+  it('rejects unknown dummies and the dead', () => {
+    expect(() => attackDummy(h.ctx, { dummyId: 9 })).toThrow('no such dummy');
+    h.me().state = PlayerState.Dead;
+    expect(() => attackDummy(h.ctx, { dummyId: DUMMY_ID })).toThrow('you are dead');
+  });
+});
+
+describe('emotes', () => {
+  const emote = registeredEmote as unknown as Reducer;
+  const sent = () => (h.ctx.db.emoteEvent.insert as any).mock.calls.map((c: any[]) => c[0]);
+
+  it('broadcasts a cosmetic event and changes nothing else', () => {
+    Object.assign(h.me(), { targetX: 30, targetZ: 25 });
+    emote(h.ctx, { emote: Emote.Wave });
+    expect(sent()).toEqual([{ tick: 10, player: A, emote: Emote.Wave }]);
+    expect(h.me().targetX).toBe(30);
+  });
+
+  it('is rate limited per player and validated', () => {
+    emote(h.ctx, { emote: Emote.Cheer });
+    expect(() => emote(h.ctx, { emote: Emote.Sit })).toThrow('slow down');
+    h.tick(12);
+    emote(h.ctx, { emote: Emote.Sit });
+    expect(sent()).toHaveLength(2);
+    h.ctx.sender = B;
+    emote(h.ctx, { emote: Emote.Point });
+    expect(() => emote(h.ctx, { emote: 42 })).toThrow('unknown emote');
+    h.other().state = PlayerState.Dead;
+    h.tick(20);
+    expect(() => emote(h.ctx, { emote: Emote.Wave })).toThrow('you are dead');
   });
 });

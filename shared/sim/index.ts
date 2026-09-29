@@ -9,3 +9,4 @@ export * from './appearance';
 export * from './areas';
 export * from './goals';
 export * from './nodes';
+export * from './social';

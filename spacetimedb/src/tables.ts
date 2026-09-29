@@ -172,6 +172,58 @@ export const combatEvent = table(
   }
 );
 
+/**
+ * Static practice posts (one: shared/sim DUMMY_TILE). Written only when hit;
+ * idle HP recovery is computed from `lastHitTick` (dummyHpAt), so an idle
+ * dummy costs the tick nothing.
+ */
+export const trainingDummy = table(
+  { name: 'training_dummy', public: true },
+  {
+    id: t.u32().primaryKey(),
+    x: t.i32(),
+    z: t.i32(),
+    hp: t.u8(),
+    maxHp: t.u8(),
+    lastHitTick: t.u32(),
+  }
+);
+
+/** Event table: one row per swing that lands on a dummy. Drives its damage numbers and wobble. */
+export const dummyEvent = table(
+  { name: 'dummy_event', public: true, event: true },
+  {
+    tick: t.u32(),
+    dummyId: t.u32(),
+    attacker: t.identity(),
+    damage: t.u8(),
+    /** The attacker's weapon at swing time ('' = punch). */
+    itemId: t.string(),
+    /** HP after the hit (maxHp again when the blow reset it). */
+    hp: t.u8(),
+    reset: t.bool(),
+  }
+);
+
+/** Event table: cosmetic emotes (shared/sim Emote), broadcast and never stored. */
+export const emoteEvent = table(
+  { name: 'emote_event', public: true, event: true },
+  {
+    tick: t.u32(),
+    player: t.identity(),
+    emote: t.u8(),
+  }
+);
+
+/** Private: each player's last accepted emote tick, for the emote cooldown. */
+export const emoteCooldown = table(
+  { name: 'emote_cooldown' },
+  {
+    identity: t.identity().primaryKey(),
+    lastTick: t.u32(),
+  }
+);
+
 /** Cosmetic-only data. Absent rows render the default starter appearance. */
 export const appearance = table(
   { name: 'appearance', public: true },

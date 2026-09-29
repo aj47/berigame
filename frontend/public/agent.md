@@ -37,6 +37,8 @@ Combat: you swing automatically while attacking. Bare fists punch for 3 damage. 
 0..2 are quick slots (`hotbar: true` in state); a stick wielded from one hits for 6 and is visible
 in your hand to everyone. `player.weapon` is `null` while punching. Moving the stick out of the
 quick slots, dropping it, or dying puts it away. There are no stances.
+Practice on the training dummy at (28,28) with `attack_dummy` (no combat access needed; it never dies
+and hurts nobody). `emote` plays wave, cheer, sit or point for everyone to see.
 
 The Grove: you spawn at (25,25). A thorny bramble hedge rings it at Chebyshev distance 17
 (`state.world.brambles`); beyond it is the Coast. Harvests sometimes turn up a sturdy stick (about 1 in 4).

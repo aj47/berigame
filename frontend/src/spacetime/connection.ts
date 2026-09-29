@@ -57,6 +57,9 @@ export function buildConnection() {
           tables.chatMessage,
           tables.inventorySlot,
           tables.combatEvent,
+          tables.trainingDummy,
+          tables.dummyEvent,
+          tables.emoteEvent,
         ]);
     })
     .onConnectError((_ctx, err) => {

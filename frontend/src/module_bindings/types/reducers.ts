@@ -7,11 +7,13 @@ import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
 import AttackReducer from "../attack_reducer";
+import AttackDummyReducer from "../attack_dummy_reducer";
 import CancelReducer from "../cancel_reducer";
 import ConfigureAccessReducer from "../configure_access_reducer";
 import CraftReducer from "../craft_reducer";
 import DropItemReducer from "../drop_item_reducer";
 import EatBerryReducer from "../eat_berry_reducer";
+import EmoteReducer from "../emote_reducer";
 import FollowReducer from "../follow_reducer";
 import GrantAgentReducer from "../grant_agent_reducer";
 import GrantPlayerReducer from "../grant_player_reducer";
@@ -27,11 +29,13 @@ import UnwieldReducer from "../unwield_reducer";
 import WieldItemReducer from "../wield_item_reducer";
 
 export type AttackParams = __Infer<typeof AttackReducer>;
+export type AttackDummyParams = __Infer<typeof AttackDummyReducer>;
 export type CancelParams = __Infer<typeof CancelReducer>;
 export type ConfigureAccessParams = __Infer<typeof ConfigureAccessReducer>;
 export type CraftParams = __Infer<typeof CraftReducer>;
 export type DropItemParams = __Infer<typeof DropItemReducer>;
 export type EatBerryParams = __Infer<typeof EatBerryReducer>;
+export type EmoteParams = __Infer<typeof EmoteReducer>;
 export type FollowParams = __Infer<typeof FollowReducer>;
 export type GrantAgentParams = __Infer<typeof GrantAgentReducer>;
 export type GrantPlayerParams = __Infer<typeof GrantPlayerReducer>;
