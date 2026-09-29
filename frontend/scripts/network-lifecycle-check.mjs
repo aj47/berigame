@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_MODULE??'playwright');
-const OUT=path.resolve('../docs/art/game-review/network-lifecycle');fs.mkdirSync(OUT,{recursive:true});
+const OUT=path.resolve(process.env.SHOT_DIR??'../docs/art/game-review/network-lifecycle');fs.mkdirSync(OUT,{recursive:true});
 const report={at:new Date().toISOString(),qualification:'Own fresh browser identity; local server remains running. Browser offline emulation and CDP lifecycle freezing are proxies, not a physical network/phone test. Silent stall buffers only this client’s server messages and later releases them in order.',cases:[],pageErrors:[],consoleMessages:[]};
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const browser=await chromium.launch({channel:'chrome'}),context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true}),page=await context.newPage();
@@ -21,7 +21,7 @@ try{
  cdp=await context.newCDPSession(page);const beforeFreeze=await state();await cdp.send('Page.setWebLifecycleState',{state:'frozen'});await wait(6000);await cdp.send('Page.setWebLifecycleState',{state:'active'});await page.bringToFront();await wait(1600);const resumed=await recover(baseline);report.cases.push({name:'frozen tab→resume',durationFrozenMs:6000,beforeFreeze,recovery:resumed,tickAdvanced:resumed.state.tick>beforeFreeze.tick});
  // Install a transparent proxy only for this context's next socket. Incoming
  // application frames can be buffered without changing the server or other clients.
- await context.routeWebSocket(/ws:\/\/.*:3000\//,route=>{routeSocket=route;const server=route.connectToServer();serverSocket=server;server.onMessage(message=>{if(forward)route.send(message);else buffer.push(message)});});
+ await context.routeWebSocket(/\/v1\/database\//,route=>{routeSocket=route;const server=route.connectToServer();serverSocket=server;server.onMessage(message=>{if(forward)route.send(message);else buffer.push(message)});});
  await page.reload();await ready();await bag();const beforeStall=await state();forward=false;await wait(11000);const stalled=await state();const withheld=buffer.length;await page.screenshot({path:path.join(OUT,'silent-stall.png')});forward=true;for(const message of buffer)routeSocket.send(message);buffer=[];await wait(1600);const unstalled=await recover(baseline);report.cases.push({name:'silent server-update stall',durationStalledMs:11000,beforeStall,stalled,withheldServerMessages:withheld,warningShown:Boolean(stalled.warning),rejoinActionable:stalled.rejoinVisible,recovery:unstalled});
  // A socket can die while a mobile tab is frozen. Close only the intercepted
  // connection and confirm that resume preserves the current issued identity.
