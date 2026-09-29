@@ -7,11 +7,13 @@ import { PUNCH_ICON } from "./itemUi";
 import { isTyping } from "./keyboard";
 import Toast from "./Toast";
 import GoalChip from "./GoalChip";
+import SettingsPanel from "./SettingsPanel";
+import Minimap from "./Minimap";
 import TickDebug from "./TickDebug";
 import { PUNCH_DAMAGE, STICK_ITEM_ID, getItemDef } from "@sim";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 
-type Panel = "inventory" | "chat" | "help" | "appearance" | null;
+type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | null;
 const stick = getItemDef(STICK_ITEM_ID);
 const UIComponents = memo(() => {
   const [panel, setPanel] = useState<Panel>(null);
@@ -55,6 +57,7 @@ const UIComponents = memo(() => {
         setPanel("chat");
       } else if (event.key === "?" || event.key.toLowerCase() === "h")
         toggle("help");
+      else if (event.key.toLowerCase() === "o") toggle("settings");
       else if (event.key === "Escape") setPanel(null);
     };
     window.addEventListener("keydown", onKey);
@@ -101,6 +104,15 @@ const UIComponents = memo(() => {
         >
           Help <kbd>?</kbd>
         </button>
+        <button
+          data-panel="settings"
+          aria-expanded={panel === "settings"}
+          aria-label="Settings (O)"
+          onClick={() => toggle("settings")}
+        >
+          <span aria-hidden="true" className="toolbar-gear">⚙</span>
+          <span className="toolbar-label">Settings</span> <kbd>O</kbd>
+        </button>
         <a className="agent-entry-link" href="/agent" target="_blank" rel="noreferrer" aria-label="Open BeriGame's agent onboarding page in a new tab">
           Agent
         </a>
@@ -109,6 +121,8 @@ const UIComponents = memo(() => {
       <Inventory open={panel === "inventory"} onClose={close} />
       <ChatBox open={panel === "chat"} onClose={close} />
       <AppearancePanel open={panel === "appearance"} onClose={close} />
+      <SettingsPanel open={panel === "settings"} onClose={close} />
+      <Minimap hidden={panel !== null} />
       {panel === "help" && (
         <section className="game-panel help-panel" aria-label="How to play">
           <header className="panel-heading">
@@ -135,7 +149,9 @@ const UIComponents = memo(() => {
           <ol className="help-steps">
             <li>
               <strong>Find your footing.</strong> Tap or click the ground to
-              move. Drag to look around; pinch or scroll to zoom.
+              move, or hold your finger down to keep walking toward it. Drag to
+              look around; pinch or scroll to zoom. Press and hold anything to
+              see what you can do with it.
             </li>
             <li>
               <strong>Gather supplies.</strong> Select a berry tree and choose
@@ -192,7 +208,7 @@ const UIComponents = memo(() => {
           <p className="fine-print">
             Keyboard shortcuts are optional: 1 / 2 / 3 use your quick slots
             (berries there are eaten, a stick is wielded or put away), Esc
-            stops, I opens your bag, Enter opens chat. Every action also has an
+            stops, I opens your bag, Enter opens chat, O opens settings. Every action also has an
             on-screen control.
           </p>
           <a className="agent-help-link" href="/agent" target="_blank" rel="noreferrer">

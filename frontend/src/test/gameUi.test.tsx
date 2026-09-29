@@ -405,7 +405,7 @@ describe("connection recovery", () => {
 describe("First Day goal chip", () => {
   beforeEach(() => {
     try { window.localStorage.clear(); } catch { /* ignore */ }
-    useFirstDayStore.setState({ owner: null, done: [], seen: {}, stickFoundAt: null });
+    useFirstDayStore.setState({ owner: null, done: [], seen: {}, tipped: [], activeTip: null, celebrating: false, stickFoundAt: null });
     mock.player = { ...mock.player, respawnTick: 380, lastInputTick: 0, harvestTreeId: 0, pendingId: 0n };
     mock.rows = [];
   });
