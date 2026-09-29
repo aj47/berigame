@@ -15,11 +15,27 @@ import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 
 type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | null;
 const stick = getItemDef(STICK_ITEM_ID);
+/** Name and online count: the only part of the HUD shell that follows player rows. */
+const WorldHeader = memo(() => {
+  const me = useMyPlayer();
+  const players = usePlayers();
+  return (
+      <div className="world-header">
+        <img src="/items/blueberry.png" alt="" />
+        <div>
+          <strong>BeriGame</strong>
+          <span>
+            {me?.name ?? "The first island"} ·{" "}
+            {players.filter((player) => player.online).length} online
+          </span>
+        </div>
+      </div>
+  );
+});
+
 const UIComponents = memo(() => {
   const [panel, setPanel] = useState<Panel>(null);
   const toolbar = useRef<HTMLElement>(null);
-  const me = useMyPlayer();
-  const players = usePlayers();
   const toggle = (next: Panel) =>
     setPanel((current) => (current === next ? null : next));
   const close = () => {
@@ -65,16 +81,7 @@ const UIComponents = memo(() => {
   }, []);
   return (
     <div className="ui-group">
-      <div className="world-header">
-        <img src="/items/blueberry.png" alt="" />
-        <div>
-          <strong>BeriGame</strong>
-          <span>
-            {me?.name ?? "The first island"} ·{" "}
-            {players.filter((player) => player.online).length} online
-          </span>
-        </div>
-      </div>
+      <WorldHeader />
       <nav className="game-toolbar" aria-label="Game panels" ref={toolbar}>
         <button
           data-panel="inventory"

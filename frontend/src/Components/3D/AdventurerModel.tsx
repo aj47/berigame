@@ -112,4 +112,5 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
   return <primitive object={model} dispose={null} />;
 };
 useGLTF.preload(BASE_MODEL_URL);
-export default AdventurerModel;
+// Memoized: its props only change with appearance, life state or weapon; motion and cues arrive through refs.
+export default React.memo(AdventurerModel);

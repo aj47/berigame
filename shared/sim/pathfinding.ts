@@ -5,6 +5,8 @@ import type { Tile } from './types';
 const DELTAS: ReadonlyArray<readonly [number, number]> = [
   [0, 1], [-1, 0], [0, -1], [1, 0], [-1, 1], [-1, -1], [1, -1], [1, 1],
 ];
+const DX = Int8Array.from(DELTAS, ([dx]) => dx);
+const DZ = Int8Array.from(DELTAS, ([, dz]) => dz);
 
 /** Extra per-player passability, e.g. the bramble rule. Default: every step allowed. */
 export type EnterRule = (from: Tile, to: Tile) => boolean;
@@ -23,6 +25,18 @@ function canStep(from: Tile, dx: number, dz: number, blocked: Set<number>, enter
   return to;
 }
 
+/*
+ * BFS scratch, reused by every call (the tick runs one search per moving
+ * player). A cell is visited in this search iff visitStamp[key] === stamp, so
+ * nothing is cleared between searches. Single-threaded and never re-entered:
+ * isGoal and enter are plain predicates.
+ */
+const CELLS = GRID_SIZE * GRID_SIZE;
+const visitStamp = new Int32Array(CELLS);
+const parentOf = new Int32Array(CELLS);
+const queueKeys = new Int32Array(CELLS);
+let stamp = 0;
+
 /**
  * Breadth-first search over the 8-connected grid. Returns the full path from
  * `start` (exclusive) to the first tile satisfying `isGoal`, or null if
@@ -30,30 +44,46 @@ function canStep(from: Tile, dx: number, dz: number, blocked: Set<number>, enter
  */
 export function bfsPath(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<number>, enter: EnterRule = allowAll): Tile[] | null {
   if (isGoal(start)) return [];
+  if (++stamp === 0x7fffffff) { visitStamp.fill(0); stamp = 1; }
   const startKey = tileKey(start);
-  const parent = new Int32Array(GRID_SIZE * GRID_SIZE).fill(-1);
-  parent[startKey] = startKey;
-  const queue: Tile[] = [start];
-  let head = 0;
-  while (head < queue.length) {
-    const cur = queue[head++];
-    for (const [dx, dz] of DELTAS) {
-      const next = canStep(cur, dx, dz, blocked, enter);
-      if (!next) continue;
-      const k = tileKey(next);
-      if (parent[k] !== -1) continue;
-      parent[k] = tileKey(cur);
-      if (isGoal(next)) {
+  const checkEnter = enter !== allowAll;
+  // Same discovery order and step rules as canStep; tiles are only allocated
+  // for the predicates, and a visited cell is skipped before any of them.
+  visitStamp[startKey] = stamp;
+  parentOf[startKey] = startKey;
+  queueKeys[0] = startKey;
+  let head = 0, tail = 1;
+  let from: Tile = start;
+  while (head < tail) {
+    const curKey = queueKeys[head++];
+    const cx = curKey % GRID_SIZE, cz = (curKey - cx) / GRID_SIZE;
+    if (head > 1) from = { x: cx, z: cz };
+    for (let d = 0; d < 8; d++) {
+      const dx = DX[d], dz = DZ[d];
+      const nx = cx + dx, nz = cz + dz;
+      if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) continue;
+      const k = nz * GRID_SIZE + nx;
+      if (visitStamp[k] === stamp || blocked.has(k)) continue;
+      const to = { x: nx, z: nz };
+      if (checkEnter && !enter(from, to)) continue;
+      // No corner cutting: a diagonal needs both orthogonal neighbours free (and enterable).
+      if (dx !== 0 && dz !== 0) {
+        if (blocked.has(cz * GRID_SIZE + nx) || (checkEnter && !enter(from, { x: nx, z: cz }))) continue;
+        if (blocked.has(nz * GRID_SIZE + cx) || (checkEnter && !enter(from, { x: cx, z: nz }))) continue;
+      }
+      visitStamp[k] = stamp;
+      parentOf[k] = curKey;
+      if (isGoal(to)) {
         const path: Tile[] = [];
         let walk = k;
         while (walk !== startKey) {
           path.push({ x: walk % GRID_SIZE, z: Math.floor(walk / GRID_SIZE) });
-          walk = parent[walk];
+          walk = parentOf[walk];
         }
         path.reverse();
         return path;
       }
-      queue.push(next);
+      queueKeys[tail++] = k;
     }
   }
   return null;

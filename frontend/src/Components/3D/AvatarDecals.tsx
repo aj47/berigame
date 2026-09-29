@@ -41,6 +41,13 @@ function instanced(geometry: CircleGeometry | RingGeometry, material: MeshBasicM
   return mesh;
 }
 
+function upload(attribute: InstancedMesh['instanceMatrix'], count: number) {
+  if (count === 0) return;
+  attribute.updateRange.offset = 0;
+  attribute.updateRange.count = count;
+  attribute.needsUpdate = true;
+}
+
 /** Every avatar's blob shadow and ring, written from the avatar groups once per rendered frame. */
 const AvatarDecals = () => {
   const [capacity, setCapacity] = useState(64);
@@ -75,8 +82,9 @@ const AvatarDecals = () => {
       else { bright.setMatrixAt(highlights, scratch); bright.setColorAt(highlights++, colors[kind]); }
     }
     blob.count = shadows; faint.count = rings; bright.count = highlights;
-    blob.instanceMatrix.needsUpdate = faint.instanceMatrix.needsUpdate = bright.instanceMatrix.needsUpdate = true;
-    if (bright.instanceColor && highlights > 0) bright.instanceColor.needsUpdate = true;
+    // Upload only the instances in use, not the whole capacity, each frame.
+    upload(blob.instanceMatrix, shadows * 16); upload(faint.instanceMatrix, rings * 16); upload(bright.instanceMatrix, highlights * 16);
+    if (bright.instanceColor && highlights > 0) upload(bright.instanceColor, highlights * 3);
   });
   return <>
     <primitive object={meshes.blob} />

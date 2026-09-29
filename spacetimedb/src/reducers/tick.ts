@@ -355,6 +355,18 @@ function phaseDeath(s: TickState): void {
   }
 }
 
+/** Field-by-field equality of a row and its working copy (identities by value). */
+function sameRow<T extends object>(a: T | undefined, b: T): boolean {
+  if (!a) return false;
+  for (const key of Object.keys(b) as (keyof T)[]) {
+    const x = a[key] as any, y = b[key] as any;
+    if (x === y) continue;
+    if (x && y && typeof x === 'object' && typeof y === 'object' && '__identity__' in x && '__identity__' in y && x.__identity__ === y.__identity__) continue;
+    return false;
+  }
+  return true;
+}
+
 function phaseExpiry(s: TickState): void {
   if (s.T % 10 !== 0) return;
   for (const item of [...s.ctx.db.groundItem.iter()]) {
@@ -372,20 +384,31 @@ export const tick = spacetimedb.reducer(
     if (!world) return;
     const T = world.tick + 1;
 
-    // Expiry/revocation stops queued movement, harvesting and combat even if a
-    // client keeps its WebSocket open and sends no further requests.
-    for (const player of ctx.db.player.iter()) {
+    // One pass over the player table. The tick works on the players it can
+    // affect: online ones, the dead (respawn), and anyone still holding a
+    // combat target. Everyone else would be skipped by every phase (none is
+    // alive) and reads as absent, exactly like an offline target, so the
+    // phases stay O(active players) however many have ever joined.
+    const players = new Map<string, PlayerRow>();
+    const original = new Map<string, PlayerRow>();
+    for (const row of ctx.db.player.iter()) {
+      let player = row;
+      // Expiry/revocation stops queued movement, harvesting and combat even if a
+      // client keeps its WebSocket open and sends no further requests.
       if (player.online && !canPlay(ctx, player.identity)) {
         const p = { ...player, online: false };
         clearInteractions(ctx, p);
         ctx.db.player.identity.update(p);
+        player = p;
       }
+      if (!player.online && player.state !== PlayerState.Dead && player.combatTarget === undefined) continue;
+      const h = hex(player.identity);
+      original.set(h, player);
+      players.set(h, { ...player });
     }
-
-    const players = new Map<string, PlayerRow>();
-    for (const p of ctx.db.player.iter()) players.set(hex(p.identity), { ...p });
     const trees = new Map<number, TreeRow>();
-    for (const t of ctx.db.tree.iter()) trees.set(t.id, { ...t });
+    const originalTrees = new Map<number, TreeRow>();
+    for (const t of ctx.db.tree.iter()) { originalTrees.set(t.id, t); trees.set(t.id, { ...t }); }
     // Coast nodes: seed any missing id (a database published before M2). Idempotent.
     for (const row of seedMissingNodes(ctx, (id) => trees.has(id))) trees.set(row.id, { ...row });
     // The Grove's training dummy (a database published before it existed gets it here). One index lookup.
@@ -411,7 +434,14 @@ export const tick = spacetimedb.reducer(
     phaseExpiry(s);
 
     ctx.db.world.id.update({ ...world, tick: T, tickStartedAt: ctx.timestamp });
-    for (const h of s.dirty) ctx.db.player.identity.update(players.get(h)!);
-    for (const id of s.dirtyTrees) ctx.db.tree.id.update(trees.get(id)!);
+    // Write (and broadcast) only rows that actually changed this tick.
+    for (const h of s.dirty) {
+      const p = players.get(h)!;
+      if (!sameRow(original.get(h)!, p)) ctx.db.player.identity.update(p);
+    }
+    for (const id of s.dirtyTrees) {
+      const t = trees.get(id)!;
+      if (!sameRow(originalTrees.get(id), t)) ctx.db.tree.id.update(t);
+    }
   }
 );

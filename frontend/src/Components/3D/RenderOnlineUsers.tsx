@@ -6,7 +6,7 @@ import AnimationCulling from './AnimationCulling';
 import TrainingDummy from './TrainingDummy';
 import DeathBagMarker, { CameraLookProbe } from './DeathBagMarker';
 import { useAppearanceRows, useChatMessages, useMyIdentityHex, useMyPlayer, usePlayers, useTick, useTrainingDummies } from '../../spacetime/hooks';
-import { CHAT_BUBBLE_TICKS, type Appearance } from '@sim';
+import { CHAT_BUBBLE_TICKS, DUMMY_IDLE_RESET_TICKS, type Appearance } from '@sim';
 import { identityHex } from '../../spacetime/identity';
 
 /** Latest chat line per sender that is still fresh enough to float above a head. */
@@ -38,6 +38,17 @@ export function useMyTargetHex(): string | null {
   return me?.hostile && me.combatTarget ? identityHex(me.combatTarget) : null;
 }
 
+/*
+ * Element constants: React skips re-rendering an identical element, so these
+ * self-subscribing layers are not re-rendered by every server tick here.
+ */
+const MARKERS = <><DeathBagMarker /><CameraLookProbe /></>;
+/* Shared by every avatar, including your own (PlayerController). */
+const SHARED_LAYERS = <><AvatarDecals /><AvatarOverlay /><AnimationCulling /></>;
+// After this many ticks without a hit the dummy's HP bar is gone and its HP is full,
+// so later ticks cannot change what it shows (TrainingDummy: 25-tick bar, dummyHpAt).
+const DUMMY_SETTLED_TICKS = Math.max(25, DUMMY_IDLE_RESET_TICKS);
+
 const RenderOnlineUsers = () => {
   const players = usePlayers();
   const me = useMyIdentityHex();
@@ -49,9 +60,8 @@ const RenderOnlineUsers = () => {
 
   return (
     <>
-      {dummies.map((d) => <TrainingDummy key={d.id} dummy={d} tick={tick} />)}
-      <DeathBagMarker />
-      <CameraLookProbe />
+      {dummies.map((d) => <TrainingDummy key={d.id} dummy={d} tick={Math.min(tick, d.lastHitTick + DUMMY_SETTLED_TICKS)} />)}
+      {MARKERS}
       {players.map((p) => {
         if (!p.online) return null;
         const hex = identityHex(p.identity);
@@ -60,10 +70,7 @@ const RenderOnlineUsers = () => {
           <PlayerAvatar key={hex} row={p} isSelf={false} saved={appearances.get(hex)} targeted={hex === target} chatText={chat.get(hex)?.text} />
         );
       })}
-      {/* Shared by every avatar, including your own (PlayerController). */}
-      <AvatarDecals />
-      <AvatarOverlay />
-      <AnimationCulling />
+      {SHARED_LAYERS}
     </>
   );
 };

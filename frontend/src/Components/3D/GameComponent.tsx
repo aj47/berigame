@@ -18,6 +18,7 @@ import FxLayer from '../../fx/FxLayer';
 import HoldToWalk from './HoldToWalk';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
 import { useGroundItems, usePlayersByHex, useTick, useTrees } from '../../spacetime/hooks';
+import { identityHex } from '../../spacetime/identity';
 
 class WorldBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -28,13 +29,36 @@ class WorldBoundary extends React.Component<{ children: React.ReactNode }, { fai
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-const GameComponent = () => {
-  const [playerRef, setPlayerRef] = useState<any>();
-  const clickedOtherObject = useUserInputStore((state: any) => state.clickedOtherObject);
+/**
+ * Gathering nodes and ground piles. Kept out of GameComponent so a server tick
+ * re-renders this list, not the Canvas and the whole HUD. A node only sees the
+ * tick while it regrows (its countdown); a ripe node gets a constant, so its
+ * memoized component skips the tick.
+ */
+const WorldObjects = () => {
   const trees = useTrees();
   const groundItems = useGroundItems();
   const players = usePlayersByHex();
   const tick = useTick();
+  return (
+    <>
+      {trees.map((tree) => {
+        const nodeTick = Math.min(tick, tree.cooldownUntilTick);
+        const harvester = tree.harvester ? players.get(identityHex(tree.harvester)) ?? null : null;
+        return !isBerryNode(tree)
+          ? <CoastNode key={tree.id} node={tree} tick={nodeTick} harvester={harvester} />
+          : <BerryTree key={tree.id} tree={tree} tick={nodeTick} harvester={harvester} />;
+      })}
+      {groundItems.map((item) => (
+        <GroundItem key={item.id.toString()} groundItem={item} />
+      ))}
+    </>
+  );
+};
+
+const GameComponent = () => {
+  const [playerRef, setPlayerRef] = useState<any>();
+  const clickedOtherObject = useUserInputStore((state: any) => state.clickedOtherObject);
   // Adaptive resolution: pixel ratio capped at 1.5, dropped to 1.0 (2.25x fewer pixels) while frames are slow.
   const [dprCap, setDprCap] = useState(1.5);
   // Settings > Graphics: auto adapts; high uses the screen's density (max 2); low renders fewer pixels.
@@ -53,24 +77,7 @@ const GameComponent = () => {
         {graphics === 'auto' && <PerformanceMonitor onDecline={() => setDprCap(1)} onIncline={() => setDprCap(1.5)} flipflops={3} onFallback={() => setDprCap(1)} />}
         <Suspense fallback={null}>
           <AlphaIsland />
-          {trees.map((tree) => !isBerryNode(tree) ? (
-            <CoastNode
-              key={tree.id}
-              node={tree}
-              tick={tick}
-              harvester={tree.harvester ? players.get(tree.harvester.toHexString()) ?? null : null}
-            />
-          ) : (
-            <BerryTree
-              key={tree.id}
-              tree={tree}
-              tick={tick}
-              harvester={tree.harvester ? players.get(tree.harvester.toHexString()) ?? null : null}
-            />
-          ))}
-          {groundItems.map((item) => (
-            <GroundItem key={item.id.toString()} groundItem={item} />
-          ))}
+          <WorldObjects />
           <RenderOnlineUsers />
           <PlayerController setPlayerRef={setPlayerRef} />
           <CameraController playerRef={playerRef} />

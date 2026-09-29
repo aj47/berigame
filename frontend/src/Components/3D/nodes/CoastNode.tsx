@@ -42,4 +42,4 @@ const CoastNode = ({ node, tick, harvester }: Props) => {
     </Html>}
   </group>;
 };
-export default CoastNode;
+export default React.memo(CoastNode);

@@ -34,4 +34,4 @@ const GroundItem = ({ groundItem }: { groundItem: GroundItemRow }) => {
     </Html>}
   </group>;
 };
-export default GroundItem;
+export default React.memo(GroundItem);

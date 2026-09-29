@@ -4,7 +4,8 @@ import { BufferGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, Me
 import { HARVEST_TICKS, TICK_MS, getItemDef, tileToWorld } from '@sim';
 import type { Player, Tree } from '../../module_bindings/types';
 import { useGameActions } from '../../spacetime/actions';
-import { useMyPlayer, usePlayersByHex } from '../../spacetime/hooks';
+import { useMyPlayer, usePlayerByHex } from '../../spacetime/hooks';
+import { identityHex } from '../../spacetime/identity';
 import { useUserInputStore } from '../../store';
 import { merged, part, withWind } from './envArt';
 import HarvestRing from '../../fx/HarvestRing';
@@ -100,8 +101,8 @@ const BerryTree = ({ tree, tick, harvester }: Props) => {
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const { startHarvest } = useGameActions();
   const me = useMyPlayer();
-  const players = usePlayersByHex();
-  const target = me?.combatTarget ? players.get(me.combatTarget.toHexString()) : undefined;
+  // Only your row and your target's: other players' moves do not re-render every tree.
+  const target = usePlayerByHex(me?.combatTarget ? identityHex(me.combatTarget) : null);
   const faded = [me, target].some((p) => p && Math.hypot(p.x-tree.x, p.z-tree.z) < 2.3);
   const def = getItemDef(tree.itemId);
   const [wx, wy, wz] = tileToWorld(tree);
@@ -127,4 +128,4 @@ const BerryTree = ({ tree, tick, harvester }: Props) => {
     </Html>}
   </group>;
 };
-export default BerryTree;
+export default React.memo(BerryTree);

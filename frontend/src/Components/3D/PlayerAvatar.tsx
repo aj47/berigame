@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_APPEARANCE, PlayerState, type Appearance } from '@sim';
 import type { Player } from '../../module_bindings/types';
 import { useTileMotion } from '../../hooks/useTileMotion';
@@ -58,7 +58,9 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const hex = identityHex(row.identity);
   const preview = useAppearancePreview((value) => isSelf ? value.draft : null);
   const chosen = isSelf && preview ? preview : saved;
-  const appearance = { hairStyle:chosen.hairStyle, skinTone:chosen.skinTone, hairColor:chosen.hairColor, robeColor:chosen.robeColor, wrapColor:chosen.wrapColor };
+  // Stable while the colours hold, so the memoized model skips row-only (movement) renders.
+  const appearance = useMemo(() => ({ hairStyle:chosen.hairStyle, skinTone:chosen.skinTone, hairColor:chosen.hairColor, robeColor:chosen.robeColor, wrapColor:chosen.wrapColor }),
+    [chosen.hairStyle, chosen.skinTone, chosen.hairColor, chosen.robeColor, chosen.wrapColor]);
   const url = modelUrl(appearance.hairStyle);
   const motion = useTileMotion(row.x, row.z, row.facing, groupRef);
   const cue = useCombatFxStore((s) => s.cues[hex]);
