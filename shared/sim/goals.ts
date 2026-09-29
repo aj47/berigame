@@ -2,9 +2,10 @@
  * The "First Day" goal chip, as one pure function shared by the browser chip
  * and the agent gateway's `state.goal`.
  *
- * Steps come from live state plus a remembered done set, so eating or losing
- * the stick never un-completes a step during First Day. After First Day, a
- * player holding no stick (a death drop) sees "find a stick" and "reach the
+ * Steps come from live state plus a remembered done set, so eating the berry
+ * never un-completes a step. Without a stick the hedge cannot be crossed, so a
+ * player who loses it (a death drop) before reaching the Coast searches again,
+ * and after First Day one holding no stick sees "find a stick" and "reach the
  * Coast" again: they respawned in the Grove and need a new key.
  */
 import { areaOf, coastPastCrossing, HEDGE_CROSSINGS, holdsItem, isNewcomer } from './areas';
@@ -214,6 +215,9 @@ export function firstDayGoal(input: GoalInput): GoalResult {
   if (!canFight || me.weapon === STICK_ITEM_ID || me.weapon === STONE_CLUB_ITEM_ID) done.add('wield-stick');
   if (areaOf(me) === 'coast') done.add('reach-coast');
   if (GOAL_STEPS.every((s) => done.has(s))) done.add(FIRST_DAY_DONE);
+  // Before reaching the Coast, losing the stick (a death drop) makes "wield" and
+  // "push through" impossible (the hedge needs it): search for one again.
+  if (!hasStick && !done.has('reach-coast')) done.delete('find-stick');
   // After First Day, losing the key (a death drop) brings back "find" and "push through".
   if (done.has(FIRST_DAY_DONE) && !hasStick) {
     done.delete('find-stick');

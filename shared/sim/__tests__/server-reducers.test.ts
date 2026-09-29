@@ -797,6 +797,19 @@ describe('wait-and-claim at a busy tree', () => {
     expect(h.me().pending).toBe(Pending.Harvest);
   });
 
+  it('picking the tree you are harvesting keeps the harvest instead of restarting it', () => {
+    h.trees.get(1).cooldownUntilTick = 0;
+    startHarvest(h.ctx, { treeId: 1 });
+    expect(h.me()).toMatchObject({ harvestTreeId: 1, harvestEndTick: 10 + HARVEST_TICKS });
+    run(2);
+    startHarvest(h.ctx, { treeId: 1 });
+    expect(h.me()).toMatchObject({ harvestTreeId: 1, harvestEndTick: 10 + HARVEST_TICKS, pending: Pending.None });
+    expect(h.trees.get(1).harvester).toBe(A);
+    run(HARVEST_TICKS - 2);
+    expect(h.me().harvestTreeId).toBe(0);
+    expect([...h.inventory.values()].find((row) => row.itemId === 'berry_blueberry')?.quantity).toBe(3);
+  });
+
   it('among veterans the earliest last input wins', () => {
     h.tick(11); as(B, () => startHarvest(h.ctx, { treeId: 1 }));
     h.tick(12); startHarvest(h.ctx, { treeId: 1 });
