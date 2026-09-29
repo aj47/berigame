@@ -38,7 +38,9 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   if ((!existing || !existing.online) && [...ctx.db.player.iter()].filter(p => p.online).length >= 128) {
     throw new SenderError('world is full');
   }
-  statsSessionStart(ctx, ctx.sender);
+  // Only a real live connection counts as "already online": after a module
+  // restart, stale session state is closed out and a new session starts.
+  statsSessionStart(ctx, ctx.sender, Boolean(existing && existing.online && existing.connections > 0));
   if (existing) {
     savePlayer(ctx, {
       ...existing,

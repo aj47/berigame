@@ -6,7 +6,7 @@ import {
 } from '../../../shared/sim';
 import { readSlots, writeSlots } from '../lib/inventory';
 import { currentTick, findPlayer, requireAlivePlayer, requirePlayer, sameId, savePlayer, touchInput } from '../lib/players';
-import { cancelTrade, notify, tradesOf } from '../lib/social';
+import { cancelTrade, notify, notifyThrottled, tradesOf, withdrawTrade } from '../lib/social';
 import type { Ctx, PlayerRow, TradeRow } from '../lib/types';
 
 function requireTrade(ctx: Ctx, id: bigint, me: Identity): TradeRow {
@@ -43,14 +43,16 @@ export const requestTrade = spacetimedb.reducer(
         ctx.db.trade.id.update({ ...incoming, accepted: true });
         notify(ctx, target, p.identity, SocialNotice.Info, `${p.name} accepted your trade`);
       }
-      for (const r of mine) if (r.id !== incoming.id) cancelTrade(ctx, r, 'Trade cancelled');
+      for (const r of mine) if (r.id !== incoming.id) withdrawTrade(ctx, r, p.identity, 'Trade cancelled');
       return;
     }
     if (mine.some((r) => sameId(r.b, target))) return; // already asked them
     if (theirs.some((r) => r.accepted)) throw new SenderError(`${o.name} is busy trading`);
-    for (const r of mine) cancelTrade(ctx, r, 'Trade cancelled');
+    for (const r of mine) withdrawTrade(ctx, r, p.identity, 'Trade cancelled');
     ctx.db.trade.insert({ id: 0n, a: p.identity, b: target, accepted: false, aOffer: '', bOffer: '', aConfirmed: false, bConfirmed: false, createdTick: T });
-    notify(ctx, target, p.identity, SocialNotice.TradeRequest, `${p.name} wants to trade`);
+    // Throttled per (you, them): request/cancel loops cannot flood them. The
+    // trade row itself still reaches them, so the request is never lost.
+    notifyThrottled(ctx, target, p.identity, SocialNotice.TradeRequest, `${p.name} wants to trade`);
   }
 );
 
@@ -160,6 +162,6 @@ export const cancelTradeRequest = spacetimedb.reducer(
     savePlayer(ctx, p);
     const row = ctx.db.trade.id.find(tradeId);
     if (!row || (!sameId(row.a, p.identity) && !sameId(row.b, p.identity))) return;
-    cancelTrade(ctx, row, `${p.name} cancelled the trade`);
+    withdrawTrade(ctx, row, p.identity, `${p.name} cancelled the trade`);
   }
 );

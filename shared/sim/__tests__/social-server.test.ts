@@ -5,7 +5,7 @@ import { INVENTORY_SIZE } from '../constants';
 import { TRADE_BREAK_RANGE, TRADE_REQUEST_TICKS, executeTrade, formatOffer, parseOffer, removeItemCount } from '../trade';
 import {
   CHAT_BUBBLE_MAX_CHARS, CHAT_NEARBY_RADIUS, INVITE_CODE_LEN, INVITE_TTL_MICROS, bubbleText, chatVisible, generateInviteCode,
-  inviteUrl, joinSpot, normalizeInviteCode,
+  inviteUrl, joinSpot, normalizeInviteCode, MAX_FRIENDS,
 } from '../friends';
 import { areaOf, isBramble } from '../areas';
 import { emptySlots } from '../inventory';
@@ -28,7 +28,8 @@ vi.mock('../../../spacetimedb/src/schema', () => ({
 vi.mock('../../../spacetimedb/src/tables', () => ({ tickSchedule: { rowType: {} } }));
 import * as tradeReducers from '../../../spacetimedb/src/reducers/trade';
 import * as friendReducers from '../../../spacetimedb/src/reducers/friends';
-import { onDisconnect as registeredDisconnect } from '../../../spacetimedb/src/reducers/lifecycle';
+import { onConnect as registeredConnect, onDisconnect as registeredDisconnect } from '../../../spacetimedb/src/reducers/lifecycle';
+import { NOTICE_COOLDOWN_MICROS } from '../../../spacetimedb/src/lib/social';
 import { tick as registeredTick } from '../../../spacetimedb/src/reducers/tick';
 import { sendChat as registeredChat } from '../../../spacetimedb/src/reducers/chat';
 
@@ -44,6 +45,7 @@ const redeemInvite = R(friendReducers.redeemInvite);
 const addFriend = R(friendReducers.addFriend);
 const removeFriend = R(friendReducers.removeFriend);
 const onDisconnect = R(registeredDisconnect);
+const onConnect = R(registeredConnect);
 const scheduledTick = R(registeredTick);
 const sendChat = R(registeredChat);
 
@@ -76,6 +78,8 @@ function harness() {
   let nextFriend = 1n;
   const codes = new Map<string, any>();
   const notices: any[] = [];
+  const pairs = new Map<string, any>();
+  const stats = new Map<string, any>();
   const chat = new Map<bigint, any>();
   let nextChat = 1n;
   const trees = new Map<number, any>();
@@ -91,7 +95,7 @@ function harness() {
       accessPolicy: { id: { find: () => ({ id: 0, owner: identity('owner'), gateway: identity('gw'), requireAdmission: false }) } },
       playerGrant: { identity: { find: () => undefined } },
       world: { id: { find: () => ({ id: 0, tick: now }), update: (row: any) => { now = row.tick; } } },
-      player: { iter: () => players.values(), count: () => BigInt(players.size), identity: {
+      player: { iter: () => players.values(), count: () => BigInt(players.size), insert: (p: any) => players.set(p.identity.toHexString(), p), identity: {
         find: (id: any) => players.get(id.toHexString()),
         update: (p: any) => players.set(p.identity.toHexString(), p),
       } },
@@ -121,6 +125,11 @@ function harness() {
         code: { find: (c: string) => codes.get(c), delete: (c: string) => codes.delete(c) },
       },
       socialEvent: { insert: (row: any) => notices.push(row) },
+      socialPair: { insert: (row: any) => pairs.set(row.pair, row), pair: { find: (k: string) => pairs.get(k), update: (row: any) => pairs.set(row.pair, row) } },
+      playStats: {
+        insert: (row: any) => stats.set(row.identity.toHexString(), row),
+        identity: { find: (id: any) => stats.get(id.toHexString()), update: (row: any) => stats.set(row.identity.toHexString(), row) },
+      },
       giant: { iter: () => giants.values(), insert: (row: any) => { giants.set(row.id, row); return row; }, id: { find: (id: number) => giants.get(id), update: (row: any) => giants.set(row.id, row) } },
       giantContribution: { iter: () => [][Symbol.iterator](), identity: { find: () => undefined, delete: () => {} } },
       giantEvent: { insert: vi.fn() },
@@ -145,7 +154,7 @@ function harness() {
   const as = (id: any) => { ctx.sender = id; return ctx; };
   const advance = () => { now += 1; };
   return {
-    ctx, cosmetics, players, trades, friends, codes, notices, chat, give, slotsOf, count, as, advance,
+    ctx, cosmetics, pairs, stats, players, trades, friends, codes, notices, chat, give, slotsOf, count, as, advance,
     setMicros: (m: bigint) => { micros = m; }, micros: () => micros, setRolls: (r: number[]) => { rolls = r; },
     runTick: () => { ctx.sender = ctx.identity; scheduledTick(ctx, { timer: {} }); },
     p: (id: any) => players.get(id.toHexString()),
@@ -439,6 +448,102 @@ describe('invite links and friends', () => {
     expect(() => addFriend(h.as(A), { target: A })).toThrow();
     removeFriend(h.as(A), { target: B });
     expect(h.friends.size).toBe(0);
+  });
+});
+
+describe('notice cooldowns and single-use invite codes', () => {
+  const to = (id: any) => h.notices.filter((n) => n.to.toHexString() === id.toHexString());
+
+  it('addFriend notifies once per pair: re-adds and add/remove loops send nothing more', () => {
+    for (let i = 0; i < 5; i++) {
+      addFriend(h.as(A), { target: B });
+      removeFriend(h.as(A), { target: B });
+      h.setMicros(h.micros() + NOTICE_COOLDOWN_MICROS + 1n);
+      h.advance();
+    }
+    addFriend(h.as(A), { target: B });
+    expect(h.friends.size).toBe(1);
+    expect(to(B).map((n) => n.text)).toEqual(['Ann added you as a friend']);
+  });
+
+  it('trade request/cancel loops send at most one notice per cooldown', () => {
+    for (let i = 0; i < 6; i++) {
+      requestTrade(h.as(A), { target: B });
+      cancelTrade(h.as(A), { tradeId: current().id });
+      h.advance();
+    }
+    expect(to(B)).toHaveLength(1);
+    expect(to(B)[0].text).toBe('Ann wants to trade');
+    // The requester still hears about their own cancellations.
+    expect(to(A).length).toBe(6);
+    h.setMicros(h.micros() + NOTICE_COOLDOWN_MICROS);
+    requestTrade(h.as(A), { target: B });
+    expect(to(B)).toHaveLength(2);
+    // The trade row itself is never throttled.
+    expect(h.trades.size).toBe(1);
+  });
+
+  it('cancelling an accepted trade always tells the partner', () => {
+    const row = openTrade();
+    cancelTrade(h.as(A), { tradeId: row.id });
+    expect(to(B).map((n) => n.text)).toContain('Ann cancelled the trade');
+  });
+
+  it('a code is single-use per joiner: redeeming it again does not move them', () => {
+    h.p(B).x = 12; h.p(B).z = 12;
+    createInvite(h.as(A));
+    const code = [...h.codes.keys()][0];
+    redeemInvite(h.as(B), { code });
+    expect(h.p(B).x).not.toBe(12);
+    h.p(B).x = 12; h.p(B).z = 12;
+    const before = h.notices.length;
+    redeemInvite(h.as(B), { code });
+    expect(h.p(B)).toMatchObject({ x: 12, z: 12 });
+    const fresh = h.notices.slice(before);
+    expect(fresh).toHaveLength(1);
+    expect(fresh[0].to.toHexString()).toBe('b');
+    expect(fresh[0].text).toMatch(/already used/);
+    // Another joiner can still use it.
+    h.p(C).x = 12; h.p(C).z = 12;
+    redeemInvite(h.as(C), { code });
+    expect(h.p(C).x).not.toBe(12);
+  });
+
+  it('a full friends list is reported, never claimed as a friendship', () => {
+    for (let i = 0; i < MAX_FRIENDS; i++) h.friends.set(BigInt(1000 + i), { id: BigInt(1000 + i), owner: B, friend: identity(`x${i}`) });
+    createInvite(h.as(A));
+    redeemInvite(h.as(B), { code: [...h.codes.keys()][0] });
+    const text = to(B)[0].text;
+    expect(text).not.toMatch(/is your friend now/);
+    expect(text).toMatch(/friends list is full/);
+    expect(to(A)[0].text).toMatch(/joined with your invite link and is on your friends list/);
+  });
+});
+
+describe('play_stats sessions', () => {
+  const D = identity('d');
+  it('a stale open session (module restart) is closed out and a new one starts', () => {
+    onConnect(h.as(D));
+    const first = h.stats.get('d');
+    expect(first.sessions).toBe(1);
+    // Module restart: the disconnect never ran, so the stats row still looks open.
+    h.p(D).online = false; h.p(D).connections = 0;
+    h.setMicros(h.micros() + 5_000_000n);
+    onConnect(h.as(D));
+    const second = h.stats.get('d');
+    expect(second.sessions).toBe(2);
+    expect(second.totalPlayMicros).toBe(5_000_000n);
+    expect(second.sessionStartedAt.microsSinceUnixEpoch).toBe(h.micros());
+  });
+  it('a second tab of an online player does not start a session', () => {
+    onConnect(h.as(D));
+    h.setMicros(h.micros() + 1_000_000n);
+    onConnect(h.as(D));
+    expect(h.stats.get('d')).toMatchObject({ sessions: 1, totalPlayMicros: 0n });
+    onDisconnect(h.as(D)); onDisconnect(h.as(D));
+    expect(h.stats.get('d').totalPlayMicros).toBe(1_000_000n);
+    onConnect(h.as(D));
+    expect(h.stats.get('d').sessions).toBe(2);
   });
 });
 

@@ -7,7 +7,7 @@ import {
 import { blockedTiles } from '../lib/blocked';
 import { heldKeys } from '../lib/brambles';
 import { clearInteractions, currentTick, findPlayer, requirePlayer, sameId, savePlayer, touchInput } from '../lib/players';
-import { notify } from '../lib/social';
+import { notify, notifyThrottled, readPair, writePair } from '../lib/social';
 import { unlockCosmetic } from '../lib/progress';
 import type { Ctx } from '../lib/types';
 
@@ -61,19 +61,35 @@ export const redeemInvite = spacetimedb.reducer(
     if (sameId(row.inviter, p.identity)) throw new SenderError('That is your own invite link');
     const inviter = findPlayer(ctx, row.inviter);
     if (!inviter) throw new SenderError('That invite link has expired. Ask for a new one.');
+    // Codes are single-use per joiner: opening the same link again changes nothing.
+    const redeemed = readPair(ctx, p.identity, inviter.identity);
+    if (redeemed.redeemedCode === row.code) {
+      notify(ctx, p.identity, inviter.identity, SocialNotice.Info,
+        hasFriend(ctx, p.identity, inviter.identity)
+          ? `You already used this invite link. ${inviter.name} is on your friends list: use Go to to join them.`
+          : 'You already used this invite link. Ask for a new one.');
+      return;
+    }
+    writePair(ctx, { ...redeemed, redeemedCode: row.code });
     befriend(ctx, p.identity, inviter.identity);
-    befriend(ctx, inviter.identity, p.identity);
+    const inviterAdded = befriend(ctx, inviter.identity, p.identity);
+    // Only claim a friendship that exists (a full list refuses the add).
+    const joinerHas = hasFriend(ctx, p.identity, inviter.identity);
+    const inviterHas = hasFriend(ctx, inviter.identity, p.identity);
+    const lead = joinerHas
+      ? `${inviter.name} is your friend now.`
+      : `Your friends list is full (${MAX_FRIENDS}), so ${inviter.name} was not added.`;
 
     let text: string;
     const attacked = [...ctx.db.player.iter()].some((o) => o.online && o.hostile && sameId(o.combatTarget, p.identity));
     if (!inviter.online || inviter.state !== PlayerState.Alive) {
-      text = `${inviter.name} is your friend now. They are not around right now.`;
+      text = `${lead} They are not around right now.`;
     } else if (p.state !== PlayerState.Alive) {
-      text = `${inviter.name} is your friend now. Use Go to once you are back on your feet.`;
+      text = joinerHas ? `${lead} Use Go to once you are back on your feet.` : `${lead} You cannot join them while you are down.`;
     } else if ((p.combatTarget && p.hostile) || attacked) {
-      text = `${inviter.name} is your friend now. Finish your fight, then use Go to.`;
+      text = joinerHas ? `${lead} Finish your fight, then use Go to.` : `${lead} You cannot join them mid-fight.`;
     } else if (chebyshev(p, inviter) <= 2) {
-      text = `${inviter.name} is your friend now.`;
+      text = joinerHas ? lead : `You are already beside ${inviter.name}. ${lead}`;
     } else {
       const keys = heldKeys(ctx, p);
       const spot = joinSpot(inviter, keys.stick, blockedTiles(ctx), keys.club);
@@ -87,10 +103,20 @@ export const redeemInvite = spacetimedb.reducer(
         : spot.clamped
         ? `${inviter.name} is past the brambles. You need a sturdy stick to reach them, so you washed up at the nearest spot in the Grove.`
         : `You joined ${inviter.name}.`;
+      if (!joinerHas) text += ` ${lead}`;
     }
     savePlayer(ctx, p);
     notify(ctx, p.identity, inviter.identity, SocialNotice.InviteJoined, text);
-    notify(ctx, inviter.identity, p.identity, SocialNotice.FriendAdded, `${p.name} joined with your invite link`);
+    const inviterText = inviterAdded
+      ? `${p.name} joined with your invite link and is on your friends list`
+      : inviterHas
+      ? `${p.name} joined with your invite link`
+      : `${p.name} joined with your invite link. Your friends list is full, so they were not added.`;
+    notify(ctx, inviter.identity, p.identity, SocialNotice.FriendAdded, inviterText);
+    if (inviterAdded || joinerHas) {
+      // They already know each other now: a later add is not news.
+      writePair(ctx, { ...readPair(ctx, p.identity, inviter.identity), friendNoticed: true });
+    }
   }
 );
 
@@ -106,7 +132,11 @@ export const addFriend = spacetimedb.reducer(
     if (sameId(target, p.identity)) throw new SenderError('that is you');
     if (hasFriend(ctx, p.identity, target)) return;
     if (!befriend(ctx, p.identity, target)) throw new SenderError(`Your friends list is full (${MAX_FRIENDS})`);
-    notify(ctx, target, p.identity, SocialNotice.FriendAdded, `${p.name} added you as a friend`);
+    // Told once per pair, ever (a remove + re-add is not news), and never
+    // faster than the notice cooldown.
+    if (!readPair(ctx, p.identity, target).friendNoticed) {
+      notifyThrottled(ctx, target, p.identity, SocialNotice.FriendAdded, `${p.name} added you as a friend`, { friendNoticed: true });
+    }
   }
 );
 

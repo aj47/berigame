@@ -22,3 +22,8 @@ export const tradeVisibilityA = spacetimedb.clientVisibilityFilter.sql(
 export const tradeVisibilityB = spacetimedb.clientVisibilityFilter.sql(
   'SELECT * FROM trade WHERE b = :sender'
 );
+
+/** Social notices (an event table): each client receives only the ones addressed to it. */
+export const socialEventVisibility = spacetimedb.clientVisibilityFilter.sql(
+  'SELECT * FROM social_event WHERE "to" = :sender'
+);

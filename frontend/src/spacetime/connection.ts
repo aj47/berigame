@@ -58,7 +58,7 @@ export function markConnectionLost(conn: unknown, stale = false): void {
   if (key) {
     if (lostConnections.has(key)) return;
     lostConnections.add(key);
-    try { (key as any).disconnect?.(); } catch { /* already closed */ }
+    forceClose(key);
   }
   // A late failure from a superseded attempt must not disturb the current one.
   if (stale) return;
@@ -67,6 +67,30 @@ export function markConnectionLost(conn: unknown, stale = false): void {
   loading.setGameDataLoaded(false);
   abortPendingCalls();
   lifecycle?.lost();
+}
+
+/**
+ * Close a connection and deliver its disconnect event now. The SDK's React
+ * ConnectionManager keeps handing back the old connection (ignoring any new
+ * builder) until that event arrives, and on a dead network or a zombie socket
+ * the browser may not fire `onclose` for tens of seconds. `ConnectionManager`
+ * (and its `rebuild`) is not exported by `spacetimedb/react`, so instead we
+ * run the socket's close handler ourselves, once, and detach it so a late real
+ * `onclose` cannot fire it a second time.
+ */
+export function forceClose(conn: any): void {
+  try { conn.disconnect?.(); } catch { /* already closed */ }
+  const fire = (ws: any) => {
+    if (!ws) return;
+    const onclose = ws.onclose;
+    ws.onclose = null;
+    ws.onerror = null;
+    ws.onmessage = null;
+    try { onclose?.call(ws, { type: 'close', code: 1000, reason: 'dropped by client', wasClean: false }); } catch { /* handler failed */ }
+  };
+  const pending = conn?.wsPromise;
+  if (pending && typeof pending.then === 'function') pending.then(fire, () => {});
+  else fire(conn?.ws);
 }
 
 let buildSeq = 0;

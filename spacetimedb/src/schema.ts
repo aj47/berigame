@@ -6,7 +6,7 @@ import {
   inviteCode, friend, trade, socialEvent,
   giant, giantContribution, giantEvent,
 } from './tables';
-import { playerSkill, playerCosmetic } from './tables';
+import { playerSkill, playerCosmetic, socialPair } from './tables';
 
 export const spacetimedb = schema({
   accessPolicy,
@@ -34,5 +34,6 @@ export const spacetimedb = schema({
   giantEvent,
   playerSkill,
   playerCosmetic,
+  socialPair,
 });
 export default spacetimedb;

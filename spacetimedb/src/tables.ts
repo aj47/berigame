@@ -415,3 +415,21 @@ export const playerCosmetic = table(
     neck: t.u8(),
   }
 );
+
+/**
+ * Private per-(from -> to) social bookkeeping, keyed "fromHex>toHex": when
+ * `from` last sent `to` a player-triggered notice (friend adds, trade
+ * requests; a cooldown so nobody can flood someone with toasts), whether the
+ * "added you as a friend" notice was already sent once (never re-sent on a
+ * re-add), and the invite code `from` last redeemed from inviter `to` (codes
+ * are single-use per joiner).
+ */
+export const socialPair = table(
+  { name: 'social_pair' },
+  {
+    pair: t.string().primaryKey(),
+    lastNoticeMicros: t.u64(),
+    friendNoticed: t.bool(),
+    redeemedCode: t.string(),
+  }
+);

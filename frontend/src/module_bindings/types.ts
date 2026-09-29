@@ -235,6 +235,14 @@ export const SocialEvent = __t.object("SocialEvent", {
 });
 export type SocialEvent = __Infer<typeof SocialEvent>;
 
+export const SocialPair = __t.object("SocialPair", {
+  pair: __t.string(),
+  lastNoticeMicros: __t.u64(),
+  friendNoticed: __t.bool(),
+  redeemedCode: __t.string(),
+});
+export type SocialPair = __Infer<typeof SocialPair>;
+
 export const TickSchedule = __t.object("TickSchedule", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),

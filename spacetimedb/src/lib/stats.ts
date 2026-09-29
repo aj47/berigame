@@ -25,7 +25,14 @@ function edit(ctx: Ctx, id: Identity, fn: (row: StatsRow) => StatsRow | undefine
   }
 }
 
-export function statsSessionStart(ctx: Ctx, id: Identity): void {
+/**
+ * `wasOnline`: the player already had a live connection before this one. When
+ * they did not, any `sessionStartedAt` left behind is stale (the module
+ * restarted, or a disconnect was never delivered): that session is closed out
+ * (counted up to now) and a new one starts, instead of sessions stopping
+ * being counted forever.
+ */
+export function statsSessionStart(ctx: Ctx, id: Identity, wasOnline = false): void {
   try {
     const row = ctx.db.playStats.identity.find(id);
     if (!row) {
@@ -37,7 +44,14 @@ export function statsSessionStart(ctx: Ctx, id: Identity): void {
       return;
     }
     // A second tab of an already-online player does not start a new session.
-    if (row.sessionStartedAt) return;
+    if (row.sessionStartedAt && wasOnline) return;
+    if (row.sessionStartedAt) {
+      statsSessionEnd(ctx, id);
+      const closed = ctx.db.playStats.identity.find(id);
+      if (!closed) return;
+      ctx.db.playStats.identity.update({ ...closed, sessions: closed.sessions + 1, sessionStartedAt: ctx.timestamp, lastSeenAt: ctx.timestamp });
+      return;
+    }
     ctx.db.playStats.identity.update({ ...row, sessions: row.sessions + 1, sessionStartedAt: ctx.timestamp, lastSeenAt: ctx.timestamp });
   } catch { /* best-effort */ }
 }

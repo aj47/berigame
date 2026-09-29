@@ -50,3 +50,31 @@ describe('failed connection recovery preserves identity', () => {
     log.mockRestore();
   });
 });
+
+describe('dropping a connection releases it at once', () => {
+  it('forceClose closes the socket and fires its disconnect handler exactly once', async () => {
+    const { forceClose } = await import('../spacetime/connection');
+    const ws: any = { close: vi.fn() };
+    const disconnected = vi.fn();
+    ws.onclose = () => disconnected();
+    const conn: any = { wsPromise: Promise.resolve(ws), disconnect: vi.fn(() => { conn.isDisconnectRequested = true; conn.wsPromise.then((w: any) => w.close()); }) };
+    forceClose(conn);
+    await Promise.resolve(); await Promise.resolve();
+    expect(conn.disconnect).toHaveBeenCalledOnce();
+    expect(ws.close).toHaveBeenCalledOnce();
+    expect(disconnected).toHaveBeenCalledOnce();
+    // A late real onclose from the browser can no longer re-fire the handler.
+    expect(ws.onclose).toBeNull();
+  });
+  it('markConnectionLost on the live connection frees it without waiting for the browser', async () => {
+    const { markConnectionLost } = await import('../spacetime/connection');
+    const ws: any = { close: vi.fn() };
+    const managerCleared = vi.fn();
+    ws.onclose = () => managerCleared();
+    const conn: any = { wsPromise: Promise.resolve(ws), disconnect: vi.fn() };
+    markConnectionLost(conn);
+    await Promise.resolve(); await Promise.resolve();
+    expect(managerCleared).toHaveBeenCalledOnce();
+    expect(test.loading.setWebsocketConnected).toHaveBeenCalledWith(false);
+  });
+});
