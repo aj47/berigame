@@ -13,6 +13,7 @@ import { locateAvatar, registerAvatarGroup, unregisterAvatarGroup } from '../../
 import { useLoadingStore } from '../../store';
 import { stickGeometry, stickMaterial } from './stickProp';
 import { clubGeometry, clubMaterial } from './clubProp';
+import { AvatarFx } from '../../fx/avatarFx';
 
 export const BASE_MODEL_URL='/models/starter-adventurer.glb';
 export const modelUrl=(style:number) => style===0 ? BASE_MODEL_URL : `/models/starter-adventurer-${HAIR_STYLES[style]?.id ?? 'tousled'}.glb`;
@@ -38,6 +39,8 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
   const seed=useMemo(()=>seedFromIdentity(identity),[identity]);
   const animator=useMemo(()=>new AvatarAnimator(model,clipSet,{seed,locate:locateAvatar}),[model,clipSet,seed]);
   useEffect(()=>()=>animator.dispose(),[animator]);
+  // Hit flash, footsteps, respawn chime and the harvest reach (fx/avatarFx.ts).
+  const fx=useMemo(()=>new AvatarFx(model,identity,isSelf),[model,identity,isSelf]);
   // Reused every frame: nothing is allocated per avatar per frame.
   const input=useRef<AnimatorInput>({now:0,dt:0,dead:false,cue:null,moving:false,speed:0,holdMs:0,x:0,z:0,yaw:0,weapon:''});
   const revision=useRef(-1);
@@ -49,9 +52,10 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
     const palette=acquirePalette(base,appearance);
     // Only the skinned body takes the palette; a held stick keeps its own material.
     model.traverse((object:any)=>{if(object.isSkinnedMesh)object.material=palette.material;});
+    fx.setPalette(palette.material);
     model.userData.berigameAvatar={...model.userData.berigameAvatar,identity,appearance:{...appearance},modelUrl:url};
     return palette.release;
-  },[model,base,colors,appearance.hairStyle,identity,url]);
+  },[model,base,colors,appearance.hairStyle,identity,url,fx]);
   useLayoutEffect(()=>{
     model.userData.berigameAvatar={...model.userData.berigameAvatar,weapon};
     const armed=weapon===STICK_ITEM_ID;
@@ -95,8 +99,10 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
       frame.x=group.position.x;frame.z=group.position.z;frame.yaw=group.rotation.y;
       if(registered.current!==group){if(registered.current)unregisterAvatarGroup(identity,registered.current);registered.current=group;registerAvatarGroup(identity,group);}
     }
+    fx.beforeAnimate();
     animator.update(frame);
     const director=animator.director;
+    fx.afterAnimate(frame.now,delta,frame.x,frame.z,frame.moving,frame.speed,frame.dead,director.clip==='Idle'||director.clip==='Stop');
     if(director.revision!==revision.current){
       revision.current=director.revision;
       model.userData.berigameAvatar.clip=director.clip;

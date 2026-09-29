@@ -7,6 +7,7 @@ import { useGameActions } from '../../spacetime/actions';
 import { useMyPlayer, usePlayersByHex } from '../../spacetime/hooks';
 import { useUserInputStore } from '../../store';
 import { merged, part, withWind } from './envArt';
+import HarvestRing from '../../fx/HarvestRing';
 
 type V3 = [number, number, number];
 const BARK = 0x8a6a45, BARK_DARK = 0x6b4a2e;
@@ -106,7 +107,7 @@ const BerryTree = ({ tree, tick, harvester }: Props) => {
   const [wx, wy, wz] = tileToWorld(tree);
   const regrowTicks = Math.max(0, tree.cooldownUntilTick - tick);
   const busy = tree.harvester !== undefined;
-  const progress = harvester && harvester.harvestEndTick > 0 ? Math.min(1, Math.max(0, 1 - (harvester.harvestEndTick - tick) / HARVEST_TICKS)) : 0;
+  const endTick = harvester?.harvestEndTick ?? 0;
   const label = busy ? `${harvester?.name ?? 'Someone'} is harvesting` : regrowTicks > 0 ? `Regrowing (${Math.ceil(regrowTicks * TICK_MS / 1000)}s)` : `Harvest ${def?.name ?? 'berries'}`;
   const disabled = busy || regrowTicks > 0;
   const onClick = (e: any) => {
@@ -120,8 +121,9 @@ const BerryTree = ({ tree, tick, harvester }: Props) => {
     <mesh geometry={s.body} material={faded ? bodyFaded : bodyMat} />
     <mesh geometry={shadowGeo} material={shadowMat} position={[0, .015, 0]} />
     <mesh geometry={ripe ? s.berries : s.unripe} material={ripe ? berryMat(def?.color ?? '#d9423b') : unripeMat} />
-    {(busy || regrowTicks > 0) && <Html zIndexRange={[3,0]} position={[0,2.9,0]} center style={{ pointerEvents:'none' }}>
-      <div className="harvest-progress"><div>{busy ? `Gathering ${def?.name}` : label}</div>{busy && <div className="harvest-bar"><div className="harvest-fill" style={{ width:`${progress*100}%`,background:def?.color }} /></div>}</div>
+    {busy && endTick > 0 && <HarvestRing endTick={endTick} totalTicks={HARVEST_TICKS} color={def?.color} y={3.05} />}
+    {(busy || regrowTicks > 0) && <Html zIndexRange={[3,0]} position={[0,busy ? 3.7 : 2.9,0]} center style={{ pointerEvents:'none' }}>
+      <div className="harvest-progress"><div>{busy ? `Gathering ${def?.name}` : label}</div></div>
     </Html>}
   </group>;
 };

@@ -6,6 +6,7 @@ import { useGameActions } from '../../../spacetime/actions';
 import { useUserInputStore } from '../../../store';
 import DriftwoodPile from './DriftwoodPile';
 import TideRock from './TideRock';
+import HarvestRing from '../../../fx/HarvestRing';
 
 interface Props { node: Tree; tick: number; harvester: Player | null; }
 
@@ -20,7 +21,7 @@ const CoastNode = ({ node, tick, harvester }: Props) => {
   const ripe = regrowTicks === 0;
   const busy = node.harvester !== undefined;
   const total = harvestTicksFor(node.kind);
-  const progress = harvester && harvester.harvestEndTick > 0 ? Math.min(1, Math.max(0, 1 - (harvester.harvestEndTick - tick) / total)) : 0;
+  const endTick = harvester?.harvestEndTick ?? 0;
   const verb = node.kind === NodeKind.TideRock ? 'Knap' : 'Gather';
   const label = busy ? `${harvester?.name ?? 'Someone'} is gathering` : regrowTicks > 0 ? `${node.kind === NodeKind.TideRock ? 'More flint in' : 'Washing up in'} ${Math.ceil(regrowTicks * TICK_MS / 1000)}s` : `${verb} ${item?.name ?? 'it'}`;
   const disabled = busy || regrowTicks > 0;
@@ -35,8 +36,9 @@ const CoastNode = ({ node, tick, harvester }: Props) => {
   const Model = node.kind === NodeKind.TideRock ? TideRock : DriftwoodPile;
   return <group position={[wx, wy, wz]}>
     <Model position={[0, 0, 0]} ripe={ripe} rotation={rotation} onClick={onClick} />
-    {(busy || regrowTicks > 0) && <Html zIndexRange={[3, 0]} position={[0, 1.5, 0]} center style={{ pointerEvents: 'none' }}>
-      <div className="harvest-progress"><div>{busy ? `Gathering ${item?.name}` : label}</div>{busy && <div className="harvest-bar"><div className="harvest-fill" style={{ width: `${progress * 100}%`, background: item?.color }} /></div>}</div>
+    {busy && endTick > 0 && <HarvestRing endTick={endTick} totalTicks={total} color={item?.color} y={1.55} size={0.95} />}
+    {(busy || regrowTicks > 0) && <Html zIndexRange={[3, 0]} position={[0, busy ? 2.15 : 1.5, 0]} center style={{ pointerEvents: 'none' }}>
+      <div className="harvest-progress"><div>{busy ? `Gathering ${item?.name}` : label}</div></div>
     </Html>}
   </group>;
 };
