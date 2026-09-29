@@ -1,4 +1,4 @@
-import { AnimationClip, AnimationMixer, LoopOnce, LoopRepeat, type AnimationAction, type Bone, type Object3D } from 'three';
+import { AnimationClip, AnimationMixer, LoopOnce, LoopRepeat, Sphere, Vector3, type AnimationAction, type Bone, type Frustum, type Object3D } from 'three';
 import { ARMED_VARIANT, type Clip } from './combatPresentation';
 import { ClipDirector, type DirectorInput } from './clipDirector';
 import { ProceduralLayer, type LayerInput } from './proceduralLayer';
@@ -24,6 +24,15 @@ export function seedFromIdentity(identity: string): number {
   for (let i = 0; i < identity.length; i++) hash = Math.imul(hash ^ identity.charCodeAt(i), 0x01000193);
   return hash >>> 0;
 }
+
+/**
+ * The camera view animators cull against, refreshed every rendered frame by
+ * <AnimationCulling />. null (tests, node): every avatar counts as on screen.
+ * `skipped` counts updates spent off screen (diagnostics).
+ */
+export const animationView: { frustum: Frustum | null; skipped: number } = { frustum: null, skipped: 0 };
+/** Bounds of a posed adventurer around its feet: generous, so a limb or a fast camera never pops. */
+const CULL_CENTER_Y = 1, CULL_RADIUS = 2.5;
 
 const aliases = new WeakMap<AnimationClip, AnimationClip>();
 /**
@@ -75,6 +84,11 @@ export class AvatarAnimator {
   private readonly feet: [Object3D | undefined, Object3D | undefined];
   /** A stick is wielded: Idle and Run play their armed variants. */
   private armed = false;
+  /** Posed last frame (inside the view); off screen only clip time advances. */
+  private onScreen = true;
+  private readonly bounds = new Sphere(new Vector3(), CULL_RADIUS);
+  /** Topmost bones: their subtrees' world matrices stay frozen while off screen. */
+  private readonly boneRoots: Object3D[] = [];
   private readonly layerInput: LayerInput = { dt: 0, time: 0, idle: 0, run: 0, combat: 0, swing: 0, defeat: 0, x: 0, z: 0, yaw: 0 };
 
   constructor(model: Object3D, set: AvatarClipSet, options: AnimatorOptions = {}) {
@@ -94,6 +108,40 @@ export class AvatarAnimator {
       locate: options.locate,
     });
     this.layer = options.procedural === false ? null : new ProceduralLayer(model, seed);
+    model.traverse((object) => { if ((object as Bone).isBone && !(object.parent as Bone | null)?.isBone) this.boneRoots.push(object); });
+  }
+
+  /** Whether the avatar (at its group's position this frame) is inside the last rendered view. */
+  private inView(input: AnimatorInput): boolean {
+    const frustum = animationView.frustum;
+    if (!frustum) return true;
+    this.bounds.center.set(input.x, this.model.matrixWorld.elements[13] + CULL_CENTER_Y, input.z);
+    return frustum.intersectsSphere(this.bounds);
+  }
+
+  /** Off screen: stop recomputing bone world matrices (skinning then reuses the last pose). */
+  private freezeBones(frozen: boolean): void {
+    for (let i = 0; i < this.boneRoots.length; i++) this.boneRoots[i].matrixWorldAutoUpdate = !frozen;
+  }
+
+  /**
+   * Off screen: advance each playing action's time as mixer.update would, without
+   * sampling or applying a single track, so the pose is right when it comes back.
+   */
+  private advance(dt: number): void {
+    this.mixer.time += dt;
+    const director = this.director;
+    for (let i = 0; i < director.count; i++) {
+      const action = director.layers[i].handle as AnimationAction | null;
+      if (!action || !action.enabled || action.paused || !action.isScheduled()) continue;
+      const duration = action.getClip().duration;
+      let time = action.time + dt * action.getEffectiveTimeScale();
+      if (action.loop === LoopOnce) {
+        if (time >= duration) { time = duration; if (action.clampWhenFinished) action.paused = true; else action.enabled = false; }
+        else if (time < 0) time = 0;
+      } else if (duration > 0) time = ((time % duration) + duration) % duration;
+      action.time = time;
+    }
   }
 
   /**
@@ -161,6 +209,10 @@ export class AvatarAnimator {
       action.weight = layer.weight;
       action.timeScale = layer.timeScale;
     }
+    // Off screen: keep clip time, skip sampling, the procedural layer and bone matrices.
+    const visible = this.inView(input);
+    if (visible !== this.onScreen) { this.onScreen = visible; this.freezeBones(!visible); if (visible) this.layer?.resetGround(); }
+    if (!visible) { this.advance(input.dt); animationView.skipped++; return; }
     // 3. Clips.
     this.mixer.update(input.dt);
     // 4. Procedural motion on top.
@@ -179,6 +231,7 @@ export class AvatarAnimator {
    * stay). Stepping the animator again afterwards starts over from a clean pose.
    */
   dispose(): void {
+    if (!this.onScreen) { this.onScreen = true; this.freezeBones(false); }
     this.layer?.restore();
     this.mixer.stopAllAction();
     this.mixer.uncacheRoot(this.model);

@@ -175,6 +175,9 @@ export class ProceduralLayer {
     if (this.hips) this.hips.position.copy(this.hipsBase);
   }
 
+  /** Forget the last ground position (after frames without apply(), e.g. off screen), so the robes don't read a jump as speed. */
+  resetGround(): void { this.hasGround = false; }
+
   /** Layer the procedural motion over what the mixer just wrote. */
   apply(input: LayerInput): void {
     for (let i = 0; i < this.driven.length; i++) this.driven[i].base.copy(this.driven[i].bone.quaternion);
