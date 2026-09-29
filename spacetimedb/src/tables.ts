@@ -150,6 +150,10 @@ export const chatMessage = table(
     text: t.string(),
     tick: t.u32(),
     sentAt: t.timestamp(),
+    // Appended columns: new columns must go last and carry a default.
+    /** Where the sender stood when they said it, for the Nearby chat filter (-1 = unknown, an older row). */
+    x: t.i32().default(-1),
+    z: t.i32().default(-1),
   }
 );
 
@@ -260,5 +264,65 @@ export const playStats = table(
     deaths: t.u32(),
     /** Furthest funnel step reached: join, berry, stick, hedge, coast, craft. */
     lastStep: t.string(),
+  }
+);
+
+// ---- Social: invite links, friends, trades --------------------------------
+
+/**
+ * "Join me" links: one short-lived code per inviter (shared/sim friends.ts).
+ * A visibility filter shows each client only its own code, so codes cannot be
+ * listed; the link carries the code, never an identity or token.
+ */
+export const inviteCode = table(
+  { name: 'invite_code', public: true },
+  {
+    code: t.string().primaryKey(),
+    inviter: t.identity().unique(),
+    expiresAtMicros: t.u64(),
+  }
+);
+
+/** One row per (owner -> friend). Filtered to the owner; online status and area come from the player table. */
+export const friend = table(
+  { name: 'friend', public: true },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    owner: t.identity().index('btree'),
+    friend: t.identity(),
+    since: t.timestamp(),
+  }
+);
+
+/**
+ * A two-player trade (shared/sim trade.ts). `a` asked `b`; `accepted` once b
+ * agreed. Offers are "itemId:qty,..." strings; items stay in the bags until
+ * both confirm and the swap runs. Filtered to its two players.
+ */
+export const trade = table(
+  { name: 'trade', public: true },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    a: t.identity().index('btree'),
+    b: t.identity().index('btree'),
+    accepted: t.bool(),
+    aOffer: t.string(),
+    bOffer: t.string(),
+    aConfirmed: t.bool(),
+    bConfirmed: t.bool(),
+    createdTick: t.u32(),
+  }
+);
+
+/** Event table: a short notice for one player (`to`), e.g. a trade request or an invite result. Clients show only their own. */
+export const socialEvent = table(
+  { name: 'social_event', public: true, event: true },
+  {
+    tick: t.u32(),
+    /** shared/sim SocialNotice */
+    kind: t.u8(),
+    from: t.identity(),
+    to: t.identity(),
+    text: t.string(),
   }
 );

@@ -1,0 +1,164 @@
+/* Friends, invites, chat filter and the trade window. */
+.panel-heading .panel-switch,
+.chat-mode button {
+  min-height: 30px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+.panel-heading .panel-switch { margin-left: auto; margin-right: 6px; }
+.chat-mode {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-right: 6px;
+}
+.chat-mode button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-soft);
+}
+.chat-mode button.active {
+  background: var(--blue);
+  color: #fffaf0;
+}
+.link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  min-height: 0;
+  color: var(--blue);
+  text-decoration: underline;
+  font: inherit;
+  cursor: pointer;
+}
+
+.invite-card {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: #fffaf0;
+  border: 1px solid #d9c49c;
+  border-radius: 8px;
+}
+.invite-card p { margin: 0; }
+.invite-link-row { display: flex; gap: 6px; }
+.invite-link-row input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+}
+.invite-make { min-height: 40px; }
+
+.friend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #e0cfae;
+  border-radius: 8px;
+  background: #fffaf0;
+}
+.friend-row.offline { opacity: 0.65; }
+.presence-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #a39580;
+  box-shadow: 0 0 0 2px #fff;
+}
+.friend-row.online .presence-dot { background: #4caf50; }
+.friend-info { flex: 1; min-width: 0; display: grid; }
+.friend-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend-go { min-height: 34px; padding: 4px 12px; }
+.friend-remove { flex: none; }
+.muted-list { margin-top: 10px; font-size: 13px; }
+.muted-list ul { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; }
+.muted-list li { display: flex; justify-content: space-between; gap: 8px; }
+
+/* ---- Trade window ---------------------------------------------------- */
+.trade-window {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  color: var(--ink);
+  background: var(--parchment);
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px #0005;
+  z-index: 6;
+}
+.trade-request {
+  top: calc(max(16px, env(safe-area-inset-top)) + 110px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  max-width: calc(100vw - 24px);
+}
+.trade-request-actions { display: flex; gap: 6px; }
+.trade-request-actions button { min-height: 36px; padding: 4px 14px; }
+.trade-sheet {
+  top: calc(max(16px, env(safe-area-inset-top)) + 64px);
+  width: 460px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 240px);
+  overflow-y: auto;
+  padding: 14px;
+}
+.trade-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.trade-side {
+  border: 1px solid #d9c49c;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fffaf0;
+  min-height: 92px;
+}
+.trade-side.confirmed { border-color: #4caf50; box-shadow: inset 0 0 0 1px #4caf50; }
+.trade-side h3 { margin: 0 0 6px; font-size: 13px; display: flex; justify-content: space-between; }
+.trade-ok { color: #2e7d32; font-size: 12px; }
+.trade-offer, .trade-bag-items { display: flex; flex-wrap: wrap; gap: 5px; }
+.trade-bag { margin-top: 10px; }
+.trade-bag .eyebrow { display: block; margin-bottom: 5px; }
+.trade-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 3px 8px 3px 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+}
+.trade-chip img { width: 24px; height: 24px; object-fit: contain; }
+.trade-chip-qty { font-weight: bold; }
+.trade-chip-note { color: #9a3b2c; font-size: 11px; }
+button.trade-chip:disabled { opacity: 0.55; }
+.trade-status { margin: 10px 0 6px; }
+.trade-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.trade-actions button { min-height: 40px; padding: 6px 16px; }
+
+@media (max-width: 600px) {
+  /* A bottom sheet above the quick bar on phones. */
+  .trade-sheet {
+    top: auto;
+    bottom: calc(max(10px, env(safe-area-inset-bottom)) + 150px);
+    width: calc(100vw - 16px);
+    max-height: 56dvh;
+    padding: 10px;
+  }
+  .trade-columns { gap: 6px; }
+  .trade-request { top: calc(max(12px, env(safe-area-inset-top)) + 96px); flex-wrap: wrap; justify-content: center; }
+}

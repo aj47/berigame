@@ -8,3 +8,4 @@ export type GroundItemRow = NonNullable<ReturnType<Ctx['db']['groundItem']['id']
 export type InventorySlotRow = NonNullable<ReturnType<Ctx['db']['inventorySlot']['id']['find']>>;
 export type WorldRow = NonNullable<ReturnType<Ctx['db']['world']['id']['find']>>;
 export type TrainingDummyRow = NonNullable<ReturnType<Ctx['db']['trainingDummy']['id']['find']>>;
+export type TradeRow = NonNullable<ReturnType<Ctx['db']['trade']['id']['find']>>;

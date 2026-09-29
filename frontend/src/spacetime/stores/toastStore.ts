@@ -13,6 +13,7 @@ export const useToastStore = create<ToastState>((set) => ({
   show: (message) => {
     set({ message });
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => set({ message: null }), 2500);
+    // Longer notices (an invite result) stay up long enough to read.
+    timer = setTimeout(() => set({ message: null }), Math.min(7000, Math.max(2500, message.length * 55)));
   },
 }));

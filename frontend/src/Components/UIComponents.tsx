@@ -10,10 +10,12 @@ import GoalChip from "./GoalChip";
 import SettingsPanel from "./SettingsPanel";
 import Minimap from "./Minimap";
 import TickDebug from "./TickDebug";
+import FriendsPanel, { FriendSync, InviteRedeemer } from "./FriendsPanel";
+import TradeWindow from "./TradeWindow";
 import { PUNCH_DAMAGE, STICK_ITEM_ID, getItemDef } from "@sim";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 
-type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | null;
+type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | null;
 const stick = getItemDef(STICK_ITEM_ID);
 /** Name and online count: the only part of the HUD shell that follows player rows. */
 const WorldHeader = memo(() => {
@@ -92,8 +94,8 @@ const UIComponents = memo(() => {
         </button>
         <button
           data-panel="chat"
-          aria-expanded={panel === "chat"}
-          onClick={() => toggle("chat")}
+          aria-expanded={panel === "chat" || panel === "friends"}
+          onClick={() => setPanel((current) => (current === "chat" || current === "friends" ? null : "chat"))}
         >
           Chat <kbd>↵</kbd>
         </button>
@@ -126,7 +128,9 @@ const UIComponents = memo(() => {
       </nav>
       <GoalChip visible={panel === null} />
       <Inventory open={panel === "inventory"} onClose={close} />
-      <ChatBox open={panel === "chat"} onClose={close} />
+      {/* Friends and invites live behind Chat (no new toolbar button). */}
+      <ChatBox open={panel === "chat"} onClose={close} onOpenFriends={() => setPanel("friends")} />
+      <FriendsPanel open={panel === "friends"} onClose={close} onOpenChat={() => setPanel("chat")} />
       <AppearancePanel open={panel === "appearance"} onClose={close} />
       <SettingsPanel open={panel === "settings"} onClose={close} />
       <Minimap hidden={panel !== null} />
@@ -224,6 +228,9 @@ const UIComponents = memo(() => {
         </section>
       )}
       <CombatHud quickKeysEnabled={panel !== "appearance"} />
+      <TradeWindow />
+      <InviteRedeemer />
+      <FriendSync />
       <Toast />
       {import.meta.env.DEV && <TickDebug />}
     </div>

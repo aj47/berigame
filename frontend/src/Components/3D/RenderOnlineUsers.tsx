@@ -6,20 +6,26 @@ import AnimationCulling from './AnimationCulling';
 import TrainingDummy from './TrainingDummy';
 import DeathBagMarker, { CameraLookProbe } from './DeathBagMarker';
 import { useAppearanceRows, useChatMessages, useMyIdentityHex, useMyPlayer, usePlayers, useTick, useTrainingDummies } from '../../spacetime/hooks';
-import { CHAT_BUBBLE_TICKS, DUMMY_IDLE_RESET_TICKS, type Appearance } from '@sim';
+import { CHAT_BUBBLE_TICKS, DUMMY_IDLE_RESET_TICKS, bubbleText, type Appearance } from '@sim';
+import { useChatPrefsStore } from '../../spacetime/stores/chatPrefsStore';
 import { identityHex } from '../../spacetime/identity';
 
 /** Latest chat line per sender that is still fresh enough to float above a head. */
 export function useRecentChatBySender(): Map<string, { text: string; tick: number }> {
   const messages = useChatMessages();
   const tick = useTick();
+  const muted = useChatPrefsStore((s) => s.muted);
   return useMemo(() => {
     const m = new Map<string, { text: string; tick: number }>();
-    for (const msg of messages) {
-      if (tick - msg.tick <= CHAT_BUBBLE_TICKS) m.set(identityHex(msg.sender), { text: msg.text, tick: msg.tick });
+    // Newest last, so only the tail can be fresh: stop at the first stale line.
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (tick - msg.tick > CHAT_BUBBLE_TICKS) break;
+      const hex = identityHex(msg.sender);
+      if (!m.has(hex) && !muted.has(hex)) m.set(hex, { text: bubbleText(msg.text), tick: msg.tick });
     }
     return m;
-  }, [messages, tick]);
+  }, [messages, tick, muted]);
 }
 
 /** Saved appearance rows by identity hex: one pass per appearance change, not one search per avatar per render. */

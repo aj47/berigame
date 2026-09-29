@@ -7,6 +7,7 @@ import {
   bfsPath, chebyshev, enterRule, facingFromDelta, goalAdjacentTo,
   goalIsTile, harvestFindsStick, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
   neighbors8, swingDamage, tileKey, DUMMY_TILE, dummyAfterHit, worldBlockedSet,
+  TRADE_BREAK_RANGE, TRADE_REQUEST_TICKS,
 } from '../../../shared/sim';
 import { ensureDummy } from '../lib/dummy';
 import { holdsStick } from '../lib/brambles';
@@ -16,6 +17,7 @@ import { statsDeath, statsPosition } from '../lib/stats';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
 import { clearInteractions, hex, sameId } from '../lib/players';
 import { canPlay } from '../lib/access';
+import { cancelTrade } from '../lib/social';
 import type { Ctx, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
 
 interface TickState {
@@ -369,6 +371,26 @@ function sameRow<T extends object>(a: T | undefined, b: T): boolean {
   return true;
 }
 
+/**
+ * Trades end when a side leaves, dies, walks away (beyond TRADE_BREAK_RANGE)
+ * or leaves a request unanswered. Reads only the (tiny) trade table; writes
+ * only when a trade ends.
+ */
+function phaseTrades(s: TickState): void {
+  const table = s.ctx.db.trade;
+  if (!table || table.count() === 0n) return;
+  for (const row of [...table.iter()]) {
+    const a = s.players.get(hex(row.a));
+    const b = s.players.get(hex(row.b));
+    let reason: string | null = null;
+    if (!a || !b || !a.online || !b.online) reason = 'Trade cancelled: they left';
+    else if (a.state !== PlayerState.Alive || b.state !== PlayerState.Alive) reason = 'Trade cancelled';
+    else if (chebyshev(a, b) > TRADE_BREAK_RANGE) reason = 'Trade cancelled: you walked too far apart';
+    else if (!row.accepted && s.T - row.createdTick > TRADE_REQUEST_TICKS) reason = 'Trade request expired';
+    if (reason) cancelTrade(s.ctx, row, reason);
+  }
+}
+
 function phaseExpiry(s: TickState): void {
   if (s.T % 10 !== 0) return;
   for (const item of [...s.ctx.db.groundItem.iter()]) {
@@ -433,6 +455,7 @@ export const tick = spacetimedb.reducer(
     phaseSwings(s);
     phaseDummySwings(s);
     phaseDeath(s);
+    phaseTrades(s);
     phaseExpiry(s);
 
     ctx.db.world.id.update({ ...world, tick: T, tickStartedAt: ctx.timestamp });

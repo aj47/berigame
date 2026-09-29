@@ -1,5 +1,6 @@
 import { ApiError } from './portable';
 import {
+  CHAT_NEARBY_RADIUS, INVITE_PARAM, MAX_OFFER_LEN, MAX_TRADE_STACKS, TRADE_BREAK_RANGE, TRADE_RANGE,
   DUMMY_ID, DUMMY_MAX_HP, DUMMY_TILE, EMOTE_LIST, GRID_SIZE, HOTBAR_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, PUNCH_DAMAGE, RECIPES, STICK_DROP_CHANCE, STICK_ITEM_ID, STONE_CLUB_ITEM_ID, getItemDef, validAppearance,
 } from '../../shared/sim';
 
@@ -14,6 +15,7 @@ const stickDamage = getItemDef(STICK_ITEM_ID)!.weaponDamage;
 const clubDamage = getItemDef(STONE_CLUB_ITEM_ID)!.weaponDamage;
 const nodeId = integer(1, 4294967295);
 const stickChance = `${Math.round(STICK_DROP_CHANCE * 100)}%`;
+const tradeId = text(1, 20, '^[0-9]+$');
 export const ACTIONS: Record<string, Action> = {
   move: { description: 'Walk to a tile. The server paths around trees. A thorny bramble hedge rings the Grove at Chebyshev distance 17 from the spawn tile (state.world.brambles): without a sturdy stick you stop at the last Grove tile and the receipt has blockedBy "brambles" and the clamped destination. From the Coast you can always walk home.', properties: { x: integer(0, GRID_SIZE - 1), z: integer(0, GRID_SIZE - 1) }, required: ['x', 'z'] },
   harvest: { description: `Walk to and harvest a node from state.nodes: a berry tree, a driftwood pile or a tide rock (the last two are on the Coast, past the brambles). Pass nodeId (treeId is the old alias), or kind (berry, driftwood or tide_rock) for the node of that kind with the soonest claim; with neither, the berry tree with the soonest claim (as state.goal suggests). A regrowing or busy node is not an error: you wait beside it and claim it when it ripens (newcomers first, then whoever waited longest); the receipt then has waiting {treeId, ripeInTicks}. A berry harvest gives one berry and, while you hold no stick, a ${stickChance} chance (about 1 in 4, no guarantee) to also find a sturdy stick: a weapon and the key through the brambles. Driftwood piles give driftwood, tide rocks flint; they never find sticks. Inspect state to confirm completion.`, properties: { nodeId, treeId: nodeId, kind: { type: 'string', minLength: 1, maxLength: 16, enum: ['berry', 'driftwood', 'tide_rock'] } }, required: [] },
@@ -31,7 +33,16 @@ export const ACTIONS: Record<string, Action> = {
   inventory_move: { description: 'Move or swap your inventory slots.', properties: { from: slot, to: slot }, required: ['from', 'to'] },
   name: { description: 'Set your character name.', properties: { name: text(2, 16, '^[A-Za-z0-9_ ]+$') }, required: ['name'] },
   appearance: { description: 'Choose the character cosmetics listed in state.', properties: { hairStyle: integer(0, 2), skinTone: integer(0, 255), hairColor: integer(0, 255), robeColor: integer(0, 255), wrapColor: integer(0, 255) }, required: ['hairStyle', 'skinTone', 'hairColor', 'robeColor', 'wrapColor'] },
-  chat: { description: 'Send a public game message. Requires chat access. Wait at least three seconds between messages.', properties: { text: text(1, MAX_CHAT_LEN) }, required: ['text'], scope: 'chat' },
+  chat: { description: `Send a public game message. Requires chat access. Wait at least three seconds between messages. Each message in state.chat has nearby: true when it was said within ${CHAT_NEARBY_RADIUS} tiles of you.`, properties: { text: text(1, MAX_CHAT_LEN) }, required: ['text'], scope: 'chat' },
+  invite_create: { description: `Make (or replace) your one-hour "join me" code. Anyone who redeems it becomes your friend and is placed beside you (or at the nearest Grove tile if you are past the brambles and they hold no stick). Share only the code or the link query ?${INVITE_PARAM}=CODE; it never contains credentials. Receipt: {code, linkQuery}; also in state.invite.`, properties: {}, required: [] },
+  invite_redeem: { description: "Redeem another player's invite code: you both become friends and, unless you are fighting or down, you are placed beside them. Receipt: your new tile and area; the explanation arrives in state.notices.", properties: { code: text(8, 12, '^[A-Za-z0-9 -]+$') }, required: ['code'] },
+  friend_add: { description: "Add a player to your friends list (one-way). state.friends shows each friend's online status, area and tile; use follow to walk to them.", properties: { playerId }, required: ['playerId'] },
+  friend_remove: { description: 'Remove a player from your friends list.', properties: { playerId }, required: ['playerId'] },
+  trade_request: { description: `Ask a player within ${TRADE_RANGE} tiles to trade (if they already asked you, this accepts). One trade at a time. See state.trade.`, properties: { playerId }, required: ['playerId'] },
+  trade_respond: { description: 'Accept or decline a trade request you received (state.trade.status requested_by_them).', properties: { tradeId, answer: { type: 'string', minLength: 6, maxLength: 7, enum: ['accept', 'decline'] } }, required: ['tradeId', 'answer'] },
+  trade_offer: { description: `Set everything you offer in the open trade, as itemId:quantity pairs joined by commas (e.g. berry_blueberry:2,stick:1; "" for nothing; at most ${MAX_TRADE_STACKS} kinds). Items stay in your bag until the swap and must not be wielded (unwield first). Any change clears both confirmations.`, properties: { tradeId, offer: { type: 'string', minLength: 0, maxLength: MAX_OFFER_LEN } }, required: ['tradeId', 'offer'] },
+  trade_confirm: { description: `Confirm the open trade exactly as it stands in state.trade. When both sides have confirmed, the swap happens at once, all or nothing; if a bag is too full or an offered item is gone or wielded, nothing moves, both confirmations clear and state.notices says why. Walking beyond ${TRADE_BREAK_RANGE} tiles, dying or leaving cancels.`, properties: { tradeId }, required: ['tradeId'] },
+  trade_cancel: { description: 'Cancel your trade or withdraw your request.', properties: { tradeId }, required: ['tradeId'] },
 };
 
 export function validateObject(input: unknown, properties: Record<string, Field>, required: string[]): Record<string, any> {
@@ -55,6 +66,7 @@ export function validateAction(name: string, input: unknown) {
   const value = validateObject(input, action.properties, action.required);
   if (name === 'appearance' && !validAppearance(value as any)) throw new ApiError(400, 'invalid_appearance', 'Choose styles from the appearance options in state.');
   if (name === 'pickup' && BigInt(value.id) > 18446744073709551615n) throw new ApiError(400, 'invalid_id', 'Ground item ID is too large.');
+  if (typeof value.tradeId === 'string' && BigInt(value.tradeId) > 18446744073709551615n) throw new ApiError(400, 'invalid_id', 'Trade ID is too large.');
   return value;
 }
 

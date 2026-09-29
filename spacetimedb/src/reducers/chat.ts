@@ -19,7 +19,7 @@ export const sendChat = spacetimedb.reducer(
     }
     touchInput(p, T);
     savePlayer(ctx, p);
-    ctx.db.chatMessage.insert({ id: 0n, sender: p.identity, text: trimmed, tick: T, sentAt: ctx.timestamp });
+    ctx.db.chatMessage.insert({ id: 0n, sender: p.identity, text: trimmed, tick: T, sentAt: ctx.timestamp, x: p.x, z: p.z });
     const all = [...ctx.db.chatMessage.iter()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     for (let i = 0; i < all.length - CHAT_KEEP_ROWS; i++) ctx.db.chatMessage.id.delete(all[i].id);
   }

@@ -91,7 +91,14 @@ function apply(entry: Entry, next: AvatarLabels) {
   if (prev.name !== next.name || prev.tone !== next.tone) { entry.name.measured = false; nextLayout = 0; }
   if (prev.priority !== next.priority) nextLayout = 0;
   if (next.health !== null && prev.health !== next.health) entry.health.fill.style.width = `${next.health * 100}%`;
-  if (next.chat && prev.chat !== next.chat) entry.chat.bubble.textContent = next.chat;
+  if (next.chat && prev.chat !== next.chat) {
+    const bubble = entry.chat.bubble;
+    bubble.textContent = next.chat;
+    // Restart the CSS lifetime (pop in, hold, fade out) for each new line: one reflow per chat line, not per frame.
+    bubble.classList.remove('speaking');
+    void bubble.offsetWidth;
+    bubble.classList.add('speaking');
+  }
   entry.labels = { ...next };
 }
 

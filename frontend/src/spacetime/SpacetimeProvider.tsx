@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { CombatEvent } from '../module_bindings/types';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CombatEvent, SocialEvent } from '../module_bindings/types';
+import { identityHex } from './identity';
+import { useToastStore } from './stores/toastStore';
 import { useMyIdentityHex } from './hooks';
 import { useFirstDayStore } from './stores/firstDayStore';
 import { SpacetimeDBProvider, useTable } from 'spacetimedb/react';
@@ -35,6 +37,10 @@ const TableSync = () => {
   // Training dummy blows and emotes: event tables too.
   useTable(tables.dummyEvent, { onInsert: useSocialStore.getState().pushDummyHit });
   useTable(tables.emoteEvent, { onInsert: useSocialStore.getState().pushEmote });
+  // Social notices (trade requests and results, invite results): only your own show.
+  useTable(tables.socialEvent, { onInsert: useCallback((row: SocialEvent) => {
+    if (meRef.current && identityHex(row.to) === meRef.current) useToastStore.getState().show(row.text);
+  }, []) });
   return null;
 };
 

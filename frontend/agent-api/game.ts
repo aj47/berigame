@@ -5,6 +5,7 @@ import {
   holdsItem, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, isSafe, nearestReachableTile, Pending, PlayerState, PUNCH_DAMAGE, SAFE_RADIUS, SPAWN_TILE,
   STICK_DROP_CHANCE, STICK_ITEM_ID, swingDamage, TICK_MS, treeReadyTick, type Slot,
   NodeKind, nodeKindDef, recipeStatus,
+  CHAT_NEARBY_RADIUS, INVITE_PARAM, TRADE_BREAK_RANGE, TRADE_RANGE, chatVisible, normalizeInviteCode, parseOffer, formatOffer,
 } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
 import { ApiError, type Invite } from './portable';
@@ -69,6 +70,8 @@ export function connect(credential: Credential, control = false, options: Connec
             tables.world, tables.accessPolicy, tables.player.where(row => row.online.eq(true)), tables.tree,
             tables.groundItem, tables.inventorySlot, tables.chatMessage, tables.trainingDummy,
             tables.appearance.where(row => row.identity.eq(identity)),
+            // Row-level security narrows these to your own rows.
+            tables.friend, tables.trade, tables.inviteCode, tables.socialEvent,
           ]);
         }).build();
     } catch (error) { settled = true; clearTimeout(timer); reject(error); }
@@ -122,6 +125,17 @@ export async function createGameService(credential: Credential, options: Connect
         return self;
       };
       me();
+      // Notices addressed to you (trade requests and results, invite results): the last 10.
+      const notices: { tick: number; kind: number; from: string; text: string }[] = [];
+      conn.db.socialEvent.onInsert((_ctx, row) => {
+        if (row.to.toHexString() !== player.identity) return;
+        notices.push({ tick: row.tick, kind: row.kind, from: row.from.toHexString(), text: row.text });
+        if (notices.length > 10) notices.shift();
+      });
+      const currentTrade = () => {
+        const rows = [...conn.db.trade.iter()];
+        return rows.find(t => t.accepted) ?? rows.sort((a, b) => b.createdTick - a.createdTick)[0];
+      };
       const describePlayer = (p: ReturnType<typeof me>) => ({ id: p.identity.toHexString(), name: p.name,
         tile: { x: p.x, z: p.z }, health: p.hp, maxHealth: p.maxHp, alive: p.state === PlayerState.Alive,
         weapon: p.weapon ? { itemId: p.weapon, name: getItemDef(p.weapon)?.name ?? p.weapon, damage: swingDamage(p.weapon) } : null,
@@ -186,7 +200,32 @@ export async function createGameService(credential: Credential, options: Connect
             dummies: [...conn.db.trainingDummy.iter()].map(d => ({ id: d.id, tile: { x: d.x, z: d.z }, health: dummyHpAt(d, tick), maxHealth: d.maxHp,
               rule: 'Attack with attack_dummy. Harmless practice: open to everyone, never dies, springs back to full HP.' })),
             groundItemTtlTicks: GROUND_ITEM_TTL_TICKS,
-            chat: [...conn.db.chatMessage.iter()].sort((a, b) => a.tick - b.tick).slice(-20).map(row => ({ sender: row.sender.toHexString(), text: row.text, tick: row.tick })),
+            chat: [...conn.db.chatMessage.iter()].sort((a, b) => a.tick - b.tick).slice(-20).map(row => ({ sender: row.sender.toHexString(), text: row.text, tick: row.tick,
+              nearby: chatVisible('nearby', self, row) })),
+            chatRules: { nearbyRadius: CHAT_NEARBY_RADIUS, rule: `nearby is true when the message was said within ${CHAT_NEARBY_RADIUS} tiles (Chebyshev) of where you stand now.` },
+            friends: [...conn.db.friend.iter()].map(f => {
+              const p = conn.db.player.identity.find(f.friend);
+              return { id: f.friend.toHexString(), name: p?.name ?? null, online: !!p?.online, area: p?.online ? areaOf(p) : null,
+                tile: p?.online ? { x: p.x, z: p.z } : null };
+            }),
+            invite: (() => {
+              const row = [...conn.db.inviteCode.iter()][0];
+              if (!row) return null;
+              const left = Number(row.expiresAtMicros / 1000n) - Date.now();
+              return left > 0 ? { code: row.code, expiresInSeconds: Math.floor(left / 1000), linkQuery: `?${INVITE_PARAM}=${row.code}` } : null;
+            })(),
+            trade: (() => {
+              const t = currentTrade();
+              if (!t) return null;
+              const iAmA = t.a.toHexString() === player.identity;
+              const other = iAmA ? t.b : t.a;
+              return { id: t.id.toString(), with: other.toHexString(), withName: conn.db.player.identity.find(other)?.name ?? null,
+                status: t.accepted ? 'open' : iAmA ? 'requested_by_you' : 'requested_by_them',
+                yourOffer: parseOffer(iAmA ? t.aOffer : t.bOffer) ?? [], theirOffer: parseOffer(iAmA ? t.bOffer : t.aOffer) ?? [],
+                youConfirmed: iAmA ? t.aConfirmed : t.bConfirmed, theyConfirmed: iAmA ? t.bConfirmed : t.aConfirmed,
+                rule: `Request within ${TRADE_RANGE} tiles; cancelled beyond ${TRADE_BREAK_RANGE}, on death or disconnect. Any offer change clears both confirmations; the swap is all or nothing.` };
+            })(),
+            notices: notices.slice(),
             appearance: conn.db.appearance.identity.find(id) ? { ...conn.db.appearance.identity.find(id), identity: player.identity } : appearance.DEFAULT_APPEARANCE,
             appearanceOptions: { hairStyle: appearance.HAIR_STYLES, skinTone: appearance.SKIN_TONES,
               hairColor: appearance.HAIR_COLORS, robeColor: appearance.ROBE_COLORS, wrapColor: appearance.WRAP_COLORS },
@@ -237,6 +276,35 @@ export async function createGameService(credential: Credential, options: Connect
             case 'name': await r.setName({ name: input.name }); break;
             case 'appearance': await r.setAppearance(input as any); break;
             case 'chat': await r.sendChat({ text: input.text }); break;
+            case 'invite_create': {
+              await r.createInvite({});
+              const row = [...conn.db.inviteCode.iter()][0];
+              return row ? { code: row.code, linkQuery: `?${INVITE_PARAM}=${row.code}` } : undefined;
+            }
+            case 'invite_redeem': {
+              const code = normalizeInviteCode(input.code);
+              if (!code) throw new ApiError(400, 'invalid_code', 'Invite codes are 8 letters and digits.');
+              await r.redeemInvite({ code });
+              const after = me();
+              return { tile: { x: after.x, z: after.z }, area: areaOf(after) };
+            }
+            case 'friend_add': await r.addFriend({ target: Identity.fromString(input.playerId) }); break;
+            case 'friend_remove': await r.removeFriend({ target: Identity.fromString(input.playerId) }); break;
+            case 'trade_request': await r.requestTrade({ target: Identity.fromString(input.playerId) }); break;
+            case 'trade_respond': await r.respondTrade({ tradeId: BigInt(input.tradeId), accept: input.answer === 'accept' }); break;
+            case 'trade_offer': {
+              const items = parseOffer(input.offer);
+              if (!items) throw new ApiError(400, 'invalid_offer', 'Offer format: itemId:quantity pairs joined by commas, e.g. berry_blueberry:2,stick:1 ("" for nothing).');
+              await r.setTradeOffer({ tradeId: BigInt(input.tradeId), offer: formatOffer(items) });
+              break;
+            }
+            case 'trade_confirm': {
+              const t = conn.db.trade.id.find(BigInt(input.tradeId));
+              if (!t) throw new ApiError(409, 'trade_over', 'That trade is over.');
+              await r.confirmTrade({ tradeId: t.id, aOffer: t.aOffer, bOffer: t.bOffer });
+              break;
+            }
+            case 'trade_cancel': await r.cancelTradeRequest({ tradeId: BigInt(input.tradeId) }); break;
             default: throw new ApiError(404, 'unknown_action', 'Unknown action.');
           }
         },

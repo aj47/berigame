@@ -67,5 +67,15 @@ export function useGameActions() {
     /** A cosmetic emote (shared/sim Emote), seen by everyone nearby. */
     emote: (emote: number) => run('emote', (c) => c.reducers.emote({ emote })),
     craft: (recipe: string) => run('craft', (c) => c.reducers.craft({ recipe })),
+    // Social: invite links, friends, trades (shared/sim friends.ts, trade.ts).
+    createInvite: () => run('createInvite', (c) => c.reducers.createInvite({})),
+    redeemInvite: (code: string) => run('redeemInvite', (c) => c.reducers.redeemInvite({ code })),
+    addFriend: (target: Identity) => run('addFriend', (c) => c.reducers.addFriend({ target })),
+    removeFriend: (target: Identity) => run('removeFriend', (c) => c.reducers.removeFriend({ target })),
+    requestTrade: (target: Identity) => run('requestTrade', (c) => c.reducers.requestTrade({ target })),
+    respondTrade: (tradeId: bigint, accept: boolean) => run('respondTrade', (c) => c.reducers.respondTrade({ tradeId, accept })),
+    setTradeOffer: (tradeId: bigint, offer: string) => run('setTradeOffer', (c) => c.reducers.setTradeOffer({ tradeId, offer })),
+    confirmTrade: (tradeId: bigint, aOffer: string, bOffer: string) => run('confirmTrade', (c) => c.reducers.confirmTrade({ tradeId, aOffer, bOffer })),
+    cancelTrade: (tradeId: bigint) => run('cancelTrade', (c) => c.reducers.cancelTradeRequest({ tradeId })),
   };
 }

@@ -12,10 +12,12 @@ import {
 
 export default __t.row({
   id: __t.u64().primaryKey(),
-  sender: __t.identity(),
-  text: __t.string(),
-  tick: __t.u32(),
-  sentAt: __t.timestamp().name("sent_at"),
-  x: __t.i32(),
-  z: __t.i32(),
+  a: __t.identity(),
+  b: __t.identity(),
+  accepted: __t.bool(),
+  aOffer: __t.string().name("a_offer"),
+  bOffer: __t.string().name("b_offer"),
+  aConfirmed: __t.bool().name("a_confirmed"),
+  bConfirmed: __t.bool().name("b_confirmed"),
+  createdTick: __t.u32().name("created_tick"),
 });

@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useChatPrefsStore } from '../../spacetime/stores/chatPrefsStore';
 import { DEFAULT_APPEARANCE, PlayerState, type Appearance } from '@sim';
 import type { Player } from '../../module_bindings/types';
 import { useTileMotion } from '../../hooks/useTileMotion';
@@ -99,6 +100,17 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
     setClickedOtherObject({ connectionId: row.name, e, dropdownOptions: [
       { label: 'Attack', onClick: () => { actionsApi.attack(row.identity); setClickedOtherObject(null); } },
       { label: 'Follow', onClick: () => { actionsApi.follow(row.identity); setClickedOtherObject(null); } },
+      { label: 'Trade', onClick: () => { actionsApi.requestTrade(row.identity); setClickedOtherObject(null); } },
+      ...(useChatPrefsStore.getState().friends.has(hex) ? [] : [
+        { label: 'Add friend', onClick: () => { actionsApi.addFriend(row.identity); setClickedOtherObject(null); } },
+      ]),
+      { label: useChatPrefsStore.getState().muted.has(hex) ? 'Unmute chat' : 'Mute chat', onClick: () => {
+        const prefs = useChatPrefsStore.getState();
+        const wasMuted = prefs.muted.has(hex);
+        prefs.toggleMute(hex);
+        useToastStore.getState().show(wasMuted ? `${row.name} unmuted` : `${row.name} muted: you will not see their chat`);
+        setClickedOtherObject(null);
+      } },
     ] });
   };
   const origin = { x: 0, y: 0, z: 0 };

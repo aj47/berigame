@@ -11,11 +11,7 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  id: __t.u64().primaryKey(),
-  sender: __t.identity(),
-  text: __t.string(),
-  tick: __t.u32(),
-  sentAt: __t.timestamp().name("sent_at"),
-  x: __t.i32(),
-  z: __t.i32(),
+  code: __t.string().primaryKey(),
+  inviter: __t.identity(),
+  expiresAtMicros: __t.u64().name("expires_at_micros"),
 });
