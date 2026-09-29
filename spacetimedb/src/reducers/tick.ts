@@ -12,6 +12,7 @@ import { ensureDummy } from '../lib/dummy';
 import { holdsStick } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
 import { seedMissingNodes } from '../lib/nodes';
+import { statsDeath, statsPosition } from '../lib/stats';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
 import { clearInteractions, hex, sameId } from '../lib/players';
 import { canPlay } from '../lib/access';
@@ -352,6 +353,7 @@ function phaseDeath(s: TickState): void {
       }
     }
     emitEvent(s.ctx, { tick: s.T, kind: EventKind.Death, attacker: p.identity, defender: p.identity, defenderHp: 0 });
+    statsDeath(s.ctx, p.identity);
   }
 }
 
@@ -437,7 +439,11 @@ export const tick = spacetimedb.reducer(
     // Write (and broadcast) only rows that actually changed this tick.
     for (const h of s.dirty) {
       const p = players.get(h)!;
-      if (!sameRow(original.get(h)!, p)) ctx.db.player.identity.update(p);
+      const before = original.get(h)!;
+      if (!sameRow(before, p)) {
+        ctx.db.player.identity.update(p);
+        if (before.x !== p.x || before.z !== p.z) statsPosition(ctx, p.identity, p);
+      }
     }
     for (const id of s.dirtyTrees) {
       const t = trees.get(id)!;

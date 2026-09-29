@@ -1,6 +1,7 @@
 import { DbConnection, tables } from '../module_bindings';
 import { useLoadingStore } from '../store';
 
+import { abortPendingCalls } from './pendingCalls';
 import { readSessionToken, sessionTokenKey, visiblyInvalidToken } from './sessionToken';
 
 const env = (import.meta as any).env ?? {};
@@ -29,7 +30,50 @@ function saveToken(token: string): void {
  * localStorage is what gives a browser a stable identity across refreshes,
  * which is what keeps its HP and inventory.
  */
+/**
+ * Connection lifecycle listeners (the reconnect controller in
+ * SpacetimeProvider). Each connection reports "lost" at most once, whether it
+ * failed to open, closed, or was dropped by us as a zombie.
+ */
+type Listener = { connected: () => void; lost: () => void };
+let lifecycle: Listener | null = null;
+export function setConnectionLifecycle(listener: Listener | null): void {
+  lifecycle = listener;
+}
+const lostConnections = new WeakSet<object>();
+let current: unknown = null;
+/** The live connection, if any (for dropping a zombie socket). */
+export function currentConnection(): unknown {
+  return current;
+}
+
+/**
+ * Declare a connection dead: close it (marking the close as requested so the
+ * SDK's built-in auto-reconnect stands down and ours owns the retry timing),
+ * reset client state that depended on it, and notify the controller.
+ */
+export function markConnectionLost(conn: unknown, stale = false): void {
+  const key = (conn && typeof conn === 'object') ? conn : null;
+  if (key && key === current) current = null;
+  if (key) {
+    if (lostConnections.has(key)) return;
+    lostConnections.add(key);
+    try { (key as any).disconnect?.(); } catch { /* already closed */ }
+  }
+  // A late failure from a superseded attempt must not disturb the current one.
+  if (stale) return;
+  const loading = useLoadingStore.getState();
+  loading.setWebsocketConnected(false);
+  loading.setGameDataLoaded(false);
+  abortPendingCalls();
+  lifecycle?.lost();
+}
+
+let buildSeq = 0;
+/** The newest attempt that has connected; failures from older attempts are ignored. */
+let connectedSeq = 0;
 export function buildConnection() {
+  const seq = ++buildSeq;
   const savedToken = readToken();
   return DbConnection.builder()
     .withUri(SPACETIME_URI)
@@ -37,6 +81,9 @@ export function buildConnection() {
     .withToken(savedToken)
     .onConnect((conn, identity, token) => {
       saveToken(token);
+      current = conn;
+      connectedSeq = Math.max(connectedSeq, seq);
+      lifecycle?.connected();
       useLoadingStore.getState().setConnectionIssue(null, false);
       console.log('SpacetimeDB connected as', identity.toHexString().slice(0, 8));
       useLoadingStore.getState().setWebsocketConnected(true);
@@ -62,9 +109,9 @@ export function buildConnection() {
           tables.emoteEvent,
         ]);
     })
-    .onConnectError((_ctx, err) => {
+    .onConnectError((ctx, _err) => {
       console.error('Game server connection failed');
-      useLoadingStore.getState().setWebsocketConnected(false);
+      markConnectionLost(ctx, seq < connectedSeq);
       useLoadingStore.getState().setConnectionIssue(
         visiblyInvalidToken(savedToken)
           ? 'Your saved sign-in is invalid or expired. Rejoin to retry, or use sign-in recovery below.'
@@ -72,9 +119,8 @@ export function buildConnection() {
         Boolean(savedToken),
       );
     })
-    .onDisconnect(() => {
+    .onDisconnect((ctx) => {
       console.warn('SpacetimeDB disconnected');
-      useLoadingStore.getState().setWebsocketConnected(false);
-      useLoadingStore.getState().setGameDataLoaded(false);
+      markConnectionLost(ctx, seq < connectedSeq);
     });
 }

@@ -43,6 +43,15 @@ export const useLoadingStore = create((set) => ({
   }),
   gameDataLoaded: false,
   websocketConnected: false,
+  /** Reconnect controller state (src/spacetime/reconnect.ts). */
+  reconnectStatus: "connecting",
+  reconnectAttempt: 0,
+  nextRetryAt: null,
+  setReconnectState: ({ status, attempt, nextRetryAt }) =>
+    set({ reconnectStatus: status, reconnectAttempt: attempt, nextRetryAt }),
+  /** Retry now (set by SpacetimeProvider); falls back to a page reload. */
+  retryConnection: () => window.location.reload(),
+  setRetryConnection: (retryConnection) => set({ retryConnection }),
   setConnectionIssue: (connectionIssue, hasSavedSignIn) => set((state) => {
     const next = { ...state, connectionIssue, hasSavedSignIn };
     return { ...next, ...loadingState(next) };

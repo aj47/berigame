@@ -236,3 +236,29 @@ export const appearance = table(
     wrapColor: t.u8(),
   }
 );
+
+/**
+ * Private, anonymous gameplay funnel (docs/ANALYTICS.md). One row per player
+ * identity holding the first time each milestone was reached. No names, no
+ * IPs, no chat. Only the database owner can read it (e.g. `spacetime sql`).
+ */
+export const playStats = table(
+  { name: 'play_stats' },
+  {
+    identity: t.identity().primaryKey(),
+    firstJoinAt: t.timestamp(),
+    lastSeenAt: t.timestamp(),
+    sessionStartedAt: t.option(t.timestamp()),
+    sessions: t.u32(),
+    /** Sum of finished session lengths, microseconds. */
+    totalPlayMicros: t.u64(),
+    firstBerryAt: t.option(t.timestamp()),
+    firstStickAt: t.option(t.timestamp()),
+    reachedHedgeAt: t.option(t.timestamp()),
+    reachedCoastAt: t.option(t.timestamp()),
+    firstCraftAt: t.option(t.timestamp()),
+    deaths: t.u32(),
+    /** Furthest funnel step reached: join, berry, stick, hedge, coast, craft. */
+    lastStep: t.string(),
+  }
+);

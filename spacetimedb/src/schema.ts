@@ -2,6 +2,7 @@ import { schema } from 'spacetimedb/server';
 import {
   accessPolicy, playerGrant, appearance, chatMessage, combatEvent, dummyEvent, emoteCooldown, emoteEvent,
   groundItem, inventorySlot, player, tickSchedule, trainingDummy, tree, world,
+  playStats,
 } from './tables';
 
 export const spacetimedb = schema({
@@ -20,5 +21,6 @@ export const spacetimedb = schema({
   dummyEvent,
   emoteEvent,
   emoteCooldown,
+  playStats,
 });
 export default spacetimedb;

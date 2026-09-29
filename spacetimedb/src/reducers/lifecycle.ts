@@ -7,6 +7,7 @@ import {
 import { clearInteractions, findPlayer, hex, sameId, savePlayer } from '../lib/players';
 import { requireAdmission } from '../lib/access';
 import { seedMissingNodes } from '../lib/nodes';
+import { statsSessionEnd, statsSessionStart } from '../lib/stats';
 
 export const init = spacetimedb.init((ctx) => {
   if (!ctx.db.accessPolicy.id.find(0)) {
@@ -36,6 +37,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   if ((!existing || !existing.online) && [...ctx.db.player.iter()].filter(p => p.online).length >= 128) {
     throw new SenderError('world is full');
   }
+  statsSessionStart(ctx, ctx.sender);
   if (existing) {
     savePlayer(ctx, {
       ...existing,
@@ -87,6 +89,7 @@ export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
   if (p.connections === 0) {
     p.online = false;
     clearInteractions(ctx, p);
+    statsSessionEnd(ctx, p.identity);
     // Nobody can keep fighting or following someone who left.
     for (const other of [...ctx.db.player.iter()]) {
       if (other.combatTarget && other.combatTarget.toHexString() === hex(p.identity)) {

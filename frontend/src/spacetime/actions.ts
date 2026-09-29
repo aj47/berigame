@@ -5,6 +5,7 @@ import type { Identity } from 'spacetimedb';
 import type { DbConnection } from '../module_bindings';
 import { useToastStore } from './stores/toastStore';
 import { useLoadingStore } from '../store';
+import { ConnectionLostError, trackCall } from './pendingCalls';
 
 /**
  * Typed wrappers around the module's reducers. Every rejected call surfaces
@@ -27,9 +28,13 @@ export function useGameActions() {
         return false;
       }
       try {
-        await fn(conn);
+        await trackCall(fn(conn));
         return true;
       } catch (e: any) {
+        if (e instanceof ConnectionLostError) {
+          show('Connection lost — reconnecting');
+          return false;
+        }
         const msg = String(e?.message ?? e ?? 'rejected');
         console.warn(`${label} rejected:`, msg);
         show(msg);

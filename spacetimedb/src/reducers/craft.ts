@@ -1,5 +1,6 @@
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
+import { statsCraft } from '../lib/stats';
 import { craft as craftSlots, getItemDef, getRecipe } from '../../../shared/sim';
 import { dropOnGround, readSlots, writeSlots } from '../lib/inventory';
 import { currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
@@ -24,5 +25,6 @@ export const craft = spacetimedb.reducer(
     writeSlots(ctx, p.identity, snap, made.slots);
     if (made.overflow > 0) dropOnGround(ctx, p.identity, def.output.itemId, made.overflow, p, T);
     savePlayer(ctx, p);
+    statsCraft(ctx, p.identity);
   }
 );

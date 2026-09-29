@@ -120,6 +120,20 @@ frame-sampling asserts log `SKIP` instead of failing, and
 `COMBAT_VIEWPORT=640x450 COMBAT_VIDEO=0` makes `combat-animation-check.ts`
 render fast enough to sample each swing.
 
+`reconnect-check.mjs` covers automatic reconnect (banner, backoff give-up and
+Retry, offline emulation, CDP slow 3G). Set `STDB_STOP_CMD` / `STDB_START_CMD`
+(shell commands that stop and start the local server) to include the
+server-restart cases; `CHROMIUM_PATH` or `PLAYWRIGHT_MODULE` point it at a
+local browser/Playwright. `network-liveness-regression.mjs` and
+`network-lifecycle-check.mjs` accept `PLAYWRIGHT_CHANNEL=` (empty) to use the
+bundled Chromium instead of installed Chrome.
+
+CI (`.github/workflows/ci.yml`) runs the unit tests, build, agent API tests
+and typecheck, the module typecheck and `spacetime build`, the model
+optimisation check, then starts a local server + Vite and runs `smoke.ts` and
+`reconnect-check.mjs`. Gameplay funnel analytics: see
+[docs/ANALYTICS.md](docs/ANALYTICS.md).
+
 ## Deployment
 
 - **Server**: `spacetime publish berigame` to Maincloud (or a self-hosted

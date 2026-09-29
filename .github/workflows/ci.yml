@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SPACETIME_VERSION: 2.10.1
+  NODE_VERSION: 22
+
+jobs:
+  unit:
+    name: Tests, build and typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            shared/package-lock.json
+            frontend/package-lock.json
+            spacetimedb/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --prefix shared
+          npm ci --prefix frontend
+          npm ci --prefix spacetimedb
+
+      - name: Shared simulation tests
+        working-directory: shared
+        run: npx vitest run
+
+      - name: Frontend unit tests
+        working-directory: frontend
+        run: npx vitest run
+
+      - name: Agent API tests
+        working-directory: frontend
+        run: npm run agent:test
+
+      - name: Agent API typecheck
+        working-directory: frontend
+        run: npm run agent:typecheck
+
+      - name: Frontend production build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Shipped models are optimized
+        working-directory: frontend
+        run: npm run models:optimize -- --check
+
+      - name: Module typecheck
+        working-directory: spacetimedb
+        run: npx tsc --noEmit -p .
+
+      - uses: ./.github/actions/setup-spacetime
+        with:
+          version: ${{ env.SPACETIME_VERSION }}
+
+      - name: Build SpacetimeDB module
+        working-directory: spacetimedb
+        run: spacetime build
+
+  e2e:
+    name: Local server smoke + browser reconnect check
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      STDB_PORT: 3000
+      VITE_PORT: 5173
+      STDB_DATA: ${{ github.workspace }}/.stdb-ci
+      ARTIFACTS: ${{ github.workspace }}/e2e-artifacts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            spacetimedb/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci --prefix frontend
+          npm ci --prefix spacetimedb
+          mkdir -p "$ARTIFACTS"
+
+      - uses: ./.github/actions/setup-spacetime
+        with:
+          version: ${{ env.SPACETIME_VERSION }}
+
+      - name: Start SpacetimeDB and publish the module
+        timeout-minutes: 5
+        run: |
+          nohup spacetime start --listen-addr 127.0.0.1:$STDB_PORT --data-dir "$STDB_DATA" > "$ARTIFACTS/spacetime.log" 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf "http://127.0.0.1:$STDB_PORT/v1/ping" >/dev/null && break
+            sleep 1
+          done
+          curl -sf "http://127.0.0.1:$STDB_PORT/v1/ping"
+          cd spacetimedb
+          spacetime publish -s "http://127.0.0.1:$STDB_PORT" berigame --yes
+
+      - name: Smoke test (two SDK clients against the live module)
+        timeout-minutes: 8
+        working-directory: frontend
+        env:
+          SPACETIME_URI: ws://127.0.0.1:${{ env.STDB_PORT }}
+          SPACETIME_DB: berigame
+        run: npx tsx scripts/smoke.ts 2>&1 | tee "$ARTIFACTS/smoke.log"
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx --yes playwright@1.56.1 install --with-deps chromium
+
+      - name: Start Vite
+        working-directory: frontend
+        env:
+          VITE_SPACETIME_URI: ws://127.0.0.1:${{ env.STDB_PORT }}
+        run: |
+          nohup npx vite --host 127.0.0.1 --port $VITE_PORT --strictPort > "$ARTIFACTS/vite.log" 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf "http://127.0.0.1:$VITE_PORT/" >/dev/null && break
+            sleep 1
+          done
+          curl -sf "http://127.0.0.1:$VITE_PORT/" >/dev/null
+
+      - name: Browser reconnect check (server restart, give-up + Retry, offline, slow 3G)
+        timeout-minutes: 10
+        working-directory: frontend
+        env:
+          GAME_URL: http://127.0.0.1:${{ env.VITE_PORT }}
+          SHOT_DIR: ${{ env.ARTIFACTS }}/reconnect
+          # Bracketed dots keep the pattern from matching the shell that runs pkill.
+          STDB_STOP_CMD: pkill -f 'listen-addr 127[.]0[.]0[.]1:${{ env.STDB_PORT }}'
+          STDB_START_CMD: exec setsid nohup spacetime start --listen-addr 127.0.0.1:${{ env.STDB_PORT }} --data-dir ${{ env.STDB_DATA }} >> ${{ env.ARTIFACTS }}/spacetime.log 2>&1
+        run: |
+          # The check needs `playwright` as a module; install it next to the script without touching package.json.
+          npm install --no-save --no-package-lock playwright@1.56.1
+          node scripts/reconnect-check.mjs
+
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: e2e-artifacts
+          retention-days: 7

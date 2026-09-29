@@ -1562,3 +1562,36 @@ canvas {
 }
 @media (max-width: 600px) { .goal-chip { max-width: calc(100vw - 24px - 96px); } }
 @media (max-width: 340px), (max-height: 600px) and (max-width: 600px) { .goal-chip { max-width: calc(100vw - 24px - 72px); } }
+
+/* Reconnect banner (SpacetimeProvider + reconnect.ts). Non-blocking: the scene stays visible. */
+.connection-banner {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 32px);
+  padding: 9px 14px;
+  border: 1px solid #b79b6a;
+  border-radius: 7px;
+  background: #302a23f5;
+  color: #fff0cb;
+  font-size: 13px;
+  box-shadow: 0 4px 15px #0003;
+  z-index: 60;
+}
+.connection-banner.failed { border-color: #d0735c; }
+.connection-banner .spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff0cb55;
+  border-top-color: #fff0cb;
+  border-radius: 50%;
+  animation: connection-spin 0.9s linear infinite;
+  flex: none;
+}
+.connection-banner button { min-height: 32px; padding: 4px 12px; font-size: 12px; }
+@keyframes connection-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .connection-banner .spinner { animation: none; } }
