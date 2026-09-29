@@ -111,16 +111,13 @@
 .emote-option:hover, .emote-option:focus-visible { background: #ffd36b; }
 
 @media (max-width: 700px) {
-  .emote-wheel { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 140px); width: 52px; height: 52px; }
+  .emote-wheel { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 156px); width: 52px; height: 52px; }
   .death-panel.compact { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 210px); }
 }
-
-.dummy-hp {
-  width: 64px;
-  height: 7px;
-  border-radius: 4px;
-  background: #302a23d0;
-  border: 1px solid #1d1712;
-  overflow: hidden;
+/* Short landscape screens anchor the combat HUD bottom-right (App.css): sit just left of it, not over Stop. */
+@media (max-height: 500px) and (min-width: 540px) {
+  .emote-wheel { bottom: max(8px, env(safe-area-inset-bottom)); right: calc(max(12px, env(safe-area-inset-right)) + 385px + 10px); width: 52px; height: 52px; }
 }
-.dummy-hp-fill { height: 100%; background: #e8b04a; transition: width 0.25s ease-out; }
+@media (min-width: 540px) and (max-width: 700px) and (max-height: 500px) and (orientation: landscape) {
+  .emote-wheel { right: calc(max(12px, env(safe-area-inset-right)) + 50vw - 12px + 10px); }
+}
