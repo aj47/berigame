@@ -62,5 +62,7 @@ export function useGameActions() {
     /** A cosmetic emote (shared/sim Emote), seen by everyone nearby. */
     emote: (emote: number) => run('emote', (c) => c.reducers.emote({ emote })),
     craft: (recipe: string) => run('craft', (c) => c.reducers.craft({ recipe })),
+    /** Wear an earned cosmetic (shared/sim CosmeticSlot; cosmetic id + 1, 0 = take it off). */
+    wearCosmetic: (slot: number, cosmetic: number) => run('wearCosmetic', (c) => c.reducers.wearCosmetic({ slot, cosmetic })),
   };
 }

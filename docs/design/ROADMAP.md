@@ -207,7 +207,12 @@ What a new player sees: movement and camera; the goal chip; the stick-find banne
 ### Future (owner-approved, not scheduled)
 
 - **F1 Persistent identity (the gate). Done.** Returning browsers keep their identity via a scoped, rotating renewal token reused across the 1-hour grant renewals (30 days after the last visit; design and threat model in `docs/CLOUDFLARE_BETA.md`). Nothing below starts before this.
-- **F2 XP skills:** Foraging, Beachcombing, Crafting; `xpForLevel(L) = 25·(L−1)²`, capped at L30 (21 025 XP, about 5 h per skill). Levels unlock recipes, cosmetics and at most −2 harvest ticks (never below 3); never damage, HP, area access or the gold tree.
+- **F2 XP skills. Done.** Foraging, Beachcombing, Crafting; `xpForLevel(L) = 25·(L−1)²`, capped at L30 (21 025 XP, about 5 h per skill). Levels unlock recipes, cosmetics and at most −2 harvest ticks (never below 3); never damage, HP, area access or the gold tree.
+  - **Rules** (`shared/sim/skills.ts`): XP per finished harvest: berry 8 (Foraging), driftwood 6 and flint 10 (Beachcombing); per make: club 40, mash 15, knife 25, crown 30 (Crafting). A berry every ~6.6 s is ~1.2 XP/s, so L30 is ~5 h. Harvest ticks −1 at L10 and −2 at L20 in the node's skill, never below 3 (driftwood 4 → 3, flint 6 → 4, berries 5 → 3); the goldberry tree is never faster.
+  - **Schema** (additive): `player_skill {identity pk, foragingXp, beachcombingXp, craftingXp}` and `player_cosmetic {identity pk, unlocked (bit mask), head, neck}`, both public, created lazily, written only when XP or an unlock is earned (one PK write per finished harvest or craft; never per tick). Harvest length reads the level with one PK lookup when a claim starts.
+  - **Recipes** (§7): power stays at level 1 (§1.4): the club, and new **Berry Mash** (2 greenberry + 1 strawberry → +7 HP in one bite, below a goldberry). **Flint Knife** (1 driftwood + 1 flint, 6 damage = a stick, not a bramble key) needs Crafting 2; the cosmetic **Driftwood Crown** recipe (3 driftwood + 1 flint, no item) needs Crafting 5. The bag lists locked recipes with their level. Future obsidian recipes append to `RECIPES` with their own level. The driftwood shield stays parked (§10).
+  - **Cosmetics ("keepsakes")**: Straw Hat (first stick: a find or a pickup), Coast Scarf (first step from the hedge onto the Coast), Flower Crown (Foraging 10), Shell Necklace (Beachcombing 10), Driftwood Crown (the recipe), Woven Sash (Crafting 10). Two slots (head, neck); a new unlock is worn if its slot is empty; `wearCosmetic(slot, id+1 | 0)` changes it. One shared low-poly vertex-colour mesh per cosmetic on the `Head` / `Neck` bone (one draw call, no textures). Purely visual.
+  - **Client**: Skills panel (Style → Skills tab, or K), blue "+8 Foraging" floaters over your own head, a level-up / keepsake banner with a synthesized fanfare (`levelup`), keepsakes in the Style panel. Agent API 1.3.0: `state.skills`, `state.cosmetics`, recipe `level`/`locked`, action `wear`.
 - **F3 The Giant.** A PvE world boss in Area 3, open to every player including those without the combat grant.
 
 ## 7. Items and combat numbers
@@ -220,6 +225,8 @@ Item ids are permanent. Materials stack to 99; weapons stack to 1.
 | `driftwood` | Driftwood | Driftwood pile (Coast) | club handle | M2 |
 | `flint` | Flint Shard | Tide rock (Coast corners) | club head; the contested input | M2 |
 | `stone_club` | Stone Club | 1 driftwood + 2 flint | 8 dmg, one-handed; **key to Area 3** | M2 |
+| `berry_mash` | Berry Mash | 2 greenberry + 1 strawberry | food, +7 HP (below goldberry) | F2 |
+| `flint_knife` | Flint Knife | 1 driftwood + 1 flint, Crafting 2 | 6 dmg (a stick's), not a key | F2 |
 
 **Combat matrix** (30 HP, no eating, swing every 2.4 s): punch 3 = 1.25 HP/s, 10 hits / 21.6 s; stick 6 = 2.50 HP/s, 5 hits / 9.6 s; club 8 = 3.33 HP/s, 4 hits / 7.2 s.
 
@@ -229,7 +236,8 @@ Item ids are permanent. Materials stack to 99; weapons stack to 1.
 
 - **World output per minute:** berries about 11 (Grove only), goldberries about 1.8, sticks at most about 2.7 (25% of stickless players' harvests), driftwood about 14 (M2), flint about 9 (M2).
 - **Faucets are node items only.** No meter, no pity: the only stick rule besides the roll is "none while you hold one", so no spares pile up to hand out.
-- **Sinks:** death drops (ground piles last 500 ticks, keys included); crafting (M2).
+- **Sinks:** death drops (ground piles last 500 ticks, keys included); crafting (M2; F2 adds the mash, the knife and the crown, which burns 3 driftwood + 1 flint once per player).
+- **Levels never buy power (F2):** the strongest weapon (club) and all food stay level 1; the only gated item (the knife) matches the stick's damage. Harvest speed tops out at −2 ticks and skips the gold tree, so the hill to hold is unchanged.
 - **Area flow:** armed players leave for the Coast, which thins the Grove where the unarmed newcomers are. Food pulls them back.
 - **Per-player caps:** `MAX_INPUTS_PER_TICK` 5; the agent API's 1 request a second; one tree claim at a time; harvests find a stick only while you hold none.
 - **Knobs, in order:** `STICK_DROP_CHANCE`; `HEDGE_RING` (17 is the minimum with 1-tile tree clearance); first-spawn grace length; flint regrow.

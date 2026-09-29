@@ -71,6 +71,8 @@ function harness() {
   const grants = new Map<string, any>();
   const dummies = new Map<number, any>();
   const cooldowns = new Map<string, any>();
+  const skills = new Map<string, any>();
+  const cosmetics = new Map<string, any>();
   // Ids are never reused, like the real autoInc column, so a delete then insert cannot overwrite a row.
   let nextInventoryId = 100n;
   const ctx = {
@@ -102,9 +104,11 @@ function harness() {
       dummyEvent: { insert: vi.fn() },
       emoteEvent: { insert: vi.fn() },
       emoteCooldown: { insert: (row: any) => cooldowns.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => cooldowns.get(id.toHexString()), update: (row: any) => cooldowns.set(row.identity.toHexString(), row) } },
+      playerSkill: { insert: (row: any) => skills.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => skills.get(id.toHexString()), update: (row: any) => skills.set(row.identity.toHexString(), row) } },
+      playerCosmetic: { insert: (row: any) => cosmetics.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => cosmetics.get(id.toHexString()), update: (row: any) => cosmetics.set(row.identity.toHexString(), row) } },
     },
   };
-  return { ctx, players, dummies, inventory, ground, trees, appearances, grants, tick: (value: number) => { now = value; }, me: () => players.get('a'), other: () => players.get('b') };
+  return { ctx, skills, cosmetics, players, dummies, inventory, ground, trees, appearances, grants, tick: (value: number) => { now = value; }, me: () => players.get('a'), other: () => players.get('b') };
 }
 
 let h: ReturnType<typeof harness>;
@@ -1136,5 +1140,112 @@ describe('emotes', () => {
     h.other().state = PlayerState.Dead;
     h.tick(20);
     expect(() => emote(h.ctx, { emote: Emote.Wave })).toThrow('you are dead');
+  });
+});
+
+// ---- F2 skills, recipes and milestone cosmetics ------------------------------
+import { wearCosmetic as registeredWear } from '../../../spacetimedb/src/reducers/appearance';
+import { Cosmetic, CosmeticSlot, xpForLevel } from '../skills';
+
+describe('F2: skills, level-gated recipes and cosmetics on the server', () => {
+  const wear = registeredWear as unknown as Reducer;
+  function stock(items: [string, number, number][]) {
+    h.inventory.clear();
+    for (const [itemId, quantity, slot] of items) h.inventory.set(nextRow, { id: nextRow++, owner: A, slot, itemId, quantity });
+  }
+  const skill = () => h.skills.get('a');
+  const cosmetic = () => h.cosmetics.get('a');
+  function harvestOnce(tree: Record<string, unknown>) {
+    h.trees.set(1, { id: 1, x: 26, z: 25, harvester: A, cooldownUntilTick: 0, kind: 0, ...tree });
+    for (const t of NODE_SEEDS) h.trees.set(t.id, { ...t, cooldownUntilTick: 0, harvester: undefined });
+    Object.assign(h.me(), { harvestTreeId: 1, harvestEndTick: worldTick() + 1 });
+    run();
+  }
+
+  it('a finished berry harvest earns Foraging XP; a Coast node earns Beachcombing', () => {
+    harvestOnce({ itemId: 'berry_blueberry' });
+    expect(skill()).toMatchObject({ foragingXp: 8, beachcombingXp: 0, craftingXp: 0 });
+    harvestOnce({ itemId: 'flint', kind: NodeKind.TideRock });
+    expect(skill()).toMatchObject({ foragingXp: 8, beachcombingXp: 10 });
+  });
+
+  it('levels shave harvest ticks (max -2, never below 3) but never at the gold tree', () => {
+    h.skills.set('a', { identity: A, foragingXp: xpForLevel(20), beachcombingXp: xpForLevel(30), craftingXp: 0 });
+    Object.assign(h.me(), { x: 29, z: 25 });
+    h.trees.set(4, { id: 4, x: 30, z: 25, itemId: 'berry_blueberry', cooldownUntilTick: 0, kind: 0 });
+    startHarvest(h.ctx, { treeId: 4 });
+    expect(h.me().harvestEndTick - worldTick()).toBe(HARVEST_TICKS - 2);
+    cancel(h.ctx);
+    h.trees.set(3, { id: 3, x: 28, z: 25, itemId: 'berry_goldberry', cooldownUntilTick: 0, kind: 0 });
+    h.tick(11);
+    startHarvest(h.ctx, { treeId: 3 });
+    expect(h.me().harvestEndTick - worldTick()).toBe(HARVEST_TICKS);
+    cancel(h.ctx);
+    h.trees.set(101, { id: 101, x: 30, z: 26, itemId: 'driftwood', cooldownUntilTick: 0, kind: NodeKind.Driftwood });
+    h.tick(12);
+    startHarvest(h.ctx, { treeId: 101 });
+    expect(h.me().harvestEndTick - worldTick()).toBe(3); // 4 - 2 would be 2: clamped to 3
+  });
+
+  it('crafting earns Crafting XP; a level-gated recipe is rejected below its level', () => {
+    stock([['driftwood', 5, 0], ['flint', 5, 1]]);
+    expect(() => craftReducer(h.ctx, { recipe: 'flint_knife' })).toThrow('Needs Crafting level 2');
+    craftReducer(h.ctx, { recipe: 'stone_club' });
+    expect(skill().craftingXp).toBe(40);
+    craftReducer(h.ctx, { recipe: 'flint_knife' }); // 40 XP is level 2
+    expect(slotsOf(A).some((s) => s?.itemId === 'flint_knife')).toBe(true);
+    expect(skill().craftingXp).toBe(65);
+  });
+
+  it('the Driftwood Crown recipe unlocks and wears a cosmetic instead of making an item, once', () => {
+    h.skills.set('a', { identity: A, foragingXp: 0, beachcombingXp: 0, craftingXp: xpForLevel(5) });
+    stock([['driftwood', 6, 0], ['flint', 2, 1]]);
+    craftReducer(h.ctx, { recipe: 'driftwood_crown' });
+    expect(cosmetic()).toMatchObject({ unlocked: 1 << Cosmetic.DriftwoodCrown, head: Cosmetic.DriftwoodCrown + 1 });
+    expect(slotsOf(A).slice(0, 2)).toEqual([{ itemId: 'driftwood', quantity: 3 }, { itemId: 'flint', quantity: 1 }]);
+    expect(() => craftReducer(h.ctx, { recipe: 'driftwood_crown' })).toThrow('You already have the Driftwood Crown');
+  });
+
+  it('berry mash is food: 2 greenberry + 1 strawberry, eaten for 7', () => {
+    stock([['berry_greenberry', 2, 0], ['berry_strawberry', 1, 1]]);
+    craftReducer(h.ctx, { recipe: 'berry_mash' });
+    const slot = slotsOf(A).findIndex((s) => s?.itemId === 'berry_mash');
+    h.me().hp = 10;
+    eat(h.ctx, { slot });
+    expect(h.me().hp).toBe(17);
+  });
+
+  it('a Foraging level-up past 10 unlocks the Flower Crown; XP never changes damage or HP', () => {
+    h.skills.set('a', { identity: A, foragingXp: xpForLevel(10) - 1, beachcombingXp: 0, craftingXp: 0 });
+    const before = { maxHp: h.me().maxHp };
+    harvestOnce({ itemId: 'berry_blueberry' });
+    expect(cosmetic().unlocked & (1 << Cosmetic.FlowerCrown)).toBeTruthy();
+    expect(h.me().maxHp).toBe(before.maxHp);
+  });
+
+  it('the first stick unlocks the Straw Hat; stepping onto the Coast unlocks the Coast Scarf', () => {
+    h.ctx.random.mockReturnValue(0);
+    harvestOnce({ itemId: 'berry_blueberry' });
+    expect(cosmetic()).toMatchObject({ head: Cosmetic.StrawHat + 1 });
+    Object.assign(h.me(), { x: 25, z: 9, harvestTreeId: 0, harvestEndTick: 0 });
+    move(h.ctx, { x: 25, z: 6 });
+    run(2);
+    expect(h.me().z).toBe(6);
+    expect(cosmetic().unlocked & (1 << Cosmetic.CoastScarf)).toBeTruthy();
+    expect(cosmetic().neck).toBe(Cosmetic.CoastScarf + 1);
+  });
+
+  it('wearCosmetic only wears earned cosmetics in their own slot; 0 takes it off', () => {
+    expect(() => wear(h.ctx, { slot: CosmeticSlot.Head, cosmetic: Cosmetic.StrawHat + 1 })).toThrow('You have not earned that yet');
+    h.cosmetics.set('a', { identity: A, unlocked: (1 << Cosmetic.StrawHat) | (1 << Cosmetic.CoastScarf), head: 0, neck: 0 });
+    expect(() => wear(h.ctx, { slot: CosmeticSlot.Neck, cosmetic: Cosmetic.StrawHat + 1 })).toThrow('You have not earned that yet');
+    h.tick(20);
+    wear(h.ctx, { slot: CosmeticSlot.Head, cosmetic: Cosmetic.StrawHat + 1 });
+    h.tick(21);
+    wear(h.ctx, { slot: CosmeticSlot.Neck, cosmetic: Cosmetic.CoastScarf + 1 });
+    expect(cosmetic()).toMatchObject({ head: 1, neck: 2 });
+    h.tick(22);
+    wear(h.ctx, { slot: CosmeticSlot.Head, cosmetic: 0 });
+    expect(cosmetic().head).toBe(0);
   });
 });

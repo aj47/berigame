@@ -10,6 +10,8 @@ import { emitEvent } from '../lib/events';
 import { dropOnGround, readSlots, takeGroundItem, writeSlots } from '../lib/inventory';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
 import type { PlayerRow } from '../lib/types';
+import { unlockCosmetic } from '../lib/progress';
+import { Cosmetic } from '../../../shared/sim';
 
 /** A weapon is only held while a copy of it sits in the quick slots. Mutates `p`. */
 function sheatheIfGone(p: PlayerRow, slots: readonly Slot[]): void {
@@ -88,6 +90,7 @@ export const pickupItem = spacetimedb.reducer(
       const taken = takeGroundItem(ctx, p.identity, item);
       // A stick ends first-spawn grace: 10 more ticks to wield it and step back.
       if (taken > 0 && item.itemId === STICK_ITEM_ID && p.respawnTick > T) p.respawnTick = T;
+      if (taken > 0 && item.itemId === STICK_ITEM_ID) unlockCosmetic(ctx, p.identity, Cosmetic.StrawHat);
     } else {
       const dest = interactionTile(ctx, p, item, blockedTiles(ctx), MELEE_RANGE);
       p.pending = Pending.Pickup;

@@ -10,10 +10,13 @@ import GoalChip from "./GoalChip";
 import SettingsPanel from "./SettingsPanel";
 import Minimap from "./Minimap";
 import TickDebug from "./TickDebug";
+import SkillsPanel from "./SkillsPanel";
+import MilestoneBanner from "./MilestoneBanner";
+import "./skills.css";
 import { PUNCH_DAMAGE, STICK_ITEM_ID, getItemDef } from "@sim";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 
-type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | null;
+type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | "skills" | null;
 const stick = getItemDef(STICK_ITEM_ID);
 /** Name and online count: the only part of the HUD shell that follows player rows. */
 const WorldHeader = memo(() => {
@@ -74,6 +77,7 @@ const UIComponents = memo(() => {
       } else if (event.key === "?" || event.key.toLowerCase() === "h")
         toggle("help");
       else if (event.key.toLowerCase() === "o") toggle("settings");
+      else if (event.key.toLowerCase() === "k") toggle("skills");
       else if (event.key === "Escape") setPanel(null);
     };
     window.addEventListener("keydown", onKey);
@@ -99,8 +103,8 @@ const UIComponents = memo(() => {
         </button>
         <button
           data-panel="appearance"
-          aria-expanded={panel === "appearance"}
-          onClick={() => toggle("appearance")}
+          aria-expanded={panel === "appearance" || panel === "skills"}
+          onClick={() => setPanel((current) => (current === "appearance" || current === "skills" ? null : "appearance"))}
         >
           Style
         </button>
@@ -127,7 +131,8 @@ const UIComponents = memo(() => {
       <GoalChip visible={panel === null} />
       <Inventory open={panel === "inventory"} onClose={close} />
       <ChatBox open={panel === "chat"} onClose={close} />
-      <AppearancePanel open={panel === "appearance"} onClose={close} />
+      <AppearancePanel open={panel === "appearance"} onClose={close} onSkills={() => setPanel("skills")} />
+      <SkillsPanel open={panel === "skills"} onClose={close} onStyle={() => setPanel("appearance")} />
       <SettingsPanel open={panel === "settings"} onClose={close} />
       <Minimap hidden={panel !== null} />
       {panel === "help" && (
@@ -185,6 +190,13 @@ const UIComponents = memo(() => {
               (or Make in your inventory) for a stone club: it hits for 8.
             </li>
             <li>
+              <strong>Grow your skills.</strong> Picking berries trains
+              Foraging, gathering on the Coast trains Beachcombing and making
+              things trains Crafting (Style → Skills, or K). Levels unlock
+              recipes, keepsakes to wear and slightly faster harvests — never
+              damage or health.
+            </li>
+            <li>
               <strong>Pick your fights.</strong> Select another adventurer and
               choose Attack. You approach and swing automatically in range.
               Nobody can fight in the sandy safe ring at the centre, and you
@@ -215,7 +227,7 @@ const UIComponents = memo(() => {
           <p className="fine-print">
             Keyboard shortcuts are optional: 1 / 2 / 3 use your quick slots
             (berries there are eaten, a stick is wielded or put away), Esc
-            stops, I opens your bag, Enter opens chat, O opens settings. Every action also has an
+            stops, I opens your bag, K opens your skills, Enter opens chat, O opens settings. Every action also has an
             on-screen control.
           </p>
           <a className="agent-help-link" href="/agent" target="_blank" rel="noreferrer">
@@ -225,6 +237,7 @@ const UIComponents = memo(() => {
       )}
       <CombatHud quickKeysEnabled={panel !== "appearance"} />
       <Toast />
+      <MilestoneBanner />
       {import.meta.env.DEV && <TickDebug />}
     </div>
   );

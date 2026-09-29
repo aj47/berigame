@@ -19,6 +19,8 @@ const KIND_CLASS: Record<number, string> = {
   [EventKind.Death]: 'death',
   [EventKind.HarvestDone]: 'harvest',
   [EventKind.ItemFound]: 'item-found',
+  /** progressStore XP_FLOAT_KIND: skill XP gained. */
+  100: 'xp-gain',
 };
 
 const kindClass = (kind: number, itemId?: string) =>

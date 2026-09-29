@@ -1,6 +1,7 @@
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { MELEE_RANGE, Pending, chebyshev, harvestTicksFor } from '../../../shared/sim';
+import { MELEE_RANGE, Pending, chebyshev } from '../../../shared/sim';
+import { harvestTicksForPlayer } from '../lib/progress';
 import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
 import { clearInteractions, currentTick, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
@@ -30,7 +31,7 @@ export const startHarvest = spacetimedb.reducer(
       if (free) {
         ctx.db.tree.id.update({ ...tree, harvester: p.identity });
         p.harvestTreeId = tree.id;
-        p.harvestEndTick = T + harvestTicksFor(tree.kind);
+        p.harvestEndTick = T + harvestTicksForPlayer(ctx, p.identity, tree);
       } else {
         p.pending = Pending.Harvest;
         p.pendingId = BigInt(tree.id);

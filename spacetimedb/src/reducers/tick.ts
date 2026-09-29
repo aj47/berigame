@@ -2,7 +2,7 @@ import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { tickSchedule } from '../tables';
 import {
-  DEATH_TICKS, EventKind, MELEE_RANGE, harvestTicksFor, isBerryNode, regrowTicksFor, Pending, PlayerState, SPAWN_TILE,
+  DEATH_TICKS, EventKind, MELEE_RANGE, isBerryNode, Cosmetic, HEDGE_RING, harvestXp, ringOf, skillForNode, regrowTicksFor, Pending, PlayerState, SPAWN_TILE,
   MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS,
   bfsPath, chebyshev, enterRule, facingFromDelta, goalAdjacentTo,
   goalIsTile, harvestFindsStick, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
@@ -15,6 +15,7 @@ import { seedMissingNodes } from '../lib/nodes';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
 import { clearInteractions, hex, sameId } from '../lib/players';
 import { canPlay } from '../lib/access';
+import { grantXp, harvestTicksForPlayer, unlockCosmetic } from '../lib/progress';
 import type { Ctx, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
 
 interface TickState {
@@ -86,7 +87,7 @@ function tryClaimTree(s: TickState, p: PlayerRow, tree: TreeRow): boolean {
   tree.harvester = p.identity;
   markTree(s, tree);
   p.harvestTreeId = tree.id;
-  p.harvestEndTick = s.T + harvestTicksFor(tree.kind);
+  p.harvestEndTick = s.T + harvestTicksForPlayer(s.ctx, p.identity, tree);
   return true;
 }
 
@@ -120,6 +121,7 @@ function resolvePending(s: TickState, p: PlayerRow): void {
     if (chebyshev(p, item) <= MELEE_RANGE) {
       const taken = takeGroundItem(s.ctx, p.identity, item);
       if (taken > 0 && item.itemId === STICK_ITEM_ID && p.respawnTick > s.T) p.respawnTick = s.T;
+      if (taken > 0 && item.itemId === STICK_ITEM_ID) unlockCosmetic(s.ctx, p.identity, Cosmetic.StrawHat);
       p.pending = Pending.None; p.pendingId = 0n;
       p.targetX = undefined; p.targetZ = undefined;
       mark(s, p);
@@ -192,6 +194,8 @@ function phaseMovement(s: TickState): void {
         if (p.pending !== Pending.None) { p.pending = Pending.None; p.pendingId = 0n; }
         mark(s, p);
       } else {
+        // Milestone cosmetic: the step from the hedge onto the Coast (rare; one PK lookup when it happens).
+        const fromRing = ringOf(p);
         for (const step of path.slice(0, MOVEMENT_STEPS_PER_TICK)) {
           p.facing = facingFromDelta(step.x - p.x, step.z - p.z);
           p.x = step.x;
@@ -208,6 +212,7 @@ function phaseMovement(s: TickState): void {
             if (p.pending === Pending.None || p.targetX === undefined) break;
           }
         }
+        if (fromRing <= HEDGE_RING && ringOf(p) > HEDGE_RING) unlockCosmetic(s.ctx, p.identity, Cosmetic.CoastScarf);
       }
     }
 
@@ -237,7 +242,10 @@ function phaseHarvest(s: TickState): void {
         // A find ends first-spawn grace: 10 more ticks to wield it and step back.
         if (p.respawnTick > s.T) p.respawnTick = s.T;
         emitEvent(s.ctx, { tick: s.T, kind: EventKind.ItemFound, attacker: p.identity, defender: p.identity, itemId: STICK_ITEM_ID, defenderHp: p.hp });
+        unlockCosmetic(s.ctx, p.identity, Cosmetic.StrawHat);
       }
+      // F2: one XP write per finished harvest (Foraging for berries, Beachcombing on the Coast).
+      grantXp(s.ctx, p.identity, skillForNode(tree.kind), harvestXp(tree.kind));
       p.harvestTreeId = 0;
       p.harvestEndTick = 0;
     } else {

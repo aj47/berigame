@@ -3,6 +3,7 @@ import {
   accessPolicy, playerGrant, appearance, chatMessage, combatEvent, dummyEvent, emoteCooldown, emoteEvent,
   groundItem, inventorySlot, player, tickSchedule, trainingDummy, tree, world,
 } from './tables';
+import { playerSkill, playerCosmetic } from './tables';
 
 export const spacetimedb = schema({
   accessPolicy,
@@ -20,5 +21,7 @@ export const spacetimedb = schema({
   dummyEvent,
   emoteEvent,
   emoteCooldown,
+  playerSkill,
+  playerCosmetic,
 });
 export default spacetimedb;

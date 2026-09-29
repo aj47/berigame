@@ -12,12 +12,13 @@ import { fxQueue } from './combatFx';
 import { FxKind, type FxEntry } from './fxQueue';
 import { harvesting } from './harvestProgress';
 import { flashAt, fxDebug } from './hitFlash';
+import { progressHooks } from '../spacetime/stores/progressStore';
 
 const CAPACITY = 160;
 /** Impact dust starts about chest-high on the defender, pushed away from the attacker. */
 const IMPACT_Y = 1.05;
 
-const OUTPUTS = new Set(RECIPES.map((r) => r.output.itemId));
+const OUTPUTS = new Set(RECIPES.flatMap((r) => (r.output ? [r.output.itemId] : [])));
 const INPUTS = new Set(RECIPES.flatMap((r) => r.inputs.map((i) => i.itemId)));
 
 /**
@@ -71,6 +72,12 @@ const FxLayer = () => {
   useEffect(() => useToastStore.subscribe((s, prev) => {
     if (s.message === BRAMBLE_MESSAGE && prev.message !== BRAMBLE_MESSAGE) audio.play('rustle', { volume: 0.9 });
   }), []);
+
+  // Skill level-ups and new keepsakes: a fanfare (not positional: it is yours).
+  useEffect(() => {
+    progressHooks.onMilestone = () => audio.play('levelup');
+    return () => { progressHooks.onMilestone = () => {}; };
+  }, []);
 
   // Crafting: a recipe output appeared while its inputs were spent.
   const rows = useInventoryRows();

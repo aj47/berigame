@@ -236,3 +236,33 @@ export const appearance = table(
     wrapColor: t.u8(),
   }
 );
+
+/**
+ * F2 skills: total XP per skill (shared/sim/skills.ts). Written only when XP is
+ * earned (a finished harvest or a craft), never per tick. Public: levels are
+ * no secret and carry no power.
+ */
+export const playerSkill = table(
+  { name: 'player_skill', public: true },
+  {
+    identity: t.identity().primaryKey(),
+    foragingXp: t.u32(),
+    beachcombingXp: t.u32(),
+    craftingXp: t.u32(),
+  }
+);
+
+/**
+ * Milestone cosmetics (shared/sim/skills.ts COSMETICS): `unlocked` is a bit
+ * mask of earned cosmetic ids; `head` / `neck` are the worn ones (id + 1,
+ * 0 = none). Purely visual; public so everyone sees what you wear.
+ */
+export const playerCosmetic = table(
+  { name: 'player_cosmetic', public: true },
+  {
+    identity: t.identity().primaryKey(),
+    unlocked: t.u32(),
+    head: t.u8(),
+    neck: t.u8(),
+  }
+);

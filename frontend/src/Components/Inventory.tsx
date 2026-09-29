@@ -1,7 +1,7 @@
 import React, { memo, useEffect, useMemo, useState } from "react";
-import { HOTBAR_SIZE, INVENTORY_SIZE, getItemDef, isWeapon, recipeStatus } from "@sim";
+import { HOTBAR_SIZE, INVENTORY_SIZE, getCosmetic, getItemDef, hasCosmetic, isWeapon, levelForXp, recipeStatus } from "@sim";
 import { useGameActions } from "../spacetime/actions";
-import { useInventoryRows, useMyPlayer } from "../spacetime/hooks";
+import { useInventoryRows, useMyCosmetics, useMyPlayer, useMySkills } from "../spacetime/hooks";
 import { isWieldedSlot, slotsFromRows } from "./itemUi";
 
 interface Props {
@@ -18,6 +18,9 @@ const Inventory = memo(({ open, onClose }: Props) => {
   const [movingFrom, setMovingFrom] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
   const slots = useMemo(() => slotsFromRows(rows), [rows]);
+  const skills = useMySkills();
+  const cosmetics = useMyCosmetics();
+  const craftingLevel = levelForXp(skills?.craftingXp ?? 0);
   const weapon: string = me?.weapon ?? "";
   const wielded = (index: number) => isWieldedSlot(slots, index, weapon, HOTBAR_SIZE);
   useEffect(() => {
@@ -190,22 +193,33 @@ const Inventory = memo(({ open, onClose }: Props) => {
             </p>
           </>
         )}
-        {recipeStatus(slots).map((r) => (
-          <div className="recipe-row" key={r.id}>
-            <button
-              type="button"
-              data-recipe={r.id}
-              disabled={pending || !r.canCraft}
-              onClick={() => void run(() => craft(r.id))}
-            >
-              Make {r.name}
-            </button>
-            <span className="fine-print">
-              {r.inputs.map((i) => `${i.quantity} ${i.name}`).join(" + ")}
-              {r.canCraft ? "" : " — gather them on the Coast"}
-            </span>
-          </div>
-        ))}
+        <div className="recipe-list" aria-label={`Recipes · Crafting level ${craftingLevel}`}>
+          <span className="eyebrow">Make · Crafting Lv {craftingLevel}</span>
+          {recipeStatus(slots, craftingLevel).map((r) => {
+            const owned = r.cosmetic !== null && hasCosmetic(cosmetics?.unlocked ?? 0, r.cosmetic);
+            const icon = r.output ? getItemDef(r.output.itemId)?.icon : `/items/${r.id}.png`;
+            return (
+              <div className={`recipe-row ${r.locked ? "locked" : ""}`} key={r.id} data-recipe-row={r.id}>
+                <button
+                  type="button"
+                  data-recipe={r.id}
+                  disabled={pending || !r.canCraft || owned}
+                  title={r.locked ? `Needs Crafting level ${r.level}` : undefined}
+                  onClick={() => void run(() => craft(r.id))}
+                >
+                  <img src={icon} alt="" /> {r.locked ? `Lv ${r.level}` : "Make"} {r.name}
+                </button>
+                <span className="fine-print">
+                  {r.inputs.map((i) => `${i.quantity} ${i.name}`).join(" + ")}
+                  {r.output && getItemDef(r.output.itemId)?.weaponDamage ? ` → ${getItemDef(r.output.itemId)!.weaponDamage} damage` : ""}
+                  {r.output && getItemDef(r.output.itemId)?.healthRestore ? ` → heals ${getItemDef(r.output.itemId)!.healthRestore}` : ""}
+                  {r.cosmetic !== null ? ` → ${getCosmetic(r.cosmetic)?.name} (keepsake)` : ""}
+                  {r.locked ? ` — needs Crafting level ${r.level}` : owned ? " — already yours" : r.canCraft ? ` · +${r.xp} Crafting XP` : ""}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

@@ -6,17 +6,69 @@ import {
   HAIR_COLORS,
   ROBE_COLORS,
   WRAP_COLORS,
+  COSMETICS,
+  CosmeticSlot,
+  hasCosmetic,
   type Appearance,
 } from "@sim";
 import { useAppearancePreview } from "../appearance/store";
-import { useAppearanceRows, useMyIdentityHex } from "../spacetime/hooks";
+import { useAppearanceRows, useMyCosmetics, useMyIdentityHex } from "../spacetime/hooks";
 import { useGameActions } from "../spacetime/actions";
 import { identityHex } from '../spacetime/identity';
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** Switch to the Skills panel (the two share a tab bar). */
+  onSkills?: () => void;
 }
+
+const SLOT_NAMES = ["Head", "Neck"] as const;
+
+/**
+ * Milestone keepsakes: earned ones can be worn or taken off at once (a
+ * server write, not part of the style draft); locked ones say how to earn them.
+ */
+const Keepsakes = () => {
+  const row = useMyCosmetics();
+  const { wearCosmetic } = useGameActions();
+  const [busy, setBusy] = useState(false);
+  const unlocked = row?.unlocked ?? 0;
+  const worn = [row?.head ?? 0, row?.neck ?? 0];
+  const wear = async (slot: number, value: number) => {
+    if (busy) return;
+    setBusy(true);
+    try { await wearCosmetic(slot, value); } finally { setBusy(false); }
+  };
+  return (
+    <fieldset className="appearance-field keepsakes">
+      <legend>Keepsakes <span>earned on your travels · looks only</span></legend>
+      {[CosmeticSlot.Head, CosmeticSlot.Neck].map((slot) => (
+        <div className="keepsake-row" key={slot}>
+          <span className="keepsake-slot">{SLOT_NAMES[slot]}</span>
+          <button type="button" className="keepsake" aria-pressed={worn[slot] === 0} disabled={busy} onClick={() => void wear(slot, 0)}>None</button>
+          {COSMETICS.filter((c) => c.slot === slot).map((c) => {
+            const have = hasCosmetic(unlocked, c.id);
+            return (
+              <button
+                type="button"
+                key={c.key}
+                data-cosmetic={c.key}
+                className={`keepsake ${have ? "" : "locked"}`}
+                aria-pressed={worn[slot] === c.id + 1}
+                disabled={busy || !have}
+                title={have ? c.name : `Locked: ${c.how}`}
+                onClick={() => void wear(slot, c.id + 1)}
+              >
+                {have ? c.name : <><small>Locked</small> {c.how}</>}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </fieldset>
+  );
+};
 const keys = [
   "hairStyle",
   "skinTone",
@@ -29,7 +81,7 @@ const choicesFrom = (row?: Partial<Appearance>): Appearance =>
     keys.map((key) => [key, row?.[key] ?? DEFAULT_APPEARANCE[key]]),
   ) as unknown as Appearance;
 
-const AppearancePanel = ({ open, onClose }: Props) => {
+const AppearancePanel = ({ open, onClose, onSkills }: Props) => {
   const identity = useMyIdentityHex();
   const rows = useAppearanceRows();
   const saved = choicesFrom(
@@ -144,6 +196,12 @@ const AppearancePanel = ({ open, onClose }: Props) => {
           ×
         </button>
       </header>
+      {onSkills && (
+        <div className="panel-tabs" role="tablist">
+          <button role="tab" aria-selected="false" disabled={pending} onClick={() => { setDraft(null); onSkills(); }}>Skills</button>
+          <button role="tab" aria-selected="true">Style</button>
+        </div>
+      )}
       <p className="appearance-intro">
         Preview on your adventurer. New look, same abilities.
       </p>
@@ -168,6 +226,7 @@ const AppearancePanel = ({ open, onClose }: Props) => {
         {swatches("Hair color", "hairColor", HAIR_COLORS)}
         {swatches("Robe", "robeColor", ROBE_COLORS)}
         {swatches("Wraps", "wrapColor", WRAP_COLORS)}
+        <Keepsakes />
       </div>
       <footer className="appearance-footer">
         {error && (

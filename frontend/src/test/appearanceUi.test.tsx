@@ -6,7 +6,7 @@ import AppearancePanel from '../Components/AppearancePanel';
 import { useAppearancePreview } from '../appearance/store';
 
 const mock = vi.hoisted(() => ({ rows: [] as any[], setAppearance: vi.fn().mockResolvedValue(true) }));
-vi.mock('../spacetime/hooks', () => ({ useMyIdentityHex: () => 'self', useAppearanceRows: () => mock.rows }));
+vi.mock('../spacetime/hooks', () => ({ useMyIdentityHex: () => 'self', useAppearanceRows: () => mock.rows, useMyCosmetics: () => null }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ setAppearance: mock.setAppearance }) }));
 beforeEach(() => { mock.rows = []; mock.setAppearance.mockReset().mockResolvedValue(true); useAppearancePreview.setState({ draft: null }); });
 afterEach(() => cleanup());

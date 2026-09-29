@@ -10,3 +10,4 @@ export * from './areas';
 export * from './goals';
 export * from './nodes';
 export * from './social';
+export * from './skills';

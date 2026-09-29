@@ -60,6 +60,8 @@ export function buildConnection() {
           tables.trainingDummy,
           tables.dummyEvent,
           tables.emoteEvent,
+          tables.playerSkill,
+          tables.playerCosmetic,
         ]);
     })
     .onConnectError((_ctx, err) => {
