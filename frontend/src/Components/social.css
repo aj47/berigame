@@ -27,7 +27,8 @@
   text-align: center;
 }
 .death-panel.down { border-color: #c2553d; }
-.death-panel.compact { top: auto; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 130px); padding: 6px 12px 6px; font-size: 13px; }
+/* Above the combat HUD (about 150px tall on desktop). */
+.death-panel.compact { top: auto; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 164px); padding: 6px 12px 6px; font-size: 13px; }
 .death-title { font-size: 18px; color: #ffb49f; letter-spacing: 0.02em; }
 .death-bag-line { display: flex; align-items: center; gap: 8px; }
 .death-bag-line b { color: #ffd36b; }
@@ -116,6 +117,7 @@
 }
 /* Short landscape screens anchor the combat HUD bottom-right (App.css): sit just left of it, not over Stop. */
 @media (max-height: 500px) and (min-width: 540px) {
+  .death-panel.compact { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 112px); }
   .emote-wheel { bottom: max(8px, env(safe-area-inset-bottom)); right: calc(max(12px, env(safe-area-inset-right)) + 385px + 10px); width: 52px; height: 52px; }
 }
 @media (min-width: 540px) and (max-width: 700px) and (max-height: 500px) and (orientation: landscape) {
