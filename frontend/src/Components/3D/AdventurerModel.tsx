@@ -14,6 +14,9 @@ import { useLoadingStore } from '../../store';
 import { stickGeometry, stickMaterial } from './stickProp';
 import { clubGeometry, clubMaterial } from './clubProp';
 import { AvatarFx } from '../../fx/avatarFx';
+import { inHitstop, knockOffset } from '../../fx/hitReaction';
+
+const knock={x:0,z:0};
 
 export const BASE_MODEL_URL='/models/starter-adventurer.glb';
 export const modelUrl=(style:number) => style===0 ? BASE_MODEL_URL : `/models/starter-adventurer-${HAIR_STYLES[style]?.id ?? 'tousled'}.glb`;
@@ -91,13 +94,19 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
     frame.moving=travel.moving;
     frame.speed=travel.speed??0;
     frame.holdMs=travel.holdMs??0;
-    frame.dt=delta;
+    // Hitstop: a heavy blow freezes this avatar's clips for a few frames.
+    frame.dt=inHitstop(identity,frame.now)?0:delta;
     frame.weapon=weapon;
     // The avatar's group (PlayerAvatar) carries its ground position and facing.
     const group=model.parent;
     if(group){
       frame.x=group.position.x;frame.z=group.position.z;frame.yaw=group.rotation.y;
       if(registered.current!==group){if(registered.current)unregisterAvatarGroup(identity,registered.current);registered.current=group;registerAvatarGroup(identity,group);}
+    }
+    // Knockback rides on the model inside the group (group = tile motion), in the group's local frame.
+    if(knockOffset(identity,frame.now,knock)||model.position.x!==0||model.position.z!==0){
+      const c=Math.cos(frame.yaw),s=Math.sin(frame.yaw);
+      model.position.x=knock.x*c-knock.z*s;model.position.z=knock.x*s+knock.z*c;
     }
     fx.beforeAnimate();
     animator.update(frame);

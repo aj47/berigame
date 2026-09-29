@@ -2,6 +2,7 @@ import React from 'react';
 import { useFrame } from '@react-three/fiber';
 import { BackSide, ShaderMaterial, SphereGeometry } from 'three';
 import IslandDetails from './IslandDetails';
+import AmbientLife from './AmbientLife';
 import BrambleHedge from './BrambleHedge';
 import GroundPlane from '../../Objects/GroundPlane';
 import { envTime } from './envArt';
@@ -41,6 +42,7 @@ const AlphaIsland = () => (
     <Clock />
     <GroundPlane />
     <IslandDetails />
+    <AmbientLife />
     <BrambleHedge />
   </>
 );

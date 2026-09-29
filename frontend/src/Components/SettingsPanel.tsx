@@ -98,6 +98,10 @@ const SettingsPanel = ({ open, onClose }: Props) => {
           <input type="checkbox" checked={s.showNameplates} onChange={(e) => s.set({ showNameplates: e.target.checked })} />
           <span>Show name plates</span>
         </label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={s.reduceMotion} onChange={(e) => s.set({ reduceMotion: e.target.checked })} />
+          <span>Reduce motion</span>
+        </label>
       </fieldset>
       <fieldset className="settings-group">
         <legend>Camera</legend>
