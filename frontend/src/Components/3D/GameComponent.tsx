@@ -15,6 +15,8 @@ import LoadingScreen from '../LoadingScreen';
 import GroundItem from './GroundItem';
 import DebugBridge from './DebugBridge';
 import FxLayer from '../../fx/FxLayer';
+import HoldToWalk from './HoldToWalk';
+import { useSettingsStore } from '../../spacetime/stores/settingsStore';
 import { useGroundItems, usePlayersByHex, useTick, useTrees } from '../../spacetime/hooks';
 
 class WorldBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
@@ -35,6 +37,10 @@ const GameComponent = () => {
   const tick = useTick();
   // Adaptive resolution: pixel ratio capped at 1.5, dropped to 1.0 (2.25x fewer pixels) while frames are slow.
   const [dprCap, setDprCap] = useState(1.5);
+  // Settings > Graphics: auto adapts; high uses the screen's density (max 2); low renders fewer pixels.
+  const graphics = useSettingsStore((s) => s.graphics);
+  const deviceDpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+  const dpr: [number, number] = graphics === 'high' ? [1, Math.min(2, deviceDpr)] : graphics === 'low' ? [0.75, 0.75] : [1, dprCap];
 
   return (
     <div style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
@@ -43,8 +49,8 @@ const GameComponent = () => {
       {clickedOtherObject && <ClickDropdown />}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       <WorldBoundary>
-      <Canvas id="three-canvas" dpr={[1, dprCap]} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
-        <PerformanceMonitor onDecline={() => setDprCap(1)} onIncline={() => setDprCap(1.5)} flipflops={3} onFallback={() => setDprCap(1)} />
+      <Canvas id="three-canvas" dpr={dpr} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
+        {graphics === 'auto' && <PerformanceMonitor onDecline={() => setDprCap(1)} onIncline={() => setDprCap(1.5)} flipflops={3} onFallback={() => setDprCap(1)} />}
         <Suspense fallback={null}>
           <AlphaIsland />
           {trees.map((tree) => !isBerryNode(tree) ? (
@@ -68,6 +74,7 @@ const GameComponent = () => {
           <RenderOnlineUsers />
           <PlayerController setPlayerRef={setPlayerRef} />
           <CameraController playerRef={playerRef} />
+          <HoldToWalk />
           <DebugBridge />
           <FxLayer />
         </Suspense>

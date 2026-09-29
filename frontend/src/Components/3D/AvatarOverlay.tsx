@@ -3,6 +3,7 @@ import { useThree } from '@react-three/fiber';
 import { Vector3, type Camera, type Object3D } from 'three';
 import { useBeforeRender } from './beforeRender';
 import { visibleNameplates, type NameplateBounds } from './nameplateLayout';
+import { useSettingsStore } from '../../spacetime/stores/settingsStore';
 
 /**
  * Avatar labels (name, health bar, chat bubble) as plain DOM in one layer over the
@@ -159,8 +160,12 @@ export const AvatarOverlay = () => {
     div.style.cssText = 'position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:3;';
     parent.appendChild(div);
     layer = div;
+    // Settings > Show name plates: hide names only (health bars and chat stay).
+    const applyNames = (show: boolean) => div.classList.toggle('hide-names', !show);
+    applyNames(useSettingsStore.getState().showNameplates);
+    const unsubscribe = useSettingsStore.subscribe((s) => applyNames(s.showNameplates));
     for (const entry of entries.values()) mount(entry);
-    return () => { div.remove(); if (layer === div) layer = null; };
+    return () => { unsubscribe(); div.remove(); if (layer === div) layer = null; };
   }, [gl]);
   useBeforeRender((_, camera) => {
     if (!layer) return;

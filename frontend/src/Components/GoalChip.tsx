@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Celebration, OnboardingTip } from "./OnboardingTip";
 import {
   HOTBAR_SIZE,
   PlayerState,
   STICK_ITEM_ID,
   STONE_CLUB_ITEM_ID,
   areaOf,
+  FIRST_DAY_DONE,
   firstDayGoal,
   getItemDef,
   type Goal,
@@ -21,6 +23,7 @@ import {
 import { useFirstDayStore } from "../spacetime/stores/firstDayStore";
 import { useToastStore } from "../spacetime/stores/toastStore";
 import { slotsFromRows } from "./itemUi";
+import { useLoadingStore } from "../store";
 
 /** How long the stick-find banner stays up. */
 export const FIND_BANNER_MS = 6000;
@@ -55,7 +58,12 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
   const rows = useInventoryRows();
   const actions = useGameActions();
   const showToast = useToastStore((s) => s.show);
-  const { done, seen, stickFoundAt, load, setDone, dismissFind } = useFirstDayStore();
+  const { done, seen, stickFoundAt, load, setDone, dismissFind, owner, tipped, markTipped } = useFirstDayStore();
+  const { activeTip, celebrating, setActiveTip, setCelebrating } = useFirstDayStore();
+  // Tips and the celebration wait for the loading screen to lift, or they would play unseen behind it.
+  const worldShown = !(useLoadingStore as any)((s: any) => s.isLoading);
+  const endTip = useCallback(() => setActiveTip(null), [setActiveTip]);
+  const endCelebration = useCallback(() => setCelebrating(false), [setCelebrating]);
   const [pending, setPending] = useState(false);
 
   useEffect(() => load(meHex), [meHex, load]);
@@ -74,8 +82,35 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
   );
 
   useEffect(() => {
-    if (result) setDone(result.done);
-  }, [result, setDone]);
+    // Only after this identity's remembered set has loaded, or a stale first render would overwrite it.
+    if (result && owner === meHex) setDone(result.done);
+  }, [result, setDone, owner, meHex]);
+
+  // First Day celebration: only on the transition seen in this session, once per identity.
+  const firstDayWas = useRef<boolean | null>(null);
+  const loaded = !!meHex && owner === meHex;
+  useEffect(() => {
+    if (!loaded) {
+      firstDayWas.current = null;
+      return;
+    }
+    const has = done.includes(FIRST_DAY_DONE);
+    if (firstDayWas.current === false && has && !tipped?.includes(FIRST_DAY_DONE)) {
+      setCelebrating(true);
+      markTipped(FIRST_DAY_DONE);
+    }
+    firstDayWas.current = has;
+  }, [loaded, done, tipped, markTipped, setCelebrating]);
+
+  // A short tip the first time each step appears; remembered with the done set.
+  const goalId = result?.goal?.id;
+  const tipAllowed = worldShown && loaded && visible && !!me && me.state !== PlayerState.Dead && !me.hostile && !celebrating;
+  useEffect(() => {
+    if (!tipAllowed || useFirstDayStore.getState().celebrating || !goalId || tipped?.includes(goalId)) return;
+    setActiveTip(goalId);
+    markTipped(goalId);
+  }, [tipAllowed, goalId, tipped, markTipped, setActiveTip]);
+  const tipGoal = worldShown && activeTip && result?.goal?.id === activeTip ? result.goal : null;
 
   // "You pushed through to the Coast", once per crossing out of the Grove.
   const lastArea = useRef<string | null>(null);
@@ -94,14 +129,15 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
     return () => clearTimeout(timer);
   }, [stickFoundAt, dismissFind]);
 
-  if (!me || me.state === PlayerState.Dead) return null;
+  const party = celebrating && worldShown && <Celebration onDone={endCelebration} />;
+  if (!me || me.state === PlayerState.Dead) return party || null;
   const banner = stickFoundAt !== null && (
     <div className="find-banner" role="status">
       <img src={getItemDef(STICK_ITEM_ID)?.icon} alt="" />
       <span>{STICK_FOUND_MESSAGE}</span>
     </div>
   );
-  if (!visible || me.hostile || !result?.goal) return banner || null;
+  if (!visible || me.hostile || !result?.goal) return <>{banner}{party}</>;
   const goal = result.goal;
   const action = goal.action;
 
@@ -129,6 +165,8 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
   return (
     <>
       {banner}
+      {party}
+      {tipGoal && <OnboardingTip goal={tipGoal} onDone={endTip} />}
       <button
         className={`goal-chip ${action ? "" : "busy"}`}
         data-goal={goal.id}

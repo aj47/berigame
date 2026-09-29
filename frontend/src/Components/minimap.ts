@@ -1,0 +1,144 @@
+import {
+  GRID_SIZE,
+  HEDGE_CROSSINGS,
+  HEDGE_RING,
+  NodeKind,
+  PlayerState,
+  SAFE_RADIUS,
+  SPAWN_TILE,
+  facingToYaw,
+  getItemDef,
+  type Facing,
+} from "@sim";
+
+/** Everything the minimap draws, in tile coordinates (x right, z down: north up). */
+export interface MinimapModel {
+  me: { x: number; z: number; yaw: number } | null;
+  others: { x: number; z: number; hostile: boolean }[];
+  nodes: { x: number; z: number; kind: number; color: string; ripe: boolean }[];
+  bags: { x: number; z: number }[];
+}
+
+interface Row { x: number; z: number }
+interface PlayerRow extends Row { identity: { toHexString(): string }; facing: number; state: number; online: boolean; hostile: boolean }
+interface TreeRow extends Row { itemId: string; kind: number; cooldownUntilTick: number }
+interface GroundRow extends Row { droppedBy: { toHexString(): string }; droppedOnDeath: boolean }
+
+const KIND_COLOR: Record<number, string> = {
+  [NodeKind.Driftwood]: "#b08a5c",
+  [NodeKind.TideRock]: "#7c8794",
+};
+
+export function minimapModel(input: {
+  meHex: string | null;
+  players: readonly PlayerRow[];
+  trees: readonly TreeRow[];
+  groundItems: readonly GroundRow[];
+  tick: number;
+}): MinimapModel {
+  const { meHex, tick } = input;
+  let me: MinimapModel["me"] = null;
+  const others: MinimapModel["others"] = [];
+  for (const p of input.players) {
+    const hex = p.identity.toHexString();
+    if (hex === meHex) me = { x: p.x, z: p.z, yaw: facingToYaw(p.facing as Facing) };
+    else if (p.online && p.state !== PlayerState.Dead) others.push({ x: p.x, z: p.z, hostile: p.hostile });
+  }
+  const nodes = input.trees.map((t) => ({
+    x: t.x,
+    z: t.z,
+    kind: t.kind ?? NodeKind.Berry,
+    color: KIND_COLOR[t.kind] ?? getItemDef(t.itemId)?.color ?? "#4F46E5",
+    ripe: t.cooldownUntilTick <= tick,
+  }));
+  // Your dropped bag: every item you dropped on death, one marker per tile.
+  const seen = new Set<string>();
+  const bags: MinimapModel["bags"] = [];
+  for (const g of input.groundItems) {
+    if (!meHex || !g.droppedOnDeath || g.droppedBy.toHexString() !== meHex) continue;
+    const k = `${g.x},${g.z}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    bags.push({ x: g.x, z: g.z });
+  }
+  return { me, others, nodes, bags };
+}
+
+/** Paint the map into a square canvas `size` CSS pixels wide (the context is already DPR-scaled). */
+export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size: number): void {
+  const s = size / GRID_SIZE;
+  const px = (t: number) => (t + 0.5) * s;
+  ctx.clearRect(0, 0, size, size);
+  // Coast (sand) and the Grove's grass inside the hedge.
+  ctx.fillStyle = "#e6cf93";
+  ctx.fillRect(0, 0, size, size);
+  const lo = SPAWN_TILE.x - HEDGE_RING, span = HEDGE_RING * 2 + 1;
+  ctx.fillStyle = "#79a64c";
+  ctx.fillRect(1.5 * s, 1.5 * s, size - 3 * s, size - 3 * s);
+  ctx.fillStyle = "#5d943a";
+  ctx.fillRect(lo * s, lo * s, span * s, span * s);
+  // Bramble hedge ring.
+  ctx.strokeStyle = "#2f4a23";
+  ctx.lineWidth = Math.max(2, s);
+  ctx.strokeRect((lo + 0.5) * s, (lo + 0.5) * s, (span - 1) * s, (span - 1) * s);
+  // Path crossings, and the safe ring at the centre.
+  ctx.fillStyle = "#d9bf85";
+  for (const c of HEDGE_CROSSINGS) ctx.fillRect(c.x * s, c.z * s, s, s);
+  ctx.fillStyle = "#ecd9a0";
+  const sr = SAFE_RADIUS;
+  ctx.fillRect((SPAWN_TILE.x - sr) * s, (SPAWN_TILE.z - sr) * s, (sr * 2 + 1) * s, (sr * 2 + 1) * s);
+  // Gathering nodes: berry trees are round, coast nodes square.
+  const r = Math.max(2, s * 0.9);
+  for (const n of m.nodes) {
+    ctx.globalAlpha = n.ripe ? 1 : 0.4;
+    ctx.fillStyle = n.color;
+    if (n.kind === NodeKind.Berry) {
+      ctx.beginPath();
+      ctx.arc(px(n.x), px(n.z), r, 0, Math.PI * 2);
+      ctx.fill();
+    } else ctx.fillRect(px(n.x) - r, px(n.z) - r, r * 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
+  // Your dropped bag: a red cross in a white ring.
+  for (const b of m.bags) {
+    const x = px(b.x), y = px(b.z), k = Math.max(3, s * 1.2);
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(x, y, k + 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#c0392b";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - k * 0.7, y - k * 0.7); ctx.lineTo(x + k * 0.7, y + k * 0.7);
+    ctx.moveTo(x + k * 0.7, y - k * 0.7); ctx.lineTo(x - k * 0.7, y + k * 0.7);
+    ctx.stroke();
+  }
+  for (const o of m.others) {
+    ctx.fillStyle = o.hostile ? "#e0573f" : "#ffffff";
+    ctx.strokeStyle = "#1c1a16";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(px(o.x), px(o.z), Math.max(2.5, s * 0.8), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  if (m.me) {
+    // Facing arrow: yaw rotates +z (down on the map) toward +x.
+    const x = px(m.me.x), y = px(m.me.z), k = Math.max(5, s * 2);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-m.me.yaw);
+    ctx.fillStyle = "#ffd54a";
+    ctx.strokeStyle = "#2b211a";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, k);
+    ctx.lineTo(k * 0.7, -k * 0.6);
+    ctx.lineTo(0, -k * 0.25);
+    ctx.lineTo(-k * 0.7, -k * 0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}

@@ -1,4 +1,5 @@
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
+import { MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, holdState, openMenuNear } from '../Components/3D/tapAssist';
 import { BoxGeometry, Color, Float32BufferAttribute, MeshStandardMaterial, PlaneGeometry, ShaderMaterial, UniformsLib, UniformsUtils } from 'three';
 import { envTime } from '../Components/3D/envArt';
 import { linear } from '../Components/3D/nodes/lowPoly';
@@ -78,6 +79,9 @@ const GroundPlane = () => {
   const rows = useInventoryRows();
   const marker = useRef<any>(null);
   const clickedAt = useRef(-Infinity);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const gl = useThree((s) => s.gl);
   useFrame(() => {
     if (!marker.current) return;
     const age = (performance.now() - clickedAt.current) / 850;
@@ -94,6 +98,14 @@ const GroundPlane = () => {
   const onClick = (e: any) => {
     if (e.delta > 5) return;
     e.stopPropagation();
+    // The release of a hold-to-walk (or a hold that opened a menu) is not a new tap.
+    if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
+    // Bigger touch targets: a tap just beside a tree, item or adventurer selects it.
+    const native = e.nativeEvent as PointerEvent | undefined;
+    if (native && typeof native.clientX === 'number') {
+      const radius = native.pointerType === 'mouse' ? MOUSE_TAP_RADIUS : TOUCH_TAP_RADIUS;
+      if (openMenuNear(scene, camera, gl.domElement.getBoundingClientRect(), native.clientX, native.clientY, radius, native)) return;
+    }
     useUserInputStore.getState().setClickedOtherObject(null);
     const tile = worldToTile(e.point.x, e.point.z);
     if (tile.x < 0 || tile.z < 0 || tile.x >= GRID_SIZE || tile.z >= GRID_SIZE) return;

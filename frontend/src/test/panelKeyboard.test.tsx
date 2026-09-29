@@ -12,6 +12,7 @@ vi.mock('../Components/keyboard', () => ({ isTyping: (target: any) => /INPUT|TEX
 vi.mock('../Components/Toast', () => ({ default: () => null }));
 vi.mock('../Components/GoalChip', () => ({ default: () => null }));
 vi.mock('../Components/TickDebug', () => ({ default: () => null }));
+vi.mock('../Components/Minimap', () => ({ default: () => null }));
 afterEach(cleanup);
 
 describe('panel keyboard shortcuts respect native controls', () => {
@@ -26,5 +27,14 @@ describe('panel keyboard shortcuts respect native controls', () => {
     render(<UIComponents />);
     fireEvent.keyDown(document.body, { key: 'Enter' });
     expect(screen.getByText('Opened chat')).toBeInTheDocument();
+  });
+  it('toggles the settings panel with O and its toolbar button, and Esc closes it', () => {
+    render(<UIComponents />);
+    fireEvent.keyDown(document.body, { key: 'o' });
+    expect(screen.getByRole('region', { name: 'Settings' })).toBeInTheDocument();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.queryByRole('region', { name: 'Settings' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Settings/ }));
+    expect(screen.getByRole('button', { name: /Settings/ })).toHaveAttribute('aria-expanded', 'true');
   });
 });

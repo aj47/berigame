@@ -2,6 +2,8 @@ import { useFrame, useThree } from "@react-three/fiber";
 import React, { useEffect, useRef } from "react";
 import { CameraControls } from "@react-three/drei";
 import { useAppearancePreview } from '../../appearance/store';
+import { useSettingsStore } from '../../spacetime/stores/settingsStore';
+import { HOLD_EVENT } from './HoldToWalk';
 
 const CameraController = (props) => {
 	const ref = useRef<CameraControls | null>(null);
@@ -42,6 +44,23 @@ const CameraController = (props) => {
 		window.addEventListener('berigame-camera-reset', reset);
 		return () => window.removeEventListener('berigame-camera-reset', reset);
 	}, [size.width, size.height]);
+
+	// Settings > Camera sensitivity scales drag, rotate and zoom speeds.
+	const sensitivity = useSettingsStore((s) => s.cameraSensitivity);
+	useEffect(() => {
+		const c = ref.current;
+		if (!c) return;
+		c.azimuthRotateSpeed = sensitivity;
+		c.polarRotateSpeed = sensitivity;
+		c.dollySpeed = sensitivity;
+		c.truckSpeed = 2 * sensitivity;
+	}, [sensitivity]);
+	// Hold-to-walk owns the finger while it lasts: pause camera dragging.
+	useEffect(() => {
+		const onHold = (e: Event) => { if (ref.current) ref.current.enabled = !(e as CustomEvent).detail; };
+		window.addEventListener(HOLD_EVENT, onHold);
+		return () => window.removeEventListener(HOLD_EVENT, onHold);
+	}, []);
 
 	useFrame(() => {
 		if (props.playerRef?.current?.position) {
