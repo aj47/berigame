@@ -14,6 +14,7 @@ import { isBerryNode } from '@sim';
 import LoadingScreen from '../LoadingScreen';
 import GroundItem from './GroundItem';
 import DebugBridge from './DebugBridge';
+import FxLayer from '../../fx/FxLayer';
 import { useGroundItems, usePlayersByHex, useTick, useTrees } from '../../spacetime/hooks';
 
 class WorldBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
@@ -68,6 +69,7 @@ const GameComponent = () => {
           <PlayerController setPlayerRef={setPlayerRef} />
           <CameraController playerRef={playerRef} />
           <DebugBridge />
+          <FxLayer />
         </Suspense>
       </Canvas>
       </WorldBoundary>

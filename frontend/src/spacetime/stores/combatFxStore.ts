@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { EventKind, getItemDef } from '@sim';
 import { attackPresentation, type AnimationCue } from '../../animation/combatPresentation';
 import type { CombatEvent } from '../../module_bindings/types';
+import { onCombatEvent } from '../../fx/combatFx';
 
 export interface FloatingNumber {
   seq: number;
@@ -98,6 +99,8 @@ export const useCombatFxStore = create<CombatFxState>((set, get) => ({
         default:
           break;
       }
+      // Sounds, hit flash and impact dust, timed to the same impact.
+      onCombatEvent(e.kind, e.itemId, attacker, defender, at, attack?.impactMs ?? 0);
       return { seq, numbers, finds, cues };
     });
   },
