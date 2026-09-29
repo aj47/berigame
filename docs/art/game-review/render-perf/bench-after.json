@@ -1,0 +1,99 @@
+{
+  "createdAt": "2026-09-28T23:58:23.429Z",
+  "ms": 15000,
+  "results": [
+    {
+      "avatars": 8,
+      "calls": 27,
+      "triangles": 47833,
+      "pixelRatio": 1,
+      "domNodes": 67,
+      "frameMs": {
+        "count": 47,
+        "mean": 318.5978723404176,
+        "p50": 283.79999999981374,
+        "p95": 755.2999999998137,
+        "max": 1166.2000000001863
+      },
+      "cpuFrameMs": {
+        "count": 47,
+        "mean": 2.7000000000277415,
+        "p50": 2.2000000001862645,
+        "p95": 5.2999999998137355,
+        "max": 11.200000000186265
+      },
+      "useFrameMs": {
+        "count": 47,
+        "mean": 0.79148936166646,
+        "p50": 0.5,
+        "p95": 3,
+        "max": 5.2000000001862645
+      },
+      "reactCommitMsPerSecond": 1.426666666691502,
+      "reactCommits": 27,
+      "skippedAnimatorUpdates": 0
+    },
+    {
+      "avatars": 32,
+      "calls": 50,
+      "triangles": 100255,
+      "pixelRatio": 1,
+      "domNodes": 211,
+      "frameMs": {
+        "count": 22,
+        "mean": 588.7818181818267,
+        "p50": 295.59999999962747,
+        "p95": 1609.2000000001863,
+        "max": 2923.2000000001863
+      },
+      "cpuFrameMs": {
+        "count": 22,
+        "mean": 7.840909090824425,
+        "p50": 5,
+        "p95": 18.299999999813735,
+        "max": 40.700000000186265
+      },
+      "useFrameMs": {
+        "count": 22,
+        "mean": 1.763636363627897,
+        "p50": 1.199999999254942,
+        "p95": 4.2000000001862645,
+        "max": 8.5
+      },
+      "reactCommitMsPerSecond": 2.820000000111759,
+      "reactCommits": 33,
+      "skippedAnimatorUpdates": 0
+    },
+    {
+      "avatars": 64,
+      "calls": 68,
+      "triangles": 142289,
+      "pixelRatio": 1,
+      "domNodes": 403,
+      "frameMs": {
+        "count": 20,
+        "mean": 528.9449999999721,
+        "p50": 23.5,
+        "p95": 3144.5999999996275,
+        "max": 3144.5999999996275
+      },
+      "cpuFrameMs": {
+        "count": 20,
+        "mean": 8.000000000046565,
+        "p50": 6.6000000005587935,
+        "p95": 18.300000000745058,
+        "max": 18.300000000745058
+      },
+      "useFrameMs": {
+        "count": 20,
+        "mean": 2.85500000002794,
+        "p50": 2.1000000005587935,
+        "p95": 8.299999999813735,
+        "max": 8.299999999813735
+      },
+      "reactCommitMsPerSecond": 7.646666666554908,
+      "reactCommits": 42,
+      "skippedAnimatorUpdates": 228
+    }
+  ]
+}
