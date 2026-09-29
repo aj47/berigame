@@ -151,7 +151,8 @@ const Inventory = memo(({ open, onClose }: Props) => {
               ) : (
                 <button
                   className="primary-button"
-                  disabled={pending || !def?.healthRestore}
+                  disabled={pending || !def?.healthRestore || (!!me && me.hp >= me.maxHp)}
+                  title={me && me.hp >= me.maxHp ? "You're already at full health" : undefined}
                   onClick={() => void run(() => eatBerry(selected!))}
                 >
                   Eat <span>+{def?.healthRestore ?? 0}</span>

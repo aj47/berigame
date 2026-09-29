@@ -4,6 +4,8 @@ import { NodeKind, TICK_MS, getItemDef, harvestTicksFor, nodeKindDef, tileToWorl
 import type { Player, Tree } from '../../../module_bindings/types';
 import { useGameActions } from '../../../spacetime/actions';
 import { useUserInputStore } from '../../../store';
+import { useMyIdentityHex } from '../../../spacetime/hooks';
+import { identityHex } from '../../../spacetime/identity';
 import DriftwoodPile from './DriftwoodPile';
 import TideRock from './TideRock';
 import HarvestRing from '../../../fx/HarvestRing';
@@ -12,6 +14,7 @@ interface Props { node: Tree; tick: number; harvester: Player | null; }
 
 /** A Coast gathering node (M2): a driftwood pile or a tide rock, harvested like a berry tree. */
 const CoastNode = ({ node, tick, harvester }: Props) => {
+  const myHex = useMyIdentityHex();
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const { startHarvest } = useGameActions();
   const kind = nodeKindDef(node.kind);
@@ -23,7 +26,7 @@ const CoastNode = ({ node, tick, harvester }: Props) => {
   const total = harvestTicksFor(node.kind);
   const endTick = harvester?.harvestEndTick ?? 0;
   const verb = node.kind === NodeKind.TideRock ? 'Knap' : 'Gather';
-  const label = busy ? `${harvester?.name ?? 'Someone'} is gathering` : regrowTicks > 0 ? `${node.kind === NodeKind.TideRock ? 'More flint in' : 'Washing up in'} ${Math.ceil(regrowTicks * TICK_MS / 1000)}s` : `${verb} ${item?.name ?? 'it'}`;
+  const label = busy ? (harvester && myHex && identityHex(harvester.identity) === myHex ? 'You are gathering' : `${harvester?.name ?? 'Someone'} is gathering`) : regrowTicks > 0 ? `${node.kind === NodeKind.TideRock ? 'More flint in' : 'Washing up in'} ${Math.ceil(regrowTicks * TICK_MS / 1000)}s` : `${verb} ${item?.name ?? 'it'}`;
   const disabled = busy || regrowTicks > 0;
   const onClick = (e: any) => {
     if (e.delta > 5) return;
