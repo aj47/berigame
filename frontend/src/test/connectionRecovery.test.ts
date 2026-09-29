@@ -5,6 +5,7 @@ vi.mock('../module_bindings', () => ({
   DbConnection: { builder: () => {
     const builder: any = {};
     for (const name of ['withUri', 'withDatabaseName']) builder[name] = () => builder;
+    builder.getUri = () => 'ws://x';
     builder.withToken = (token: string) => { test.token = token; return builder; };
     for (const name of ['onConnect', 'onConnectError', 'onDisconnect']) builder[name] = (callback: any) => { test.callbacks[name] = callback; return builder; };
     return builder;
@@ -51,30 +52,11 @@ describe('failed connection recovery preserves identity', () => {
   });
 });
 
-describe('dropping a connection releases it at once', () => {
-  it('forceClose closes the socket and fires its disconnect handler exactly once', async () => {
-    const { forceClose } = await import('../spacetime/connection');
-    const ws: any = { close: vi.fn() };
-    const disconnected = vi.fn();
-    ws.onclose = () => disconnected();
-    const conn: any = { wsPromise: Promise.resolve(ws), disconnect: vi.fn(() => { conn.isDisconnectRequested = true; conn.wsPromise.then((w: any) => w.close()); }) };
-    forceClose(conn);
-    await Promise.resolve(); await Promise.resolve();
-    expect(conn.disconnect).toHaveBeenCalledOnce();
-    expect(ws.close).toHaveBeenCalledOnce();
-    expect(disconnected).toHaveBeenCalledOnce();
-    // A late real onclose from the browser can no longer re-fire the handler.
-    expect(ws.onclose).toBeNull();
-  });
-  it('markConnectionLost on the live connection frees it without waiting for the browser', async () => {
-    const { markConnectionLost } = await import('../spacetime/connection');
-    const ws: any = { close: vi.fn() };
-    const managerCleared = vi.fn();
-    ws.onclose = () => managerCleared();
-    const conn: any = { wsPromise: Promise.resolve(ws), disconnect: vi.fn() };
-    markConnectionLost(conn);
-    await Promise.resolve(); await Promise.resolve();
-    expect(managerCleared).toHaveBeenCalledOnce();
-    expect(test.loading.setWebsocketConnected).toHaveBeenCalledWith(false);
+describe('each reconnect attempt opens a new socket at once', () => {
+  it('every builder gets its own pool key, so the SDK never hands back the old connection', () => {
+    const first = buildConnection() as any;
+    const second = buildConnection() as any;
+    expect(first.getUri()).not.toBe(second.getUri());
+    expect(first.getUri()).toMatch(/#attempt-\d+$/);
   });
 });

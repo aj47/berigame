@@ -94,7 +94,8 @@ async function findStick(c: Client, timeoutMs = 420_000): Promise<number> {
     if (Date.now() - start > timeoutMs) throw new Error(`${c.name}: no stick after ${harvests} harvests`);
     const p = me(c);
     const T = tick(c);
-    const tree = [...c.conn.db.tree.iter()].filter((t) => t.harvester === undefined && t.cooldownUntilTick <= T)
+    // Berry trees only: the tree table also holds the Coast/Boulders nodes (M2/M3).
+    const tree = [...c.conn.db.tree.iter()].filter((t) => t.kind === NodeKind.Berry && t.harvester === undefined && t.cooldownUntilTick <= T)
       .sort((a, b) => chebyshev(p, a) - chebyshev(p, b) || a.id - b.id)[0];
     if (!tree) { await sleep(TICK_MS); continue; }
     const before = harvestsDone(c);
@@ -229,7 +230,8 @@ async function main() {
   // No spare sticks: while you hold one, a finished harvest never finds another.
   const foundBefore = A.events.filter((e) => e.kind === EventKind.ItemFound).length;
   const extra = harvestsDone(A);
-  const spareTree = [...A.conn.db.tree.iter()].sort((a, b) => a.cooldownUntilTick - b.cooldownUntilTick || chebyshev(me(A), a) - chebyshev(me(A), b))[0];
+  // A berry tree: a Coast node would hand A driftwood/flint and break the craft checks below.
+  const spareTree = [...A.conn.db.tree.iter()].filter((t) => t.kind === NodeKind.Berry).sort((a, b) => a.cooldownUntilTick - b.cooldownUntilTick || chebyshev(me(A), a) - chebyshev(me(A), b))[0];
   await A.conn.reducers.startHarvest({ treeId: spareTree.id });
   await waitFor('one more harvest while holding the stick', () => harvestsDone(A) > extra, 60_000);
   check('no spare stick while holding one', rowsOf(A, STICK_ITEM_ID).length === 1 && A.events.filter((e) => e.kind === EventKind.ItemFound).length === foundBefore);

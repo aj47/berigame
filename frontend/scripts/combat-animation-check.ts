@@ -10,7 +10,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { DbConnection, tables } from '../src/module_bindings';
-import { chebyshev, EventKind, getItemDef, HOTBAR_SIZE, inGrace, PUNCH_DAMAGE, STICK_ITEM_ID, TICK_MS } from '../../shared/sim';
+import { NodeKind, chebyshev, EventKind, getItemDef, HOTBAR_SIZE, inGrace, PUNCH_DAMAGE, STICK_ITEM_ID, TICK_MS } from '../../shared/sim';
 import { STICK_SWING_CLIP, STICK_SWING_IMPACT_MS } from '../src/animation/stickSwing';
 const { chromium } = createRequire(path.join(__dirname, 'combat-animation-check.ts'))(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
@@ -62,7 +62,7 @@ async function harvestUntil(c: any, enough: () => boolean, failure: string, time
   while (!enough()) {
     if (Date.now() - start > timeout) throw new Error(`${failure} after ${harvests} harvests`);
     const me = row(c), T = tick(c);
-    const tree = [...c.conn.db.tree.iter()].filter((t: any) => !t.harvester && t.cooldownUntilTick <= T)
+    const tree = [...c.conn.db.tree.iter()].filter((t: any) => t.kind === NodeKind.Berry && !t.harvester && t.cooldownUntilTick <= T)
       .sort((x: any, y: any) => chebyshev(me, x) - chebyshev(me, y) || x.id - y.id)[0];
     if (!tree) { await sleep(TICK_MS); continue; }
     const before = done();

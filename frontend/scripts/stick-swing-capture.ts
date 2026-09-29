@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { DbConnection, tables } from '../src/module_bindings';
-import { EventKind, HOTBAR_SIZE, RESPAWN_GRACE_TICKS, STICK_ITEM_ID, TICK_MS, chebyshev } from '../../shared/sim';
+import { NodeKind, EventKind, HOTBAR_SIZE, RESPAWN_GRACE_TICKS, STICK_ITEM_ID, TICK_MS, chebyshev } from '../../shared/sim';
 import { STICK_SWING_MS } from '../src/animation/stickSwing';
 
 const { chromium } = createRequire(path.join(__dirname, 'stick-swing-capture.ts'))(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -63,7 +63,7 @@ async function harvestUntil(c: any, enough: () => boolean, failure: string, time
   while (!enough()) {
     if (Date.now() - start > timeout) throw new Error(failure);
     const me = row(c), T = tick(c);
-    const tree = [...c.conn.db.tree.iter()].filter((t: any) => !t.harvester && t.cooldownUntilTick <= T)
+    const tree = [...c.conn.db.tree.iter()].filter((t: any) => t.kind === NodeKind.Berry && !t.harvester && t.cooldownUntilTick <= T)
       .sort((x: any, y: any) => chebyshev(me, x) - chebyshev(me, y) || x.id - y.id)[0];
     if (!tree) { await sleep(TICK_MS); continue; }
     const before = done();

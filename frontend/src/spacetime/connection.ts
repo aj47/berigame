@@ -58,7 +58,7 @@ export function markConnectionLost(conn: unknown, stale = false): void {
   if (key) {
     if (lostConnections.has(key)) return;
     lostConnections.add(key);
-    forceClose(key);
+    try { (key as any).disconnect?.(); } catch { /* already closed */ }
   }
   // A late failure from a superseded attempt must not disturb the current one.
   if (stale) return;
@@ -69,36 +69,33 @@ export function markConnectionLost(conn: unknown, stale = false): void {
   lifecycle?.lost();
 }
 
-/**
- * Close a connection and deliver its disconnect event now. The SDK's React
- * ConnectionManager keeps handing back the old connection (ignoring any new
- * builder) until that event arrives, and on a dead network or a zombie socket
- * the browser may not fire `onclose` for tens of seconds. `ConnectionManager`
- * (and its `rebuild`) is not exported by `spacetimedb/react`, so instead we
- * run the socket's close handler ourselves, once, and detach it so a late real
- * `onclose` cannot fire it a second time.
- */
-export function forceClose(conn: any): void {
-  try { conn.disconnect?.(); } catch { /* already closed */ }
-  const fire = (ws: any) => {
-    if (!ws) return;
-    const onclose = ws.onclose;
-    ws.onclose = null;
-    ws.onerror = null;
-    ws.onmessage = null;
-    try { onclose?.call(ws, { type: 'close', code: 1000, reason: 'dropped by client', wasClean: false }); } catch { /* handler failed */ }
-  };
-  const pending = conn?.wsPromise;
-  if (pending && typeof pending.then === 'function') pending.then(fire, () => {});
-  else fire(conn?.ws);
-}
-
 let buildSeq = 0;
 /** The newest attempt that has connected; failures from older attempts are ignored. */
 let connectedSeq = 0;
+/**
+ * The key SpacetimeDBProvider pools this builder's connection under. The SDK's
+ * ConnectionManager keys connections by `getUri()::getModuleName()`, and
+ * `retain()` keeps handing back the existing connection (ignoring a new
+ * builder) until that connection's `onclose` arrives, which on a dead network
+ * or a zombie socket can take tens of seconds. Its `rebuild()` escape hatch
+ * is not exported from `spacetimedb/react`, so each attempt gets its own key
+ * instead: a new builder always opens a new socket at once, and the previous
+ * entry is released (and its socket closed) by the provider. `getUri()` is
+ * used only for that key; the socket URL comes from `withUri`.
+ */
+export function poolKeyUri(seq: number): string {
+  return `${SPACETIME_URI}#attempt-${seq}`;
+}
+
 export function buildConnection() {
   const seq = ++buildSeq;
   const savedToken = readToken();
+  const builder = connectionBuilder(seq, savedToken);
+  builder.getUri = () => poolKeyUri(seq);
+  return builder;
+}
+
+function connectionBuilder(seq: number, savedToken: string | undefined) {
   return DbConnection.builder()
     .withUri(SPACETIME_URI)
     .withDatabaseName(SPACETIME_DB)
