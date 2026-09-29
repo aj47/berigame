@@ -77,9 +77,21 @@ describe('First Day goal chip', () => {
     expect(r.goal?.id).toBe('wield-stick');
   });
 
-  it('eating or losing the stick never un-completes a step during First Day', () => {
-    const r = firstDayGoal(input({ done: ['pick-berry', 'eat-berry', 'find-stick'], me: player({ hp: 22 }) }));
+  it('eating the berry never un-completes a step during First Day', () => {
+    const r = firstDayGoal(input({ done: ['pick-berry', 'eat-berry', 'find-stick'], slots: bag('stick'), me: player({ hp: 22 }) }));
     expect(r.goal?.id).toBe('wield-stick');
+  });
+
+  it('losing the stick before the Coast (a death drop) goes back to searching, not an impossible "push through"', () => {
+    const before = ['pick-berry', 'eat-berry', 'find-stick', 'wield-stick'];
+    let r = firstDayGoal(input({ done: before, me: player({ hp: 30 }) }));
+    expect(r.goal?.id).toBe('find-stick');
+    expect(r.done).not.toContain('find-stick');
+    r = firstDayGoal(input({ done: ['pick-berry', 'eat-berry', 'find-stick'], me: player({ hp: 30 }) }));
+    expect(r.goal?.id).toBe('find-stick');
+    // A new stick picks up where it left off.
+    r = firstDayGoal(input({ done: before, slots: bag('stick'), me: player({ hp: 30 }) }));
+    expect(r.goal?.id).toBe('reach-coast');
   });
 
   it('after First Day, a player with no stick sees "search" and "push through" again', () => {
