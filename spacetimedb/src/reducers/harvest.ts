@@ -3,7 +3,7 @@ import spacetimedb from '../schema';
 import { MELEE_RANGE, Pending, chebyshev, harvestTicksFor } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
-import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
+import { clearInteractions, currentTick, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 
 /**
  * Walk next to a berry tree (or a Coast node: driftwood pile, tide rock) and pick from it. A regrowing or claimed tree is
@@ -18,6 +18,12 @@ export const startHarvest = spacetimedb.reducer(
     const T = currentTick(ctx);
     const p = requireAlivePlayer(ctx);
     touchInput(p, T);
+    // Picking the tree you are already harvesting keeps the harvest going. Releasing
+    // it first (below) would requeue you and restart the harvest from zero.
+    if (p.harvestTreeId === tree.id && sameId(tree.harvester, p.identity)) {
+      savePlayer(ctx, p);
+      return;
+    }
     clearInteractions(ctx, p);
     const free = tree.harvester === undefined && tree.cooldownUntilTick <= T;
     if (chebyshev(p, tree) <= MELEE_RANGE) {
