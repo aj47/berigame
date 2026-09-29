@@ -1,9 +1,9 @@
 {
   "tousled": {
-    "sha256": "13957988552366b50b9cfe63d972fec613d997c533f89cf3717a03eb7f4f735f",
+    "sha256": "13235e954b2b47c5a17248fe1353cbd01eb7215471682bd20249e623ed6fe69a",
     "animation_data_hash": "c5a0359c74a6f244ec38b3c8807c79076628a7f13f861cff2658b90c05c60e05",
-    "non_hair_vertex_data_hash": "3cc3745b8a1f3cdbb9c0ec03ffbc565e898396df5b063b40971fc18bedd36f0f",
-    "non_hair_vertex_count": 1952,
+    "non_hair_vertex_data_hash": "550fe99da760439eb6b81af7879b5e67c6e385ea9dbdbf42f6723a9d0d1c47a6",
+    "non_hair_vertex_count": 1701,
     "triangles": 2171,
     "materials": 1,
     "skin_joints": 27,
@@ -35,10 +35,10 @@
     ]
   },
   "cropped": {
-    "sha256": "a554ab5beafaaa4789233bdca42240edbbaecb4adb4269073c2efff0412e4bca",
+    "sha256": "f361fa7698c0e69b1acfdf50b3117db07a2961b95e3b983bedeb570c0ab36944",
     "animation_data_hash": "c5a0359c74a6f244ec38b3c8807c79076628a7f13f861cff2658b90c05c60e05",
-    "non_hair_vertex_data_hash": "3cc3745b8a1f3cdbb9c0ec03ffbc565e898396df5b063b40971fc18bedd36f0f",
-    "non_hair_vertex_count": 1952,
+    "non_hair_vertex_data_hash": "550fe99da760439eb6b81af7879b5e67c6e385ea9dbdbf42f6723a9d0d1c47a6",
+    "non_hair_vertex_count": 1701,
     "triangles": 2186,
     "materials": 1,
     "skin_joints": 27,
@@ -70,10 +70,10 @@
     ]
   },
   "topknot": {
-    "sha256": "2c885a80c86b1ed06438ae1981422dde633d52666f2b3b1b6e70944c04547c08",
+    "sha256": "97681706a0f5e444bb1d2c340d995ff5235d98a1b1acbd453d5bcf3e38b349b6",
     "animation_data_hash": "c5a0359c74a6f244ec38b3c8807c79076628a7f13f861cff2658b90c05c60e05",
-    "non_hair_vertex_data_hash": "3cc3745b8a1f3cdbb9c0ec03ffbc565e898396df5b063b40971fc18bedd36f0f",
-    "non_hair_vertex_count": 1952,
+    "non_hair_vertex_data_hash": "550fe99da760439eb6b81af7879b5e67c6e385ea9dbdbf42f6723a9d0d1c47a6",
+    "non_hair_vertex_count": 1701,
     "triangles": 2290,
     "materials": 1,
     "skin_joints": 27,

@@ -24,6 +24,13 @@ palette = ['42699C','355780','527DAE','E3D4B2','CABB9C','F0DDB8',
            '6AA84F','8A5A33','6E4424','D9B27C']
 # Cells 12-14 (trousers) are lifted from 333743/414451/252B36 so legs read against the
 # brown boots (>=2:1 contrast); mirrored in palette.ts BASE.
+# One cell per garment piece: clothing lists used to mix cells per face, which read
+# as patchwork facets once smooth-shaded. The rng draw is kept so later colours do
+# not shift; clothing takes its dominant cell, hair (16-18) keeps its mixed shades.
+def pick(c):
+    if not isinstance(c,list):return c
+    r=c[random.randrange(len(c))]
+    return r if 16 in c else max(c,key=lambda v:(c.count(v),-c.index(v)))
 def vert(p, weights):
     V.append(tuple(p)); W.append(weights if isinstance(weights,dict) else {weights:1.0}); return len(V)-1
 def face(ids,c): F.append(tuple(ids)); C.append(c)
@@ -38,7 +45,7 @@ def rings(rows,n,c,weights,phase=pi/8,cap=True):
     for j in range(len(ids)-1):
         for i in range(n):
             a,b,d,e=ids[j][i],ids[j][(i+1)%n],ids[j+1][i],ids[j+1][(i+1)%n]
-            cc=c[random.randrange(len(c))] if isinstance(c,list) else c
+            cc=pick(c)
             face((a,b,e),cc);face((a,e,d),cc)
     if cap:
         face(tuple(reversed(ids[0])),c[0] if isinstance(c,list) else c)
@@ -57,7 +64,7 @@ def tube(a,b,radii,c,bones,n=8):
         ids.append([vert(a+(b-a)*t+q@Vector((r1*cos(2*pi*i/n),r2*sin(2*pi*i/n),0)),wt) for i in range(n)])
     for j in range(len(ids)-1):
         for i in range(n):
-            cc=c[random.randrange(len(c))] if isinstance(c,list) else c
+            cc=pick(c)
             face((ids[j][i],ids[j][(i+1)%n],ids[j+1][(i+1)%n],ids[j+1][i]),cc)
     face(tuple(reversed(ids[0])),c[0] if isinstance(c,list) else c);face(ids[-1],c[0] if isinstance(c,list) else c)
 def box(center,scale,c,bone):
