@@ -61,7 +61,7 @@ test('authentication, scope and strict schemas reject requests before game actio
     const { token } = await f.enter();
     const cases: [string, object, number][] = [
       ['attack', { playerId: '0'.repeat(64) }, 403], ['chat', { text: 'hi' }, 403],
-      ['move', { x: 4, z: 5, owner: 'someone_else' }, 400], ['move', { x: 50, z: 5 }, 400],
+      ['move', { x: 4, z: 5, owner: 'someone_else' }, 400], ['move', { x: 64, z: 5 }, 400],
       ['move', { x: 1.5, z: 5 }, 400], ['__proto__', {}, 404], ['tick', {}, 404],
       // Weapons are wielded only from the three quick slots; unwield takes no fields.
       ['wield', { slot: 3 }, 400], ['wield', { slot: -1 }, 400], ['wield', {}, 400], ['unwield', { slot: 0 }, 400],

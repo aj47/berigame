@@ -60,6 +60,8 @@ export function buildConnection() {
           tables.trainingDummy,
           tables.dummyEvent,
           tables.emoteEvent,
+          tables.giant,
+          tables.giantEvent,
         ]);
     })
     .onConnectError((_ctx, err) => {

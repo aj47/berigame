@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Obsidian item icon: hand-drawn source for frontend/public/items/obsidian.png (render at 128x128, transparent). A glassy near-black volcanic shard with violet sheen. -->
+  <defs>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6A5A9E"/>
+      <stop offset="0.45" stop-color="#2E2445"/>
+      <stop offset="1" stop-color="#140F1E"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#0B0812" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M58 8 L 92 30 L 108 72 L 84 118 L 42 114 L 20 78 L 30 36 Z" fill="url(#glass)" stroke-width="4.5"/>
+  </g>
+  <!-- conchoidal facets -->
+  <path d="M58 10 L 56 50 L 32 38 Z" fill="#9C8CD4" opacity="0.55"/>
+  <path d="M56 50 L 76 86 L 106 72 L 92 32 Z" fill="#1E1730" opacity="0.6"/>
+  <path d="M22 78 L 56 50 L 44 112 Z" fill="#3B2F5A" opacity="0.55"/>
+  <g fill="none" stroke="#0B0812" stroke-width="2" stroke-linejoin="round" opacity="0.9">
+    <path d="M58 8 L 56 50 L 92 30"/>
+    <path d="M56 50 L 22 78"/>
+    <path d="M56 50 L 76 86 L 108 72"/>
+    <path d="M76 86 L 70 116"/>
+  </g>
+  <!-- glassy glints -->
+  <path d="M36 36 L 56 14" stroke="#F1ECFF" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M62 56 L 72 76" stroke="#C9BDF2" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>
+  <path d="M98 44 C 102 54, 104 62, 104 70" stroke="#B7A8EE" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <!-- sparkles -->
+  <path d="M104 12 l 3 8 l 8 3 l -8 3 l -3 8 l -3 -8 l -8 -3 l 8 -3 Z" fill="#FFE27A" stroke="#C99A2E" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M14 28 l 2 5 l 5 2 l -5 2 l -2 5 l -2 -5 l -5 -2 l 5 -2 Z" fill="#FFE27A" stroke="#C99A2E" stroke-width="1" stroke-linejoin="round"/>
+</svg>

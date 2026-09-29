@@ -13,6 +13,7 @@ import {
 } from "@sim";
 import { useGameActions } from "../spacetime/actions";
 import {
+  useGiants,
   useInventoryRows,
   useMyIdentityHex,
   useMyPlayer,
@@ -28,6 +29,7 @@ import { useLoadingStore } from "../store";
 /** How long the stick-find banner stays up. */
 export const FIND_BANNER_MS = 6000;
 export const COAST_ARRIVAL_MESSAGE = "You pushed through to the Coast";
+export const BOULDERS_ARRIVAL_MESSAGE = "You climbed into the Boulders. Something huge stirs…";
 export const STICK_FOUND_MESSAGE =
   "You found a sturdy stick! Tap it to wield — hits twice as hard";
 
@@ -42,6 +44,7 @@ function goalIcon(goal: Goal, trees: ReturnType<typeof useTrees>): string {
   }
   if (goal.id === "find-stick") return getItemDef(STICK_ITEM_ID)?.icon ?? "/items/stick.png";
   if (goal.id === "gather-coast") return getItemDef("flint")?.icon ?? "/items/flint.png";
+  if (goal.id === "reach-boulders" || goal.id === "face-giant") return getItemDef(STONE_CLUB_ITEM_ID)?.icon ?? "/items/stone_club.png";
   return "/items/blueberry.png";
 }
 
@@ -56,6 +59,7 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
   const trees = useTrees();
   const tick = useTick();
   const rows = useInventoryRows();
+  const giants = useGiants();
   const actions = useGameActions();
   const showToast = useToastStore((s) => s.show);
   const { done, seen, stickFoundAt, load, setDone, dismissFind, owner, tipped, markTipped } = useFirstDayStore();
@@ -76,9 +80,9 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
   const result = useMemo(
     () =>
       me
-        ? firstDayGoal({ me, slots, trees, others, tick, canFight: true, done, seen })
+        ? firstDayGoal({ me, slots, trees, others, tick, canFight: true, done, seen, giant: giants[0] ?? null })
         : null,
-    [me, slots, trees, others, tick, done, seen],
+    [me, slots, trees, others, tick, done, seen, giants],
   );
 
   useEffect(() => {
@@ -117,8 +121,10 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
   const area = me ? areaOf(me) : null;
   useEffect(() => {
     if (!area || !me || me.state !== PlayerState.Alive) return;
-    if (area === "coast" && lastArea.current && lastArea.current !== "coast")
+    if (area === "coast" && lastArea.current && lastArea.current !== "coast" && lastArea.current !== "boulder-line" && lastArea.current !== "boulders")
       showToast(COAST_ARRIVAL_MESSAGE);
+    if (area === "boulders" && lastArea.current && lastArea.current !== "boulders")
+      showToast(BOULDERS_ARRIVAL_MESSAGE);
     lastArea.current = area;
   }, [area, me, showToast]);
 
@@ -149,6 +155,7 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
       else if (action.kind === "eat") await actions.eatBerry(action.slot);
       else if (action.kind === "wield") await actions.wieldItem(action.slot);
       else if (action.kind === "move") await actions.setTarget(action.x, action.z);
+      else if (action.kind === "giant") await actions.attackGiant(action.giantId);
       else if (action.kind === "craft") {
         if (await actions.craft(action.recipe))
           showToast(`You made a ${(getItemDef(action.recipe)?.name ?? "thing").toLowerCase()}!`);

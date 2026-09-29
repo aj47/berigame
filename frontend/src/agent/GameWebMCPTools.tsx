@@ -26,9 +26,20 @@ import {
   PlayerState,
   PUNCH_DAMAGE,
   swingDamage,
+  BOULDER_KEY_ITEM,
+  BOULDER_MESSAGE,
+  GIANT_ID,
+  GIANT_REACH,
+  GIANT_TILE,
+  GiantState,
+  attackRadius,
+  chebyshev,
+  giantHpAt,
+  isLandTile,
 } from "@sim";
 import { useGameActions } from "../spacetime/actions";
 import {
+  useGiants,
   useInventoryRows,
   useMyPlayer,
   usePlayers,
@@ -57,6 +68,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
   const trees = useTrees();
   const inventory = useInventoryRows();
   const tick = useTick();
+  const giants = useGiants();
   const actions = useGameActions();
   const websocketConnected = useLoadingStore((state: any) => state.websocketConnected);
   const gameDataLoaded = useLoadingStore((state: any) => state.gameDataLoaded);
@@ -69,6 +81,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
     trees,
     inventory,
     tick,
+    giants,
     actions,
     websocketConnected,
     gameDataLoaded,
@@ -150,14 +163,30 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           const slots = slotsFromRows(state.inventory);
           const memory = useFirstDayStore.getState();
           const goal = player
-            ? firstDayGoal({ me: player, slots, trees: state.trees, others: state.players.filter((row: any) => row !== player), tick: state.tick, canFight: true, done: memory.done, seen: memory.seen }).goal
+            ? firstDayGoal({ me: player, slots, trees: state.trees, others: state.players.filter((row: any) => row !== player), tick: state.tick, canFight: true, done: memory.done, seen: memory.seen, giant: state.giants?.[0] ?? null }).goal
             : null;
           return JSON.stringify({
             goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action } : null,
             world: {
               brambles: { center: SPAWN_TILE, ring: HEDGE_RING, key: STICK_ITEM_ID, rule: "Tiles at Chebyshev distance 17 from the center are thorny brambles: step onto one only while holding a stick, or from the Coast. You can always walk home." },
               safeRing: { center: SPAWN_TILE, radius: SAFE_RADIUS },
+              boulders: { key: BOULDER_KEY_ITEM, rule: "Past the Coast's south-east corner, a boulder line (max(x, z) = 50, both x and z >= 36) guards the Boulders: step onto it only while holding a stone club, or from the Boulders. You can always walk home. Other tiles with x or z >= 50 are sea." },
             },
+            giant: (() => {
+              const g = state.giants?.[0];
+              if (!g) return null;
+              const windup = g.state === GiantState.Windup;
+              return {
+                tile: { x: g.x, z: g.z },
+                reach: GIANT_REACH,
+                state: ["idle", "winding_up", "recovering", "defeated"][g.state] ?? "idle",
+                health: giantHpAt(g, state.tick),
+                maxHealth: g.maxHp,
+                telegraph: windup ? { center: { x: g.slamX, z: g.slamZ }, radius: attackRadius(g.attack), landsInTicks: Math.max(0, g.stateUntilTick - state.tick),
+                  youAreInside: !!player && chebyshev(player, { x: g.slamX, z: g.slamZ }) <= attackRadius(g.attack) } : null,
+                respawnInTicks: g.state === GiantState.Defeated ? Math.max(0, g.respawnTick - state.tick) : 0,
+              };
+            })(),
             connection: {
               online: typeof navigator === "undefined" ? true : navigator.onLine,
               connected: state.websocketConnected && state.gameDataLoaded && !state.worldUpdatesStalled,
@@ -183,6 +212,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                       ? "walking to a tree"
                       : player.pending === Pending.Dummy
                       ? "training at the dummy"
+                      : player.pending === Pending.Giant
+                      ? "fighting the giant"
                       : player.combatTarget
                         ? "combat"
                         : "idle",
@@ -218,10 +249,10 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
       ),
       tool(
         "move_to_tile",
-        "Walk your character to a tile on the island. Coordinates are integer tile positions from 0 through 49. This changes your live character position over time.",
+        `Walk your character to a tile. Coordinates are integer tile positions from 0 through ${GRID_SIZE - 1}: the island is 0-49; the Boulders lie past its south-east corner (both x and z >= 36, max > 50); other tiles past 49 are sea. This changes your live character position over time.`,
         {
-          x: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: "Horizontal tile coordinate, 0–49." },
-          z: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: "Vertical tile coordinate, 0–49." },
+          x: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: `Horizontal tile coordinate, 0–${GRID_SIZE - 1}.` },
+          z: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: `Vertical tile coordinate, 0–${GRID_SIZE - 1}.` },
         },
         ["x", "z"],
         async ({ x, z }) => {
@@ -230,14 +261,22 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           if (!Number.isInteger(x) || !Number.isInteger(z) || x < 0 || x >= GRID_SIZE || z < 0 || z >= GRID_SIZE)
             return `Choose integer tile coordinates from 0 through ${GRID_SIZE - 1}.`;
           const blocked = worldBlockedSet(live.current.trees);
-          const hasStick = holdsItem(slotsFromRows(live.current.inventory), player.weapon ?? "", STICK_ITEM_ID);
-          const dest = nearestReachableTile(player, { x, z }, blocked, enterRule(hasStick));
+          const slots = slotsFromRows(live.current.inventory);
+          const hasStick = holdsItem(slots, player.weapon ?? "", STICK_ITEM_ID);
+          const hasClub = holdsItem(slots, player.weapon ?? "", BOULDER_KEY_ITEM);
+          const dest = nearestReachableTile(player, { x, z }, blocked, enterRule(hasStick, hasClub));
+          const withStick = nearestReachableTile(player, { x, z }, blocked, enterRule(true, hasClub));
           const open = nearestReachableTile(player, { x, z }, blocked);
           const clamped = dest.x !== open.x || dest.z !== open.z;
+          const byBrambles = clamped && !hasStick && (withStick.x !== dest.x || withStick.z !== dest.z);
           return reportAction(
             await live.current.actions.setTarget(x, z),
-            clamped
+            byBrambles
               ? `${BRAMBLE_MESSAGE}. Walking to tile ${dest.x}, ${dest.z} instead (blockedBy: brambles).`
+              : clamped
+              ? `${BOULDER_MESSAGE}. Walking to tile ${dest.x}, ${dest.z} instead (blockedBy: boulders).`
+              : !isLandTile({ x, z })
+              ? `That tile is sea. Walking to tile ${dest.x}, ${dest.z} instead.`
               : `Walking toward tile ${x}, ${z}.`,
           );
         },
@@ -296,6 +335,17 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           const { error } = requirePlayer() as any;
           if (error) return error;
           return reportAction(await live.current.actions.attackDummy(DUMMY_ID), "Walking to the training dummy; your character swings at it automatically.");
+        },
+      ),
+      tool(
+        "attack_giant",
+        `Walk to the Giant in the Boulders (centre tile ${GIANT_TILE.x}, ${GIANT_TILE.z}) and keep swinging at it. A PvE world boss open to everyone: no combat access needed, and it never ends your grace or makes you hostile. You need a stone club to cross into the Boulders. It telegraphs slow blows on the ground (inspect_game_state giant.telegraph): walk out of the marked square before it lands, then attack again. Everyone who helped when it falls gets obsidian.`,
+        {},
+        [],
+        async () => {
+          const { error } = requirePlayer() as any;
+          if (error) return error;
+          return reportAction(await live.current.actions.attackGiant(GIANT_ID), "Walking to the Giant; your character swings at it automatically. Watch for its telegraphed blows.");
         },
       ),
       tool(

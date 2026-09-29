@@ -32,6 +32,12 @@ export function tipFor(goal: Goal): TipSpec {
       return { text: "You have everything: tap to make a stone club", targets: [".goal-chip"] };
     case "wield-club":
       return { text: "Tap your stone club to wield it", targets: [...slotTarget, ".goal-chip"] };
+    case "reach-boulders":
+      return { text: "The grey L past the Coast's south-east corner is the Boulders. Your club gets you over", targets: [".minimap", ".goal-chip"] };
+    case "face-giant":
+      return { text: "Hit the Giant together. When a red square appears under you, step out of it", targets: [".goal-chip"] };
+    case "gather-obsidian":
+      return { text: "Obsidian outcrops are the dark squares at the Boulders' far ends", targets: [".minimap", ".goal-chip"] };
     default:
       return { text: goal.hint, targets: [".goal-chip"] };
   }

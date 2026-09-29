@@ -62,5 +62,7 @@ export function useGameActions() {
     /** A cosmetic emote (shared/sim Emote), seen by everyone nearby. */
     emote: (emote: number) => run('emote', (c) => c.reducers.emote({ emote })),
     craft: (recipe: string) => run('craft', (c) => c.reducers.craft({ recipe })),
+    /** Walk up to the Giant and keep swinging at it (open to everyone; needs the stone club to reach the Boulders). */
+    attackGiant: (giantId: number) => run('attackGiant', (c) => c.reducers.attackGiant({ giantId })),
   };
 }

@@ -58,6 +58,7 @@ vi.mock("../spacetime/hooks", () => ({
   usePlayersByHex: () => mock.players,
   useTick: () => mock.tick,
   useTrees: () => mock.trees,
+  useGiants: () => [],
   useMyIdentityHex: () => "me",
   usePlayers: () => [...mock.players.values()],
 }));

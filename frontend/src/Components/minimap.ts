@@ -1,5 +1,9 @@
 import {
+  BOULDER_LINE,
+  BOULDERS_MIN,
+  GiantState,
   GRID_SIZE,
+  ISLAND_SIZE,
   HEDGE_CROSSINGS,
   HEDGE_RING,
   NodeKind,
@@ -17,6 +21,8 @@ export interface MinimapModel {
   others: { x: number; z: number; hostile: boolean }[];
   nodes: { x: number; z: number; kind: number; color: string; ripe: boolean }[];
   bags: { x: number; z: number }[];
+  /** The Boulders' Giant (null until seeded). */
+  giant: { x: number; z: number; down: boolean } | null;
 }
 
 interface Row { x: number; z: number }
@@ -27,6 +33,7 @@ interface GroundRow extends Row { droppedBy: { toHexString(): string }; droppedO
 const KIND_COLOR: Record<number, string> = {
   [NodeKind.Driftwood]: "#b08a5c",
   [NodeKind.TideRock]: "#7c8794",
+  [NodeKind.Obsidian]: "#3b2f55",
 };
 
 export function minimapModel(input: {
@@ -35,6 +42,7 @@ export function minimapModel(input: {
   trees: readonly TreeRow[];
   groundItems: readonly GroundRow[];
   tick: number;
+  giants?: readonly { x: number; z: number; state: number }[];
 }): MinimapModel {
   const { meHex, tick } = input;
   let me: MinimapModel["me"] = null;
@@ -61,7 +69,9 @@ export function minimapModel(input: {
     seen.add(k);
     bags.push({ x: g.x, z: g.z });
   }
-  return { me, others, nodes, bags };
+  const g = input.giants?.[0];
+  const giant = g ? { x: g.x, z: g.z, down: g.state === GiantState.Defeated } : null;
+  return { me, others, nodes, bags, giant };
 }
 
 /** Paint the map into a square canvas `size` CSS pixels wide (the context is already DPR-scaled). */
@@ -69,12 +79,23 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
   const s = size / GRID_SIZE;
   const px = (t: number) => (t + 0.5) * s;
   ctx.clearRect(0, 0, size, size);
-  // Coast (sand) and the Grove's grass inside the hedge.
-  ctx.fillStyle = "#e6cf93";
+  // Sea, then the island: the Coast (sand) and the Grove's grass inside the hedge.
+  ctx.fillStyle = "#2f9fb0";
   ctx.fillRect(0, 0, size, size);
+  const isl = ISLAND_SIZE * s;
+  ctx.fillStyle = "#e6cf93";
+  ctx.fillRect(0, 0, isl, isl);
   const lo = SPAWN_TILE.x - HEDGE_RING, span = HEDGE_RING * 2 + 1;
   ctx.fillStyle = "#79a64c";
-  ctx.fillRect(1.5 * s, 1.5 * s, size - 3 * s, size - 3 * s);
+  ctx.fillRect(1.5 * s, 1.5 * s, isl - 3 * s, isl - 3 * s);
+  // The Boulders (M3): an ash-grey L past the south-east shoreline, behind a boulder line.
+  const bl = BOULDERS_MIN * s, line = BOULDER_LINE * s, end = GRID_SIZE * s;
+  ctx.fillStyle = "#8a7d6b";
+  ctx.fillRect(line, bl, end - line, end - bl);
+  ctx.fillRect(bl, line, line - bl, end - line);
+  ctx.fillStyle = "#5d5550";
+  ctx.fillRect(line, bl, s, line - bl + s);
+  ctx.fillRect(bl, line, line - bl, s);
   ctx.fillStyle = "#5d943a";
   ctx.fillRect(lo * s, lo * s, span * s, span * s);
   // Bramble hedge ring.
@@ -99,6 +120,20 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
     } else ctx.fillRect(px(n.x) - r, px(n.z) - r, r * 2, r * 2);
   }
   ctx.globalAlpha = 1;
+  // The Giant: a big dark diamond on its footprint (dimmed while it rests).
+  if (m.giant) {
+    const x = px(m.giant.x), y = px(m.giant.z), k = Math.max(4, s * 2);
+    ctx.globalAlpha = m.giant.down ? 0.45 : 1;
+    ctx.fillStyle = "#b8412f";
+    ctx.strokeStyle = "#2b211a";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y - k); ctx.lineTo(x + k, y); ctx.lineTo(x, y + k); ctx.lineTo(x - k, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
   // Your dropped bag: a red cross in a white ring.
   for (const b of m.bags) {
     const x = px(b.x), y = px(b.z), k = Math.max(3, s * 1.2);

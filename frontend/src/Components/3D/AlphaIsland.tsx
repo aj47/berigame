@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { BackSide, ShaderMaterial, SphereGeometry } from 'three';
 import IslandDetails from './IslandDetails';
 import BrambleHedge from './BrambleHedge';
+import BouldersArea from './BouldersArea';
 import GroundPlane from '../../Objects/GroundPlane';
 import { envTime } from './envArt';
 
@@ -42,6 +43,7 @@ const AlphaIsland = () => (
     <GroundPlane />
     <IslandDetails />
     <BrambleHedge />
+    <BouldersArea />
   </>
 );
 

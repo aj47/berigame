@@ -4,9 +4,10 @@ import AvatarDecals from './AvatarDecals';
 import { AvatarOverlay } from './AvatarOverlay';
 import AnimationCulling from './AnimationCulling';
 import TrainingDummy from './TrainingDummy';
+import Giant from './Giant';
 import DeathBagMarker, { CameraLookProbe } from './DeathBagMarker';
-import { useAppearanceRows, useChatMessages, useMyIdentityHex, useMyPlayer, usePlayers, useTick, useTrainingDummies } from '../../spacetime/hooks';
-import { CHAT_BUBBLE_TICKS, DUMMY_IDLE_RESET_TICKS, type Appearance } from '@sim';
+import { useAppearanceRows, useChatMessages, useMyIdentityHex, useMyPlayer, usePlayers, useTick, useTrainingDummies, useGiants } from '../../spacetime/hooks';
+import { CHAT_BUBBLE_TICKS, DUMMY_IDLE_RESET_TICKS, GIANT_REGEN_IDLE_TICKS, GiantState, type Appearance } from '@sim';
 import { identityHex } from '../../spacetime/identity';
 
 /** Latest chat line per sender that is still fresh enough to float above a head. */
@@ -56,11 +57,13 @@ const RenderOnlineUsers = () => {
   const appearances = useAppearanceByHex();
   const target = useMyTargetHex();
   const dummies = useTrainingDummies();
+  const giants = useGiants();
   const tick = useTick();
 
   return (
     <>
       {dummies.map((d) => <TrainingDummy key={d.id} dummy={d} tick={Math.min(tick, d.lastHitTick + DUMMY_SETTLED_TICKS)} />)}
+      {giants.map((g) => <Giant key={g.id} giant={g} tick={g.state === GiantState.Defeated ? Math.min(tick, g.respawnTick) : Math.min(tick, g.lastHitTick + GIANT_REGEN_IDLE_TICKS)} />)}
       {MARKERS}
       {players.map((p) => {
         if (!p.online) return null;

@@ -9,6 +9,7 @@ import { onWorldTick } from './tickClock';
 import { startWorldLivenessMonitor } from './worldLivenessMonitor';
 import { useCombatFxStore } from './stores/combatFxStore';
 import { useSocialStore } from './stores/socialStore';
+import { useGiantStore } from './stores/giantStore';
 
 /** Feeds the tick clock and the combat FX store from table updates. */
 const TableSync = () => {
@@ -30,6 +31,9 @@ const TableSync = () => {
   // Training dummy blows and emotes: event tables too.
   useTable(tables.dummyEvent, { onInsert: useSocialStore.getState().pushDummyHit });
   useTable(tables.emoteEvent, { onInsert: useSocialStore.getState().pushEmote });
+  // The Boulders' Giant: blows, slams, defeats and rewards (an event table).
+  const onGiantEvent = useCallback((row: any) => useGiantStore.getState().pushEvent(row, meRef.current), []);
+  useTable(tables.giantEvent, { onInsert: onGiantEvent });
   return null;
 };
 

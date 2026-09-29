@@ -132,12 +132,14 @@ The goal chip (M1) replaces the GatherShortcut button: one line, "tap to do it".
 | 9 | Brambles one-way or a strict wall | **One-way: you can always walk home without a stick** | M1 |
 | 10 | Stick chance | **25% per finished berry harvest** | M1 |
 | 11 | Training dummy: who may hit it, and where | **Decided: open to everyone (no combat grant), since it harms nobody. One static post at (28,28): ring 3, diagonal to the safe ring's SE corner, off the four worn paths, more than 2 tiles from every tree (harvest tiles stay clear). It blocks its tile; it takes hits and floats damage but never dies (60 HP that springs back to full, and back to full after 25 idle ticks, computed lazily). Swings work from the safe ring and in grace, and do not end grace. Server: `training_dummy` table plus `dummy_event` event table; the tick does one primary-key lookup (seeding it if missing) and writes only on a landed swing (no idle writes).** | Grove, now |
+| 12 | Area 3 entry requirement | **Decided (M3 build): holding a stone club (bag or wielded), one-way, stateless, exactly like the stick and the brambles.** The club is the only item that needs both Coast inputs, so reaching the Boulders proves the Coast loop; no key is stored on the character and death drops it (§1.3). Grid grown, not carved (open question 2 resolved: default). | M3 |
+| 13 | The Giant: numbers and fairness | **Decided (F3 build): 400 shared HP, telegraphed slam (3x3 on a player's tile, 9 dmg after 3 ticks) and every third attack a stomp (radius 3 around it, 6 dmg after 4 ticks), 3-tick recover, full regen after 100 idle ticks, respawn 500 ticks after defeat. Open to everyone, never ends grace or sets hostile; its blows skip players in grace. Reward: 3 obsidian to every online contributor with >= 16 damage that life (equal shares, no top-damage bonus: §1.4/§1.5).** | F3 |
 
 Owner direction: the base is very simple, easy to understand, and meaningful in the first 3 minutes. Sticks are the first meaningful reward and are not easy.
 
 **Open questions:**
 1. **Club recipe: 1 driftwood + 2 flint (default) or 1 stick + 2 flint?** *Default driftwood: the stick stays your Grove key and driftwood has a use now that the Beacon is parked. If the stick is consumed, the club must also count as a bramble key.*
-2. **Area 3: grow the grid or carve it out of the Coast?** *Default grow (§6 M3).*
+2. ~~**Area 3: grow the grid or carve it out of the Coast?**~~ *Resolved: grown (decision 12).*
 
 ## 5. Progression model
 
@@ -198,9 +200,11 @@ What a new player sees: movement and camera; the goal chip; the stick-find banne
 - **Agent API:** `harvest {nodeId? | kind?}`, `craft {recipe}`; state `nodes` (keep the `trees` alias for one release) and `recipes[] {id, inputs, canCraft, missing}`.
 - **Tests:** seeding twice is a no-op; per-kind harvest and regrow; nodes never find sticks; craft inputs, rejection while hostile, overflow to the ground; Coast still connected with all nodes; `smoke.ts` makes a club end to end.
 
-### M3 "The Boulders" (sketch; no new verb)
+### M3 "The Boulders" (built; no new verb)
 
-- **Land:** grow `GRID_SIZE` to 64 with `TILE_ORIGIN` unchanged, so every existing tile, row and tree keeps its coordinates; the new strip lies east and south (x or z 50–63). Most of it is static water (a blocked mask in `shared/sim`); the south-east corner becomes **the volcano shore**, dressed with the unused `models/island-volcano.glb` (copy it into `frontend/public/models` to load it). `GroundPlane` centres a `GRID_SIZE` plane at world −0.5 and `IslandDetails` spreads cover over ±24, both assuming `GRID_SIZE/2 == TILE_ORIGIN`: the ground mesh and ground cover move to the new centre, and `areaOf` stops the Coast at the old shoreline.
+**As built.** `GRID_SIZE` 64 with `TILE_ORIGIN` 25 unchanged, so every existing tile, tree and node keeps its coordinates (`ISLAND_SIZE` 50 is the old island). A static land mask (`isLandTile`, `LAND_MASK` in `shared/sim/grid.ts`) makes every tile with x or z >= 50 sea, except the south-east L with both x and z >= 36: pathfinding (BFS, `canStep`, diagonal corner checks, `neighbors8` death drops) never enters the sea, so no blocked-set growth and no per-tick cost. `areaOf` adds `boulder-line` (`max(x, z) = 50`, 29 tiles), `boulders` (`max(x, z) > 50`, 559 tiles) and `sea`; the Coast stops at the old shoreline. `canEnter(from, to, hasStick, hasClub)`: the boulder line needs a club unless you step in from the Boulders (one-way, like the brambles); the tick reads the bag once per moving player for both keys (`heldKeys`). Obsidian: node kind 3, ids 109 (60,40) and 110 (40,60), harvest 8, regrow 150. Chip: after the club, "Take your club to the Boulders" (walks to (51,51)), then "Face the Giant", or "chip obsidian" while it rests; done once you hold obsidian. Art: two vertex-coloured ash-ground slabs and shelves, the ocean shader's shoreline follows the L, 29 instanced boulders plus fillers on the line, instanced rim rocks and pebbles (three draws, raycast off), an obsidian outcrop node model. The volcano glb dressing is still parked.
+
+- **Land (original sketch):** grow `GRID_SIZE` to 64 with `TILE_ORIGIN` unchanged, so every existing tile, row and tree keeps its coordinates; the new strip lies east and south (x or z 50–63). Most of it is static water (a blocked mask in `shared/sim`); the south-east corner becomes **the volcano shore**, dressed with the unused `models/island-volcano.glb` (copy it into `frontend/public/models` to load it). `GroundPlane` centres a `GRID_SIZE` plane at world −0.5 and `IslandDetails` spreads cover over ±24, both assuming `GRID_SIZE/2 == TILE_ORIGIN`: the ground mesh and ground cover move to the new centre, and `areaOf` stops the Coast at the old shoreline.
 - **Key:** a boulder band on the old south-east shoreline, passable while holding a stone club: the same stateless holding rule and one-way return as the brambles. Smashable boulders with stored state are parked.
 - **Contents:** the Giant (F3), a rare resource (obsidian), and the natural home for a world goal if the Beacon returns.
 
@@ -208,7 +212,7 @@ What a new player sees: movement and camera; the goal chip; the stick-find banne
 
 - **F1 Persistent identity (the gate). Done.** Returning browsers keep their identity via a scoped, rotating renewal token reused across the 1-hour grant renewals (30 days after the last visit; design and threat model in `docs/CLOUDFLARE_BETA.md`). Nothing below starts before this.
 - **F2 XP skills:** Foraging, Beachcombing, Crafting; `xpForLevel(L) = 25·(L−1)²`, capped at L30 (21 025 XP, about 5 h per skill). Levels unlock recipes, cosmetics and at most −2 harvest ticks (never below 3); never damage, HP, area access or the gold tree.
-- **F3 The Giant.** A PvE world boss in Area 3, open to every player including those without the combat grant.
+- **F3 The Giant. Built** (decision 13). Server: `giant` (one row), private `giant_contribution` and the `giant_event` event table; `attack_giant` (no combat grant) queues `Pending.Giant` (4); `phaseGiant` in the tick does one primary-key read, player swings first, then `stepGiant` (pure, `shared/sim/giant.ts`): idle -> wind-up (telegraph) -> blow -> recover; writes only on transitions and hits. Client: a procedural stone giant (idle, wind-up, slam, stomp, flinch, topple), a red telegraph square that fills as the blow nears, a dust ring, an HP bar and a resting countdown; minimap marker; agent API `state.giant` and `attack_giant`.
 
 ## 7. Items and combat numbers
 
@@ -230,9 +234,10 @@ Item ids are permanent. Materials stack to 99; weapons stack to 1.
 - **World output per minute:** berries about 11 (Grove only), goldberries about 1.8, sticks at most about 2.7 (25% of stickless players' harvests), driftwood about 14 (M2), flint about 9 (M2).
 - **Faucets are node items only.** No meter, no pity: the only stick rule besides the roll is "none while you hold one", so no spares pile up to hand out.
 - **Sinks:** death drops (ground piles last 500 ticks, keys included); crafting (M2).
+- **Obsidian (M3/F3):** outcrops about 1.3 a minute world-wide (2 nodes, 158-tick cycle); the Giant adds 3 per contributor per kill, at most one kill per ~5.5 minutes (500-tick respawn plus the fight: a lone club takes ~2 min, four clubs ~30 s). Obsidian has no recipe yet (parked: the next weapon or cosmetic), so it is a trophy and a stockpile, not power. Dying in the Boulders drops the club there; a friend can carry it out, or you craft another.
 - **Area flow:** armed players leave for the Coast, which thins the Grove where the unarmed newcomers are. Food pulls them back.
 - **Per-player caps:** `MAX_INPUTS_PER_TICK` 5; the agent API's 1 request a second; one tree claim at a time; harvests find a stick only while you hold none.
-- **Knobs, in order:** `STICK_DROP_CHANCE`; `HEDGE_RING` (17 is the minimum with 1-tile tree clearance); first-spawn grace length; flint regrow.
+- **Knobs, in order:** `STICK_DROP_CHANCE`; `HEDGE_RING` (17 is the minimum with 1-tile tree clearance); first-spawn grace length; flint regrow; then the Giant's `GIANT_MAX_HP`, wind-up ticks and slam damage (`shared/sim/giant.ts`).
 
 ## 9. Risks
 
