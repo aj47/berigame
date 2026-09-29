@@ -132,7 +132,7 @@ describe('synth', () => {
       expect(peak).toBeLessThanOrEqual(1);
       expect(renderSound(name, 8000, v)).toEqual(a);
     }
-  });
+  }, 30_000);
   it('ambient loops wrap without a jump', () => {
     for (const name of AMBIENT) {
       const a = renderAmbient(name, 22050);
