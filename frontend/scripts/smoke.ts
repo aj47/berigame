@@ -7,9 +7,11 @@ import type { CombatEvent, Player } from '../src/module_bindings/types';
 import {
   areaOf, chebyshev, EventKind, FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, getItemDef, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, MAX_HP, MOVEMENT_STEPS_PER_TICK,
   Pending, PUNCH_DAMAGE, RESPAWN_GRACE_TICKS, STICK_ITEM_ID, TICK_MS,
+  DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, NODE_SEEDS, NodeKind, STONE_CLUB_ITEM_ID,
 } from '../../shared/sim';
 
 const STICK_DAMAGE = getItemDef(STICK_ITEM_ID)!.weaponDamage;
+const CLUB_DAMAGE = getItemDef(STONE_CLUB_ITEM_ID)!.weaponDamage;
 
 const URI = process.env.SPACETIME_URI ?? 'ws://127.0.0.1:3000';
 const DB = process.env.SPACETIME_DB ?? 'berigame';
@@ -365,6 +367,53 @@ async function main() {
   await A.conn.reducers.moveItem({ from: stickSlot, to: spare });
   await waitFor('moving the stick out of the quick slots puts it away', () => me(A).weapon === '' && rowsOf(A, STICK_ITEM_ID).some((row) => row.slot === spare), 3_000);
   check('the server unwields a stick moved out of the quick slots', true);
+
+  // --- M2 the Coast: driftwood + 2 flint -> stone club ------------------------------
+  // A still carries the stick (the bramble key), so A can cross the hedge to the Coast nodes.
+  const rock = NODE_SEEDS.find((n) => n.kind === NodeKind.TideRock)!;
+  const pile = NODE_SEEDS.filter((n) => n.kind === NodeKind.Driftwood).sort((x, y) => chebyshev(x, rock) - chebyshev(y, rock))[0];
+  check('the Coast nodes are seeded into the tree table', NODE_SEEDS.every((n) => A.conn.db.tree.id.find(n.id)?.kind === n.kind));
+  const gather = async (node: { id: number; x: number; z: number }, itemId: string, timeout = 60_000) => {
+    const before = countOf(A, itemId);
+    await A.conn.reducers.startHarvest({ treeId: node.id });
+    await waitFor(`A gathers ${itemId} at node ${node.id}`, () => countOf(A, itemId) > before, timeout);
+  };
+  await gather(rock, FLINT_ITEM_ID);
+  check('a tide rock yields flint on the Coast', countOf(A, FLINT_ITEM_ID) === 1 && areaOf(me(A)) === 'coast', `area=${areaOf(me(A))}`);
+  // The rock is regrowing: harvesting it again waits beside it and claims it when it is ready.
+  await gather(rock, FLINT_ITEM_ID, 90_000);
+  check('waiting at a regrowing tide rock yields a second flint', countOf(A, FLINT_ITEM_ID) === 2);
+  const craftError = await rejection(() => A.conn.reducers.craft({ recipe: STONE_CLUB_ITEM_ID }));
+  check('crafting without driftwood is refused', /need/i.test(craftError), craftError);
+  await gather(pile, DRIFTWOOD_ITEM_ID);
+  check('a driftwood pile yields driftwood', countOf(A, DRIFTWOOD_ITEM_ID) === 1);
+  await A.conn.reducers.craft({ recipe: STONE_CLUB_ITEM_ID });
+  await waitFor('A crafts a stone club', () => countOf(A, STONE_CLUB_ITEM_ID) === 1, 3_000);
+  check('crafting consumes 1 driftwood + 2 flint and makes one stone club',
+    countOf(A, STONE_CLUB_ITEM_ID) === 1 && countOf(A, DRIFTWOOD_ITEM_ID) === 0 && countOf(A, FLINT_ITEM_ID) === 0);
+  let clubSlot = rowsOf(A, STONE_CLUB_ITEM_ID)[0].slot;
+  if (clubSlot >= HOTBAR_SIZE) {
+    const free = [...Array(HOTBAR_SIZE).keys()].find((slot) => !inv(A).some((row) => row.slot === slot))!;
+    await A.conn.reducers.moveItem({ from: clubSlot, to: free });
+    await waitFor('club in a quick slot', () => rowsOf(A, STONE_CLUB_ITEM_ID).some((row) => row.slot === free), 3_000);
+    clubSlot = free;
+  }
+  await A.conn.reducers.wieldItem({ slot: clubSlot });
+  await waitFor('A wields the club', () => me(A).weapon === STONE_CLUB_ITEM_ID, 3_000);
+  check('the stone club wields from a quick slot', true);
+  // Back in the Grove, south of the safe ring, A clubs B (B's respawn grace is long over).
+  await A.conn.reducers.setTarget({ x: 25, z: 30 });
+  await B.conn.reducers.setTarget({ x: 25, z: 31 });
+  await waitFor('A and B meet south of the safe ring', () => me(A).x === 25 && me(A).z === 30 && me(B).x === 25 && me(B).z === 31, 60_000);
+  const clubHitsBefore = A.events.filter((e) => e.kind === EventKind.Hit && e.itemId === STONE_CLUB_ITEM_ID).length;
+  const hpBeforeClub = me(B).hp;
+  await A.conn.reducers.attack({ target: me(B).identity });
+  await waitFor('A swings the club at B', () => A.events.filter((e) => e.kind === EventKind.Hit && e.itemId === STONE_CLUB_ITEM_ID).length > clubHitsBefore, 10_000);
+  await A.conn.reducers.cancel({});
+  const clubHit = A.events.filter((e) => e.kind === EventKind.Hit && e.itemId === STONE_CLUB_ITEM_ID)[clubHitsBefore];
+  check(`a stone club hit deals ${CLUB_DAMAGE}`, CLUB_DAMAGE === 8 && clubHit.damage === CLUB_DAMAGE && clubHit.defenderHp === hpBeforeClub - CLUB_DAMAGE,
+    `dmg=${clubHit.damage} hp=${hpBeforeClub}->${clubHit.defenderHp}`);
+  await A.conn.reducers.unwield({});
 
   // --- chat / name -----------------------------------------------------------
   const testName = `Test_${A.identity.slice(-10)}`;
