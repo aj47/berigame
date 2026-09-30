@@ -2,13 +2,14 @@ import { t, SenderError } from 'spacetimedb/server';
 import type { Identity } from 'spacetimedb';
 import spacetimedb from '../schema';
 import {
-  Cosmetic, HEDGE_RING, INVITE_TTL_MICROS, MAX_FRIENDS, PlayerState, SocialNotice, chebyshev, generateInviteCode, joinSpot, normalizeInviteCode, ringOf,
+  Cosmetic, HEDGE_RING, INVITE_TTL_MICROS, MentorMilestone, MAX_FRIENDS, PlayerState, SocialNotice, chebyshev, generateInviteCode, joinSpot, normalizeInviteCode, ringOf,
 } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
 import { heldKeys } from '../lib/brambles';
 import { clearInteractions, currentTick, findPlayer, requirePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { notify, notifyThrottled, readPair, writePair } from '../lib/social';
 import { unlockCosmetic } from '../lib/progress';
+import { mentorMilestone, recordInviter } from '../lib/mentor';
 import type { Ctx } from '../lib/types';
 
 function hasFriend(ctx: Ctx, owner: Identity, other: Identity): boolean {
@@ -71,6 +72,7 @@ export const redeemInvite = spacetimedb.reducer(
       return;
     }
     writePair(ctx, { ...redeemed, redeemedCode: row.code });
+    recordInviter(ctx, p.identity, inviter.identity);
     befriend(ctx, p.identity, inviter.identity);
     const inviterAdded = befriend(ctx, inviter.identity, p.identity);
     // Only claim a friendship that exists (a full list refuses the add).
@@ -97,7 +99,7 @@ export const redeemInvite = spacetimedb.reducer(
       p.x = spot.tile.x;
       p.z = spot.tile.z;
       // Landing past the hedge counts as reaching the Coast, like play_stats (the tick only sees walked steps).
-      if (ringOf(p) > HEDGE_RING) unlockCosmetic(ctx, p.identity, Cosmetic.CoastScarf);
+      if (ringOf(p) > HEDGE_RING && unlockCosmetic(ctx, p.identity, Cosmetic.CoastScarf)) mentorMilestone(ctx, p, MentorMilestone.Coast);
       text = spot.barrier === 'boulders'
         ? `${inviter.name} is past the boulder line. You need a stone club to reach them, so you landed at the nearest spot on the Coast.`
         : spot.clamped

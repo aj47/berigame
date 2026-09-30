@@ -121,6 +121,18 @@ export const GiantEvent = __t.object("GiantEvent", {
 });
 export type GiantEvent = __Infer<typeof GiantEvent>;
 
+export const GiantRaid = __t.object("GiantRaid", {
+  id: __t.u32(),
+  awake: __t.bool(),
+  nextWakeAtMicros: __t.u64(),
+  raidEndsAtMicros: __t.u64(),
+  announced: __t.u8(),
+  raidPlayers: __t.u32(),
+  lastOutcome: __t.u8(),
+  raidCount: __t.u32(),
+});
+export type GiantRaid = __Infer<typeof GiantRaid>;
+
 export const GroundItem = __t.object("GroundItem", {
   id: __t.u64(),
   itemId: __t.string(),
@@ -149,6 +161,21 @@ export const InviteCode = __t.object("InviteCode", {
   expiresAtMicros: __t.u64(),
 });
 export type InviteCode = __Infer<typeof InviteCode>;
+
+export const Mentee = __t.object("Mentee", {
+  identity: __t.identity(),
+  inviter: __t.option(__t.identity()),
+  mentor: __t.option(__t.identity()),
+  creditedAt: __t.option(__t.timestamp()),
+  milestones: __t.u8(),
+});
+export type Mentee = __Infer<typeof Mentee>;
+
+export const MentorStat = __t.object("MentorStat", {
+  identity: __t.identity(),
+  mentees: __t.u32(),
+});
+export type MentorStat = __Infer<typeof MentorStat>;
 
 export const PlayStats = __t.object("PlayStats", {
   identity: __t.identity(),

@@ -1,7 +1,8 @@
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { statsCraft } from '../lib/stats';
-import { Skill, craft as craftSlots, craftRejection, getItemDef, getRecipe, hasCosmetic } from '../../../shared/sim';
+import { mentorMilestone } from '../lib/mentor';
+import { MentorMilestone, STONE_CLUB_ITEM_ID, Skill, craft as craftSlots, craftRejection, getItemDef, getRecipe, hasCosmetic } from '../../../shared/sim';
 import { dropOnGround, readSlots, writeSlots } from '../lib/inventory';
 import { currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
 import { cosmeticRow, grantXp, skillLevel, unlockCosmetic } from '../lib/progress';
@@ -34,6 +35,8 @@ export const craft = spacetimedb.reducer(
     if (def.cosmetic !== undefined) unlockCosmetic(ctx, p.identity, def.cosmetic);
     grantXp(ctx, p.identity, Skill.Crafting, def.xp);
     savePlayer(ctx, p);
+    // Mentor rewards read firstCraftAt: check before this craft is recorded.
+    if (def.output?.itemId === STONE_CLUB_ITEM_ID) mentorMilestone(ctx, p, MentorMilestone.Club);
     statsCraft(ctx, p.identity);
   }
 );

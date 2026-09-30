@@ -8,10 +8,13 @@ import {
   goalIsTile, harvestFindsStick, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
   neighbors8, swingDamage, tileKey, DUMMY_TILE, dummyAfterHit, worldBlockedSet,
   TRADE_BREAK_RANGE, TRADE_REQUEST_TICKS,
-  GIANT_ID, GIANT_REACH, GIANT_RESPAWN_TICKS as GIANT_RESPAWN, GIANT_REWARD, GIANT_TILE, GiantEventKind, GiantState, giantAfterHit, giantForgot,
-  giantRewardees, inBoulders, stepGiant, type GiantCandidate,
+  GIANT_ID, GIANT_REACH, GIANT_TILE, GiantEventKind, GiantState, giantAfterHit, giantForgot,
+  inBoulders, stepGiant, type GiantCandidate,
+  RAID_REWARD, RaidOutcome, raidDue, raidRewardees,
 } from '../../../shared/sim';
 import { emitGiantEvent, ensureGiant } from '../lib/giant';
+import { clearContributions as clearAllContributions, countRaiders, ensureRaid, nowMs, sleepGiant, wakeGiant } from '../lib/raid';
+import { mentorMilestone } from '../lib/mentor';
 import { ensureDummy } from '../lib/dummy';
 import { playerEnterRule } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
@@ -23,6 +26,7 @@ import { canPlay } from '../lib/access';
 import { cancelTrade } from '../lib/social';
 import { grantXp, harvestTicksForPlayer, unlockCosmetic } from '../lib/progress';
 import type { Ctx, GiantRow, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
+import { MentorMilestone } from '../../../shared/sim';
 
 interface TickState {
   ctx: Ctx;
@@ -224,7 +228,9 @@ function phaseMovement(s: TickState): void {
             if (p.pending === Pending.None || p.targetX === undefined) break;
           }
         }
-        if (fromRing <= HEDGE_RING && ringOf(p) > HEDGE_RING) unlockCosmetic(s.ctx, p.identity, Cosmetic.CoastScarf);
+        if (fromRing <= HEDGE_RING && ringOf(p) > HEDGE_RING && unlockCosmetic(s.ctx, p.identity, Cosmetic.CoastScarf)) {
+          mentorMilestone(s.ctx, p, MentorMilestone.Coast);
+        }
       }
     }
 
@@ -347,77 +353,103 @@ function addContribution(s: TickState, a: PlayerRow, giantId: number, damage: nu
 }
 
 function clearContributions(s: TickState): void {
-  for (const row of [...s.ctx.db.giantContribution.iter()]) s.ctx.db.giantContribution.identity.delete(row.identity);
+  clearAllContributions(s.ctx);
 }
 
-/** The Giant falls: equal rewards for everyone who dealt enough, then it rests until respawnTick. */
-function defeatGiant(s: TickState, g: GiantRow): GiantRow {
-  const rows = [...s.ctx.db.giantContribution.iter()].filter((c) => c.giantId === g.id);
-  for (const c of giantRewardees(rows)) {
-    const p = s.players.get(hex(c.identity));
-    if (!p || !p.online) continue;
-    giveItem(s.ctx, p.identity, GIANT_REWARD.itemId, GIANT_REWARD.quantity, p, s.T);
-    emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Reward, player: p.identity, itemId: GIANT_REWARD.itemId, quantity: GIANT_REWARD.quantity, damage: c.damage, x: p.x, z: p.z });
-  }
-  clearContributions(s);
+/** Nobody keeps walking to or swinging at a Giant that fell asleep. */
+function dropGiantTargets(s: TickState, giantId: number): void {
   for (const h of s.order) {
     const p = s.players.get(h)!;
-    if (p.pending === Pending.Giant && Number(p.pendingId) === g.id) {
+    if (p.pending === Pending.Giant && Number(p.pendingId) === giantId) {
       p.pending = Pending.None; p.pendingId = 0n;
       p.targetX = undefined; p.targetZ = undefined;
       mark(s, p);
     }
   }
-  emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Defeat, x: g.x, z: g.z });
-  return { ...g, hp: 0, state: GiantState.Defeated, stateUntilTick: s.T, respawnTick: s.T + GIANT_RESPAWN, lastHitTick: s.T };
 }
 
 /**
- * F3: the Giant. Players' swings first (a blow that floors it cancels its
- * attack), then its AI (shared/sim stepGiant): telegraph, blow, recover,
- * respawn. One primary-key read a tick; the row is written only on a change.
+ * The raid Giant falls: equal rewards (obsidian and the Giant's Tooth
+ * keepsake) for every online contributor who dealt enough this raid, then it
+ * goes back to sleep until the next scheduled wake.
+ */
+function defeatGiant(s: TickState, g: GiantRow): void {
+  const rows = [...s.ctx.db.giantContribution.iter()].filter((c) => c.giantId === g.id);
+  for (const c of raidRewardees(rows)) {
+    const p = s.players.get(hex(c.identity));
+    if (!p || !p.online) continue;
+    giveItem(s.ctx, p.identity, RAID_REWARD.itemId, RAID_REWARD.quantity, p, s.T);
+    unlockCosmetic(s.ctx, p.identity, Cosmetic.GiantsTooth);
+    emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Reward, player: p.identity, itemId: RAID_REWARD.itemId, quantity: RAID_REWARD.quantity, damage: c.damage, x: p.x, z: p.z });
+  }
+  dropGiantTargets(s, g.id);
+  emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Defeat, x: g.x, z: g.z });
+  sleepGiant(s.ctx, s.T, g, RaidOutcome.Defeated);
+}
+
+/**
+ * F3: the Giant, on the raid schedule (shared/sim/raid.ts). Asleep, this is
+ * one primary-key read of the raid row and a time compare: no writes except
+ * the T-10/T-1 announcements and the wake. Awake: players' swings first (a
+ * blow that floors it cancels its attack), then its AI (stepGiant):
+ * telegraph, blow, recover. The giant row is written only on a change.
  */
 function phaseGiant(s: TickState): void {
+  const raid = s.ctx.db.giantRaid.id.find(GIANT_ID) ?? ensureRaid(s.ctx, s.T);
+  const due = raidDue(raid, nowMs(s.ctx));
+  if (due.kind === 'announce') {
+    s.ctx.db.giantRaid.id.update({ ...raid, announced: due.announced });
+    emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Announce, quantity: due.minutes, x: GIANT_TILE.x, z: GIANT_TILE.z });
+    return;
+  }
+  if (due.kind === 'missed') {
+    const g = s.ctx.db.giant.id.find(GIANT_ID) ?? ensureGiant(s.ctx, s.T);
+    sleepGiant(s.ctx, s.T, g, raid.lastOutcome as RaidOutcome);
+    return;
+  }
+  if (due.kind === 'wake') {
+    wakeGiant(s.ctx, s.T, countRaiders(s.players.values()));
+    return;
+  }
+  if (!raid.awake) return;
+
   const row = s.ctx.db.giant.id.find(GIANT_ID) ?? ensureGiant(s.ctx, s.T);
+  if (due.kind === 'sleep') {
+    dropGiantTargets(s, row.id);
+    sleepGiant(s.ctx, s.T, row, RaidOutcome.Slept);
+    return;
+  }
   let g: GiantRow = row;
   let dirty = false;
 
-  if (g.state !== GiantState.Defeated) {
-    for (const h of s.order) {
-      const a = s.players.get(h)!;
-      if (!alive(a) || a.pending !== Pending.Giant || a.combatTarget || Number(a.pendingId) !== g.id) continue;
-      if (chebyshev(a, g) > GIANT_REACH) continue;
-      const face = facingFromDelta(g.x - a.x, g.z - a.z);
-      if (a.facing !== face) { a.facing = face; mark(s, a); }
-      if (s.T < a.nextSwingTick) continue;
-      if (a.weapon !== '' && !inHotbar(readSlots(s.ctx, a.identity).slots, a.weapon)) a.weapon = '';
-      // It regenerated since the last blow: old contributions no longer count.
-      if (giantForgot(g, s.T)) clearContributions(s);
-      const damage = swingDamage(a.weapon);
-      const { hp, defeated } = giantAfterHit(g, damage, s.T);
-      g = { ...g, hp, lastHitTick: s.T };
-      dirty = true;
-      a.nextSwingTick = s.T + SWING_INTERVAL_TICKS;
-      mark(s, a);
-      addContribution(s, a, g.id, damage);
-      emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Hit, player: a.identity, damage, itemId: a.weapon, hp, x: a.x, z: a.z });
-      if (defeated) { g = defeatGiant(s, g); break; }
-    }
+  for (const h of s.order) {
+    const a = s.players.get(h)!;
+    if (!alive(a) || a.pending !== Pending.Giant || a.combatTarget || Number(a.pendingId) !== g.id) continue;
+    if (chebyshev(a, g) > GIANT_REACH) continue;
+    const face = facingFromDelta(g.x - a.x, g.z - a.z);
+    if (a.facing !== face) { a.facing = face; mark(s, a); }
+    if (s.T < a.nextSwingTick) continue;
+    if (a.weapon !== '' && !inHotbar(readSlots(s.ctx, a.identity).slots, a.weapon)) a.weapon = '';
+    // It regenerated since the last blow: old contributions no longer count.
+    if (giantForgot(g, s.T)) clearContributions(s);
+    const damage = swingDamage(a.weapon);
+    const { hp, defeated } = giantAfterHit(g, damage, s.T);
+    g = { ...g, hp, lastHitTick: s.T };
+    dirty = true;
+    a.nextSwingTick = s.T + SWING_INTERVAL_TICKS;
+    mark(s, a);
+    addContribution(s, a, g.id, damage);
+    emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Hit, player: a.identity, damage, itemId: a.weapon, hp, x: a.x, z: a.z });
+    if (defeated) { defeatGiant(s, g); return; }
   }
 
   const candidates: GiantCandidate[] = [];
-  if (g.state !== GiantState.Defeated) {
-    s.order.forEach((h, order) => {
-      const p = s.players.get(h)!;
-      if (alive(p) && inBoulders(p) && !inGrace(p, s.T)) candidates.push({ x: p.x, z: p.z, order });
-    });
-  }
+  s.order.forEach((h, order) => {
+    const p = s.players.get(h)!;
+    if (alive(p) && inBoulders(p) && !inGrace(p, s.T)) candidates.push({ x: p.x, z: p.z, order });
+  });
   const step = stepGiant(g, s.T, candidates);
   if (step.next) { g = step.next; dirty = true; }
-  if (step.respawned) {
-    clearContributions(s);
-    emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Respawn, hp: g.hp, x: g.x, z: g.z });
-  }
   if (step.windup) emitGiantEvent(s.ctx, { tick: s.T, kind: GiantEventKind.Windup, quantity: g.attack, x: g.slamX, z: g.slamZ });
   if (step.blow) {
     const b = step.blow;

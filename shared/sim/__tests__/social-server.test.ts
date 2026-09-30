@@ -86,6 +86,13 @@ function harness() {
   const dummies = new Map<number, any>();
   const giants = new Map<number, any>();
   const cosmetics = new Map<string, any>();
+  const raids = new Map<number, any>();
+  const mentees = new Map<string, any>();
+  const mentorStats = new Map<string, any>();
+  const byId = (map: Map<string, any>) => ({
+    insert: (row: any) => { map.set(row.identity.toHexString(), row); return row; },
+    identity: { find: (id: any) => map.get(id.toHexString()), update: (row: any) => map.set(row.identity.toHexString(), row) },
+  });
   let rolls: number[] = [];
   const ctx: any = {
     random: vi.fn(() => (rolls.length ? rolls.shift()! : 0.5)),
@@ -134,6 +141,9 @@ function harness() {
       giantContribution: { iter: () => [][Symbol.iterator](), identity: { find: () => undefined, delete: () => {} } },
       giantEvent: { insert: vi.fn() },
       playerCosmetic: { insert: (row: any) => cosmetics.set(row.identity.toHexString(), row), identity: { find: (id: any) => cosmetics.get(id.toHexString()), update: (row: any) => cosmetics.set(row.identity.toHexString(), row) } },
+      giantRaid: { insert: (row: any) => { raids.set(row.id, row); return row; }, id: { find: (id: number) => raids.get(id), update: (row: any) => raids.set(row.id, row) } },
+      mentee: byId(mentees),
+      mentorStat: byId(mentorStats),
       chatMessage: {
         iter: () => chat.values(),
         insert: (row: any) => { const id = nextChat++; chat.set(id, { ...row, id }); },
@@ -154,7 +164,7 @@ function harness() {
   const as = (id: any) => { ctx.sender = id; return ctx; };
   const advance = () => { now += 1; };
   return {
-    ctx, cosmetics, pairs, stats, players, trades, friends, codes, notices, chat, give, slotsOf, count, as, advance,
+    ctx, cosmetics, mentees, mentorStats, pairs, stats, players, trades, friends, codes, notices, chat, give, slotsOf, count, as, advance,
     setMicros: (m: bigint) => { micros = m; }, micros: () => micros, setRolls: (r: number[]) => { rolls = r; },
     runTick: () => { ctx.sender = ctx.identity; scheduledTick(ctx, { timer: {} }); },
     p: (id: any) => players.get(id.toHexString()),
@@ -633,5 +643,122 @@ describe('pure social rules', () => {
     const r = executeTrade({ slots: a, weapon: '', offer: [{ itemId: 'berry_blueberry', quantity: 2 }], name: 'A' }, { slots: b, weapon: '', offer: [], name: 'B' });
     expect(r.ok).toBe(false);
     expect(a[3]).toEqual({ itemId: 'berry_blueberry', quantity: 1 });
+  });
+});
+
+// ---- Mentor rewards ------------------------------------------------------------
+import { mentorMilestone } from '../../../spacetimedb/src/lib/mentor';
+import { MENTOR_MIN_AGE_MS, MENTOR_RANGE, MentorMilestone } from '../mentor';
+import { SocialNotice } from '../friends';
+
+describe('mentor rewards: keepsakes when a veteran helps a newcomer', () => {
+  const DAY_US = BigInt(MENTOR_MIN_AGE_MS) * 1000n;
+  const T0 = 10n * DAY_US;
+  /** play_stats rows: `joinedDaysAgo` relative to T0, optional first craft (micros). */
+  function joined(id: any, joinedAtMicros: bigint, firstCraftAt?: bigint) {
+    h.stats.set(id.toHexString(), {
+      identity: id, firstJoinAt: { microsSinceUnixEpoch: joinedAtMicros }, lastSeenAt: { microsSinceUnixEpoch: joinedAtMicros },
+      firstCraftAt: firstCraftAt === undefined ? undefined : { microsSinceUnixEpoch: firstCraftAt },
+      sessions: 1, totalPlayMicros: 0n, deaths: 0, lastStep: 'join',
+    });
+  }
+  const has = (who: string, c: number) => hasCosmetic(h.cosmetics.get(who)?.unlocked ?? 0, c);
+  const befriend = (a: any, b: any) => h.friends.set(BigInt(h.friends.size + 100), { id: BigInt(h.friends.size + 100), owner: a, friend: b, since: {} });
+  const credited = (who: string) => h.mentees.get(who)?.mentor?.toHexString();
+
+  beforeEach(() => {
+    h.setMicros(T0);
+    joined(A, T0 - 3n * DAY_US); // Ann: the veteran
+    joined(B, T0 - 1000n);       // Bo: the newcomer
+    joined(C, T0 - 2000n);       // Cy: another newcomer
+  });
+
+  it('the inviter who is a day older mentors the newcomer landing on the Coast: both get a keepsake and a notice', () => {
+    h.p(A).x = 25; h.p(A).z = 3;
+    h.give(B, 0, STICK_ITEM_ID, 1);
+    createInvite(h.as(A));
+    redeemInvite(h.as(B), { code: [...h.codes.keys()][0] });
+    expect(credited('b')).toBe('a');
+    expect(has('b', Cosmetic.WelcomedRibbon)).toBe(true);
+    expect(has('a', Cosmetic.MentorPin)).toBe(true);
+    expect(h.mentorStats.get('a').mentees).toBe(1);
+    const mentorNotices = h.notices.filter((n) => n.kind === SocialNotice.Mentor);
+    expect(mentorNotices.map((n) => n.to.toHexString()).sort()).toEqual(['a', 'b']);
+    expect(mentorNotices.find((n) => n.to.toHexString() === 'a').text).toMatch(/Bo reached the Coast with your help/);
+  });
+
+  it('one credit per newcomer: the club milestone later credits nobody again', () => {
+    createInvite(h.as(A));
+    redeemInvite(h.as(B), { code: [...h.codes.keys()][0] });
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Coast);
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Club);
+    expect(h.mentorStats.get('a').mentees).toBe(1);
+    expect(h.notices.filter((n) => n.kind === SocialNotice.Mentor)).toHaveLength(2);
+  });
+
+  it('a milestone already passed without a mentor never counts again (no retroactive farming)', () => {
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Coast); // nobody helped
+    befriend(A, B); befriend(B, A);
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Coast);
+    expect(credited('b')).toBeUndefined();
+    expect(h.mentees.get('b').milestones).toBe(MentorMilestone.Coast);
+    // The next, different milestone can still be mentored.
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Club);
+    expect(credited('b')).toBe('a');
+  });
+
+  it('an inviter who is not the veteran (a fresh alt) earns nothing', () => {
+    joined(A, T0 - 5000n);
+    createInvite(h.as(A));
+    redeemInvite(h.as(B), { code: [...h.codes.keys()][0] });
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Club);
+    expect(credited('b')).toBeUndefined();
+    expect(h.mentorStats.get('a')).toBeUndefined();
+    expect(has('b', Cosmetic.WelcomedRibbon)).toBe(false);
+  });
+
+  it('a same-day player who had already crafted before the newcomer joined counts as the veteran', () => {
+    joined(A, T0 - 5000n, T0 - 4000n);
+    befriend(A, B); befriend(B, A);
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Club);
+    expect(credited('b')).toBe('a');
+  });
+
+  it('a friend must be mutual, online, alive and within range', () => {
+    befriend(B, A); // one-way
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Coast);
+    expect(credited('b')).toBeUndefined();
+    befriend(A, B);
+    h.p(A).x = h.p(B).x + MENTOR_RANGE + 1;
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Club);
+    expect(credited('b')).toBeUndefined();
+    // Cy: A is near but offline, then online.
+    befriend(A, C); befriend(C, A);
+    h.p(A).x = h.p(C).x + 2; h.p(A).online = false;
+    mentorMilestone(h.ctx, h.p(C), MentorMilestone.Coast);
+    expect(credited('c')).toBeUndefined();
+    h.p(A).online = true;
+    mentorMilestone(h.ctx, h.p(C), MentorMilestone.Club);
+    expect(credited('c')).toBe('a');
+  });
+
+  it('pin tiers at 3 and 10 mentees (cosmetic only)', () => {
+    h.mentorStats.set('a', { identity: A, mentees: 2 });
+    befriend(A, B); befriend(B, A);
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Coast);
+    expect(h.mentorStats.get('a').mentees).toBe(3);
+    expect(has('a', Cosmetic.MentorPinSilver)).toBe(true);
+    expect(has('a', Cosmetic.MentorPinGold)).toBe(false);
+    h.mentorStats.set('a', { identity: A, mentees: 9 });
+    befriend(A, C); befriend(C, A);
+    mentorMilestone(h.ctx, h.p(C), MentorMilestone.Coast);
+    expect(has('a', Cosmetic.MentorPinGold)).toBe(true);
+    expect(h.p(A).maxHp).toBe(30);
+  });
+
+  it('nobody mentors themselves', () => {
+    befriend(B, B);
+    mentorMilestone(h.ctx, h.p(B), MentorMilestone.Coast);
+    expect(credited('b')).toBeUndefined();
   });
 });

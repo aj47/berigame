@@ -433,3 +433,50 @@ export const socialPair = table(
     redeemedCode: t.string(),
   }
 );
+
+/**
+ * Scheduled Giant raids (shared/sim/raid.ts), one row (id = GIANT_ID). Asleep:
+ * `nextWakeAtMicros` is the next wake (UTC grid) and `announced` the warnings
+ * already sent for it. Awake: `raidEndsAtMicros` is when it goes back to sleep
+ * undefeated. Written only on an announcement, a wake or a sleep.
+ */
+export const giantRaid = table(
+  { name: 'giant_raid', public: true },
+  {
+    id: t.u32().primaryKey(),
+    awake: t.bool(),
+    nextWakeAtMicros: t.u64(),
+    raidEndsAtMicros: t.u64(),
+    announced: t.u8(),
+    /** Players in the Boulders when it woke (raid HP scaling). */
+    raidPlayers: t.u32(),
+    /** shared/sim RaidOutcome of the last raid. */
+    lastOutcome: t.u8(),
+    raidCount: t.u32(),
+  }
+);
+
+/**
+ * Private: one row per newcomer who could be mentored (shared/sim/mentor.ts).
+ * `inviter` is set by their first redeemed invite link; `mentor` once credited
+ * (one credit per newcomer, ever); `milestones` the MentorMilestone bits seen.
+ */
+export const mentee = table(
+  { name: 'mentee' },
+  {
+    identity: t.identity().primaryKey(),
+    inviter: t.option(t.identity()),
+    mentor: t.option(t.identity()),
+    creditedAt: t.option(t.timestamp()),
+    milestones: t.u8(),
+  }
+);
+
+/** Public mentee counts (the Friends panel and the pin tiers). Cosmetic only. */
+export const mentorStat = table(
+  { name: 'mentor_stat', public: true },
+  {
+    identity: t.identity().primaryKey(),
+    mentees: t.u32(),
+  }
+);

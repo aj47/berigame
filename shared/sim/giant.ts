@@ -52,13 +52,17 @@ export const GIANT_MIN_CONTRIBUTION = 16;
 export const GIANT_REWARD: { itemId: string; quantity: number } = { itemId: OBSIDIAN_ITEM_ID, quantity: 3 };
 
 /** `giant.state` on the wire (u8). */
-export const GiantState = { Idle: 0, Windup: 1, Recover: 2, Defeated: 3 } as const;
+/** Asleep: between scheduled raids (shared/sim/raid.ts); cannot be attacked. */
+export const GiantState = { Idle: 0, Windup: 1, Recover: 2, Defeated: 3, Asleep: 4 } as const;
 export type GiantState = (typeof GiantState)[keyof typeof GiantState];
 /** `giant.attack` on the wire (u8). */
 export const GiantAttack = { Slam: 0, Stomp: 1 } as const;
 export type GiantAttack = (typeof GiantAttack)[keyof typeof GiantAttack];
-/** `giant_event.kind` on the wire (u8). */
-export const GiantEventKind = { Hit: 0, Windup: 1, Slam: 2, PlayerHit: 3, Defeat: 4, Reward: 5, Respawn: 6 } as const;
+/**
+ * `giant_event.kind` on the wire (u8). Raid kinds: Announce (quantity = minutes to the wake), Wake (hp = raid HP,
+ * quantity = players counted), Sleep (quantity = shared/sim RaidOutcome).
+ */
+export const GiantEventKind = { Hit: 0, Windup: 1, Slam: 2, PlayerHit: 3, Defeat: 4, Reward: 5, Respawn: 6, Announce: 7, Wake: 8, Sleep: 9 } as const;
 export type GiantEventKind = (typeof GiantEventKind)[keyof typeof GiantEventKind];
 
 export interface GiantRowLike extends Tile {
@@ -99,12 +103,13 @@ export function inGiantReach(t: Tile, g: Tile = GIANT_TILE): boolean {
 /** HP at `tick`: full again after GIANT_REGEN_IDLE_TICKS without a hit (never while defeated). */
 export function giantHpAt(g: Pick<GiantRowLike, 'hp' | 'maxHp' | 'state' | 'lastHitTick'>, tick: number): number {
   if (g.state === GiantState.Defeated) return 0;
+  if (g.state === GiantState.Asleep) return g.maxHp;
   return tick - g.lastHitTick >= GIANT_REGEN_IDLE_TICKS ? g.maxHp : g.hp;
 }
 
 /** Whether the old contributions no longer count (it regenerated since the last hit). */
 export function giantForgot(g: Pick<GiantRowLike, 'hp' | 'maxHp' | 'state' | 'lastHitTick'>, tick: number): boolean {
-  return g.state !== GiantState.Defeated && g.hp < g.maxHp && tick - g.lastHitTick >= GIANT_REGEN_IDLE_TICKS;
+  return g.state !== GiantState.Defeated && g.state !== GiantState.Asleep && g.hp < g.maxHp && tick - g.lastHitTick >= GIANT_REGEN_IDLE_TICKS;
 }
 
 export function attackRadius(attack: number): number {
@@ -152,6 +157,7 @@ export interface GiantStep<R> {
  * next Windup. Defeated → respawn after GIANT_RESPAWN_TICKS.
  */
 export function stepGiant<R extends GiantRowLike>(g: R, T: number, candidates: readonly GiantCandidate[]): GiantStep<R> {
+  if (g.state === GiantState.Asleep) return { next: null };
   if (g.state === GiantState.Defeated) {
     if (T < g.respawnTick) return { next: null };
     return { next: { ...g, ...freshGiant(T), x: g.x, z: g.z }, respawned: true };

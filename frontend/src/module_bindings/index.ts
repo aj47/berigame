@@ -64,6 +64,7 @@ import SetNameReducer from "./set_name_reducer";
 import SetTargetReducer from "./set_target_reducer";
 import SetTradeOfferReducer from "./set_trade_offer_reducer";
 import StartHarvestReducer from "./start_harvest_reducer";
+import TriggerGiantRaidReducer from "./trigger_giant_raid_reducer";
 import UnwieldReducer from "./unwield_reducer";
 import WearCosmeticReducer from "./wear_cosmetic_reducer";
 import WieldItemReducer from "./wield_item_reducer";
@@ -80,9 +81,11 @@ import EmoteEventRow from "./emote_event_table";
 import FriendRow from "./friend_table";
 import GiantRow from "./giant_table";
 import GiantEventRow from "./giant_event_table";
+import GiantRaidRow from "./giant_raid_table";
 import GroundItemRow from "./ground_item_table";
 import InventorySlotRow from "./inventory_slot_table";
 import InviteCodeRow from "./invite_code_table";
+import MentorStatRow from "./mentor_stat_table";
 import PlayerRow from "./player_table";
 import PlayerCosmeticRow from "./player_cosmetic_table";
 import PlayerSkillRow from "./player_skill_table";
@@ -186,6 +189,17 @@ const tablesSchema = __schema({
     ],
     event: true,
   }, GiantEventRow),
+  giantRaid: __table({
+    name: 'giant_raid',
+    indexes: [
+      { accessor: 'id', name: 'giant_raid_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'giant_raid_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, GiantRaidRow),
   groundItem: __table({
     name: 'ground_item',
     indexes: [
@@ -226,6 +240,17 @@ const tablesSchema = __schema({
       { name: 'invite_code_inviter_key', constraint: 'unique', columns: ['inviter'] },
     ],
   }, InviteCodeRow),
+  mentorStat: __table({
+    name: 'mentor_stat',
+    indexes: [
+      { accessor: 'identity', name: 'mentor_stat_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'mentor_stat_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, MentorStatRow),
   player: __table({
     name: 'player',
     indexes: [
@@ -355,6 +380,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_target", SetTargetReducer),
   __reducerSchema("set_trade_offer", SetTradeOfferReducer),
   __reducerSchema("start_harvest", StartHarvestReducer),
+  __reducerSchema("trigger_giant_raid", TriggerGiantRaidReducer),
   __reducerSchema("unwield", UnwieldReducer),
   __reducerSchema("wear_cosmetic", WearCosmeticReducer),
   __reducerSchema("wield_item", WieldItemReducer),

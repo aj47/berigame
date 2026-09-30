@@ -75,6 +75,13 @@ function harness() {
   const contributions = new Map<string, any>();
   const skills = new Map<string, any>();
   const cosmetics = new Map<string, any>();
+  const raids = new Map<number, any>();
+  const byId = (map: Map<string, any>) => ({
+    insert: (row: any) => { map.set(row.identity.toHexString(), row); return row; },
+    identity: { find: (id: typeof A) => map.get(id.toHexString()), update: (row: any) => map.set(row.identity.toHexString(), row) },
+  });
+  const mentees = new Map<string, any>();
+  const mentorStats = new Map<string, any>();
   // Ids are never reused, like the real autoInc column, so a delete then insert cannot overwrite a row.
   let nextInventoryId = 100n;
   const ctx = {
@@ -115,9 +122,12 @@ function harness() {
       emoteCooldown: { insert: (row: any) => cooldowns.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => cooldowns.get(id.toHexString()), update: (row: any) => cooldowns.set(row.identity.toHexString(), row) } },
       playerSkill: { insert: (row: any) => skills.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => skills.get(id.toHexString()), update: (row: any) => skills.set(row.identity.toHexString(), row) } },
       playerCosmetic: { insert: (row: any) => cosmetics.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => cosmetics.get(id.toHexString()), update: (row: any) => cosmetics.set(row.identity.toHexString(), row) } },
+      giantRaid: { insert: (row: any) => { raids.set(row.id, row); return row; }, id: { find: (id: number) => raids.get(id), update: vi.fn((row: any) => raids.set(row.id, row)) } },
+      mentee: byId(mentees),
+      mentorStat: byId(mentorStats),
     },
   };
-  return { ctx, skills, cosmetics, players, giants, contributions, dummies, inventory, ground, trees, appearances, grants, tick: (value: number) => { now = value; }, me: () => players.get('a'), other: () => players.get('b') };
+  return { ctx, raids, skills, cosmetics, players, giants, contributions, dummies, inventory, ground, trees, appearances, grants, tick: (value: number) => { now = value; }, me: () => players.get('a'), other: () => players.get('b') };
 }
 
 let h: ReturnType<typeof harness>;
@@ -1157,9 +1167,13 @@ describe('emotes', () => {
 // ---------------------------------------------------------------------------
 import { attackGiant as registeredAttackGiant } from '../../../spacetimedb/src/reducers/giant';
 import {
-  GIANT_ID, GIANT_MAX_HP, GIANT_MIN_CONTRIBUTION, GIANT_REACH, GIANT_RECOVER_TICKS, GIANT_RESPAWN_TICKS, GIANT_REWARD,
+  GIANT_ID, GIANT_MAX_HP, GIANT_MIN_CONTRIBUTION, GIANT_REACH, GIANT_RECOVER_TICKS,
   GIANT_SLAM_DAMAGE, GIANT_SLAM_WINDUP_TICKS, GIANT_TILE, GiantEventKind, GiantState,
 } from '../giant';
+import { triggerGiantRaid as registeredTrigger } from '../../../spacetimedb/src/reducers/giant';
+import {
+  RAID_ANNOUNCE_LEADS_MS, RAID_HP_BASE, RAID_INTERVAL_MS, RAID_MIN_CONTRIBUTION, RAID_REWARD, RAID_WINDOW_MS, RaidOutcome, raidMaxHp,
+} from '../raid';
 import { BOULDER_MESSAGE } from '../areas';
 import { OBSIDIAN_ITEM_ID, STONE_CLUB_ITEM_ID } from '../items';
 
@@ -1172,6 +1186,11 @@ describe('M3/F3: the Boulders gate and the Giant', () => {
   }
   /** A tile in reach, west of the footprint, and one outside the slam from it. */
   const WEST = { x: GIANT_TILE.x - GIANT_REACH, z: GIANT_TILE.z };
+  const trigger = registeredTrigger as unknown as Reducer;
+  const setMs = (ms: number) => { h.ctx.timestamp = { microsSinceUnixEpoch: BigInt(ms) * 1000n }; };
+  const nowMsOf = () => Number(h.ctx.timestamp.microsSinceUnixEpoch / 1000n);
+  /** Seed (asleep), then the world owner (A in this harness) wakes it. */
+  function wake() { run(); trigger(h.ctx, { delaySeconds: 0 }); }
 
   it('the boulder line needs a stone club: a stick holder on the Coast is stopped with the boulders message', () => {
     h.inventory.clear();
@@ -1201,26 +1220,89 @@ describe('M3/F3: the Boulders gate and the Giant', () => {
     expect([h.me().x, h.me().z]).toEqual([46, 44]);
   });
 
-  it('is seeded by the tick and idles without writes while nobody is near', () => {
+  it('is seeded asleep by the tick with the next UTC wake; asleep ticks write nothing', () => {
     run();
-    expect(h.giants.get(GIANT_ID)).toMatchObject({ x: GIANT_TILE.x, z: GIANT_TILE.z, hp: GIANT_MAX_HP, state: GiantState.Idle });
+    expect(h.giants.get(GIANT_ID)).toMatchObject({ x: GIANT_TILE.x, z: GIANT_TILE.z, hp: GIANT_MAX_HP, state: GiantState.Asleep });
+    expect(h.raids.get(GIANT_ID)).toMatchObject({ awake: false, nextWakeAtMicros: BigInt(RAID_INTERVAL_MS) * 1000n, announced: 0 });
+    const update = h.ctx.db.giant.id.update as any;
+    const raidUpdate = h.ctx.db.giantRaid.id.update as any;
+    update.mockClear(); raidUpdate.mockClear();
+    run(10);
+    expect(update).not.toHaveBeenCalled();
+    expect(raidUpdate).not.toHaveBeenCalled();
+    expect(() => attackGiant(h.ctx, { giantId: GIANT_ID })).toThrow('The Giant is asleep. It wakes in 2:58:20');
+  });
+
+  it('awake and idle without anyone near: still no writes', () => {
+    wake();
     const update = h.ctx.db.giant.id.update as any;
     update.mockClear();
     run(10);
     expect(update).not.toHaveBeenCalled();
   });
 
+  it('announces at T-10 and T-1 minutes once each, then wakes on the hour with HP scaled by the Boulders crowd', () => {
+    run();
+    const wakeMs = RAID_INTERVAL_MS;
+    setMs(wakeMs - RAID_ANNOUNCE_LEADS_MS[0] - 1000); run(3);
+    expect(giantEvents(GiantEventKind.Announce)).toHaveLength(0);
+    setMs(wakeMs - RAID_ANNOUNCE_LEADS_MS[0]); run(3);
+    setMs(wakeMs - RAID_ANNOUNCE_LEADS_MS[1] + 500); run(3);
+    expect(giantEvents(GiantEventKind.Announce).map((e: any) => e.quantity)).toEqual([10, 1]);
+    // Two players stand in the Boulders at the wake, one in the Grove.
+    Object.assign(h.me(), { x: 55, z: 55 });
+    Object.assign(h.other(), { x: 53, z: 60 });
+    setMs(wakeMs); run();
+    expect(giantEvents(GiantEventKind.Wake)).toHaveLength(1);
+    expect(giantEvents(GiantEventKind.Wake)[0]).toMatchObject({ hp: raidMaxHp(2), quantity: 2 });
+    expect(h.giants.get(GIANT_ID)).toMatchObject({ state: GiantState.Idle, hp: raidMaxHp(2), maxHp: raidMaxHp(2) });
+    expect(h.raids.get(GIANT_ID)).toMatchObject({ awake: true, raidPlayers: 2, raidCount: 1, raidEndsAtMicros: BigInt(wakeMs + RAID_WINDOW_MS) * 1000n });
+  });
+
+  it('goes back to sleep undefeated when the window ends; swings queued at it stop', () => {
+    h.inventory.clear();
+    giveClub();
+    wake();
+    Object.assign(h.me(), { x: GIANT_TILE.x - 5, z: GIANT_TILE.z, weapon: STONE_CLUB_ITEM_ID });
+    attackGiant(h.ctx, { giantId: GIANT_ID });
+    setMs(nowMsOf() + RAID_WINDOW_MS); run();
+    expect(h.giants.get(GIANT_ID)).toMatchObject({ state: GiantState.Asleep, hp: GIANT_MAX_HP });
+    expect(h.raids.get(GIANT_ID)).toMatchObject({ awake: false, lastOutcome: RaidOutcome.Slept, nextWakeAtMicros: BigInt(RAID_INTERVAL_MS) * 1000n });
+    expect(giantEvents(GiantEventKind.Sleep)[0]).toMatchObject({ quantity: RaidOutcome.Slept });
+    expect(h.me().pending).toBe(Pending.None);
+    expect(h.contributions.size).toBe(0);
+  });
+
+  it('a raid missed entirely (the module was down) just reschedules', () => {
+    run();
+    setMs(RAID_INTERVAL_MS + RAID_WINDOW_MS + 5000); run();
+    expect(giantEvents(GiantEventKind.Wake)).toHaveLength(0);
+    expect(h.raids.get(GIANT_ID)).toMatchObject({ awake: false, nextWakeAtMicros: BigInt(2 * RAID_INTERVAL_MS) * 1000n });
+  });
+
+  it('only the world owner can trigger a raid, and never twice at once; a delay moves the next wake', () => {
+    run();
+    as(B, () => expect(() => trigger(h.ctx, { delaySeconds: 0 })).toThrow('world owner required'));
+    trigger(h.ctx, { delaySeconds: 90 });
+    expect(h.raids.get(GIANT_ID).nextWakeAtMicros).toBe(h.ctx.timestamp.microsSinceUnixEpoch + 90_000_000n);
+    trigger(h.ctx, { delaySeconds: 0 });
+    expect(h.raids.get(GIANT_ID).awake).toBe(true);
+    expect(h.giants.get(GIANT_ID).hp).toBe(RAID_HP_BASE);
+    expect(() => trigger(h.ctx, { delaySeconds: 0 })).toThrow('A raid is already on');
+  });
+
   it('open to players without the combat grant; hitting it never ends grace or makes anyone hostile', () => {
     h.grants.set('a', { identity: A, issuer: A, agent: false, expiresAtMicros: 200_000_000n, combat: false, chat: false });
     h.inventory.clear();
     giveClub();
+    wake();
     Object.assign(h.me(), { x: GIANT_TILE.x - 5, z: GIANT_TILE.z, weapon: STONE_CLUB_ITEM_ID, respawnTick: 5000 });
     attackGiant(h.ctx, { giantId: GIANT_ID });
     expect(h.me()).toMatchObject({ pending: Pending.Giant, targetX: WEST.x, targetZ: WEST.z });
     run(3);
     const hits = giantEvents(GiantEventKind.Hit);
     expect(hits.length).toBeGreaterThanOrEqual(1);
-    expect(hits[0]).toMatchObject({ damage: 8, itemId: STONE_CLUB_ITEM_ID, hp: GIANT_MAX_HP - 8 });
+    expect(hits[0]).toMatchObject({ damage: 8, itemId: STONE_CLUB_ITEM_ID, hp: RAID_HP_BASE - 8 });
     expect(h.me()).toMatchObject({ respawnTick: 5000, hostile: false, combatTarget: undefined });
     expect(h.contributions.get('a').damage).toBe(8 * hits.length);
   });
@@ -1228,6 +1310,7 @@ describe('M3/F3: the Boulders gate and the Giant', () => {
   it('telegraphs a slam on a player tile; staying hurts, stepping out in time does not', () => {
     h.inventory.clear();
     giveClub(A); giveClub(B);
+    wake();
     Object.assign(h.me(), { ...WEST, hp: 30 });
     Object.assign(h.other(), { x: GIANT_TILE.x + 5, z: GIANT_TILE.z, hp: 30 });
     run(); // A is nearest: the wind-up starts on A's tile
@@ -1247,32 +1330,32 @@ describe('M3/F3: the Boulders gate and the Giant', () => {
     expect(h.other().hp).toBe(30);
   });
 
-  it('a defeat rewards every contributor who dealt enough, equally, and it respawns after the timer', () => {
+  it('a raid defeat rewards every contributor who dealt enough, equally (obsidian + the Giant\'s Tooth), then it sleeps', () => {
     h.inventory.clear();
     giveClub(A); giveClub(B);
-    run();
+    wake();
     Object.assign(h.giants.get(GIANT_ID), { hp: 11, lastHitTick: worldTick() });
     Object.assign(h.me(), { ...WEST, weapon: STONE_CLUB_ITEM_ID });
     Object.assign(h.other(), { x: GIANT_TILE.x + GIANT_REACH, z: GIANT_TILE.z, weapon: '' });
     attackGiant(h.ctx, { giantId: GIANT_ID });
     as(B, () => attackGiant(h.ctx, { giantId: GIANT_ID }));
-    h.contributions.set('a', { identity: A, giantId: GIANT_ID, damage: GIANT_MIN_CONTRIBUTION, lastHitTick: worldTick() });
+    h.contributions.set('a', { identity: A, giantId: GIANT_ID, damage: RAID_MIN_CONTRIBUTION, lastHitTick: worldTick() });
     run(1); // one round: A 8 + B 3 floors 11
-    const down = h.giants.get(GIANT_ID);
-    expect(down.state).toBe(GiantState.Defeated);
-    expect(down.respawnTick).toBeGreaterThan(worldTick());
+    expect(h.giants.get(GIANT_ID).state).toBe(GiantState.Asleep);
+    expect(h.raids.get(GIANT_ID)).toMatchObject({ awake: false, lastOutcome: RaidOutcome.Defeated });
+    expect(giantEvents(GiantEventKind.Defeat)).toHaveLength(1);
     const rewards = giantEvents(GiantEventKind.Reward);
     expect(rewards.map((r: any) => r.player.toHexString())).toEqual(['a']);
-    expect(slotsOf(A).filter((s) => s?.itemId === OBSIDIAN_ITEM_ID)).toEqual([{ itemId: OBSIDIAN_ITEM_ID, quantity: GIANT_REWARD.quantity }]);
+    expect(slotsOf(A).filter((s) => s?.itemId === OBSIDIAN_ITEM_ID)).toEqual([{ itemId: OBSIDIAN_ITEM_ID, quantity: RAID_REWARD.quantity }]);
     expect(slotsOf(B).some((s) => s?.itemId === OBSIDIAN_ITEM_ID)).toBe(false);
+    expect(h.cosmetics.get('a').unlocked & (1 << Cosmetic.GiantsTooth)).toBeTruthy();
+    expect(h.cosmetics.get('b')).toBeUndefined();
     expect(h.contributions.size).toBe(0);
     expect(h.me().pending).toBe(Pending.None);
-    expect(() => attackGiant(h.ctx, { giantId: GIANT_ID })).toThrow('The Giant is down');
-    const respawnAt = down.respawnTick;
-    run(respawnAt - worldTick());
-    expect(h.giants.get(GIANT_ID)).toMatchObject({ state: expect.any(Number), hp: GIANT_MAX_HP });
-    expect(giantEvents(GiantEventKind.Respawn)).toHaveLength(1);
-    expect(GIANT_RESPAWN_TICKS).toBeGreaterThan(0);
+    expect(() => attackGiant(h.ctx, { giantId: GIANT_ID })).toThrow('The Giant is asleep');
+    // The reward carries no power: same max HP, same club.
+    expect(h.me().maxHp).toBe(30);
+    expect(GIANT_MIN_CONTRIBUTION).toBeLessThan(RAID_MIN_CONTRIBUTION);
   });
 });
 

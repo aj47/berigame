@@ -113,6 +113,7 @@ export interface CosmeticDef {
 
 export const Cosmetic = {
   StrawHat: 0, CoastScarf: 1, FlowerCrown: 2, ShellNecklace: 3, DriftwoodCrown: 4, WovenSash: 5,
+  WelcomedRibbon: 6, MentorPin: 7, MentorPinSilver: 8, MentorPinGold: 9, GiantsTooth: 10,
 } as const;
 
 export const COSMETICS: readonly CosmeticDef[] = [
@@ -122,7 +123,15 @@ export const COSMETICS: readonly CosmeticDef[] = [
   { id: Cosmetic.ShellNecklace, key: 'shell_necklace', name: 'Shell Necklace', slot: CosmeticSlot.Neck, how: 'Beachcombing level 10', skill: { skill: Skill.Beachcombing, level: 10 } },
   { id: Cosmetic.DriftwoodCrown, key: 'driftwood_crown', name: 'Driftwood Crown', slot: CosmeticSlot.Head, how: 'Make it (Crafting level 5)' },
   { id: Cosmetic.WovenSash, key: 'woven_sash', name: 'Woven Sash', slot: CosmeticSlot.Neck, how: 'Crafting level 10', skill: { skill: Skill.Crafting, level: 10 } },
+  { id: Cosmetic.WelcomedRibbon, key: 'welcomed_ribbon', name: 'Welcomed Ribbon', slot: CosmeticSlot.Head, how: 'Reach the Coast or make a club with a mentor' },
+  { id: Cosmetic.MentorPin, key: 'mentor_pin', name: "Mentor's Pin", slot: CosmeticSlot.Neck, how: 'Help a newer player reach the Coast or make a club' },
+  { id: Cosmetic.MentorPinSilver, key: 'mentor_pin_silver', name: "Mentor's Pin (Silver)", slot: CosmeticSlot.Neck, how: 'Mentor 3 newer players' },
+  { id: Cosmetic.MentorPinGold, key: 'mentor_pin_gold', name: "Mentor's Pin (Gold)", slot: CosmeticSlot.Neck, how: 'Mentor 10 newer players' },
+  { id: Cosmetic.GiantsTooth, key: 'giants_tooth', name: "Giant's Tooth", slot: CosmeticSlot.Neck, how: 'Help defeat the Giant in a raid' },
 ];
+
+/** Mentor's Pin variants by tier (shared/sim/mentor.ts MENTOR_PIN_TIERS). */
+export const MENTOR_PIN_COSMETICS = [Cosmetic.MentorPin, Cosmetic.MentorPinSilver, Cosmetic.MentorPinGold] as const;
 
 export function getCosmetic(id: number): CosmeticDef | undefined {
   return COSMETICS[id]?.id === id ? COSMETICS[id] : COSMETICS.find((c) => c.id === id);

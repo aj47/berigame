@@ -126,5 +126,7 @@ export const SocialNotice = {
   TradeCancelled: 4,
   TradeDone: 5,
   TradeFailed: 6,
+  /** Mentor rewards (shared/sim/mentor.ts). */
+  Mentor: 7,
 } as const;
 export type SocialNotice = (typeof SocialNotice)[keyof typeof SocialNotice];
