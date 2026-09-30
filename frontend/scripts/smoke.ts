@@ -132,6 +132,8 @@ async function rejection(fn: () => Promise<unknown>): Promise<string> {
 async function main() {
   const A = await connect('A');
   const B = await connect('B');
+  // A freshly published database may not have run its first tick yet.
+  await waitFor('both clients see a running world', () => tick(A) > 0 && tick(B) > 0, 10_000);
   check('both clients see the world row', tick(A) > 0 && tick(B) > 0, `tick=${tick(A)}`);
   await waitFor('both clients see each other online', () => [...A.conn.db.player.iter()].some((p) => p.identity.toHexString() === B.identity && p.online) && [...B.conn.db.player.iter()].some((p) => p.identity.toHexString() === A.identity && p.online));
   check('both clients see each other online', true);
