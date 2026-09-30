@@ -138,6 +138,7 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
           tables.playerCosmetic,
           tables.giantRaid,
           tables.mentorStat,
+          tables.gardenPlot,
         ]);
     })
     .onConnectError((ctx, _err) => {

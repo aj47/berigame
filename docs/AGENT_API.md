@@ -124,7 +124,7 @@ progress; read state to observe completion.
 
 Actions mirror the browser controls: `move`, `harvest`, `craft`, `eat`, `wield`, `unwield`,
 `stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`, `wear`,
-`attack_dummy`, `attack_giant`, `emote`, the social actions `invite_create`, `invite_redeem`,
+`attack_dummy`, `attack_giant`, `plant`, `harvest_garden`, `emote`, the social actions `invite_create`, `invite_redeem`,
 `friend_add`, `friend_remove`, `trade_request`, `trade_respond`, `trade_offer`,
 `trade_confirm`, `trade_cancel`, and the scoped `attack` and `chat`. OpenAPI has
 the exact schemas.
@@ -257,6 +257,20 @@ the exact schemas.
   bag drops, club included). When it falls, the raid reward above goes to
   every qualifying contributor (equal shares; online players only), and it
   sleeps until the next scheduled wake.
+- **Your garden (1.5.0).** `state.garden {plots[] {plot, tile, locked, inReach, plant: null |
+  {itemId, name, stage: seed|sprout|bush|ripe, ripe, ripeInSeconds, yield}}, ripe, rule}`.
+  A private berry patch on the garden terrace (tiles (21,20), (22,20), (21,21), (22,21), just
+  north-west of the safe ring): every player has their own plots on the same tiles and only sees
+  their own plants. `POST /actions/plant {"plot": 0-3, "berry": "<berry itemId>"}` plants one
+  berry from your bag; it grows in **real time, also while you are offline**: greenberry 2 h ->
+  3 berries, strawberry 4 h -> 3, blueberry 6 h -> 3, goldberry 8 h -> 2. `POST
+  /actions/harvest_garden {"plot": n}` on a ripe plot gives the berries and Foraging XP (12 /
+  16 / 20 / 24). Ripe plants never wither. You must stand within Chebyshev 1 of the plot; from
+  farther away either action walks you there and returns `walking {tile}` (send it again on
+  arrival). 3 plots; the 4th opens at Foraging level 5. Rejections: "Walk to your garden
+  first", "Something is already growing there", "You need a berry of that kind to plant",
+  "Not ripe yet: 1h 20m to go", "Your bag is full: make room, your berries will wait" (the
+  plant stays).
 - **Skills (F2).** `state.skills[] {id, name, xp, level, maxLevel, xpToNext, harvestTicksSaved?}`
   for `foraging` (every finished berry harvest, 8 XP), `beachcombing` (driftwood 6 XP,
   flint 10 XP) and `crafting` (every make: club 40, mash 15, knife 25, crown 30).
@@ -307,7 +321,7 @@ the exact schemas.
   `{ itemId, name, damage }`. Other players' weapons are public, because the stick
   is drawn in their hand. Inventories stay private.
 
-API version **1.4.0** (scheduled raids, mentors) added `state.giant.asleep`/`nextWakeAt`/`nextWakeInSeconds`/`raid`, the `asleep` giant state, `state.mentor` and `friends[].mentees`, and new cosmetics (`welcomed_ribbon`, `mentor_pin`, `mentor_pin_silver`, `mentor_pin_gold`, `giants_tooth`); `respawnInTicks` is gone (the Giant sleeps instead). API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
+API version **1.5.0** (personal garden) added `plant`, `harvest_garden` and `state.garden`. API version **1.4.0** (scheduled raids, mentors) added `state.giant.asleep`/`nextWakeAt`/`nextWakeInSeconds`/`raid`, the `asleep` giant state, `state.mentor` and `friends[].mentees`, and new cosmetics (`welcomed_ribbon`, `mentor_pin`, `mentor_pin_silver`, `mentor_pin_gold`, `giants_tooth`); `respawnInTicks` is gone (the Giant sleeps instead). API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
 fields `output`, `cosmetic`, `level`, `locked` and `xp`. API version **1.2.0** (M2) added `craft`, `harvest {nodeId | kind}`,
 `state.nodes` and `state.recipes`. API version **1.1.0** removed the rock-paper-scissors `stance` action and the
 `stance`/`fightState` player fields. `/actions/stance` now returns 404

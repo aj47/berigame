@@ -298,3 +298,10 @@ export function useNow(ms = 1000): number {
   }, [ms]);
   return now;
 }
+
+// ---- Personal garden ----------------------------------------------------------
+
+/** Your garden plots (row-level security: only your own rows arrive). An empty plot has no row. */
+export function useGardenPlots() {
+  return useRows<any>(tables.gardenPlot) as readonly import('../module_bindings/types').GardenPlot[];
+}

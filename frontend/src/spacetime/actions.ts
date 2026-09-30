@@ -81,5 +81,8 @@ export function useGameActions() {
     attackGiant: (giantId: number) => run('attackGiant', (c) => c.reducers.attackGiant({ giantId })),
     /** Wear an earned cosmetic (shared/sim CosmeticSlot; cosmetic id + 1, 0 = take it off). */
     wearCosmetic: (slot: number, cosmetic: number) => run('wearCosmetic', (c) => c.reducers.wearCosmetic({ slot, cosmetic })),
+    /** Personal garden: plant one berry in a plot / harvest a ripe plot (stand within reach of it). */
+    plantGarden: (plot: number, itemId: string) => run('plantGarden', (c) => c.reducers.plantGarden({ plot, itemId })),
+    harvestGarden: (plot: number) => run('harvestGarden', (c) => c.reducers.harvestGarden({ plot })),
   };
 }

@@ -14,6 +14,7 @@ import { isBerryNode } from '@sim';
 import LoadingScreen from '../LoadingScreen';
 import GroundItem from './GroundItem';
 import DebugBridge from './DebugBridge';
+import Garden from './Garden';
 import FxLayer from '../../fx/FxLayer';
 import HoldToWalk from './HoldToWalk';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
@@ -78,6 +79,7 @@ const GameComponent = () => {
         <Suspense fallback={null}>
           <AlphaIsland />
           <WorldObjects />
+          <Garden />
           <RenderOnlineUsers />
           <PlayerController setPlayerRef={setPlayerRef} />
           <CameraController playerRef={playerRef} />

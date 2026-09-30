@@ -8,6 +8,7 @@ import {
 } from './tables';
 import { playerSkill, playerCosmetic, socialPair } from './tables';
 import { giantRaid, mentee, mentorStat } from './tables';
+import { gardenPlot } from './tables';
 
 export const spacetimedb = schema({
   accessPolicy,
@@ -39,5 +40,6 @@ export const spacetimedb = schema({
   giantRaid,
   mentee,
   mentorStat,
+  gardenPlot,
 });
 export default spacetimedb;

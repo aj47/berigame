@@ -38,6 +38,10 @@ import {
   isLandTile,
   SKILLS,
   levelForXp,
+  GARDEN_CROPS,
+  GARDEN_MAX_PLOTS,
+  GARDEN_PLOT_TILES,
+  inGardenReach,
 } from "@sim";
 import { useGameActions } from "../spacetime/actions";
 import {
@@ -362,6 +366,41 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           const { error } = requirePlayer() as any;
           if (error) return error;
           return reportAction(await live.current.actions.attackGiant(GIANT_ID), "Walking to the Giant; your character swings at it automatically. Watch for its telegraphed blows.");
+        },
+      ),
+      tool(
+        "plant_garden",
+        `Plant one berry from your bag in a plot (0-${GARDEN_MAX_PLOTS - 1}) of your private garden on the terrace north-west of spawn. It grows in real time, also while you are offline: ${GARDEN_CROPS.map((c: any) => c.itemId).join(", ")}. If you are not beside the plot, this walks you there; call it again on arrival.`,
+        {
+          plot: { type: "integer", minimum: 0, maximum: GARDEN_MAX_PLOTS - 1, description: "Garden plot number." },
+          berry: { type: "string", enum: GARDEN_CROPS.map((c: any) => c.itemId), description: "Berry item id to plant." },
+        },
+        ["plot", "berry"],
+        async ({ plot, berry }) => {
+          const { player, error } = requirePlayer() as any;
+          if (error) return error;
+          if (!Number.isInteger(plot) || plot < 0 || plot >= GARDEN_MAX_PLOTS) return `Choose a plot from 0 through ${GARDEN_MAX_PLOTS - 1}.`;
+          if (!inGardenReach(player, plot)) {
+            const t = GARDEN_PLOT_TILES[plot];
+            return reportAction(await live.current.actions.setTarget(t.x, t.z), "Walking to your garden; call plant_garden again when you arrive.");
+          }
+          return reportAction(await live.current.actions.plantGarden(plot, String(berry ?? "")), "Planted. It keeps growing while you are away.");
+        },
+      ),
+      tool(
+        "harvest_garden",
+        `Harvest a ripe plot (0-${GARDEN_MAX_PLOTS - 1}) of your private garden for berries and Foraging XP. If you are not beside the plot, this walks you there; call it again on arrival.`,
+        { plot: { type: "integer", minimum: 0, maximum: GARDEN_MAX_PLOTS - 1, description: "Garden plot number." } },
+        ["plot"],
+        async ({ plot }) => {
+          const { player, error } = requirePlayer() as any;
+          if (error) return error;
+          if (!Number.isInteger(plot) || plot < 0 || plot >= GARDEN_MAX_PLOTS) return `Choose a plot from 0 through ${GARDEN_MAX_PLOTS - 1}.`;
+          if (!inGardenReach(player, plot)) {
+            const t = GARDEN_PLOT_TILES[plot];
+            return reportAction(await live.current.actions.setTarget(t.x, t.z), "Walking to your garden; call harvest_garden again when you arrive.");
+          }
+          return reportAction(await live.current.actions.harvestGarden(plot), "Harvested your garden plot.");
         },
       ),
       tool(

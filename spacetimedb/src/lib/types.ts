@@ -14,3 +14,4 @@ export type PlayerSkillRow = NonNullable<ReturnType<Ctx['db']['playerSkill']['id
 export type PlayerCosmeticRow = NonNullable<ReturnType<Ctx['db']['playerCosmetic']['identity']['find']>>;
 export type GiantRaidRow = NonNullable<ReturnType<Ctx['db']['giantRaid']['id']['find']>>;
 export type MenteeRow = NonNullable<ReturnType<Ctx['db']['mentee']['identity']['find']>>;
+export type GardenPlotRow = NonNullable<ReturnType<Ctx['db']['gardenPlot']['id']['find']>>;
