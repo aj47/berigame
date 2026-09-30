@@ -1,7 +1,7 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { INVITE_PARAM, PlayerState, areaOf, chebyshev, inviteUrl, normalizeInviteCode } from "@sim";
 import { useGameActions } from "../spacetime/actions";
-import { useFriendRows, useInviteCodeRows, useMyPlayer, usePlayersByHex } from "../spacetime/hooks";
+import { useFriendRows, useInviteCodeRows, useMenteeCounts, useMyIdentityHex, useMyPlayer, usePlayersByHex } from "../spacetime/hooks";
 import { identityHex } from "../spacetime/identity";
 import { useChatPrefsStore } from "../spacetime/stores/chatPrefsStore";
 import { useToastStore } from "../spacetime/stores/toastStore";
@@ -118,6 +118,9 @@ const FriendsPanelBody = ({ onClose, onOpenChat }: PanelProps) => {
   const toggleMute = useChatPrefsStore((s) => s.toggleMute);
   const { follow, removeFriend } = useGameActions();
   const show = useToastStore((s) => s.show);
+  const mentees = useMenteeCounts();
+  const meHex = useMyIdentityHex();
+  const myMentees = meHex ? mentees.get(meHex) ?? 0 : 0;
   const friends = useMemo(() => {
     const list = rows.map((r) => {
       const hex = identityHex(r.friend);
@@ -144,6 +147,11 @@ const FriendsPanelBody = ({ onClose, onOpenChat }: PanelProps) => {
         <button className="close-button" onClick={onClose} aria-label="Close friends">×</button>
       </header>
       <InviteCard />
+      <p className="mentor-summary fine-print" data-testid="mentee-count">
+        {myMentees > 0
+          ? `Mentor's Pin: you have helped ${myMentees} newer player${myMentees === 1 ? "" : "s"} find their way.`
+          : "Help a newer friend reach the Coast or make their first club to earn the Mentor's Pin."}
+      </p>
       <ul className="friend-list" aria-label="Friends list">
         {friends.length === 0 && (
           <li className="empty-state">No friends yet. Share your link, or tap a player and choose Add friend.</li>
@@ -155,7 +163,12 @@ const FriendsPanelBody = ({ onClose, onOpenChat }: PanelProps) => {
             <li key={f.row.id.toString()} className={`friend-row ${f.online ? "online" : "offline"}`} data-testid="friend-row">
               <span className="presence-dot" aria-hidden="true" />
               <span className="friend-info">
-                <strong>{f.p?.name ?? `Player-${f.hex.slice(4, 8)}`}</strong>
+                <strong>
+                  {f.p?.name ?? `Player-${f.hex.slice(4, 8)}`}
+                  {(mentees.get(f.hex) ?? 0) > 0 && (
+                    <span className="mentor-badge" title="Newer players they have mentored">Mentor · {mentees.get(f.hex)}</span>
+                  )}
+                </strong>
                 <span className="fine-print">
                   {f.online ? `Online · ${area}${dist !== null ? ` · ${dist} tile${dist === 1 ? "" : "s"}` : ""}` : "Offline"}
                   {muted.has(f.hex) ? " · muted" : ""}

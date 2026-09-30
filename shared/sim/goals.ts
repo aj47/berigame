@@ -321,6 +321,9 @@ function bouldersGoal(input: GoalInput): Goal | null {
   if (input.giant && input.giant.state === GiantState.Defeated) {
     return gatherGoal('gather-obsidian', 'The Giant rests: chip obsidian from an outcrop', 'No outcrop is ready yet', input, NodeKind.Obsidian);
   }
+  if (input.giant && input.giant.state === GiantState.Asleep) {
+    return gatherGoal('gather-obsidian', 'The Giant sleeps: chip obsidian from an outcrop', 'No outcrop is ready yet', input, NodeKind.Obsidian);
+  }
   if (me.pending === Pending.Giant) {
     return { id: 'face-giant', text: 'Face the Giant', hint: 'Step out of the red mark before it lands', action: null };
   }

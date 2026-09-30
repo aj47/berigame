@@ -41,6 +41,7 @@ import {
 } from "@sim";
 import { useGameActions } from "../spacetime/actions";
 import {
+  useGiantRaid,
   useGiants,
   useInventoryRows,
   useMySkills,
@@ -73,6 +74,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
   const skills = useMySkills();
   const tick = useTick();
   const giants = useGiants();
+  const raid = useGiantRaid();
   const actions = useGameActions();
   const websocketConnected = useLoadingStore((state: any) => state.websocketConnected);
   const gameDataLoaded = useLoadingStore((state: any) => state.gameDataLoaded);
@@ -87,6 +89,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
     inventory,
     tick,
     giants,
+    raid,
     actions,
     websocketConnected,
     gameDataLoaded,
@@ -184,7 +187,11 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
               return {
                 tile: { x: g.x, z: g.z },
                 reach: GIANT_REACH,
-                state: ["idle", "winding_up", "recovering", "defeated"][g.state] ?? "idle",
+                state: ["idle", "winding_up", "recovering", "defeated", "asleep"][g.state] ?? "idle",
+                asleep: g.state === GiantState.Asleep,
+                nextWakeAt: state.raid && !state.raid.awake ? new Date(Number(state.raid.nextWakeAtMicros / 1000n)).toISOString() : null,
+                raid: state.raid ? { active: state.raid.awake, endsAt: state.raid.awake ? new Date(Number(state.raid.raidEndsAtMicros / 1000n)).toISOString() : null,
+                  playersAtWake: state.raid.raidPlayers } : null,
                 health: giantHpAt(g, state.tick),
                 maxHealth: g.maxHp,
                 telegraph: windup ? { center: { x: g.slamX, z: g.slamZ }, radius: attackRadius(g.attack), landsInTicks: Math.max(0, g.stateUntilTick - state.tick),

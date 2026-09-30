@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { EventKind, GiantEventKind, getItemDef } from '@sim';
+import { EventKind, GiantEventKind, RaidOutcome, getItemDef } from '@sim';
 import { attackPresentation } from '../../animation/combatPresentation';
 import type { GiantEvent } from '../../module_bindings/types';
 import { useCombatFxStore } from './combatFxStore';
@@ -25,7 +25,26 @@ interface GiantFxState {
   slamAt: number;
   /** performance.now() of the last defeat. */
   defeatAt: number;
+  /** World-wide raid lines (announcements, wake, sleep) shown in chat as system lines. */
+  systemLines: readonly RaidLine[];
   pushEvent: (e: GiantEvent, meHex: string | null) => void;
+}
+
+export interface RaidLine { id: number; at: number; text: string }
+const MAX_LINES = 12;
+
+/** The text of a world-wide raid event, or null for fight events. */
+export function raidLineText(e: Pick<GiantEvent, 'kind' | 'quantity' | 'hp'>): string | null {
+  switch (e.kind) {
+    case GiantEventKind.Announce:
+      return e.quantity === 1 ? 'The Giant stirs in the Boulders: it wakes in 1 minute!' : `The Giant stirs in the Boulders: it wakes in ${e.quantity} minutes.`;
+    case GiantEventKind.Wake:
+      return `The Giant is awake! Raid on in the Boulders (${e.hp} HP). Bring a stone club.`;
+    case GiantEventKind.Sleep:
+      return e.quantity === RaidOutcome.Defeated ? 'The Giant falls and sleeps again. Well fought!' : 'The Giant grew bored and went back to sleep.';
+    default:
+      return null;
+  }
 }
 
 const HIT_TTL_MS = 1400;
@@ -48,10 +67,20 @@ export const useGiantStore = create<GiantFxState>((set, get) => ({
   hp: null,
   slamAt: -Infinity,
   defeatAt: -Infinity,
+  systemLines: [],
 
   pushEvent: (e, meHex) => {
     const at = performance.now();
     const hex = e.player.toHexString();
+    const line = raidLineText(e);
+    if (line) {
+      const lines = get().systemLines;
+      const id = (lines[lines.length - 1]?.id ?? 0) + 1;
+      set({ systemLines: [...lines, { id, at: Date.now(), text: line }].slice(-MAX_LINES) });
+      useToastStore.getState().show(line);
+      if (e.kind === GiantEventKind.Wake) set({ hp: null, hit: null });
+      return;
+    }
     switch (e.kind) {
       case GiantEventKind.Hit: {
         const seq = get().seq + 1;
@@ -85,7 +114,7 @@ export const useGiantStore = create<GiantFxState>((set, get) => ({
       case GiantEventKind.Reward:
         if (hex === meHex) {
           const name = getItemDef(e.itemId)?.name ?? e.itemId;
-          useToastStore.getState().show(`The Giant falls! You earned ${e.quantity} ${name.toLowerCase()}`);
+          useToastStore.getState().show(`The Giant falls! You earned ${e.quantity} ${name.toLowerCase()} and the Giant's Tooth`);
         }
         break;
     }

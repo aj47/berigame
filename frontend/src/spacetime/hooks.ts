@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import { tables, type DbConnection } from '../module_bindings';
 import type { Player } from '../module_bindings/types';
@@ -266,4 +266,35 @@ const buildWorn = (rows: readonly any[]) => {
 export function useWornCosmetics(hex: string): number {
   const select = useCallback((rows: readonly any[]) => derived(wornCache, rows, buildWorn).get(hex) ?? 0, [hex]);
   return useTableSelector(tables.playerCosmetic, select);
+}
+
+// ---- Scheduled Giant raids and mentors ---------------------------------------
+
+/** The Giant's raid schedule (one row; absent until the first tick seeds it). */
+export function useGiantRaid() {
+  const rows = useRows<any>(tables.giantRaid) as readonly import('../module_bindings/types').GiantRaid[];
+  return rows[0] ?? null;
+}
+
+const menteeCache = new WeakMap<readonly any[], Map<string, number>>();
+const buildMentees = (rows: readonly any[]) => {
+  const m = new Map<string, number>();
+  for (const r of rows) m.set(identityHex(r.identity), r.mentees);
+  return m;
+};
+
+/** Mentee counts by identity hex (public mentor_stat rows). */
+export function useMenteeCounts(): Map<string, number> {
+  const rows = useRows<any>(tables.mentorStat);
+  return derived(menteeCache, rows, buildMentees);
+}
+
+/** Date.now(), refreshed every `ms` while mounted (countdowns). */
+export function useNow(ms = 1000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), ms);
+    return () => clearInterval(t);
+  }, [ms]);
+  return now;
 }

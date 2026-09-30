@@ -10,11 +10,14 @@ import {
   firstDayGoal,
   getItemDef,
   type Goal,
+  raidStatus,
 } from "@sim";
 import { useGameActions } from "../spacetime/actions";
 import {
+  useGiantRaid,
   useGiants,
   useInventoryRows,
+  useNow,
   useMyIdentityHex,
   useMyPlayer,
   usePlayers,
@@ -47,6 +50,25 @@ function goalIcon(goal: Goal, trees: ReturnType<typeof useTrees>): string {
   if (goal.id === "reach-boulders" || goal.id === "face-giant") return getItemDef(STONE_CLUB_ITEM_ID)?.icon ?? "/items/stone_club.png";
   return "/items/blueberry.png";
 }
+
+/**
+ * "The Giant wakes in 12:34" (or "Giant raid! 8:10 left"): its own component,
+ * so only this line re-renders every second.
+ */
+export const RaidCountdown = ({ standalone }: { standalone?: boolean }) => {
+  const raid = useGiantRaid();
+  const now = useNow(1000);
+  const status = raidStatus(raid, now);
+  if (!status) return null;
+  const cls = `raid-countdown ${status.awake ? "raid-live" : "raid-sleeping"}`;
+  if (standalone)
+    return (
+      <div className={`raid-chip ${cls}`} role="timer" aria-live="off" data-testid="raid-countdown">
+        <span aria-hidden="true">{status.awake ? "!" : "Zz"}</span> {status.label}
+      </div>
+    );
+  return <small className={cls} role="timer" aria-live="off" data-testid="raid-countdown">{status.label}</small>;
+};
 
 /**
  * The one-line "First Day" goal: what to do next, and a tap that does it.
@@ -143,7 +165,7 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
       <span>{STICK_FOUND_MESSAGE}</span>
     </div>
   );
-  if (!visible || me.hostile || !result?.goal) return <>{banner}{party}</>;
+  if (!visible || me.hostile || !result?.goal) return <>{banner}{party}{visible && <RaidCountdown standalone />}</>;
   const goal = result.goal;
   const action = goal.action;
 
@@ -185,6 +207,7 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
         <span>
           <strong>{goal.text}</strong>
           <small>{goal.hint}</small>
+          <RaidCountdown />
         </span>
       </button>
     </>

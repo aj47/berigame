@@ -91,6 +91,38 @@ function wovenSash(): BufferGeometry {
   return b.build();
 }
 
+/** Welcomed Ribbon: a headband with a bow on the right side. */
+function welcomedRibbon(): BufferGeometry {
+  const b = new LowPolyBuilder();
+  const y = HEAD_TOP - 0.12;
+  const RIB = linear(0xe0566f), RIB_DARK = linear(0xb23a52);
+  b.log(new Vector3(0, y, 0), new Vector3(0, y + 0.035, 0), 0.215, 0.215, { sides: 10, rings: 2, bark: [RIB, RIB_DARK], cap: RIB, capStart: false, capEnd: false });
+  const knot = new Vector3(0.2, y + 0.04, 0.06);
+  b.rock(knot, 0.03, new Vector3(1, 1, 1), { segments: 4, seed: 61, colors: [RIB_DARK] });
+  b.rock(knot.clone().add(new Vector3(0.02, 0.05, 0.05)), 0.05, new Vector3(0.5, 1, 1.2), { segments: 4, jitter: 0.15, seed: 62, colors: [RIB, RIB_DARK] });
+  b.rock(knot.clone().add(new Vector3(0.02, 0.05, -0.05)), 0.05, new Vector3(0.5, 1, 1.2), { segments: 4, jitter: 0.15, seed: 63, colors: [RIB, RIB_DARK] });
+  return b.build();
+}
+
+/** Mentor's Pin: a cord with a round pin in front; bronze, silver or gold by tier. */
+function mentorPin(metal: number, shine: number): () => BufferGeometry {
+  return () => {
+    const b = new LowPolyBuilder();
+    b.log(new Vector3(0, 0.0, 0), new Vector3(0, 0.015, 0), 0.175, 0.175, { sides: 10, rings: 2, bark: [linear(0x3d5a80)], cap: linear(0x3d5a80), capStart: false, capEnd: false });
+    b.log(new Vector3(0, -0.07, 0.17), new Vector3(0, -0.07, 0.205), 0.06, 0.06, { sides: 8, rings: 2, bark: [linear(metal)], cap: linear(shine) });
+    b.rock(new Vector3(0, -0.07, 0.21), 0.025, new Vector3(1, 1, 0.4), { segments: 4, seed: 71, colors: [linear(0x3d5a80)] });
+    return b.build();
+  };
+}
+
+/** Giant's Tooth: a leather cord with a big pale stone tooth hanging in front. */
+function giantsTooth(): BufferGeometry {
+  const b = new LowPolyBuilder();
+  b.log(new Vector3(0, 0.0, 0), new Vector3(0, 0.015, 0), 0.175, 0.175, { sides: 10, rings: 2, bark: [linear(CORD)], cap: linear(CORD), capStart: false, capEnd: false });
+  b.log(new Vector3(0, -0.03, 0.18), new Vector3(0.01, -0.2, 0.2), 0.045, 0.006, { sides: 5, rings: 3, wobble: 0.004, seed: 81, bark: [linear(0xefe6d2), linear(0xd6cbb2)], cap: linear(0xf6efe0) });
+  return b.build();
+}
+
 const BUILDERS: Record<number, () => BufferGeometry> = {
   [Cosmetic.StrawHat]: strawHat,
   [Cosmetic.CoastScarf]: coastScarf,
@@ -98,6 +130,11 @@ const BUILDERS: Record<number, () => BufferGeometry> = {
   [Cosmetic.ShellNecklace]: shellNecklace,
   [Cosmetic.DriftwoodCrown]: driftwoodCrown,
   [Cosmetic.WovenSash]: wovenSash,
+  [Cosmetic.WelcomedRibbon]: welcomedRibbon,
+  [Cosmetic.MentorPin]: mentorPin(0xb07a3e, 0xd9a46a),
+  [Cosmetic.MentorPinSilver]: mentorPin(0xa9b1bb, 0xe4e8ee),
+  [Cosmetic.MentorPinGold]: mentorPin(0xd4a526, 0xf6d86b),
+  [Cosmetic.GiantsTooth]: giantsTooth,
 };
 const geometries = new Map<number, BufferGeometry>();
 

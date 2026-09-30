@@ -6,9 +6,10 @@ import {
   STICK_DROP_CHANCE, STICK_ITEM_ID, swingDamage, TICK_MS, treeReadyTick, type Slot,
   NodeKind, nodeKindDef, recipeStatus,
   CHAT_NEARBY_RADIUS, INVITE_PARAM, TRADE_BREAK_RANGE, TRADE_RANGE, chatVisible, normalizeInviteCode, parseOffer, formatOffer,
-  BOULDER_KEY_ITEM, BOULDER_LINE, BOULDER_MESSAGE, BOULDERS_ENTRY, BOULDERS_MIN, GIANT_ID, GIANT_AGGRO_RANGE, GIANT_MIN_CONTRIBUTION,
-  GIANT_REACH, GIANT_RESPAWN_TICKS, GIANT_REWARD, GiantAttack, GiantState, attackDamage, attackRadius, giantHpAt, isLandTile,
+  BOULDER_KEY_ITEM, BOULDER_LINE, BOULDER_MESSAGE, BOULDERS_ENTRY, BOULDERS_MIN, GIANT_ID, GIANT_AGGRO_RANGE,
+  GIANT_REACH, GiantAttack, GiantState, attackDamage, attackRadius, giantHpAt, isLandTile,
   COSMETICS, CosmeticSlot, SKILLS, SKILL_MAX_LEVEL, Skill, harvestTickBonus, hasCosmetic, levelForXp, levelProgress,
+  RAID_INTERVAL_MS, RAID_MIN_CONTRIBUTION, RAID_REWARD, RAID_WINDOW_MS, raidMaxHp, MENTOR_RANGE, MENTOR_PIN_TIERS,
 } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
 import { ApiError, type Invite } from './portable';
@@ -26,7 +27,9 @@ export type Backend = { uri: string; database: string };
 export type Credential = Backend & { identity: string; token: string };
 /** Agent-facing names of shared/sim NodeKind, indexed by kind. */
 const NODE_KIND_NAMES = ['berry', 'driftwood', 'tide_rock', 'obsidian'];
-const GIANT_STATE_NAMES = ['idle', 'winding_up', 'recovering', 'defeated'];
+const GIANT_STATE_NAMES = ['idle', 'winding_up', 'recovering', 'defeated', 'asleep'];
+const RAID_OUTCOME_NAMES = ['none', 'defeated', 'slept'];
+const iso = (micros: bigint) => new Date(Number(micros / 1000n)).toISOString();
 const disconnect = (conn: DbConnection) => { try { conn.disconnect(); } catch { /* already closed */ } };
 const unavailable = () => new ApiError(503, 'world_unavailable', 'The live world is unavailable. Retry shortly.');
 
@@ -79,6 +82,8 @@ export function connect(credential: Credential, control = false, options: Connec
             tables.friend, tables.trade, tables.inviteCode, tables.socialEvent,
             tables.playerSkill.where(row => row.identity.eq(identity)),
             tables.playerCosmetic.where(row => row.identity.eq(identity)),
+            tables.giantRaid,
+            tables.mentorStat,
           ]);
         }).build();
     } catch (error) { settled = true; clearTimeout(timer); reject(error); }
@@ -201,6 +206,8 @@ export async function createGameService(credential: Credential, options: Connect
           const hasKey = holdsItem(slotsOf(), self.weapon, BRAMBLE_KEY_ITEM);
           const hasBoulderKey = holdsItem(slotsOf(), self.weapon, BOULDER_KEY_ITEM);
           const g = conn.db.giant.id.find(GIANT_ID);
+          const raid = conn.db.giantRaid.id.find(GIANT_ID);
+          const mentees = (hex: string) => [...conn.db.mentorStat.iter()].find(r => r.identity.toHexString() === hex)?.mentees ?? 0;
           return {
             tick, tickMs: TICK_MS, gridSize: GRID_SIZE, player: describePlayer(self),
             me: { area: areaOf(self), safe: isSafe(self, tick), graceTicks: inGrace(self, tick) ? Math.max(0, self.respawnTick + RESPAWN_GRACE_TICKS - tick) : 0,
@@ -219,10 +226,24 @@ export async function createGameService(credential: Credential, options: Connect
               state: GIANT_STATE_NAMES[g.state] ?? 'idle', health: giantHpAt(g, tick), maxHealth: g.maxHp,
               ...(g.state === GiantState.Windup ? { telegraph: { attack: g.attack === GiantAttack.Stomp ? 'stomp' : 'slam', center: { x: g.slamX, z: g.slamZ }, radius: attackRadius(g.attack), damage: attackDamage(g.attack), landsInTicks: Math.max(0, g.stateUntilTick - tick),
                 youAreInside: chebyshev(self, { x: g.slamX, z: g.slamZ }) <= attackRadius(g.attack) } } : {}),
-              ...(g.state === GiantState.Defeated ? { respawnInTicks: Math.max(0, g.respawnTick - tick) } : {}),
-              reward: { itemId: GIANT_REWARD.itemId, quantity: GIANT_REWARD.quantity, minDamage: GIANT_MIN_CONTRIBUTION },
-              rule: `A PvE world boss open to everyone (no combat access needed; it never ends grace or makes you hostile). Attack with attack_giant from any tile within Chebyshev ${GIANT_REACH} of its centre (it blocks the 3x3 around it). It telegraphs each blow: telegraph.center/radius marks the tiles hit when landsInTicks reaches 0; walk out of that square (Chebyshev > radius) in time. Everyone who dealt at least ${GIANT_MIN_CONTRIBUTION} damage when it falls gets ${GIANT_REWARD.quantity} obsidian; it rises again ${GIANT_RESPAWN_TICKS} ticks later.`,
+              asleep: g.state === GiantState.Asleep,
+              ...(raid ? {
+                nextWakeAt: raid.awake ? null : iso(raid.nextWakeAtMicros),
+                nextWakeInSeconds: raid.awake ? 0 : Math.max(0, Math.ceil((Number(raid.nextWakeAtMicros / 1000n) - Date.now()) / 1000)),
+                raid: {
+                  active: raid.awake,
+                  ...(raid.awake ? { endsAt: iso(raid.raidEndsAtMicros), endsInSeconds: Math.max(0, Math.ceil((Number(raid.raidEndsAtMicros / 1000n) - Date.now()) / 1000)), playersAtWake: raid.raidPlayers } : {}),
+                  lastOutcome: RAID_OUTCOME_NAMES[raid.lastOutcome] ?? 'none',
+                  count: raid.raidCount,
+                  schedule: { everyMinutes: RAID_INTERVAL_MS / 60000, windowMinutes: RAID_WINDOW_MS / 60000, announceMinutesBefore: [10, 1],
+                    hp: { min: raidMaxHp(1), max: raidMaxHp(Number.MAX_SAFE_INTEGER) } },
+                },
+              } : {}),
+              reward: { itemId: RAID_REWARD.itemId, quantity: RAID_REWARD.quantity, minDamage: RAID_MIN_CONTRIBUTION, keepsake: 'giants_tooth' },
+              rule: `A PvE world boss open to everyone (no combat access needed; it never ends grace or makes you hostile). It sleeps between raids and wakes every ${RAID_INTERVAL_MS / 3_600_000} hours on the UTC hour (nextWakeAt); asleep it cannot be attacked. A raid lasts ${RAID_WINDOW_MS / 60000} minutes; its HP (${raidMaxHp(1)}-${raidMaxHp(Number.MAX_SAFE_INTEGER)}) scales with the players in the Boulders when it wakes. Attack with attack_giant from any tile within Chebyshev ${GIANT_REACH} of its centre (it blocks the 3x3 around it). It telegraphs each blow: telegraph.center/radius marks the tiles hit when landsInTicks reaches 0; walk out of that square (Chebyshev > radius) in time. Everyone who dealt at least ${RAID_MIN_CONTRIBUTION} damage when it falls gets ${RAID_REWARD.quantity} obsidian and the Giant's Tooth keepsake (cosmetic); then it sleeps until the next wake.`,
             } : null,
+            mentor: { mentees: mentees(player.identity), pinTiers: [...MENTOR_PIN_TIERS],
+              rule: `Cosmetic only. When a newer player first reaches the Coast or makes their first stone club, their mentor (the player whose invite link they used, or a mutual friend online within ${MENTOR_RANGE} tiles who joined at least a day earlier or had already crafted before they joined) earns the Mentor's Pin (finer at ${MENTOR_PIN_TIERS.slice(1).join(' and ')} mentees) and they earn the Welcomed Ribbon. One mentor per newcomer.` },
             permissions: { combat: invite.combat, chat: invite.chat },
             inventorySize: INVENTORY_SIZE,
             hotbarSize: HOTBAR_SIZE,
@@ -252,7 +273,7 @@ export async function createGameService(credential: Credential, options: Connect
             friends: [...conn.db.friend.iter()].map(f => {
               const p = conn.db.player.identity.find(f.friend);
               return { id: f.friend.toHexString(), name: p?.name ?? null, online: !!p?.online, area: p?.online ? areaOf(p) : null,
-                tile: p?.online ? { x: p.x, z: p.z } : null };
+                tile: p?.online ? { x: p.x, z: p.z } : null, mentees: mentees(f.friend.toHexString()) };
             }),
             invite: (() => {
               const row = [...conn.db.inviteCode.iter()][0];

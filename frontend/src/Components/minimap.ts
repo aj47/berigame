@@ -2,6 +2,9 @@ import {
   BOULDER_LINE,
   BOULDERS_MIN,
   GiantState,
+  formatCountdown,
+  raidStatus,
+  type RaidRowLike,
   GRID_SIZE,
   ISLAND_SIZE,
   HEDGE_CROSSINGS,
@@ -22,7 +25,7 @@ export interface MinimapModel {
   nodes: { x: number; z: number; kind: number; color: string; ripe: boolean }[];
   bags: { x: number; z: number }[];
   /** The Boulders' Giant (null until seeded). */
-  giant: { x: number; z: number; down: boolean } | null;
+  giant: { x: number; z: number; down: boolean; asleep?: boolean; label?: string } | null;
 }
 
 interface Row { x: number; z: number }
@@ -43,6 +46,9 @@ export function minimapModel(input: {
   groundItems: readonly GroundRow[];
   tick: number;
   giants?: readonly { x: number; z: number; state: number }[];
+  /** The raid schedule and the wall clock, for the countdown under the Giant. */
+  raid?: RaidRowLike | null;
+  nowMs?: number;
 }): MinimapModel {
   const { meHex, tick } = input;
   let me: MinimapModel["me"] = null;
@@ -70,7 +76,10 @@ export function minimapModel(input: {
     bags.push({ x: g.x, z: g.z });
   }
   const g = input.giants?.[0];
-  const giant = g ? { x: g.x, z: g.z, down: g.state === GiantState.Defeated } : null;
+  const asleep = !!g && g.state === GiantState.Asleep;
+  const status = input.raid ? raidStatus(input.raid, input.nowMs ?? Date.now()) : null;
+  const label = !status ? undefined : status.awake ? "RAID" : formatCountdown(status.targetMs, input.nowMs ?? Date.now());
+  const giant = g ? { x: g.x, z: g.z, down: g.state === GiantState.Defeated || asleep, asleep, label } : null;
   return { me, others, nodes, bags, giant };
 }
 
@@ -133,6 +142,20 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
     ctx.fill();
     ctx.stroke();
     ctx.globalAlpha = 1;
+    // Countdown to the next wake (or RAID while it is up), above the marker.
+    if (m.giant.label) {
+      const font = Math.max(8, Math.round(size / 13));
+      ctx.font = `700 ${font}px system-ui, sans-serif`;
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(20,16,12,0.85)";
+      ctx.fillStyle = m.giant.asleep ? "#e9e3ff" : "#ffcf7a";
+      const text = m.giant.asleep ? `z ${m.giant.label}` : m.giant.label;
+      const tx = Math.min(size - 2, x + k), ty = Math.max(font + 1, y - k - 1);
+      ctx.strokeText(text, tx, ty);
+      ctx.fillText(text, tx, ty);
+    }
   }
   // Your dropped bag: a red cross in a white ring.
   for (const b of m.bags) {

@@ -1651,3 +1651,27 @@ canvas {
   background: linear-gradient(90deg, #c0392b, #e8603c);
   transition: width 0.25s ease-out;
 }
+
+/* Scheduled Giant raids: the countdown line in the goal chip, or its own pill. */
+.goal-chip .raid-countdown { font-weight: 700; color: #4a3d8f; margin-top: 3px; }
+.goal-chip .raid-countdown.raid-live { color: #b8412f; }
+.raid-chip {
+  position: absolute;
+  top: calc(max(16px, env(safe-area-inset-top)) + 56px);
+  left: max(18px, env(safe-area-inset-left));
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2c2550;
+  background: #ece8fbf2;
+  box-shadow: 0 2px 8px #211a1526;
+  pointer-events: none;
+}
+.raid-chip.raid-live { color: #fff4e8; background: #b8412ff2; }
+.chat-log p.chat-system { font-style: italic; color: #5b4a9a; }
+.giant-zzz { color: #e9e3ff; font-weight: 800; font-size: 15px; letter-spacing: 2px; text-shadow: 0 1px 2px #000a; animation: giant-zzz 2.4s ease-in-out infinite; }
+@keyframes giant-zzz { 0% { transform: translate(0, 4px); opacity: .3; } 50% { opacity: 1; } 100% { transform: translate(10px, -10px); opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .giant-zzz { animation: none; } }
+.mentor-summary { margin: 0 0 10px; font-size: 12px; }
+.mentor-badge { margin-left: 6px; font-size: 10px; font-weight: 700; color: #6d5a2e; }

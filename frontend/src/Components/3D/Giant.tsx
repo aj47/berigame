@@ -4,7 +4,9 @@ import { Html } from '@react-three/drei';
 import { BufferGeometry, Group, Mesh, MeshBasicMaterial, PlaneGeometry, RingGeometry, Vector3 } from 'three';
 import {
   EventKind, GIANT_SLAM_WINDUP_TICKS, GIANT_STOMP_WINDUP_TICKS, GiantAttack, GiantState, TICK_MS, attackRadius, giantHpAt, tileToWorld,
+  formatCountdown,
 } from '@sim';
+import { useGiantRaid, useNow } from '../../spacetime/hooks';
 import type { Giant as GiantRow } from '../../module_bindings/types';
 import { useGameActions } from '../../spacetime/actions';
 import { useGiantStore } from '../../spacetime/stores/giantStore';
@@ -20,6 +22,8 @@ import { LowPolyBuilder, coastMaterial, linear } from './nodes/lowPoly';
  * skinning), driven per frame from refs without allocating:
  * idle breathing, a wind-up (arms overhead, or a raised foot for the stomp),
  * the slam, a flinch when hit, and a topple into rubble when defeated.
+ * Between scheduled raids it sleeps: sat down, slumped forward, eyes shut,
+ * with a slow deep breath (blended in and out, so waking is a stand-up).
  */
 const STONE = linear(0x7d8088), STONE_DARK = linear(0x5f636b), STONE_LIGHT = linear(0x9a9ca2), MOSS = linear(0x6f8f3e), MOSS_DARK = linear(0x557232);
 const EARTH = linear(0x6b5a48);
@@ -86,13 +90,15 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
   const armL = useRef<Group>(null);
   const armR = useRef<Group>(null);
   const legR = useRef<Group>(null);
+  const legL = useRef<Group>(null);
   const mark = useRef<Group>(null);
   const fill = useRef<Mesh>(null);
   const dust = useRef<Mesh>(null);
   const row = useRef(giant);
   row.current = giant;
   // performance.now() of the transitions this client saw (wind-up start, rise).
-  const seen = useRef({ windupAt: -Infinity, riseAt: -Infinity, state: giant.state, yaw: 0 });
+  const seen = useRef({ windupAt: -Infinity, riseAt: -Infinity, state: giant.state, yaw: 0, sleep: giant.state === GiantState.Asleep ? 1 : 0 });
+  const eyes = useRef<Group>(null);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
 
   const hit = useGiantStore((s) => s.hit);
@@ -128,6 +134,10 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
       s.yaw += d * 0.08;
     }
     r.rotation.y = s.yaw;
+    // Sleep blend: 1 asleep, 0 awake; eased so waking reads as standing up.
+    s.sleep += ((g.state === GiantState.Asleep ? 1 : 0) - s.sleep) * 0.035;
+    if (Math.abs(s.sleep - (g.state === GiantState.Asleep ? 1 : 0)) < 0.002) s.sleep = g.state === GiantState.Asleep ? 1 : 0;
+    const zz = s.sleep;
 
     // Defaults: idle breathing and a slow sway.
     let armX = -0.12 + Math.sin(t * 1.3) * 0.05, armZ = 0.12, lean = Math.sin(t * 0.9) * 0.03, legX = 0;
@@ -173,10 +183,25 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
       lean += -Math.sin(since / 60) * 0.06 * k;
     }
 
+    if (zz > 0) {
+      // Sat down with its back to a boulder: sunk, slumped forward, arms resting on the ground, a slow deep breath.
+      const breath = Math.sin(t * 0.8);
+      r.position.y = r.position.y * (1 - zz) - 0.95 * zz;
+      bd.position.y = bd.position.y * (1 - zz) + breath * 0.06 * zz;
+      lean = lean * (1 - zz) + (0.42 + breath * 0.03) * zz;
+      armX = armX * (1 - zz) + 0.55 * zz;
+      armZ = armZ * (1 - zz) + 0.35 * zz;
+      legX = legX * (1 - zz) - 1.2 * zz;
+    }
+    const e = eyes.current;
+    if (e) e.scale.y = zz > 0.5 ? 0.15 : 1;
+
     bd.rotation.x = lean;
     al.rotation.x = armX; ar.rotation.x = armX;
     al.rotation.z = -armZ; ar.rotation.z = armZ;
     lr.rotation.x = legX;
+    const ll = legL.current;
+    if (ll) ll.rotation.x = -1.2 * zz;
 
     // Telegraph: a red square over the area, filling from the centre as the blow nears.
     const m = mark.current, f = fill.current;
@@ -213,8 +238,9 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
     if (e.delta > 5) return;
     e.stopPropagation();
     const down = row.current.state === GiantState.Defeated;
+    const asleep = row.current.state === GiantState.Asleep;
     setClickedOtherObject({ connectionId: 'The Giant', e, dropdownOptions: [
-      { label: down ? 'The Giant is resting' : 'Attack The Giant', disabled: down, onClick: () => { onAttack(row.current.id); setClickedOtherObject(null); } },
+      { label: asleep ? 'The Giant is asleep' : down ? 'The Giant is resting' : 'Attack The Giant', disabled: down || asleep, onClick: () => { onAttack(row.current.id); setClickedOtherObject(null); } },
     ] });
   };
 
@@ -223,12 +249,14 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
       <group ref={root}>
         <group ref={body}>
           <mesh geometry={p.body} material={coastMaterial()} castShadow />
-          <mesh position={[-0.17, 3.52, 0.6]} material={eyeMat}><boxGeometry args={[0.12, 0.06, 0.04]} /></mesh>
-          <mesh position={[0.17, 3.52, 0.6]} material={eyeMat}><boxGeometry args={[0.12, 0.06, 0.04]} /></mesh>
+          <group ref={eyes} position={[0, 3.52, 0.6]}>
+            <mesh position={[-0.17, 0, 0]} material={eyeMat}><boxGeometry args={[0.12, 0.06, 0.04]} /></mesh>
+            <mesh position={[0.17, 0, 0]} material={eyeMat}><boxGeometry args={[0.12, 0.06, 0.04]} /></mesh>
+          </group>
           <group ref={armL} position={[-1.3, 2.95, 0.05]}><mesh geometry={p.armL} material={coastMaterial()} castShadow /></group>
           <group ref={armR} position={[1.3, 2.95, 0.05]}><mesh geometry={p.armR} material={coastMaterial()} castShadow /></group>
         </group>
-        <group position={[-0.55, 1.35, 0]}><mesh geometry={p.legL} material={coastMaterial()} /></group>
+        <group ref={legL} position={[-0.55, 1.35, 0]}><mesh geometry={p.legL} material={coastMaterial()} /></group>
         <group ref={legR} position={[0.55, 1.35, 0]}><mesh geometry={p.legR} material={coastMaterial()} /></group>
       </group>
       <group ref={mark} visible={false}>
@@ -249,6 +277,26 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
 
 /** HP bar and name over its head; a countdown while it rests. */
 const GiantBar = ({ giant, tick }: { giant: GiantRow; tick: number }) => {
+  if (giant.state === GiantState.Asleep) return <SleepLabel />;
+  return <AwakeBar giant={giant} tick={tick} />;
+};
+
+/** "Zzz" and the time to its next wake (re-renders once a second, alone). */
+const SleepLabel = () => {
+  const raid = useGiantRaid();
+  const now = useNow(1000);
+  const wake = raid && !raid.awake ? Number(raid.nextWakeAtMicros / 1000n) : null;
+  return (
+    <Html position={[0, 4.2, 0]} center zIndexRange={[3, 0]} style={{ pointerEvents: 'none' }}>
+      <div className="giant-hp" data-testid="giant-asleep">
+        <div className="giant-zzz" aria-hidden="true">Z z z</div>
+        <div className="giant-hp-name">{wake !== null ? `The Giant sleeps · wakes in ${formatCountdown(wake, now)}` : 'The Giant sleeps'}</div>
+      </div>
+    </Html>
+  );
+};
+
+const AwakeBar = ({ giant, tick }: { giant: GiantRow; tick: number }) => {
   const eventHp = useGiantStore((s) => s.hp);
   const down = giant.state === GiantState.Defeated;
   const hp = down ? 0 : giant.lastHitTick === tick && eventHp !== null ? eventHp : giantHpAt(giant, tick);
