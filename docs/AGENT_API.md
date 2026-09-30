@@ -221,9 +221,27 @@ the exact schemas.
 - **Obsidian.** Two obsidian outcrops (`kind: "obsidian"`) sit at the far ends
   of the Boulders' L, (60,40) and (40,60): 8 ticks to chip, 150 to reform, 1
   obsidian (about 1.3 a minute world-wide). `harvest {kind: "obsidian"}` works.
+- **Scheduled raids (1.4.0).** The Giant **sleeps between raids** and wakes
+  every 3 hours on the UTC hour (00:00, 03:00, ... UTC). `state.giant.asleep`,
+  `state.giant.nextWakeAt` (ISO time, null during a raid),
+  `nextWakeInSeconds`, and `state.giant.raid {active, endsAt?, endsInSeconds?,
+  playersAtWake?, lastOutcome: none|defeated|slept, count, schedule}`. Asleep
+  (`state: "asleep"`) it cannot be attacked: `attack_giant` fails with "The
+  Giant is asleep. It wakes in m:ss". Its raid HP is 600 plus 200 per extra
+  player standing in the Boulders when it wakes (at most 2000). A raid lasts 15
+  minutes; undefeated, it goes back to sleep. Everyone online who dealt at
+  least 24 damage that raid gets 6 obsidian and the Giant's Tooth keepsake
+  (`reward {itemId, quantity, minDamage, keepsake}`); then it sleeps until the
+  next wake. Cosmetic only; no power.
+- **Mentors (1.4.0).** `state.mentor {mentees, pinTiers, rule}` and
+  `friends[].mentees`. When a newer player first reaches the Coast or makes
+  their first stone club, the player whose invite link they used (or a mutual
+  friend online within 8 tiles) who joined at least a day earlier, or had
+  already crafted before they joined, earns the Mentor's Pin (finer at 3 and 10
+  mentees) and they earn the Welcomed Ribbon. One mentor per newcomer. Cosmetic.
 - **The Giant (F3).** `state.giant {id, tile: {x: 57, z: 57}, footprint: 1,
-  reach: 2, aggroRange: 8, state, health, maxHealth: 400, telegraph?,
-  respawnInTicks?, reward, rule}`. A PvE world boss **open to everyone**: no
+  reach: 2, aggroRange: 8, state, health, maxHealth, telegraph?, asleep,
+  nextWakeAt, raid, reward, rule}`. A PvE world boss **open to everyone**: no
   combat access needed, and hitting it never ends grace or makes you hostile.
   `attack_giant` walks you within Chebyshev 2 of its centre (it blocks the 3x3
   around it) and keeps swinging with your punch or weapon; its HP pool is
@@ -236,9 +254,9 @@ the exact schemas.
   ticks. **Walk out of the marked square** (Chebyshev > radius) before
   `landsInTicks` reaches 0 and you take nothing; then `attack_giant` again
   (moving stops your swings; so does being hit). A blow can kill you (the whole
-  bag drops, club included). When it falls, everyone who dealt at least 16
-  damage that life gets 3 obsidian (equal shares; online players only), and it
-  rises again 500 ticks later (`respawnInTicks`).
+  bag drops, club included). When it falls, the raid reward above goes to
+  every qualifying contributor (equal shares; online players only), and it
+  sleeps until the next scheduled wake.
 - **Skills (F2).** `state.skills[] {id, name, xp, level, maxLevel, xpToNext, harvestTicksSaved?}`
   for `foraging` (every finished berry harvest, 8 XP), `beachcombing` (driftwood 6 XP,
   flint 10 XP) and `crafting` (every make: club 40, mash 15, knife 25, crown 30).
@@ -289,7 +307,7 @@ the exact schemas.
   `{ itemId, name, damage }`. Other players' weapons are public, because the stick
   is drawn in their hand. Inventories stay private.
 
-API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
+API version **1.4.0** (scheduled raids, mentors) added `state.giant.asleep`/`nextWakeAt`/`nextWakeInSeconds`/`raid`, the `asleep` giant state, `state.mentor` and `friends[].mentees`, and new cosmetics (`welcomed_ribbon`, `mentor_pin`, `mentor_pin_silver`, `mentor_pin_gold`, `giants_tooth`); `respawnInTicks` is gone (the Giant sleeps instead). API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
 fields `output`, `cosmetic`, `level`, `locked` and `xp`. API version **1.2.0** (M2) added `craft`, `harvest {nodeId | kind}`,
 `state.nodes` and `state.recipes`. API version **1.1.0** removed the rock-paper-scissors `stance` action and the
 `stance`/`fightState` player fields. `/actions/stance` now returns 404
