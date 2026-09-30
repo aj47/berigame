@@ -44,7 +44,7 @@ export const GIANT_STOMP_DAMAGE = 6;
 export const GIANT_STOMP_EVERY = 3;
 /** After a defeat it is back in 5 minutes. */
 export const GIANT_RESPAWN_TICKS = 500;
-/** Left alone this long, it is back to full HP (and old contributions are forgotten). */
+/** Pre-raid idle regeneration delay. No longer applied (raids have no regen); kept for the client's render tick cap. */
 export const GIANT_REGEN_IDLE_TICKS = 100;
 /** Damage dealt (this life) to share in the reward: two club blows or three stick blows. */
 export const GIANT_MIN_CONTRIBUTION = 16;
@@ -100,16 +100,19 @@ export function inGiantReach(t: Tile, g: Tile = GIANT_TILE): boolean {
   return chebyshev(t, g) <= GIANT_REACH;
 }
 
-/** HP at `tick`: full again after GIANT_REGEN_IDLE_TICKS without a hit (never while defeated). */
+/** HP at `tick`: 0 defeated, full asleep; during a raid exactly the row's HP (no idle regeneration since scheduled raids). */
 export function giantHpAt(g: Pick<GiantRowLike, 'hp' | 'maxHp' | 'state' | 'lastHitTick'>, tick: number): number {
   if (g.state === GiantState.Defeated) return 0;
   if (g.state === GiantState.Asleep) return g.maxHp;
-  return tick - g.lastHitTick >= GIANT_REGEN_IDLE_TICKS ? g.maxHp : g.hp;
+  // Awake means a scheduled raid (shared/sim/raid.ts): no idle regeneration, the raid window is the limit.
+  return g.hp;
 }
 
-/** Whether the old contributions no longer count (it regenerated since the last hit). */
+/** Whether old contributions no longer count. Always false since scheduled raids: a raid never regenerates or forgets. */
 export function giantForgot(g: Pick<GiantRowLike, 'hp' | 'maxHp' | 'state' | 'lastHitTick'>, tick: number): boolean {
-  return g.state !== GiantState.Defeated && g.state !== GiantState.Asleep && g.hp < g.maxHp && tick - g.lastHitTick >= GIANT_REGEN_IDLE_TICKS;
+  // Raids never forget contributions mid-fight (no idle regeneration); kept for callers.
+  void g; void tick;
+  return false;
 }
 
 export function attackRadius(attack: number): number {

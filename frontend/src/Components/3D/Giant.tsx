@@ -78,6 +78,8 @@ const dustMat = new MeshBasicMaterial({ color: '#d9c8a6', transparent: true, opa
 const SLAM_MS = 480;
 const TOPPLE_MS = 1600;
 const RISE_MS = 1200;
+/** How long a raid-defeated Giant lies toppled before it sits up to sleep. */
+const TOPPLE_HOLD_MS = 1400;
 const FLINCH_MS = 450;
 const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
@@ -135,8 +137,12 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
     }
     r.rotation.y = s.yaw;
     // Sleep blend: 1 asleep, 0 awake; eased so waking reads as standing up.
-    s.sleep += ((g.state === GiantState.Asleep ? 1 : 0) - s.sleep) * Math.min(1, delta * 2.2);
-    if (Math.abs(s.sleep - (g.state === GiantState.Asleep ? 1 : 0)) < 0.002) s.sleep = g.state === GiantState.Asleep ? 1 : 0;
+    // A raid defeat: topple over first (TOPPLE_MS), lie there a moment, then rise into the sleeping sit.
+    const sinceDefeat = now - useGiantStore.getState().defeatAt;
+    const toppling = g.state === GiantState.Asleep && sinceDefeat >= 0 && sinceDefeat < TOPPLE_MS + TOPPLE_HOLD_MS;
+    const sleepTarget = g.state === GiantState.Asleep && !toppling ? 1 : 0;
+    s.sleep += (sleepTarget - s.sleep) * Math.min(1, delta * 2.2);
+    if (Math.abs(s.sleep - sleepTarget) < 0.002) s.sleep = sleepTarget;
     const zz = s.sleep;
 
     // Defaults: idle breathing and a slow sway.
@@ -145,10 +151,11 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
     r.position.y = 0;
     r.rotation.z = 0;
 
-    if (g.state === GiantState.Defeated) {
-      // Topple over and sink into a rubble mound; stay there until respawn.
+    if (g.state === GiantState.Defeated || toppling) {
+      // Topple over and sink into a rubble mound (a raid defeat then eases into its sleeping sit).
       const k = smooth(clamp01((now - fx.defeatAt) / TOPPLE_MS));
-      const done = Number.isFinite(fx.defeatAt) ? k : 1;
+      const out = toppling ? 1 - smooth(clamp01((sinceDefeat - TOPPLE_MS - TOPPLE_HOLD_MS + 600) / 600)) : 1;
+      const done = (Number.isFinite(fx.defeatAt) ? k : 1) * out;
       r.rotation.z = -1.35 * done;
       r.position.y = -0.9 * done;
       armX = -0.4 * done; armZ = 0.6 * done; lean = 0.2 * done;

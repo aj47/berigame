@@ -131,11 +131,11 @@ describe('F3: the Giant AI', () => {
     expect(chooseGiantTarget(GIANT_TILE, [at(GIANT_TILE.x + 3, GIANT_TILE.z, 2), at(GIANT_TILE.x - 3, GIANT_TILE.z, 1)])?.order).toBe(1);
   });
 
-  it('HP: shared pool, lazy regeneration after idling, defeat at 0, respawn after the timer', () => {
+  it('HP: shared pool, no idle regeneration during a raid, defeat at 0, respawn after the timer', () => {
     const g = giant({ hp: 20, lastHitTick: 100 });
-    expect(giantHpAt(g, 100 + GIANT_REGEN_IDLE_TICKS - 1)).toBe(20);
-    expect(giantHpAt(g, 100 + GIANT_REGEN_IDLE_TICKS)).toBe(GIANT_MAX_HP);
-    expect(giantForgot(g, 100 + GIANT_REGEN_IDLE_TICKS)).toBe(true);
+    expect(giantHpAt(g, 100 + GIANT_REGEN_IDLE_TICKS)).toBe(20);
+    expect(giantHpAt(g, 100 + 10 * GIANT_REGEN_IDLE_TICKS)).toBe(20);
+    expect(giantForgot(g, 100 + 10 * GIANT_REGEN_IDLE_TICKS)).toBe(false);
     expect(giantAfterHit(g, 8, 101)).toEqual({ hp: 12, defeated: false });
     expect(giantAfterHit(g, 25, 101)).toEqual({ hp: 0, defeated: true });
     const down = giant({ hp: 0, state: GiantState.Defeated, respawnTick: 700 });

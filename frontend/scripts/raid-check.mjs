@@ -83,6 +83,8 @@ try {
     line = await text(page, '[data-testid="chat-system-line"]');
   }
   check('announcement also lands in chat as a system line', /wakes in/.test(line), line);
+  const lineCounts = await page.evaluate(() => [...document.querySelectorAll('[data-testid="chat-system-line"]')].map((el) => el.textContent));
+  check('each world-wide event arrives exactly once (no doubled event-table delivery)', lineCounts.length === 2 && new Set(lineCounts).size === 2, JSON.stringify(lineCounts));
   await shot(page, '03-t1-announcement-chat.png');
   await page.evaluate(() => document.querySelector('.chat-panel .close-button')?.click());
   await sleep(400);
@@ -101,7 +103,7 @@ try {
   check('HUD shows the raid time left', !!live, live);
   // Face it: tap the Giant and choose Attack (walks up and keeps swinging).
   const attackViaMenu = async () => {
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 12; i++) {
       const p = await page.evaluate(() => window.__berigameProject(57, 57, 2));
       await page.mouse.click(p.x, p.y);
       const ok = await page.waitForSelector('.click-dropdown', { timeout: 3000 }).then(() => true).catch(() => false);
@@ -136,7 +138,8 @@ try {
     return null;
   }, 60_000);
   check('defeat toasts the reward', !!reward, reward);
-  await sleep(1200);
+  await shot(page, '05a-raid-defeat-topple.png');
+  await sleep(3500);
   await shot(page, '05-raid-defeated-reward.png');
   clearInterval(heal);
   const after = sql('SELECT awake, last_outcome FROM giant_raid');

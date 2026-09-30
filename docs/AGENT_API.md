@@ -245,7 +245,7 @@ the exact schemas.
   combat access needed, and hitting it never ends grace or makes you hostile.
   `attack_giant` walks you within Chebyshev 2 of its centre (it blocks the 3x3
   around it) and keeps swinging with your punch or weapon; its HP pool is
-  shared by everyone and regenerates after 100 ticks without a hit. It attacks
+  shared by everyone and does not regenerate during a raid. It attacks
   players in the Boulders within 8 tiles: `state` goes `idle` ->
   `winding_up` (with `telegraph {attack: slam|stomp, center, radius, damage,
   landsInTicks, youAreInside}`) -> the blow lands -> `recovering`. A slam hits

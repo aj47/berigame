@@ -1,12 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { CombatEvent, SocialEvent } from '../module_bindings/types';
 import { identityHex } from './identity';
 import { useToastStore } from './stores/toastStore';
 import { useMyIdentityHex } from './hooks';
 import { useFirstDayStore } from './stores/firstDayStore';
-import { SpacetimeDBProvider, useSpacetimeDB, useTable } from 'spacetimedb/react';
+import { SpacetimeDBProvider, useSpacetimeDB } from 'spacetimedb/react';
 import type { DbConnection } from '../module_bindings';
-import { tables } from '../module_bindings';
 import { buildConnection, currentConnection, markConnectionLost, setConnectionLifecycle } from './connection';
 import { ReconnectController, type BackoffOptions } from './reconnect';
 import { useLoadingStore } from '../store';
@@ -20,33 +19,49 @@ import { useSocialStore } from './stores/socialStore';
 import { useGiantStore } from './stores/giantStore';
 import { useProgressStore } from './stores/progressStore';
 
+/**
+ * Listen to one table of the connection's own world subscription. Unlike
+ * `useTable`, this opens no second SQL subscription: with two overlapping
+ * subscriptions every event-table row (combat, dummy, emote, social, Giant)
+ * was delivered, and handled, twice.
+ */
+function useRowListener(accessor: string, onInsert?: (row: any) => void, onUpdate?: (prev: any, row: any) => void) {
+  const { getConnection, isActive } = useSpacetimeDB<DbConnection>();
+  const conn = getConnection() as any;
+  const ins = useRef(onInsert); ins.current = onInsert;
+  const upd = useRef(onUpdate); upd.current = onUpdate;
+  useEffect(() => {
+    const table = conn?.db?.[accessor];
+    if (!table || !isActive) return;
+    const i = (_ctx: any, row: any) => ins.current?.(row);
+    const u = (_ctx: any, prev: any, row: any) => upd.current?.(prev, row);
+    table.onInsert(i);
+    table.onUpdate?.(u);
+    return () => { table.removeOnInsert(i); table.removeOnUpdate?.(u); };
+  }, [conn, isActive, accessor]);
+}
+
 /** Feeds the tick clock and the combat FX store from table updates. */
 const TableSync = () => {
   useEffect(startWorldLivenessMonitor, []);
-  useTable(tables.world, {
-    onInsert: (row) => onWorldTick(row.tick),
-    onUpdate: (_old, row) => onWorldTick(row.tick),
-  });
-  const pushEvent = useCombatFxStore((s) => s.pushEvent);
+  useRowListener('world', (row) => onWorldTick(row.tick), (_old, row) => onWorldTick(row.tick));
   const me = useMyIdentityHex();
   const meRef = useRef(me);
   meRef.current = me;
   // combat_event is an event table: rows only ever arrive through onInsert.
-  const onEvent = useCallback((row: CombatEvent) => {
-    pushEvent(row);
+  useRowListener('combatEvent', (row: CombatEvent) => {
+    useCombatFxStore.getState().pushEvent(row);
     useFirstDayStore.getState().onEvent(meRef.current, row);
-  }, [pushEvent]);
-  useTable(tables.combatEvent, { onInsert: onEvent });
+  });
   // Training dummy blows and emotes: event tables too.
-  useTable(tables.dummyEvent, { onInsert: useSocialStore.getState().pushDummyHit });
-  useTable(tables.emoteEvent, { onInsert: useSocialStore.getState().pushEmote });
+  useRowListener('dummyEvent', (row) => useSocialStore.getState().pushDummyHit(row));
+  useRowListener('emoteEvent', (row) => useSocialStore.getState().pushEmote(row));
   // Social notices (trade requests and results, invite results): only your own show.
-  useTable(tables.socialEvent, { onInsert: useCallback((row: SocialEvent) => {
+  useRowListener('socialEvent', (row: SocialEvent) => {
     if (meRef.current && identityHex(row.to) === meRef.current) useToastStore.getState().show(row.text);
-  }, []) });
-  // The Boulders' Giant: blows, slams, defeats and rewards (an event table).
-  const onGiantEvent = useCallback((row: any) => useGiantStore.getState().pushEvent(row, meRef.current), []);
-  useTable(tables.giantEvent, { onInsert: onGiantEvent });
+  });
+  // The Boulders' Giant: blows, slams, defeats, rewards and raid announcements (an event table).
+  useRowListener('giantEvent', (row) => useGiantStore.getState().pushEvent(row, meRef.current));
   return null;
 };
 

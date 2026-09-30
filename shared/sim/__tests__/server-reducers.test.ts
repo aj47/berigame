@@ -1273,6 +1273,25 @@ describe('M3/F3: the Boulders gate and the Giant', () => {
     expect(h.contributions.size).toBe(0);
   });
 
+  it('no idle regeneration or contribution reset during a raid: the window is the limit', () => {
+    h.inventory.clear();
+    giveClub();
+    wake();
+    Object.assign(h.me(), { ...WEST, weapon: STONE_CLUB_ITEM_ID, respawnTick: 100_000 }); // grace: its blows skip A
+    attackGiant(h.ctx, { giantId: GIANT_ID });
+    run(1);
+    const hpAfterHit = h.giants.get(GIANT_ID).hp;
+    expect(hpAfterHit).toBe(RAID_HP_BASE - 8);
+    expect(h.contributions.get('a').damage).toBe(8);
+    cancel(h.ctx);
+    run(3 * 100); // far past the old 100-tick regeneration
+    expect(h.giants.get(GIANT_ID).hp).toBe(hpAfterHit);
+    attackGiant(h.ctx, { giantId: GIANT_ID });
+    run(1);
+    expect(h.giants.get(GIANT_ID).hp).toBe(hpAfterHit - 8);
+    expect(h.contributions.get('a').damage).toBe(16);
+  });
+
   it('a raid missed entirely (the module was down) just reschedules', () => {
     run();
     setMs(RAID_INTERVAL_MS + RAID_WINDOW_MS + 5000); run();
