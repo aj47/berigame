@@ -32,6 +32,7 @@ interface GiantFxState {
 
 export interface RaidLine { id: number; at: number; text: string }
 const MAX_LINES = 12;
+let lastLineKey = '';
 
 /** The text of a world-wide raid event, or null for fight events. */
 export function raidLineText(e: Pick<GiantEvent, 'kind' | 'quantity' | 'hp'>): string | null {
@@ -74,6 +75,10 @@ export const useGiantStore = create<GiantFxState>((set, get) => ({
     const hex = e.player.toHexString();
     const line = raidLineText(e);
     if (line) {
+      // One line per server event, even if the insert callback fires twice for it.
+      const key = `${e.tick}:${e.kind}:${e.quantity}`;
+      if (key === lastLineKey) return;
+      lastLineKey = key;
       const lines = get().systemLines;
       const id = (lines[lines.length - 1]?.id ?? 0) + 1;
       set({ systemLines: [...lines, { id, at: Date.now(), text: line }].slice(-MAX_LINES) });

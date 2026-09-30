@@ -117,7 +117,7 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
     s.state = giant.state;
   }, [giant.state, giant.stateUntilTick, giant.attack]);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const g = row.current, s = seen.current;
     const r = root.current, bd = body.current, al = armL.current, ar = armR.current, lr = legR.current;
     if (!r || !bd || !al || !ar || !lr) return;
@@ -135,7 +135,7 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
     }
     r.rotation.y = s.yaw;
     // Sleep blend: 1 asleep, 0 awake; eased so waking reads as standing up.
-    s.sleep += ((g.state === GiantState.Asleep ? 1 : 0) - s.sleep) * 0.035;
+    s.sleep += ((g.state === GiantState.Asleep ? 1 : 0) - s.sleep) * Math.min(1, delta * 2.2);
     if (Math.abs(s.sleep - (g.state === GiantState.Asleep ? 1 : 0)) < 0.002) s.sleep = g.state === GiantState.Asleep ? 1 : 0;
     const zz = s.sleep;
 
@@ -287,7 +287,7 @@ const SleepLabel = () => {
   const now = useNow(1000);
   const wake = raid && !raid.awake ? Number(raid.nextWakeAtMicros / 1000n) : null;
   return (
-    <Html position={[0, 4.2, 0]} center zIndexRange={[3, 0]} style={{ pointerEvents: 'none' }}>
+    <Html position={[0, 3.3, 0]} center zIndexRange={[3, 0]} style={{ pointerEvents: 'none' }}>
       <div className="giant-hp" data-testid="giant-asleep">
         <div className="giant-zzz" aria-hidden="true">Z z z</div>
         <div className="giant-hp-name">{wake !== null ? `The Giant sleeps · wakes in ${formatCountdown(wake, now)}` : 'The Giant sleeps'}</div>
