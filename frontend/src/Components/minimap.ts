@@ -2,6 +2,7 @@ import {
   BOULDER_LINE,
   BOULDERS_MIN,
   GiantState,
+  GARDEN_CENTER,
   GRID_SIZE,
   ISLAND_SIZE,
   HEDGE_CROSSINGS,
@@ -23,6 +24,8 @@ export interface MinimapModel {
   bags: { x: number; z: number }[];
   /** The Boulders' Giant (null until seeded). */
   giant: { x: number; z: number; down: boolean } | null;
+  /** Your garden terrace; `ripe` plots ready to harvest (a gold ring when > 0). */
+  garden?: { x: number; z: number; ripe: number };
 }
 
 interface Row { x: number; z: number }
@@ -43,6 +46,7 @@ export function minimapModel(input: {
   groundItems: readonly GroundRow[];
   tick: number;
   giants?: readonly { x: number; z: number; state: number }[];
+  gardenRipe?: number;
 }): MinimapModel {
   const { meHex, tick } = input;
   let me: MinimapModel["me"] = null;
@@ -71,7 +75,7 @@ export function minimapModel(input: {
   }
   const g = input.giants?.[0];
   const giant = g ? { x: g.x, z: g.z, down: g.state === GiantState.Defeated } : null;
-  return { me, others, nodes, bags, giant };
+  return { me, others, nodes, bags, giant, garden: { x: GARDEN_CENTER.x - 0.5, z: GARDEN_CENTER.z - 0.5, ripe: input.gardenRipe ?? 0 } };
 }
 
 /** Paint the map into a square canvas `size` CSS pixels wide (the context is already DPR-scaled). */
@@ -133,6 +137,19 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
     ctx.fill();
     ctx.stroke();
     ctx.globalAlpha = 1;
+  }
+  // Your garden: a small soil square, ringed in gold when something is ripe.
+  if (m.garden) {
+    const x = px(m.garden.x), y = px(m.garden.z), k = Math.max(2.5, s);
+    ctx.fillStyle = "#7a4f2c";
+    ctx.fillRect(x - k, y - k, k * 2, k * 2);
+    if (m.garden.ripe > 0) {
+      ctx.strokeStyle = "#f5c542";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, k * 2.2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
   // Your dropped bag: a red cross in a white ring.
   for (const b of m.bags) {

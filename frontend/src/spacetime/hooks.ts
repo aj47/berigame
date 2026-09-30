@@ -267,3 +267,10 @@ export function useWornCosmetics(hex: string): number {
   const select = useCallback((rows: readonly any[]) => derived(wornCache, rows, buildWorn).get(hex) ?? 0, [hex]);
   return useTableSelector(tables.playerCosmetic, select);
 }
+
+// ---- Personal garden ----------------------------------------------------------
+
+/** Your garden plots (row-level security: only your own rows arrive). An empty plot has no row. */
+export function useGardenPlots() {
+  return useRows<any>(tables.gardenPlot) as readonly import('../module_bindings/types').GardenPlot[];
+}

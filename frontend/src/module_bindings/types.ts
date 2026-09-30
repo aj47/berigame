@@ -82,6 +82,15 @@ export const Friend = __t.object("Friend", {
 });
 export type Friend = __Infer<typeof Friend>;
 
+export const GardenPlot = __t.object("GardenPlot", {
+  id: __t.u64(),
+  owner: __t.identity(),
+  plot: __t.u8(),
+  itemId: __t.string(),
+  plantedAtMicros: __t.u64(),
+});
+export type GardenPlot = __Infer<typeof GardenPlot>;
+
 export const Giant = __t.object("Giant", {
   id: __t.u32(),
   x: __t.i32(),

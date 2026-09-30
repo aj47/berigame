@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useGiants, useGroundItems, useMyIdentityHex, usePlayers, useTick, useTrees } from "../spacetime/hooks";
+import { useGardenPlots, useGiants, useGroundItems, useMyIdentityHex, usePlayers, useTick, useTrees } from "../spacetime/hooks";
+import { countRipe } from "@sim";
 import { drawMinimap, minimapModel } from "./minimap";
 
 /** Redraws per second: the map is a glance aid, not a per-frame view. */
@@ -34,9 +35,11 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
   const groundItems = useGroundItems();
   const tick = useTick();
   const giants = useGiants();
+  const gardenPlots = useGardenPlots();
+  const gardenRipe = countRipe(gardenPlots.map((r) => ({ itemId: r.itemId, plantedAtMs: Number(r.plantedAtMicros / 1000n) })), Date.now());
   const [expanded, setExpanded] = useState(false);
-  const latest = useRef(() => minimapModel({ meHex, players, trees, groundItems, tick, giants }));
-  latest.current = () => minimapModel({ meHex, players, trees, groundItems, tick, giants });
+  const latest = useRef(() => minimapModel({ meHex, players, trees, groundItems, tick, giants, gardenRipe }));
+  latest.current = () => minimapModel({ meHex, players, trees, groundItems, tick, giants, gardenRipe });
   const source = useRef(() => latest.current());
   const small = useMapCanvas(120, source);
   const big = useMapCanvas(expanded ? 300 : 0, source);
@@ -83,6 +86,7 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
               <li><i className="lg-hedge" />Bramble hedge</li>
               <li><i className="lg-boulders" />Boulders / the Giant</li>
               <li><i className="lg-bag" />Your dropped bag</li>
+              <li><i className="lg-garden" />Your garden (gold ring: ripe)</li>
             </ul>
           </div>
         </div>

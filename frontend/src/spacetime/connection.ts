@@ -136,6 +136,7 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
           tables.giantEvent,
           tables.playerSkill,
           tables.playerCosmetic,
+          tables.gardenPlot,
         ]);
     })
     .onConnectError((ctx, _err) => {

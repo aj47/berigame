@@ -27,3 +27,8 @@ export const tradeVisibilityB = spacetimedb.clientVisibilityFilter.sql(
 export const socialEventVisibility = spacetimedb.clientVisibilityFilter.sql(
   'SELECT * FROM social_event WHERE "to" = :sender'
 );
+
+/** Your own garden plots only: everyone else sees bare soil on the terrace. */
+export const gardenPlotVisibility = spacetimedb.clientVisibilityFilter.sql(
+  'SELECT * FROM garden_plot WHERE owner = :sender'
+);

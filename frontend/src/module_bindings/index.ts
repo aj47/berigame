@@ -48,10 +48,13 @@ import DropItemReducer from "./drop_item_reducer";
 import EatBerryReducer from "./eat_berry_reducer";
 import EmoteReducer from "./emote_reducer";
 import FollowReducer from "./follow_reducer";
+import GardenDevRipenReducer from "./garden_dev_ripen_reducer";
 import GrantAgentReducer from "./grant_agent_reducer";
 import GrantPlayerReducer from "./grant_player_reducer";
+import HarvestGardenReducer from "./harvest_garden_reducer";
 import MoveItemReducer from "./move_item_reducer";
 import PickupItemReducer from "./pickup_item_reducer";
+import PlantGardenReducer from "./plant_garden_reducer";
 import RedeemInviteReducer from "./redeem_invite_reducer";
 import RemoveFriendReducer from "./remove_friend_reducer";
 import RenewGrantReducer from "./renew_grant_reducer";
@@ -78,6 +81,7 @@ import CombatEventRow from "./combat_event_table";
 import DummyEventRow from "./dummy_event_table";
 import EmoteEventRow from "./emote_event_table";
 import FriendRow from "./friend_table";
+import GardenPlotRow from "./garden_plot_table";
 import GiantRow from "./giant_table";
 import GiantEventRow from "./giant_event_table";
 import GroundItemRow from "./ground_item_table";
@@ -167,6 +171,20 @@ const tablesSchema = __schema({
       { name: 'friend_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, FriendRow),
+  gardenPlot: __table({
+    name: 'garden_plot',
+    indexes: [
+      { accessor: 'id', name: 'garden_plot_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'owner', name: 'garden_plot_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+    ],
+    constraints: [
+      { name: 'garden_plot_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, GardenPlotRow),
   giant: __table({
     name: 'giant',
     indexes: [
@@ -339,10 +357,13 @@ const reducersSchema = __reducers(
   __reducerSchema("eat_berry", EatBerryReducer),
   __reducerSchema("emote", EmoteReducer),
   __reducerSchema("follow", FollowReducer),
+  __reducerSchema("garden_dev_ripen", GardenDevRipenReducer),
   __reducerSchema("grant_agent", GrantAgentReducer),
   __reducerSchema("grant_player", GrantPlayerReducer),
+  __reducerSchema("harvest_garden", HarvestGardenReducer),
   __reducerSchema("move_item", MoveItemReducer),
   __reducerSchema("pickup_item", PickupItemReducer),
+  __reducerSchema("plant_garden", PlantGardenReducer),
   __reducerSchema("redeem_invite", RedeemInviteReducer),
   __reducerSchema("remove_friend", RemoveFriendReducer),
   __reducerSchema("renew_grant", RenewGrantReducer),

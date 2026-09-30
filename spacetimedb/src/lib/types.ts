@@ -12,3 +12,4 @@ export type TradeRow = NonNullable<ReturnType<Ctx['db']['trade']['id']['find']>>
 export type GiantRow = NonNullable<ReturnType<Ctx['db']['giant']['id']['find']>>;
 export type PlayerSkillRow = NonNullable<ReturnType<Ctx['db']['playerSkill']['identity']['find']>>;
 export type PlayerCosmeticRow = NonNullable<ReturnType<Ctx['db']['playerCosmetic']['identity']['find']>>;
+export type GardenPlotRow = NonNullable<ReturnType<Ctx['db']['gardenPlot']['id']['find']>>;

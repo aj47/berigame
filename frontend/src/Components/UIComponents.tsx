@@ -201,6 +201,12 @@ const UIComponents = memo(() => {
               damage or health.
             </li>
             <li>
+              <strong>Tend your garden.</strong> Tap a soil plot on the garden
+              terrace just north-west of the safe ring and plant a berry. It
+              grows while you are away (greenberry 2 h, goldberry 8 h) and gives
+              back more; ripe berries wait for you.
+            </li>
+            <li>
               <strong>Pick your fights.</strong> Select another adventurer and
               choose Attack. You approach and swing automatically in range.
               Nobody can fight in the sandy safe ring at the centre, and you

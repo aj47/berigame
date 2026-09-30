@@ -433,3 +433,20 @@ export const socialPair = table(
     redeemedCode: t.string(),
   }
 );
+
+/**
+ * The personal garden (shared/sim/garden.ts): one row per planted plot, deleted
+ * on harvest (an empty plot has no row). Growth is computed from
+ * `plantedAtMicros` against the clock, so nothing is written while it grows.
+ * Private to its owner (views.ts): others see bare soil on the terrace.
+ */
+export const gardenPlot = table(
+  { name: 'garden_plot', public: true },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    owner: t.identity().index('btree'),
+    plot: t.u8(),
+    itemId: t.string(),
+    plantedAtMicros: t.u64(),
+  }
+);

@@ -14,3 +14,4 @@ export * from './friends';
 export * from './trade';
 export * from './giant';
 export * from './skills';
+export * from './garden';

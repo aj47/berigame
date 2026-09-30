@@ -3,6 +3,7 @@ import {
   CHAT_NEARBY_RADIUS, INVITE_PARAM, MAX_OFFER_LEN, MAX_TRADE_STACKS, TRADE_BREAK_RANGE, TRADE_RANGE,
   DUMMY_ID, DUMMY_MAX_HP, DUMMY_TILE, GIANT_ID, GIANT_MAX_HP, GIANT_MIN_CONTRIBUTION, GIANT_REACH, GIANT_REWARD, GIANT_TILE, EMOTE_LIST, GRID_SIZE, HOTBAR_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, PUNCH_DAMAGE, RECIPES, STICK_DROP_CHANCE, STICK_ITEM_ID, STONE_CLUB_ITEM_ID, getItemDef, validAppearance, COSMETICS,
 } from '../../shared/sim';
+import { GARDEN_BASE_PLOTS, GARDEN_CROPS, GARDEN_EXTRA_PLOT_LEVEL, GARDEN_MAX_PLOTS, GARDEN_REACH } from '../../shared/sim';
 
 type Field = { type: 'integer'; minimum: number; maximum: number } | { type: 'string'; minLength: number; maxLength: number; pattern?: string; enum?: string[] };
 type Action = { description: string; properties: Record<string, Field>; required: string[]; scope?: 'combat' | 'chat' };
@@ -45,6 +46,8 @@ export const ACTIONS: Record<string, Action> = {
   trade_offer: { description: `Set everything you offer in the open trade, as itemId:quantity pairs joined by commas (e.g. berry_blueberry:2,stick:1; "" for nothing; at most ${MAX_TRADE_STACKS} kinds). Items stay in your bag until the swap and must not be wielded (unwield first). Any change clears both confirmations.`, properties: { tradeId, offer: { type: 'string', minLength: 0, maxLength: MAX_OFFER_LEN } }, required: ['tradeId', 'offer'] },
   trade_confirm: { description: `Confirm the open trade exactly as it stands in state.trade. When both sides have confirmed, the swap happens at once, all or nothing; if a bag is too full or an offered item is gone or wielded, nothing moves, both confirmations clear and state.notices says why. Walking beyond ${TRADE_BREAK_RANGE} tiles, dying or leaving cancels.`, properties: { tradeId }, required: ['tradeId'] },
   trade_cancel: { description: 'Cancel your trade or withdraw your request.', properties: { tradeId }, required: ['tradeId'] },
+  plant: { description: `Plant one berry from your bag in a plot of your personal garden (state.garden; the terrace tiles are in state.garden.plots[].tile, just north-west of the safe ring). It grows in real time, even while you are offline: ${GARDEN_CROPS.map(c => `${c.itemId} ${c.growMs / 3600000}h -> ${c.yield}`).join(', ')}. You must stand within Chebyshev ${GARDEN_REACH} of the plot; from farther away this walks you there and returns walking (send plant again on arrival). ${GARDEN_BASE_PLOTS} plots, a ${GARDEN_MAX_PLOTS}th at Foraging level ${GARDEN_EXTRA_PLOT_LEVEL}. Only you see your plants.`, properties: { plot: integer(0, GARDEN_MAX_PLOTS - 1), berry: { type: 'string', minLength: 1, maxLength: 32, enum: GARDEN_CROPS.map(c => c.itemId) } }, required: ['plot', 'berry'] },
+  harvest_garden: { description: `Harvest a ripe plot of your garden (state.garden.plots[].ripe): it gives the berries and Foraging XP. Ripe plants never wither, so there is no hurry. Rejected when unripe, or when your bag cannot take the berries (the plant stays). Same reach rule as plant (walks you there first).`, properties: { plot: integer(0, GARDEN_MAX_PLOTS - 1) }, required: ['plot'] },
 };
 
 export function validateObject(input: unknown, properties: Record<string, Field>, required: string[]): Record<string, any> {

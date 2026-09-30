@@ -124,7 +124,7 @@ progress; read state to observe completion.
 
 Actions mirror the browser controls: `move`, `harvest`, `craft`, `eat`, `wield`, `unwield`,
 `stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`, `wear`,
-`attack_dummy`, `attack_giant`, `emote`, the social actions `invite_create`, `invite_redeem`,
+`attack_dummy`, `attack_giant`, `plant`, `harvest_garden`, `emote`, the social actions `invite_create`, `invite_redeem`,
 `friend_add`, `friend_remove`, `trade_request`, `trade_respond`, `trade_offer`,
 `trade_confirm`, `trade_cancel`, and the scoped `attack` and `chat`. OpenAPI has
 the exact schemas.
@@ -239,6 +239,20 @@ the exact schemas.
   bag drops, club included). When it falls, everyone who dealt at least 16
   damage that life gets 3 obsidian (equal shares; online players only), and it
   rises again 500 ticks later (`respawnInTicks`).
+- **Your garden.** `state.garden {plots[] {plot, tile, locked, inReach, plant: null |
+  {itemId, name, stage: seed|sprout|bush|ripe, ripe, ripeInSeconds, yield}}, ripe, rule}`.
+  A private berry patch on the garden terrace (tiles (21,20), (22,20), (21,21), (22,21), just
+  north-west of the safe ring): every player has their own plots on the same tiles and only sees
+  their own plants. `POST /actions/plant {"plot": 0-3, "berry": "<berry itemId>"}` plants one
+  berry from your bag; it grows in **real time, also while you are offline**: greenberry 2 h ->
+  3 berries, strawberry 4 h -> 3, blueberry 6 h -> 3, goldberry 8 h -> 2. `POST
+  /actions/harvest_garden {"plot": n}` on a ripe plot gives the berries and Foraging XP (12 /
+  16 / 20 / 24). Ripe plants never wither. You must stand within Chebyshev 1 of the plot; from
+  farther away either action walks you there and returns `walking {tile}` (send it again on
+  arrival). 3 plots; the 4th opens at Foraging level 5. Rejections: "Walk to your garden
+  first", "Something is already growing there", "You need a berry of that kind to plant",
+  "Not ripe yet: 1h 20m to go", "Your bag is full: make room, your berries will wait" (the
+  plant stays).
 - **Skills (F2).** `state.skills[] {id, name, xp, level, maxLevel, xpToNext, harvestTicksSaved?}`
   for `foraging` (every finished berry harvest, 8 XP), `beachcombing` (driftwood 6 XP,
   flint 10 XP) and `crafting` (every make: club 40, mash 15, knife 25, crown 30).

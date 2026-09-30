@@ -10,6 +10,7 @@ import {
   GIANT_REACH, GIANT_RESPAWN_TICKS, GIANT_REWARD, GiantAttack, GiantState, attackDamage, attackRadius, giantHpAt, isLandTile,
   COSMETICS, CosmeticSlot, SKILLS, SKILL_MAX_LEVEL, Skill, harvestTickBonus, hasCosmetic, levelForXp, levelProgress,
 } from '../../shared/sim';
+import { GARDEN_EXTRA_PLOT_LEVEL, GARDEN_PLOT_TILES, GARDEN_STAGE_NAMES, gardenPlotCountForXp, gardenRemainingMs, gardenStage, getGardenCrop, inGardenReach } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
 import { ApiError, type Invite } from './portable';
 
@@ -79,6 +80,7 @@ export function connect(credential: Credential, control = false, options: Connec
             tables.friend, tables.trade, tables.inviteCode, tables.socialEvent,
             tables.playerSkill.where(row => row.identity.eq(identity)),
             tables.playerCosmetic.where(row => row.identity.eq(identity)),
+            tables.gardenPlot,
           ]);
         }).build();
     } catch (error) { settled = true; clearTimeout(timer); reject(error); }
@@ -241,6 +243,24 @@ export async function createGameService(credential: Credential, options: Connect
               level: r.level, locked: r.locked, xp: r.xp, canCraft: r.canCraft, missing: r.missing })),
             skills: describeSkills(),
             cosmetics: describeCosmetics(),
+            garden: (() => {
+              const now = Date.now();
+              const skill = conn.db.playerSkill.identity.find(id);
+              const unlocked = gardenPlotCountForXp(skill?.foragingXp ?? 0);
+              const rows = [...conn.db.gardenPlot.iter()].filter(r => r.owner.toHexString() === player.identity);
+              return {
+                plots: GARDEN_PLOT_TILES.map((tile, plot) => {
+                  const row = rows.find(r => r.plot === plot);
+                  const plant = row ? { itemId: row.itemId, plantedAtMs: Number(row.plantedAtMicros / 1000n) } : null;
+                  const left = plant ? gardenRemainingMs(plant, now) : 0;
+                  return { plot, tile, locked: plot >= unlocked, inReach: inGardenReach(self, plot),
+                    plant: plant ? { itemId: plant.itemId, name: getItemDef(plant.itemId)?.name, stage: GARDEN_STAGE_NAMES[gardenStage(plant, now)],
+                      ripe: left === 0, ripeInSeconds: Math.ceil(left / 1000), yield: getGardenCrop(plant.itemId)?.yield ?? 0 } : null };
+                }),
+                ripe: rows.filter(r => gardenRemainingMs({ itemId: r.itemId, plantedAtMs: Number(r.plantedAtMicros / 1000n) }, now) === 0).length,
+                rule: `Your own berry patch (nobody else sees your plants). plant a berry, it grows in real time even while you are offline, then harvest_garden when ripe for more berries and Foraging XP. Ripe plants wait forever. A 4th plot opens at Foraging level ${GARDEN_EXTRA_PLOT_LEVEL}.`,
+              };
+            })(),
             groundItems: [...conn.db.groundItem.iter()].slice(0, 128).map(row => ({ id: row.id.toString(), itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity, tile: { x: row.x, z: row.z },
               ...(row.droppedOnDeath && row.droppedBy.toHexString() === player.identity ? { yourDeathDrop: true, expiresInTicks: Math.max(0, row.expiresTick - tick) } : {}) })),
             dummies: [...conn.db.trainingDummy.iter()].map(d => ({ id: d.id, tile: { x: d.x, z: d.z }, health: dummyHpAt(d, tick), maxHealth: d.maxHp,
@@ -364,6 +384,17 @@ export async function createGameService(credential: Credential, options: Connect
               break;
             }
             case 'trade_cancel': await r.cancelTradeRequest({ tradeId: BigInt(input.tradeId) }); break;
+            case 'plant':
+            case 'harvest_garden': {
+              const tile = GARDEN_PLOT_TILES[input.plot];
+              if (!inGardenReach(self, input.plot)) {
+                await r.setTarget({ x: tile.x, z: tile.z });
+                return { walking: { tile }, message: `Walking to your garden; send ${name} again when you arrive.` };
+              }
+              if (name === 'plant') await r.plantGarden({ plot: input.plot, itemId: input.berry });
+              else await r.harvestGarden({ plot: input.plot });
+              break;
+            }
             default: throw new ApiError(404, 'unknown_action', 'Unknown action.');
           }
         },

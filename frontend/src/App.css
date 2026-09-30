@@ -1646,6 +1646,18 @@ canvas {
   overflow: hidden;
 }
 .dummy-hp { width: 54px; height: 6px; }
+/* Personal garden: a small time-left tag over each of your plants. */
+.garden-label {
+  font: 600 11px/1.2 system-ui, sans-serif;
+  color: #f7f1e3;
+  background: #2b211acc;
+  border-radius: 8px;
+  padding: 1px 6px;
+  white-space: nowrap;
+  user-select: none;
+}
+.garden-label-ripe { background: #b8860bdd; color: #fff; }
+.minimap-legend .lg-garden { background: #7a4f2c; border: 2px solid #f5c542; }
 .giant-hp-fill, .dummy-hp-fill {
   height: 100%;
   background: linear-gradient(90deg, #c0392b, #e8603c);
