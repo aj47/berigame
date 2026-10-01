@@ -1,10 +1,26 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Group, Bone, Mesh } from 'three';
-import { APPEARANCE_KEYS, APPEARANCE_LIMITS, DEFAULT_APPEARANCE } from '@sim';
+import { ACCESSORIES, HAIR_STYLES, APPEARANCE_KEYS, APPEARANCE_LIMITS, DEFAULT_APPEARANCE } from '@sim';
 import { mountAppearanceDetails } from '../appearance/details';
 import { paletteColors, paletteKey } from '../appearance/palette';
 
 describe('character details',()=>{
+  it('extended hairstyles have distinct meshes and stay within budget with every accessory', () => {
+    const signatures = new Set<string>();
+    const model = new Group(), bone = new Bone(); bone.name = 'Head'; model.add(bone);
+    for (let hairStyle = 9; hairStyle < HAIR_STYLES.length; hairStyle++) {
+      for (let accessory = 0; accessory < ACCESSORIES.length; accessory++) {
+        const release = mountAppearanceDetails(model, {...DEFAULT_APPEARANCE, hairStyle, accessory, facialHair: 3});
+        const mesh = bone.children[0] as Mesh;
+        const positions = mesh.geometry.getAttribute('position');
+        expect(positions.count).toBeGreaterThan(500);
+        expect(positions.count).toBeLessThan(10000);
+        if (accessory === 0) signatures.add(JSON.stringify(Array.from(positions.array)));
+        release();
+      }
+    }
+    expect(signatures.size).toBe(HAIR_STYLES.length - 9);
+  });
   it('all options have finite geometry and free owned geometry on unmount',()=>{
     const model=new Group();for(const name of ['Head','Neck']){const bone=new Bone();bone.name=name;model.add(bone);}
     for(const key of APPEARANCE_KEYS)for(let value=0;value<APPEARANCE_LIMITS[key];value++){

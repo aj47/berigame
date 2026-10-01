@@ -16,6 +16,17 @@ afterEach(() => cleanup());
 const tab=(name:string)=>fireEvent.click(screen.getByRole('tab',{name,exact:true}));
 
 describe('character preview and persistence boundary', () => {
+  it('lets players customize a new starter look and save the new hair and accessory choices', async () => {
+    render(<AppearancePanel open onClose={()=>{}} />);
+    fireEvent.click(screen.getByRole('button', {name:/Blossom/}));
+    expect(useAppearancePreview.getState().draft).toMatchObject({hairStyle:10, accessory:7});
+    tab('Hair'); fireEvent.click(screen.getByRole('button', {name:'Long locs', exact:true}));
+    fireEvent.click(screen.getByRole('button', {name:'Hair color: Mint', exact:true}));
+    tab('Details'); fireEvent.click(screen.getByRole('button', {name:'Flower crown', exact:true}));
+    expect(mock.saveCharacter).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', {name:'Save character', exact:true}));
+    await waitFor(()=>expect(mock.saveCharacter).toHaveBeenCalledWith('Explorer', expect.objectContaining({hairStyle:18, hairColor:15, accessory:8})));
+  });
   it('keeps hat and scarf preview in sync with equipment updates while preserving the style draft', async () => {
     mock.cosmetics = { unlocked: (1 << Cosmetic.StrawHat) | (1 << Cosmetic.CoastScarf), head: Cosmetic.StrawHat + 1, neck: Cosmetic.CoastScarf + 1 };
     const { rerender } = render(<AppearancePanel open onClose={()=>{}}/>);

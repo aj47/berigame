@@ -1,6 +1,7 @@
 import { Mesh, Vector3, type Object3D } from 'three';
 import { HAIR_COLORS, WRAP_COLORS, ROBE_COLORS, ACCESSORY_COLORS, type CharacterAppearance } from '@sim';
 import { LowPolyBuilder, coastMaterial, linear } from '../Components/3D/nodes/lowPoly';
+import { buildExtendedHair } from './hair';
 
 const v = (x: number, y: number, z: number) => new Vector3(x, y, z);
 export const BODY_SCALES = [[1,1,1], [.88,1.04,.93], [1.13,1,1.08], [1.04,.91,1.04]] as const;
@@ -20,7 +21,7 @@ export function mountAppearanceDetails(model: Object3D, a: CharacterAppearance) 
     }
   };
   // A faceted scalp cap leaves the face open; longer styles build on its back and sides.
-  if(a.hairStyle>=4 && a.hairStyle<=7) {
+  if(a.hairStyle>=4 && a.hairStyle!==8) {
     const n=16, center=v(0,.195,-.003);
     const point=(i:number,j:number)=>{const theta=i*2*Math.PI/n, phi=(j/4)*(Math.cos(theta)>0 ? 1.07:1.7);return center.clone().add(v(Math.sin(theta)*Math.sin(phi)*.282,Math.cos(phi)*.302,Math.cos(theta)*Math.sin(phi)*.24));};
     for(let j=0;j<4;j++)for(let i=0;i<n;i++){const p=point(i,j),q=point(i+1,j),r=point(i+1,j+1),s=point(i,j+1);head.triangle(p,s,q,hair);head.triangle(q,s,r,hair.clone().multiplyScalar(i%3===0?.88:1));}
@@ -37,6 +38,7 @@ export function mountAppearanceDetails(model: Object3D, a: CharacterAppearance) 
     rock(head,v(side*.245,-.15,-.04),v(.065,.023,.067),accent);
   }
   if(a.hairStyle===8)for(let i=0;i<7;i++) {const t=-1.15+i*.34;rock(head,v(0,.22+Math.cos(t)*.30,Math.sin(t)*.21),v(.07,.13,.078));}
+  if(a.hairStyle>=9)buildExtendedHair(head,a.hairStyle,hair,accent);
   if(a.facialHair===1||a.facialHair===3) for(const side of [-1,1]) log(head,v(side*.012,.085,.246),v(side*.10,.056,.231),.021,.014);
   if(a.facialHair===2)rock(head,v(0,-.015,.197),v(.075,.075,.048));
   if(a.facialHair===3) { rock(head,v(0,-.01,.155),v(.17,.105,.105));for(const side of [-1,1])log(head,v(side*.177,.11,.15),v(side*.12,-.025,.17),.04,.047); }
@@ -45,6 +47,30 @@ export function mountAppearanceDetails(model: Object3D, a: CharacterAppearance) 
   if(a.accessory===3) {for(let i=0;i<24;i++){const t=i*Math.PI/12,nt=(i+1)*Math.PI/12;log(head,v(Math.sin(t)*.263,.33,Math.cos(t)*.209),v(Math.sin(nt)*.263,.33,Math.cos(nt)*.209),.023,.023,accent);}}
   if(a.accessory===4){rock(head,v(-.095,.208,.249),v(.068,.054,.026),accent);log(head,v(-.16,.218,.225),v(-.263,.265,0),.012,.012,accent);log(head,v(-.03,.215,.252),v(.243,.272,.085),.012,.012,accent);}
   if(a.accessory===5)ring(head,v(.036,.13,.269),.024);
+  if(a.accessory===6) {
+    const center=v(-.235,.38,.17);
+    for(const side of [-1,1]) {
+      rock(head,center.clone().add(v(side*.055,.008,0)),v(.075,.055,.032),accent);
+      log(head,center.clone(),center.clone().add(v(side*.06,-.10,.015)),.026,.035,accent);
+    }
+    rock(head,center,v(.027,.034,.037),cloth);
+  }
+  const flower=(center:Vector3,size:number)=>{
+    for(let i=0;i<5;i++) {
+      const angle=i*Math.PI*2/5;
+      head.rock(center.clone().add(v(Math.sin(angle)*size*.65,Math.cos(angle)*size*.65,0)),1,v(size*.47,size*.47,size*.25),{segments:6,jitter:0,colors:[accent]});
+    }
+    head.rock(center.clone().add(v(0,0,size*.2)),1,v(size*.3,size*.3,size*.22),{segments:6,jitter:0,colors:[linear(0xE6BF63)]});
+  };
+  if(a.accessory===7)flower(v(-.255,.35,.21),.08);
+  if(a.accessory===8)for(let i=0;i<7;i++) {
+    const angle=-1.5+i*.5;
+    flower(v(Math.sin(angle)*.30,.365,Math.cos(angle)*.26),.047);
+  }
+  if(a.accessory===9)for(const side of [-1,1]) {
+    log(head,v(side*.278,.12,.10),v(side*.29,.035,.13),.009,.009,accent);
+    rock(head,v(side*.29,.018,.13),v(.026,.044,.019),accent);
+  }
   // Neck-mounted layers leave the animated arms free.
   if(a.outfitStyle===1){log(outfit,v(0,-.025,0),v(0,.055,0),.19,.175,cloth);log(outfit,v(.105,-.025,.14),v(.16,-.29,.20),.062,.05,cloth);}
   if(a.outfitStyle===2){rock(outfit,v(0,-.11,-.055),v(.39,.13,.24),cloth);log(outfit,v(0,-.08,-.20),v(0,-.39,-.24),.18,.23,cloth);}

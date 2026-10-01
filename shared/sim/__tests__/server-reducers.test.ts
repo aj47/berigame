@@ -1498,6 +1498,11 @@ describe('F2: skills, level-gated recipes and cosmetics on the server', () => {
 
 
 describe('character creation and rename', () => {
+  it('persists new long hair, color, and jewelry choices through the authoritative reducer', () => {
+    const h = harness();
+    saveCharacter(h.ctx, {name:'Willow', ...DEFAULT_APPEARANCE, hairStyle:18, hairColor:15, accessory:9});
+    expect(h.appearances.get('a')).toMatchObject({hairStyle:18, hairColor:15, accessory:9, setupComplete:true});
+  });
   it('saves all details and the trimmed name only for the sender', () => {
     const h=harness(), before={...h.me()}, other={...h.other()};
     const choices={...DEFAULT_APPEARANCE,hairStyle:8,bodyType:2,faceShape:3,eyeColor:7,facialHair:3,outfitStyle:3,trouserColor:7,bootColor:5,accessory:5,accessoryColor:9};

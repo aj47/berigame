@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { APPEARANCE_KEYS, APPEARANCE_LIMITS, CHARACTER_PRESETS, DEFAULT_APPEARANCE, normalizeAppearance, needsCharacterSetup, validAppearance } from '../appearance';
+import { ACCESSORIES, HAIR_STYLES, APPEARANCE_KEYS, APPEARANCE_LIMITS, CHARACTER_PRESETS, DEFAULT_APPEARANCE, normalizeAppearance, needsCharacterSetup, validAppearance } from '../appearance';
 
 describe('character catalog compatibility',()=>{
+  it('keeps saved hairstyle and accessory indices stable when adding choices', () => {
+    expect(HAIR_STYLES.slice(0, 9).map(style => style.id)).toEqual(['tousled','cropped','topknot','bald','swept','bob','ponytail','braids','mohawk']);
+    expect(ACCESSORIES.slice(0, 6).map(option => option.name)).toEqual(['None','Round glasses','Hoop earrings','Headband','Eye patch','Nose ring']);
+  });
   it('accepts legacy five-field choices and preserves the original indices',()=>{
     const old={hairStyle:2,skinTone:5,hairColor:3,robeColor:4,wrapColor:2};
     expect(validAppearance(old)).toBe(true);expect(normalizeAppearance(old)).toEqual({...DEFAULT_APPEARANCE,...old});

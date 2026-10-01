@@ -1,4 +1,4 @@
-/** Cosmetic choices are shared by the editor and authoritative validation. */
+/** Shared with authoritative validation. Saved indices require append-only catalogs. */
 export const HAIR_STYLES = [
   { id: 'tousled', name: 'Tousled' },
   { id: 'cropped', name: 'Cropped' },
@@ -9,6 +9,16 @@ export const HAIR_STYLES = [
   { id: 'ponytail', name: 'Ponytail' },
   { id: 'braids', name: 'Twin braids' },
   { id: 'mohawk', name: 'Mohawk' },
+  { id: 'long-straight', name: 'Long straight' },
+  { id: 'long-waves', name: 'Long waves' },
+  { id: 'curly-bob', name: 'Curly bob' },
+  { id: 'natural-curls', name: 'Natural curls' },
+  { id: 'high-ponytail', name: 'High ponytail' },
+  { id: 'twin-ponytails', name: 'Twin ponytails' },
+  { id: 'double-buns', name: 'Double buns' },
+  { id: 'side-braid', name: 'Side braid' },
+  { id: 'crown-braid', name: 'Crown braid' },
+  { id: 'long-locs', name: 'Long locs' },
 ] as const;
 export const SKIN_TONES = [
   { name: 'Warm tan', color: '#DFA76E' },
@@ -35,6 +45,10 @@ export const HAIR_COLORS = [
   { name: 'Lavender', color: '#8C7DBA' },
   { name: 'Ocean', color: '#456C95' },
   { name: 'Moss', color: '#658573' },
+  { name: 'Strawberry blonde', color: '#CB9871' },
+  { name: 'Chocolate', color: '#634334' },
+  { name: 'Blush', color: '#DEA4AE' },
+  { name: 'Mint', color: '#94BBA4' },
 ] as const;
 export const ROBE_COLORS = [
   { name: 'Blue', color: '#42699C' },
@@ -66,7 +80,7 @@ export const BODY_TYPES = ['Classic', 'Slender', 'Broad', 'Compact'].map(name =>
 export const FACE_SHAPES = ['Classic', 'Round', 'Long', 'Wide'].map(name => ({ name }));
 export const FACIAL_HAIR = ['Clean shaven', 'Moustache', 'Goatee', 'Full beard'].map(name => ({ name }));
 export const OUTFIT_STYLES = ['Tunic', 'Trail scarf', 'Shoulder mantle', 'Explorer vest'].map(name => ({ name }));
-export const ACCESSORIES = ['None', 'Round glasses', 'Hoop earrings', 'Headband', 'Eye patch', 'Nose ring'].map(name => ({ name }));
+export const ACCESSORIES = ['None', 'Round glasses', 'Hoop earrings', 'Headband', 'Eye patch', 'Nose ring', 'Ribbon bow', 'Flower clip', 'Flower crown', 'Drop earrings'].map(name => ({ name }));
 export const EYE_COLORS = [
   { name: 'Dark brown', color: '#221B18' }, { name: 'Hazel', color: '#6D5631' },
   { name: 'Blue', color: '#487999' }, { name: 'Green', color: '#577C4F' },
@@ -120,6 +134,10 @@ export const CHARACTER_PRESETS = [
   { name: 'Tidewalker', description: 'Follow the sea breeze', choices: { hairStyle: 6, hairColor: 7, robeColor: 5, skinTone: 3, eyeColor: 2, outfitStyle: 1, wrapColor: 6, accessory: 3, accessoryColor: 6, bootColor: 4 } },
   { name: 'Stargazer', description: 'A curious soul after dark', choices: { hairStyle: 4, hairColor: 9, robeColor: 3, skinTone: 6, faceShape: 1, eyeColor: 6, accessory: 1, accessoryColor: 7, trouserColor: 1 } },
   { name: 'Pathfinder', description: 'Ready for the next discovery', choices: { hairStyle: 3, skinTone: 8, robeColor: 10, wrapColor: 4, bodyType: 2, facialHair: 3, outfitStyle: 3, accessory: 4, accessoryColor: 4, trouserColor: 4, bootColor: 1 } },
+  { name: 'Blossom', description: 'Waves and a flower in your hair', choices: { hairStyle: 10, hairColor: 12, skinTone: 1, robeColor: 7, wrapColor: 3, bodyType: 1, eyeColor: 3, accessory: 7, accessoryColor: 8, trouserColor: 7, bootColor: 5 } },
+  { name: 'Dune dancer', description: 'Full curls and golden details', choices: { hairStyle: 12, hairColor: 1, skinTone: 9, robeColor: 6, wrapColor: 7, eyeColor: 5, accessory: 9, accessoryColor: 7, trouserColor: 4, bootColor: 2 } },
+  { name: 'Moonbeam', description: 'A braided crown under the stars', choices: { hairStyle: 17, hairColor: 9, skinTone: 3, robeColor: 3, wrapColor: 8, faceShape: 1, eyeColor: 6, outfitStyle: 2, accessory: 9, accessoryColor: 3, trouserColor: 1, bootColor: 4 } },
+  { name: 'Wildflower', description: 'Long locs, fresh-picked blooms', choices: { hairStyle: 18, hairColor: 13, skinTone: 5, robeColor: 11, wrapColor: 6, eyeColor: 1, accessory: 8, accessoryColor: 5, trouserColor: 3, bootColor: 0 } },
 ] as const;
 /** Existing named players keep their setup; untouched newcomers see the creator. */
 export function needsCharacterSetup(name: string, appearance?: { setupComplete?: boolean }): boolean {
