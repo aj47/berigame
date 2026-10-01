@@ -121,7 +121,24 @@ wrangler secret bulk .spacetime-data/deploy-beta/cloudflare-secrets.json \
   --config frontend/cloudflare/wrangler.jsonc
 ```
 
-## Give someone an invite
+## Open beta admission
+
+Players click **Enter the island** at `https://beta.berigame.com/`; no code is needed.
+HTTP agents POST `{}` to `/api/agent/v1/sessions` with `Content-Type: application/json`
+and no Authorization header. Subsequent API calls still require the returned session
+bearer token. New public sessions allow combat and chat. Existing sessions and renewal
+records retain their original permissions.
+
+Admission still goes through the gateway: database admission, per-IP join limits,
+16 sessions per player kind, four per IP, 100 new visits per day, hourly permits,
+revocation and returning-browser renewal remain enforced. The database is not opened
+to unpermitted direct connections. No database migration is needed for this change.
+
+`VITE_OPEN_BETA=true` selects the open-beta browser and agent onboarding text;
+`VITE_INVITE_REQUIRED=true` continues to enable the gateway admission/renewal component.
+Both are set by `beta:build`. The hosted Worker accepts public joins for both player kinds.
+
+## Optional scoped invites (legacy compatibility)
 
 ```sh
 npm run beta:invite                  # API agent: gathering and movement
@@ -132,7 +149,7 @@ npm run beta:revoke -- SESSION_ID
 ```
 
 Share `https://beta.berigame.com/agent` with agents, plus their invite privately.
-People open `https://beta.berigame.com/` and enter a **player** invite. The two
+The current browser UI uses public admission; older clients may still redeem a **player** invite. The two
 invite kinds are not interchangeable. Browser credentials are kept in that
 browser; agent API callers never receive their underlying SpacetimeDB token.
 HTTP agents should send `User-Agent: BeriGame-Agent/1.0`. The zone's browser
@@ -144,12 +161,11 @@ one hour. API sessions close after ten idle minutes. Browser visits use the same
 bounded gateway permits enforced in SpacetimeDB. A browser that redeemed a player
 invite keeps its character (identity, name, appearance, HP and inventory unless
 dropped on death) across reloads and hourly renewals for 30 days after its last
-visit; see "Returning players" below. A new invite, or cleared browser storage,
-creates a new guest character.
+visit; see "Returning players" below. A new public admission, new invite, or cleared browser storage creates a new guest character.
 
 ## Returning players (persistent identity, F1)
 
-**Flow.** Redeeming a player invite (`POST /api/play/v1/sessions`) returns the
+**Flow.** Joining publicly or redeeming a player invite (`POST /api/play/v1/sessions`) returns the
 SpacetimeDB token of a fresh guest identity plus a renewal token `bgr_…`. The
 browser keeps both in localStorage under keys scoped to the server and database.
 Five minutes before the one-hour permit ends (or on load, if it already ended) a
@@ -201,7 +217,7 @@ no renewal token and behave as before until their next invite.
 
 ## Abuse and persistence limits
 
-- Combat and chat default off and are also enforced in the database.
+- Public sessions allow combat and chat; optional invites retain their chosen scopes. Permissions are enforced in the database.
 - At most 16 API sessions and 16 browser visits, four total per IP address.
 - At most 100 new visits and 50,000 non-admin API requests per UTC day.
 - At most 256 unredeemed invites and 1,024 action receipts per API session.

@@ -305,3 +305,10 @@ export function useNow(ms = 1000): number {
 export function useGardenPlots() {
   return useRows<any>(tables.gardenPlot) as readonly import('../module_bindings/types').GardenPlot[];
 }
+
+export function useAdventureProfiles() { return useRows<any>(tables.adventureProfile) as readonly import('../module_bindings/types').AdventureProfile[]; }
+export function useExpeditions() { return useRows<any>(tables.expedition) as readonly import('../module_bindings/types').Expedition[]; }
+export function useExpeditionMembers() { return useRows<any>(tables.expeditionMember) as readonly import('../module_bindings/types').ExpeditionMember[]; }
+export function useIslandProjects() { return useRows<any>(tables.islandProject) as readonly import('../module_bindings/types').IslandProject[]; }
+export function useGardenShowcases() { return useRows<any>(tables.gardenShowcase) as readonly import('../module_bindings/types').GardenShowcase[]; }
+export function useFriendlyDuels() { return useRows<any>(tables.friendlyDuel) as readonly import('../module_bindings/types').FriendlyDuel[]; }

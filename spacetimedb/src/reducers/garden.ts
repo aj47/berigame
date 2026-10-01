@@ -1,3 +1,4 @@
+import { carrying, duelFor, syncShowcase } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import type { Identity } from 'spacetimedb';
 import spacetimedb from '../schema';
@@ -27,6 +28,7 @@ export const plantGarden = spacetimedb.reducer(
   { plot: t.u8(), itemId: t.string() },
   (ctx, { plot, itemId }) => {
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, currentTick(ctx));
     const snap = readSlots(ctx, p.identity);
     const occupied = plotRow(ctx, p.identity, plot) !== undefined;
@@ -37,6 +39,7 @@ export const plantGarden = spacetimedb.reducer(
     for (let i = snap.slots.length - 1; i >= 0; i--) if (snap.slots[i]?.itemId === itemId) { slot = i; break; }
     writeSlots(ctx, p.identity, snap, removeFromSlot(snap.slots, slot, 1).slots);
     ctx.db.gardenPlot.insert({ id: 0n, owner: p.identity, plot, itemId, plantedAtMicros: ctx.timestamp.microsSinceUnixEpoch });
+    syncShowcase(ctx, p.identity);
     savePlayer(ctx, p);
   }
 );
@@ -46,6 +49,7 @@ export const harvestGarden = spacetimedb.reducer(
   { plot: t.u8() },
   (ctx, { plot }) => {
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, currentTick(ctx));
     const row = plotRow(ctx, p.identity, plot);
     const snap = readSlots(ctx, p.identity);
@@ -56,6 +60,7 @@ export const harvestGarden = spacetimedb.reducer(
     writeSlots(ctx, p.identity, snap, addItem(snap.slots, crop.itemId, crop.yield).slots);
     ctx.db.gardenPlot.id.delete(row!.id);
     grantXp(ctx, p.identity, Skill.Foraging, crop.xp);
+    syncShowcase(ctx, p.identity);
     savePlayer(ctx, p);
   }
 );

@@ -1,11 +1,14 @@
+import { reconcileTerrain } from '../lib/terrain';
+import { carrying, profile, saveProfile, progress, tickExpeditions, tickDuels, duelFor } from '../lib/adventure';
+import { canFindStick, Feat, cargoMovementSteps } from '../../../shared/sim';
 import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { tickSchedule } from '../tables';
 import {
-  DEATH_TICKS, EventKind, MELEE_RANGE, isBerryNode, Cosmetic, HEDGE_RING, harvestXp, ringOf, skillForNode, regrowTicksFor, Pending, PlayerState, SPAWN_TILE,
+  DEATH_TICKS, EventKind, MELEE_RANGE, isBerryNode, Cosmetic, areaOf, harvestXp, skillForNode, regrowTicksFor, Pending, PlayerState, SPAWN_TILE,
   MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS,
   bfsPath, chebyshev, facingFromDelta, goalAdjacentTo,
-  goalIsTile, harvestFindsStick, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
+  goalIsTile, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
   neighbors8, swingDamage, tileKey, DUMMY_TILE, dummyAfterHit, worldBlockedSet,
   TRADE_BREAK_RANGE, TRADE_REQUEST_TICKS,
   GIANT_ID, GIANT_REACH, GIANT_TILE, GiantEventKind, GiantState, giantAfterHit, giantForgot,
@@ -211,8 +214,8 @@ function phaseMovement(s: TickState): void {
         mark(s, p);
       } else {
         // Milestone cosmetic: the step from the hedge onto the Coast (rare; one PK lookup when it happens).
-        const fromRing = ringOf(p);
-        for (const step of path.slice(0, MOVEMENT_STEPS_PER_TICK)) {
+        const fromArea = areaOf(p);
+        for (const step of path.slice(0, cargoMovementSteps(carrying(s.ctx, p.identity)))) {
           p.facing = facingFromDelta(step.x - p.x, step.z - p.z);
           p.x = step.x;
           p.z = step.z;
@@ -228,7 +231,7 @@ function phaseMovement(s: TickState): void {
             if (p.pending === Pending.None || p.targetX === undefined) break;
           }
         }
-        if (fromRing <= HEDGE_RING && ringOf(p) > HEDGE_RING && unlockCosmetic(s.ctx, p.identity, Cosmetic.CoastScarf)) {
+        if ((fromArea === 'grove' || fromArea === 'hedge') && areaOf(p) === 'coast' && unlockCosmetic(s.ctx, p.identity, Cosmetic.CoastScarf)) {
           mentorMilestone(s.ctx, p, MentorMilestone.Coast);
         }
       }
@@ -250,12 +253,14 @@ function phaseHarvest(s: TickState): void {
       markTree(s, tree);
       emitEvent(s.ctx, { tick: s.T, kind: EventKind.HarvestDone, attacker: p.identity, defender: p.identity, itemId: tree.itemId, defenderHp: p.hp });
       // ctx.random is seeded from the tick timestamp and drawn in s.order, so replays agree.
-      // Draw on every berry harvest (the draw order never changes); holders find no spare.
+      // Draw on every berry harvest; level 2 guarantees the first stick, then allows spares.
       // Only berry trees find sticks: Coast nodes never draw.
       const berry = isBerryNode(tree);
       const roll = berry ? s.ctx.random() : 1;
-      const holding = !berry || p.weapon === STICK_ITEM_ID || holdsItem(readSlots(s.ctx, p.identity).slots, '', STICK_ITEM_ID);
-      if (berry && harvestFindsStick(roll, holding)) {
+      const level = grantXp(s.ctx, p.identity, skillForNode(tree.kind), harvestXp(tree.kind));
+      const pp = profile(s.ctx, p.identity);
+      if (berry && canFindStick(level, pp.stickClaimed, roll)) {
+        saveProfile(s.ctx, { ...pp, stickClaimed: true });
         giveItem(s.ctx, p.identity, STICK_ITEM_ID, 1, p, s.T);
         // A find ends first-spawn grace: 10 more ticks to wield it and step back.
         if (p.respawnTick > s.T) p.respawnTick = s.T;
@@ -263,7 +268,6 @@ function phaseHarvest(s: TickState): void {
         unlockCosmetic(s.ctx, p.identity, Cosmetic.StrawHat);
       }
       // F2: one XP write per finished harvest (Foraging for berries, Beachcombing on the Coast).
-      grantXp(s.ctx, p.identity, skillForNode(tree.kind), harvestXp(tree.kind));
       p.harvestTreeId = 0;
       p.harvestEndTick = 0;
     } else {
@@ -282,6 +286,7 @@ function phaseSwings(s: TickState): void {
       a.combatTarget = undefined; a.hostile = false; mark(s, a);
       continue;
     }
+    if (duelFor(s.ctx, a.identity) || duelFor(s.ctx, d.identity)) continue;
     if (chebyshev(a, d) > MELEE_RANGE) continue;
     // Nothing lands in the safe ring or on a player in grace; the fight waits.
     if (inSafeRing(a) || inSafeRing(d) || inGrace(d, s.T)) continue;
@@ -334,6 +339,7 @@ function phaseDummySwings(s: TickState): void {
     if (a.weapon !== '' && !inHotbar(readSlots(s.ctx, a.identity).slots, a.weapon)) a.weapon = '';
     const damage = swingDamage(a.weapon);
     const { hp, reset } = dummyAfterHit(dummy, damage, s.T);
+    if (reset) progress(s.ctx, a.identity, 3, 12, Feat.Protect);
     dummy.hp = hp;
     dummy.lastHitTick = s.T;
     dirty = true;
@@ -553,6 +559,9 @@ export const tick = spacetimedb.reducer(
     if (!world) return;
     const T = world.tick + 1;
 
+    seedMissingNodes(ctx);
+    reconcileTerrain(ctx);
+
     // One pass over the player table. The tick works on the players it can
     // affect: online ones, the dead (respawn), and anyone still holding a
     // combat target. Everyone else would be skipped by every phase (none is
@@ -579,7 +588,7 @@ export const tick = spacetimedb.reducer(
     const originalTrees = new Map<number, TreeRow>();
     for (const t of ctx.db.tree.iter()) { originalTrees.set(t.id, t); trees.set(t.id, { ...t }); }
     // Coast nodes: seed any missing id (a database published before M2). Idempotent.
-    for (const row of seedMissingNodes(ctx, (id) => trees.has(id))) trees.set(row.id, { ...row });
+
     // The Grove's training dummy (a database published before it existed gets it here). One index lookup.
     ensureDummy(ctx);
 
@@ -618,5 +627,7 @@ export const tick = spacetimedb.reducer(
       const t = trees.get(id)!;
       if (!sameRow(originalTrees.get(id), t)) ctx.db.tree.id.update(t);
     }
+    tickExpeditions(ctx, T);
+    tickDuels(ctx, T);
   }
 );

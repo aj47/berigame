@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { sRGBEncoding } from 'three';
 import { Html, useTexture } from '@react-three/drei';
 import { ITEM_DEFS, getItemDef, tileToWorld } from '@sim';
@@ -11,7 +11,6 @@ import { useUserInputStore } from '../../store';
 for (const def of Object.values(ITEM_DEFS)) useTexture.preload(def.icon);
 
 const GroundItem = ({ groundItem }: { groundItem: GroundItemRow }) => {
-  const [hovered, setHovered] = useState(false);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const { pickupItem } = useGameActions();
   const def = getItemDef(groundItem.itemId);
@@ -26,10 +25,12 @@ const GroundItem = ({ groundItem }: { groundItem: GroundItemRow }) => {
       onClick:() => { pickupItem(groundItem.id); setClickedOtherObject(null); },
     }] });
   };
-  return <group position={[x,y,z]} onClick={onClick} onPointerEnter={() => setHovered(true)} onPointerLeave={() => setHovered(false)}>
+  return <group position={[x,y,z]} onClick={onClick} userData={{ hoverTarget: {
+    title: `${groundItem.quantity}× ${def?.name ?? groundItem.itemId}`, action: 'Click for pickup options', detail: groundItem.droppedOnDeath ? 'Dropped on defeat' : 'On the ground', radius: .48,
+  } }}>
     <sprite position={[0,.42,0]} scale={[.7,.7,1]}><spriteMaterial map={texture} transparent alphaTest={.1} depthWrite={false} /></sprite>
     <mesh position={[0,.025,0]} rotation={[-Math.PI/2,0,0]}><ringGeometry args={[.28,.32,16]} /><meshBasicMaterial color={def?.color} transparent opacity={.65} depthWrite={false} /></mesh>
-    {(groundItem.quantity > 1 || hovered) && <Html zIndexRange={[3,0]} position={[0,.95,0]} center style={{ pointerEvents:'none' }}>
+    {groundItem.quantity > 1 && <Html zIndexRange={[3,0]} position={[0,.95,0]} center style={{ pointerEvents:'none' }}>
       <div className="ground-item-label" style={{ borderColor:def?.color }}>{groundItem.quantity}× {def?.name}{groundItem.droppedOnDeath && <div className="dim">Dropped on defeat</div>}</div>
     </Html>}
   </group>;

@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Color, Frustum, BufferGeometry, Float32BufferAttribute, InstancedMesh, Matrix4, MeshBasicMaterial, MeshLambertMaterial, Object3D, OctahedronGeometry, Sphere, Vector3 } from 'three';
-import { HEDGE_RING } from '@sim';
+import { HEDGE_RING, areaOf, terrainField } from '@sim';
 import { nearestAvatar } from '../../animation/avatarRegistry';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
 
@@ -64,15 +64,17 @@ const noRaycast = () => null;
 /** Bird modes. */
 const PERCH = 0, FLY = 1, GONE = 2, LAND = 3;
 
+const wildlifeTiles = (area: 'grove' | 'coast') => {
+  const out: {x:number;z:number}[] = [];
+  for(let z=1;z<49;z++)for(let x=1;x<49;x++) if(areaOf({x,z})===area && terrainField(x,z)>.6)out.push({x,z});
+  return out;
+};
+const birdHomes=wildlifeTiles('grove'),crabHomes=wildlifeTiles('coast');
 function groveSpot(r: () => number, out: Float32Array, i: number) {
-  out[i * 2] = (r() * 2 - 1) * GROVE;
-  out[i * 2 + 1] = (r() * 2 - 1) * GROVE;
+  const t=birdHomes[Math.floor(r()*birdHomes.length)];out[i*2]=t.x-25;out[i*2+1]=t.z-25;
 }
 function coastSpot(r: () => number, out: Float32Array, i: number) {
-  // Chebyshev ring HEDGE_RING+2 .. 23 around spawn (world origin): pick a side, then a spot along it.
-  const d = HEDGE_RING + 2 + r() * (23 - HEDGE_RING - 2), along = (r() * 2 - 1) * d, side = (r() * 4) | 0;
-  out[i * 2] = side === 0 ? d : side === 1 ? -d : along;
-  out[i * 2 + 1] = side === 2 ? d : side === 3 ? -d : along;
+  const t=crabHomes[Math.floor(r()*crabHomes.length)];out[i*2]=t.x-25;out[i*2+1]=t.z-25;
 }
 
 const AmbientLife = () => {
@@ -195,9 +197,8 @@ const AmbientLife = () => {
           const d = 0.4 + s.rc() * 1.2;
           s.cGoal[k] = x + Math.sin(a) * d; s.cGoal[k + 1] = z + Math.cos(a) * d;
         }
-        // Keep to the beach ring.
-        const gx = s.cGoal[k], gz = s.cGoal[k + 1], ring = Math.max(Math.abs(gx), Math.abs(gz));
-        if (ring < HEDGE_RING + 2 || ring > 24) { const sc = ring < HEDGE_RING + 2 ? (HEDGE_RING + 2) / ring : 24 / ring; s.cGoal[k] = gx * sc; s.cGoal[k + 1] = gz * sc; }
+        const gx=s.cGoal[k]+25,gz=s.cGoal[k+1]+25;
+        if(terrainField(gx,gz)<.25 || areaOf({x:Math.round(gx),z:Math.round(gz)})!=='coast') {s.cGoal[k]=x;s.cGoal[k+1]=z;}
         const dx = s.cGoal[k] - x, dz = s.cGoal[k + 1] - z, dist = Math.hypot(dx, dz);
         const speed = s.cFlee[i] ? (reduced ? 1.6 : 3.2) : 0.7;
         const moving = dist > 0.03;

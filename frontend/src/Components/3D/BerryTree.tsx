@@ -119,7 +119,9 @@ const BerryTree = ({ tree, tick, harvester }: Props) => {
   };
   const s = getShape(tree.itemId);
   const ripe = regrowTicks === 0;
-  return <group position={[wx, wy, wz]} onClick={onClick}>
+  return <group position={[wx, wy, wz]} onClick={onClick} userData={{ hoverTarget: {
+    title: `${def?.name ?? 'Berry'} tree`, action: 'Click for harvest options', detail: label, tone: disabled ? 'muted' : 'ready', radius: 1.2,
+  } }}>
     <mesh geometry={s.body} material={faded ? bodyFaded : bodyMat} />
     <mesh geometry={shadowGeo} material={shadowMat} position={[0, .015, 0]} />
     <mesh geometry={ripe ? s.berries : s.unripe} material={ripe ? berryMat(def?.color ?? '#d9423b') : unripeMat} />

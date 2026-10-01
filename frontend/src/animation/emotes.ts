@@ -12,7 +12,7 @@ import { EMOTES, type EmoteId } from '@sim';
  *
  * Model space: +Y up, +Z is where the adventurer faces, -X is its right.
  */
-export const EMOTE_CLIPS = ['Wave', 'Cheer', 'Sit', 'Point'] as const;
+export const EMOTE_CLIPS = ['Wave', 'Cheer', 'Sit', 'Point', 'Dance', 'Laugh', 'Bow', 'Shrug'] as const;
 export type EmoteClip = (typeof EMOTE_CLIPS)[number];
 
 type V3 = readonly [number, number, number];
@@ -22,6 +22,8 @@ export interface EmoteKey {
   hips?: V3;
   /** Forward lean of the spine, radians. */
   lean?: number;
+  twist?: number;
+  nod?: number;
   handR?: V3; poleR?: V3;
   handL?: V3; poleL?: V3;
   footR?: V3; kneeR?: V3;
@@ -31,7 +33,7 @@ export interface EmoteKey {
 // Idle's rest hands and elbows: every standing emote starts and ends here.
 const R_HAND: V3 = [-0.37, 1.18, 0.16], R_POLE: V3 = [-0.7, 1.12, -0.05];
 const L_HAND: V3 = [0.37, 1.18, 0.16], L_POLE: V3 = [0.7, 1.12, -0.05];
-const REST = { handR: R_HAND, poleR: R_POLE, handL: L_HAND, poleL: L_POLE, hips: [0, 0, 0] as V3, lean: 0 };
+const REST = { handR: R_HAND, poleR: R_POLE, handL: L_HAND, poleL: L_POLE, hips: [0, 0, 0] as V3, lean: 0, twist: 0, nod: 0 };
 
 const waveKeys = (): EmoteKey[] => {
   const keys: EmoteKey[] = [{ t: 0, ...REST }];
@@ -78,9 +80,34 @@ const sitKeys = (): EmoteKey[] => [
   },
 ];
 
-export const EMOTE_KEYS: Record<EmoteClip, EmoteKey[]> = {
-  Wave: waveKeys(), Cheer: cheerKeys(), Sit: sitKeys(), Point: pointKeys(),
+const danceKeys = (): EmoteKey[] => {
+  const keys: EmoteKey[] = [{ t: 0, ...REST }];
+  for (let i=0;i<12;i++) {
+    const s=i%2 ? 1 : -1, lift=i%3===0;
+    keys.push({t:.3+i*.3, ...REST, hips:[s*.075,lift?.035:-.015,0], twist:s*.18, nod:-.07,
+      handR:[-.42-s*.06,1.52+(s>0?.27:0),.25],poleR:[-.8,1.2,-.1],
+      handL:[.42-s*.06,1.52+(s<0?.27:0),.25],poleL:[.8,1.2,-.1],
+      footR:[-.23,s>0?.20:.17,s>0?.17:.05],kneeR:[-.3,.8,.8],
+      footL:[.23,s<0?.20:.17,s<0?.17:.05],kneeL:[.3,.8,.8]});
+  }
+  keys.push({t:4.2,...REST}); return keys;
 };
+const laughKeys = (): EmoteKey[] => {
+  const keys: EmoteKey[]=[{t:0,...REST}];
+  for(let i=0;i<7;i++)keys.push({t:.25+i*.25,...REST,lean:i%2?.15:.23,nod:i%2?-.12:.02,hips:[0,i%2?0:-.025,0],
+    handR:[-.2,1.2,.34],poleR:[-.7,1.05,.02],handL:[.2,1.2,.34],poleL:[.7,1.05,.02]});
+  keys.push({t:2.4,...REST});return keys;
+};
+export const EMOTE_KEYS: Record<EmoteClip, EmoteKey[]> = {
+  Wave: waveKeys(), Cheer: cheerKeys(), Sit: sitKeys(), Point: pointKeys(), Dance:danceKeys(), Laugh:laughKeys(),
+  Bow:[{t:0,...REST},{t:.55,...REST,lean:.55,nod:.2,hips:[0,-.035,-.05],handR:[-.26,1.03,.35],handL:[.26,1.03,.35]},
+    {t:1.4,...REST,lean:.55,nod:.2,hips:[0,-.035,-.05],handR:[-.26,1.03,.35],handL:[.26,1.03,.35]},{t:2.2,...REST}],
+  Shrug:[{t:0,...REST},{t:.35,...REST,handR:[-.58,1.55,.18],handL:[.58,1.55,.18],poleR:[-.85,1.2,-.15],poleL:[.85,1.2,-.15],nod:-.12},
+    {t:1.3,...REST,handR:[-.58,1.55,.18],handL:[.58,1.55,.18],poleR:[-.85,1.2,-.15],poleL:[.85,1.2,-.15],nod:-.12,twist:.08},{t:2,...REST}],
+};
+
+/** The arms cradle the cargo while the base Idle/Run keeps its own leg cycle. */
+export const CARRY_KEYS: EmoteKey[] = [0, .6].map(t=>({t,lean:-.06,handR:[-.46,1.30,.57],poleR:[-.82,1.1,.05],handL:[.46,1.30,.57],poleL:[.82,1.1,.05]}));
 
 /** Emote id (shared/sim EMOTES) -> the clip that plays it and how long the cue lasts. Sit holds until you move. */
 export function emoteCue(emote: number): { clip: EmoteClip; durationMs: number } | null {
@@ -112,12 +139,12 @@ const Y = new Vector3(0, 1, 0), X = new Vector3(1, 0, 0);
 interface Limb { upper: Object3D; lower: Object3D; end: Object3D; upperRest: Quaternion; lowerRest: Quaternion; endRest: Quaternion; a: number; b: number; keepEnd: boolean }
 
 /** Build one emote clip for a loaded rig (`root` is cloned, never posed). Null for a rig without the adventurer's limbs. */
-export function buildEmoteClip(root: Object3D, idle: AnimationClip, name: EmoteClip, keys: readonly EmoteKey[] = EMOTE_KEYS[name]): AnimationClip | null {
+export function buildEmoteClip(root: Object3D, idle: AnimationClip, name: EmoteClip | 'CarryIdle' | 'CarryRun', keys: readonly EmoteKey[] = EMOTE_KEYS[name as EmoteClip]): AnimationClip | null {
   const rig = root.clone(true);
   rig.position.set(0, 0, 0); rig.quaternion.identity(); rig.scale.set(1, 1, 1);
   const nodes = new Map<string, Object3D>();
   rig.traverse((o) => { if (!nodes.has(o.name)) nodes.set(o.name, o); });
-  const hips = nodes.get('Hips'), spine = nodes.get('Spine');
+  const hips = nodes.get('Hips'), spine = nodes.get('Spine'), head = nodes.get('Head');
   if (!hips || !spine) return null;
   rig.updateMatrixWorld(true);
   const limb = (u: string, l: string, e: string, keepEnd: boolean): Limb | null => {
@@ -178,7 +205,7 @@ export function buildEmoteClip(root: Object3D, idle: AnimationClip, name: EmoteC
     seen.add(`${node.name}.${property}`); recorded.push({ node, property });
   };
   for (const s of samplers) if (s.property !== 'scale') record(s.node, s.property);
-  record(hips, 'position'); record(spine, 'quaternion');
+  record(hips, 'position'); record(spine, 'quaternion'); record(head, 'quaternion');
   for (const L of Object.values(limbs)) if (L) { record(L.upper, 'quaternion'); record(L.lower, 'quaternion'); record(L.end, 'quaternion'); }
 
   const end = keys[keys.length - 1].t;
@@ -199,6 +226,8 @@ export function buildEmoteClip(root: Object3D, idle: AnimationClip, name: EmoteC
       hips.position.copy(hips.parent ? hips.parent.worldToLocal(hipsWorld) : hipsWorld);
     }
     if (sample(keys, 'lean', t, v)) spine.quaternion.multiply(q.setFromAxisAngle(X, v[0]));
+    if (sample(keys, 'twist', t, v)) spine.quaternion.multiply(q.setFromAxisAngle(Y, v[0]));
+    if (head && sample(keys, 'nod', t, v)) head.quaternion.multiply(q.setFromAxisAngle(X, v[0]));
     rig.updateMatrixWorld(true);
     const pairs: [Limb | null | undefined, Field, Field][] = [[limbs.FR, 'footR', 'kneeR'], [limbs.FL, 'footL', 'kneeL'], [limbs.R, 'handR', 'poleR'], [limbs.L, 'handL', 'poleL']];
     for (const [L, tf, pf] of pairs) {
@@ -228,6 +257,10 @@ export function withEmotes(root: Object3D, clips: AnimationClip[]): AnimationCli
   if (!cached) {
     const idle = clips.find((c) => c.name === 'Idle');
     const extra = idle ? EMOTE_CLIPS.filter((n) => !clips.some((c) => c.name === n)).map((n) => buildEmoteClip(root, idle, n)).filter((c): c is AnimationClip => !!c) : [];
+    for (const [baseName,name] of [['Idle','CarryIdle'],['Run','CarryRun']] as const) {
+      const base=clips.find(c=>c.name===baseName);
+      if(base&&!clips.some(c=>c.name===name)) { const carry=buildEmoteClip(root,base,name,CARRY_KEYS.map((k,i)=>({...k,t:i*base.duration})));if(carry)extra.push(carry); }
+    }
     cached = extra.length ? [...clips, ...extra] : clips;
     withEmotesCache.set(clips, cached);
   }

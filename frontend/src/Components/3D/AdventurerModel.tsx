@@ -29,6 +29,7 @@ interface Props {
   state:number;
   /** The public player.weapon column: '' for bare fists, 'stick' while one is wielded. */
   weapon:string;
+  carrying?:boolean;
   motion:React.MutableRefObject<{ moving:boolean; speed?:number; holdMs?:number }>;
   transient:React.MutableRefObject<AnimationCue|null>;
   /** Worn milestone cosmetics (player_cosmetic head / neck: cosmetic id + 1, 0 = none). */
@@ -37,7 +38,7 @@ interface Props {
 }
 const STICK_MOUNT=stickMount();
 
-const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,transient,head=0,neck=0}:Props) => {
+const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=false,motion,transient,head=0,neck=0}:Props) => {
   const {scene,animations}=useGLTF(url) as any;
   // Every clip (the GLB's, the synthesized StickSwing, rest-pose channels pruned, both stances): built once per GLB.
   const clipSet=useMemo(()=>avatarClipSet(scene,animations),[scene,animations]);
@@ -65,8 +66,8 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
   },[model,base,colors,appearance.hairStyle,identity,url,fx]);
   useLayoutEffect(()=>{
     model.userData.berigameAvatar={...model.userData.berigameAvatar,weapon};
-    const armed=weapon===STICK_ITEM_ID;
-    const club=weapon===STONE_CLUB_ITEM_ID||weapon===FLINT_KNIFE_ITEM_ID;
+    const armed=!carrying&&weapon===STICK_ITEM_ID;
+    const club=!carrying&&(weapon===STONE_CLUB_ITEM_ID||weapon===FLINT_KNIFE_ITEM_ID);
     // Baked rigs skin the stick into the body on the PropR bone (rest scale 0): show it by
     // scaling the bone, with no extra mesh or draw call. No clip keys PropR.
     // The club is never baked: the PropR stick stays hidden and the club mounts under HandR.
@@ -84,7 +85,7 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
     held.quaternion.fromArray(STICK_MOUNT.quaternion);
     hand.add(held);
     return ()=>{hand.remove(held);};
-  },[model,weapon]);
+  },[model,weapon,carrying]);
   // Milestone cosmetics: one shared low-poly mesh per worn item on the Head / Neck bone.
   useLayoutEffect(()=>cosmeticMount(model,HEAD_BONE,head),[model,head]);
   useLayoutEffect(()=>cosmeticMount(model,NECK_BONE,neck),[model,neck]);
@@ -105,6 +106,7 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,motion,trans
     // Hitstop: a heavy blow freezes this avatar's clips for a few frames.
     frame.dt=inHitstop(identity,frame.now)?0:delta;
     frame.weapon=weapon;
+    frame.carrying=carrying;
     // The avatar's group (PlayerAvatar) carries its ground position and facing.
     const group=model.parent;
     if(group){

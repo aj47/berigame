@@ -1,3 +1,4 @@
+import { carrying } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import {
@@ -23,6 +24,7 @@ export const eatBerry = spacetimedb.reducer(
   (ctx, { slot }) => {
     if (slot >= INVENTORY_SIZE) throw new SenderError('bad slot');
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const T = currentTick(ctx);
     touchInput(p, T);
     if (T < p.eatCooldownUntilTick) throw new SenderError('still chewing');

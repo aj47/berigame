@@ -7,7 +7,7 @@ vi.mock('../../../spacetimedb/src/schema', () => ({ default: {
   reducer: (...args: unknown[]) => args.at(-1), init: (fn: unknown) => fn,
   clientConnected: (fn: unknown) => fn, clientDisconnected: (fn: unknown) => fn,
 } }));
-import { configureAccess, grantAgent, grantPlayer, renewGrant, revokePlayer } from '../../../spacetimedb/src/reducers/access';
+import { configureAccess, grantAgent, grantPlayer, renewGrant, revokePlayer, endVisit } from '../../../spacetimedb/src/reducers/access';
 import { onConnect } from '../../../spacetimedb/src/reducers/lifecycle';
 import { requirePlayer } from '../../../spacetimedb/src/lib/players';
 import { sendChat } from '../../../spacetimedb/src/reducers/chat';
@@ -145,4 +145,17 @@ describe('world admission and operator authority', () => {
     expect(() => call(renewGrant, w.ctx, { identity: guest, lifetimeSeconds: 3600 })).toThrow('capacity');
     call(renewGrant, w.ctx, { identity: id('0'), lifetimeSeconds: 3600 });
   });
+});
+
+it('ending a visit preserves renewal, while operator revocation remains final', () => {
+  const w = world(); w.ctx.sender = gateway;
+  call(grantAgent,w.ctx,{identity:guest,lifetimeSeconds:3600,combat:true,chat:true});
+  call(endVisit,w.ctx,{identity:guest});
+  expect(w.grants.get('guest').expiresAtMicros).toBe(w.ctx.timestamp.microsSinceUnixEpoch);
+  call(renewGrant,w.ctx,{identity:guest,lifetimeSeconds:3600});
+  expect(w.grants.get('guest').expiresAtMicros).toBeGreaterThan(w.ctx.timestamp.microsSinceUnixEpoch);
+  call(revokePlayer,w.ctx,{identity:guest});
+  call(endVisit,w.ctx,{identity:guest});
+  expect(()=>call(renewGrant,w.ctx,{identity:guest,lifetimeSeconds:3600})).toThrow('revoked');
+  w.ctx.sender=guest; expect(()=>call(endVisit,w.ctx,{identity:guest})).toThrow('gateway');
 });

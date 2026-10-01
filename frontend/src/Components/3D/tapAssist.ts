@@ -1,5 +1,6 @@
 import { useUserInputStore } from '../../store';
 import { Raycaster, Vector2, type Camera, type Object3D, type Intersection } from 'three';
+import { hoverTargetOf } from './hoverTarget';
 
 /** Screen-space tap radius (CSS px) for fingers; mice get a smaller one. */
 export const TOUCH_TAP_RADIUS = 30;
@@ -46,12 +47,13 @@ export function clickableNear(
   clientY: number,
   radius: number,
   skip: (hit: TapHit) => boolean = () => false,
+  roots: Object3D[] = scene.children,
 ): TapHit | null {
   const tried = new Set<Object3D>();
   for (const [dx, dy] of tapSamples(radius)) {
     ndc.set(((clientX + dx - rect.left) / rect.width) * 2 - 1, -((clientY + dy - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
-    for (const hit of raycaster.intersectObjects(scene.children, true)) {
+    for (const hit of raycaster.intersectObjects(roots, true)) {
       const found = clickHandlerOf(hit.object);
       if (!found || tried.has(found.object)) continue;
       tried.add(found.object);
@@ -73,10 +75,12 @@ export function openMenuNear(
   const store = useUserInputStore as any;
   let opened = false;
   clickableNear(scene, camera, rect, clientX, clientY, radius, (t) => {
+    const target = hoverTargetOf(t.hit.object, t.hit.point);
+    if (target === null) return true;
     const before = store.getState().clickedOtherObject;
     t.handler(syntheticClick(t, clientX, clientY, nativeEvent));
     const after = store.getState().clickedOtherObject;
-    opened = !!after && after !== before;
+    opened = (!!after && after !== before) || target?.hint.click === 'panel';
     return !opened;
   });
   return opened;

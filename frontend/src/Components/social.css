@@ -81,34 +81,33 @@
   cursor: pointer;
 }
 .emote-wheel.open .emote-toggle { border-color: #ffd36b; }
+.emote-toggle:hover:enabled, .emote-toggle:focus-visible { background: #514331; color: #fff6df; }
 .emote-toggle kbd, .emote-option kbd {
   font: inherit;
   font-size: 10px;
   opacity: 0.7;
 }
-.emote-ring { position: absolute; inset: 0; }
+.emote-ring { position: absolute; right: 0; bottom: calc(100% + 12px); width: min(300px, calc(100vw - 32px)); display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; padding: 10px; border: 2px solid var(--line, #8a6a45); border-radius: 16px; background: #f7f1e3f5; box-shadow: 0 8px 28px #201c2244; }
 .emote-option {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 62px;
-  height: 34px;
-  margin: -17px 0 0 -31px;
-  border-radius: 17px;
+  position: relative;
+  min-width: 0;
+  height: 66px;
+  border-radius: 10px;
   border: 1px solid var(--line, #8a6a45);
   background: #f7f1e3f5;
   color: var(--ink, #2b211a);
   font-weight: 700;
   font-size: 11px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
   cursor: pointer;
-  /* A quarter circle from the button's left (1) round to straight above it (4). */
-  transform: rotate(calc(-180deg + var(--i) * 30deg)) translate(132px) rotate(calc(180deg - var(--i) * 30deg));
-  box-shadow: 0 3px 10px #0005;
+  box-shadow: 0 2px 3px #201c2215;
 }
+.emote-symbol { font-size: 23px; line-height: 24px; color: #805725; }
+.emote-option kbd { position: absolute; top: 3px; right: 5px; }
 .emote-option:hover, .emote-option:focus-visible { background: #ffd36b; }
 
 @media (max-width: 700px) {
@@ -119,6 +118,7 @@
 @media (max-height: 500px) and (min-width: 540px) {
   .death-panel.compact { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 112px); }
   .emote-wheel { bottom: max(8px, env(safe-area-inset-bottom)); right: calc(max(12px, env(safe-area-inset-right)) + 385px + 10px); width: 52px; height: 52px; }
+  .emote-ring { position: fixed; left: max(12px, env(safe-area-inset-left)); right: auto; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 64px); width: min(300px, calc(50vw - 24px)); }
 }
 @media (min-width: 540px) and (max-width: 700px) and (max-height: 500px) and (orientation: landscape) {
   .emote-wheel { right: calc(max(12px, env(safe-area-inset-right)) + 50vw - 12px + 10px); }

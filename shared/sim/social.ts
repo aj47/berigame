@@ -5,6 +5,7 @@
 import { SPAWN_TILE } from './constants';
 import { blockedSetFromTiles, chebyshev, tileKey } from './grid';
 import type { Tile } from './types';
+import { SCENERY_BLOCKERS } from './terrain';
 import { giantFootprint } from './giant';
 
 // ---- Training dummy ---------------------------------------------------------
@@ -24,7 +25,7 @@ export const DUMMY_IDLE_RESET_TICKS = 25;
 export function worldBlockedSet(nodes: Iterable<Tile>): Set<number> {
   const s = blockedSetFromTiles(nodes);
   s.add(tileKey(DUMMY_TILE));
-  for (const t of GIANT_BLOCKED) s.add(tileKey(t));
+  for (const t of [...GIANT_BLOCKED, ...SCENERY_BLOCKERS]) s.add(tileKey(t));
   return s;
 }
 
@@ -48,7 +49,7 @@ export function nearDummy(t: Tile, range = 1): boolean {
 }
 
 // ---- Emotes -----------------------------------------------------------------
-export const Emote = { Wave: 0, Cheer: 1, Sit: 2, Point: 3 } as const;
+export const Emote = { Wave: 0, Cheer: 1, Sit: 2, Point: 3, Dance: 4, Laugh: 5, Bow: 6, Shrug: 7 } as const;
 export type EmoteId = (typeof Emote)[keyof typeof Emote];
 
 export interface EmoteDef { id: EmoteId; key: string; name: string; clip: string; durationMs: number }
@@ -58,6 +59,10 @@ export const EMOTES: Record<EmoteId, EmoteDef> = {
   [Emote.Cheer]: { id: Emote.Cheer, key: 'cheer', name: 'Cheer', clip: 'Cheer', durationMs: 1550 },
   [Emote.Sit]: { id: Emote.Sit, key: 'sit', name: 'Sit', clip: 'Sit', durationMs: 60000 },
   [Emote.Point]: { id: Emote.Point, key: 'point', name: 'Point', clip: 'Point', durationMs: 1400 },
+  [Emote.Dance]: { id: Emote.Dance, key: 'dance', name: 'Dance', clip: 'Dance', durationMs: 4200 },
+  [Emote.Laugh]: { id: Emote.Laugh, key: 'laugh', name: 'Laugh', clip: 'Laugh', durationMs: 2400 },
+  [Emote.Bow]: { id: Emote.Bow, key: 'bow', name: 'Bow', clip: 'Bow', durationMs: 2200 },
+  [Emote.Shrug]: { id: Emote.Shrug, key: 'shrug', name: 'Shrug', clip: 'Shrug', durationMs: 2000 },
 };
 export const EMOTE_LIST: readonly EmoteDef[] = Object.values(EMOTES);
 /** Ticks between two accepted emotes of one player (1.2 s). */

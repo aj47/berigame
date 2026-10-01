@@ -12,13 +12,14 @@ import Minimap from "./Minimap";
 import TickDebug from "./TickDebug";
 import FriendsPanel, { FriendSync, InviteRedeemer } from "./FriendsPanel";
 import TradeWindow from "./TradeWindow";
+import AdventurePanel, { AdventureHud, DuelHud } from "./AdventurePanel";
 import SkillsPanel from "./SkillsPanel";
 import MilestoneBanner from "./MilestoneBanner";
 import "./skills.css";
 import { PUNCH_DAMAGE, STICK_ITEM_ID, getItemDef } from "@sim";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 
-type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | null;
+type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | null;
 const stick = getItemDef(STICK_ITEM_ID);
 /** Name and online count: the only part of the HUD shell that follows player rows. */
 const WorldHeader = memo(() => {
@@ -44,7 +45,7 @@ const UIComponents = memo(() => {
   const toggle = (next: Panel) =>
     setPanel((current) => (current === next ? null : next));
   const close = () => {
-    const previous = panel;
+    const previous = panel === "appearance" ? "skills" : panel;
     setPanel(null);
     toolbar.current
       ?.querySelector<HTMLButtonElement>(`[data-panel="${previous}"]`)
@@ -82,13 +83,16 @@ const UIComponents = memo(() => {
       else if (event.key.toLowerCase() === "k") toggle("skills");
       else if (event.key === "Escape") setPanel(null);
     };
+    const openAdventure = () => setPanel("adventure");
+    window.addEventListener("berigame-adventure", openAdventure);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("berigame-adventure", openAdventure); };
   }, []);
   return (
     <div className="ui-group">
       <WorldHeader />
       <nav className="game-toolbar" aria-label="Game panels" ref={toolbar}>
+        <button data-panel="adventure" aria-expanded={panel === "adventure"} onClick={() => toggle("adventure")}>Adventure</button>
         <button
           data-panel="inventory"
           aria-expanded={panel === "inventory"}
@@ -104,11 +108,11 @@ const UIComponents = memo(() => {
           Chat <kbd>↵</kbd>
         </button>
         <button
-          data-panel="appearance"
+          data-panel="skills"
           aria-expanded={panel === "appearance" || panel === "skills"}
-          onClick={() => setPanel((current) => (current === "appearance" || current === "skills" ? null : "appearance"))}
+          onClick={() => setPanel((current) => (current === "appearance" || current === "skills" ? null : "skills"))}
         >
-          Style
+          Skills
         </button>
         <button
           data-panel="help"
@@ -130,6 +134,9 @@ const UIComponents = memo(() => {
           Agent
         </a>
       </nav>
+      <AdventurePanel open={panel === "adventure"} onClose={close} />
+      <AdventureHud visible={panel === null} />
+      <DuelHud />
       <GoalChip visible={panel === null} />
       <Inventory open={panel === "inventory"} onClose={close} />
       {/* Friends and invites live behind Chat (no new toolbar button). */}
@@ -176,8 +183,8 @@ const UIComponents = memo(() => {
               berry in your quick bar to eat it and heal.
             </li>
             <li>
-              <strong>Find a sturdy stick.</strong> Harvests sometimes turn up
-              a sturdy stick (about 1 in 4). A stick lets you push through the
+              <strong>Find a sturdy stick.</strong> Reach Foraging level 2 (four berry harvests) to receive
+              your first stick. Later harvests have a 25% chance to find extras. A stick lets you push through the
               brambles. Keep it in quick slot 1, 2 or 3 and press its key to
               wield it: it hits twice as hard as a punch.
             </li>
@@ -196,7 +203,7 @@ const UIComponents = memo(() => {
             <li>
               <strong>Grow your skills.</strong> Picking berries trains
               Foraging, gathering on the Coast trains Beachcombing and making
-              things trains Crafting (Style → Skills, or K). Levels unlock
+              things trains Crafting (Skills, or K). Levels unlock
               recipes, keepsakes to wear and slightly faster harvests — never
               damage or health.
             </li>

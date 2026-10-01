@@ -21,7 +21,7 @@ export type GoalStepId = 'pick-berry' | 'eat-berry' | 'find-stick' | 'wield-stic
   // M2, after First Day:
   | 'gather-coast' | 'make-club' | 'wield-club'
   // M3 / F3, after the club:
-  | 'reach-boulders' | 'face-giant' | 'gather-obsidian';
+  | 'reach-boulders' | 'camp-adventure' | 'face-giant' | 'gather-obsidian';
 /** Done-set marker recorded once all First Day steps are complete. */
 export const FIRST_DAY_DONE = 'first-day';
 export type GoalDoneId = GoalStepId | typeof FIRST_DAY_DONE;
@@ -241,6 +241,7 @@ export function firstDayGoal(input: GoalInput): GoalResult {
     case 'pick-berry':
       return result(gatherGoal(step, 'Pick a berry', 'No tree is free right now', input));
     case 'eat-berry': {
+      if (food === -1) return result(gatherGoal(step, 'Pick another berry to eat', 'Your first berry was used or shared. Any fresh berry works.', input));
       const name = food !== -1 ? getItemDef(slots[food]!.itemId)?.name ?? 'berry' : 'berry';
       return result({
         id: step,
@@ -250,7 +251,7 @@ export function firstDayGoal(input: GoalInput): GoalResult {
       });
     }
     case 'find-stick':
-      return result(gatherGoal(step, 'Search the berry trees for a sturdy stick', 'About 1 harvest in 4 turns one up', input));
+      return result(gatherGoal(step, 'Gather for a sturdy stick', 'First stick at Foraging level 2 (four harvests); then a 25% chance of spares', input));
     case 'wield-stick': {
       const slot = slots.findIndex((s, i) => i < HOTBAR_SIZE && s?.itemId === STICK_ITEM_ID);
       return result({
@@ -309,7 +310,7 @@ function coastGoal(input: GoalInput, hasStick: boolean): Goal | null {
  */
 function bouldersGoal(input: GoalInput): Goal | null {
   const { me, slots } = input;
-  if (countItem(slots, OBSIDIAN_ITEM_ID) > 0) return null;
+  if (countItem(slots, OBSIDIAN_ITEM_ID) > 0) return { id: 'camp-adventure', text: 'Visit the gardener: a giant berry adventure awaits', hint: 'Open Adventure at camp. Obsidian helps build the shared workshop.', action: { kind: 'move', x: 22, z: 18 } };
   if (areaOf(me) !== 'boulders') {
     return {
       id: 'reach-boulders',

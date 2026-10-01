@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GiantEventKind, GiantState, RaidOutcome } from "@sim";
-import { minimapModel } from "../Components/minimap";
+import { minimapModel } from "../Components/minimapModel";
 import { raidLineText } from "../spacetime/stores/giantStore";
 
 const raidAsleep = (wakeMs: number) => ({ awake: false, nextWakeAtMicros: BigInt(wakeMs) * 1000n, raidEndsAtMicros: 0n, announced: 0 });

@@ -90,6 +90,13 @@ describe('emote wheel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Emotes (E)' }));
     fireEvent.click(screen.getByRole('menuitem', { name: /Wave/ }));
     expect(mock.emote).toHaveBeenLastCalledWith(Emote.Wave);
+    fireEvent.keyDown(window, { key: 'e' });
+    expect(screen.getAllByRole('menuitem')).toHaveLength(8);
+    const keysBefore = quickBar.mock.calls.length;
+    fireEvent.keyDown(window, { key: '8' });
+    expect(mock.emote).toHaveBeenLastCalledWith(Emote.Shrug);
+    expect(quickBar).toHaveBeenCalledTimes(keysBefore);
+    expect(screen.queryByRole('menu')).toBeNull();
     window.removeEventListener('keydown', quickBar);
   });
 });

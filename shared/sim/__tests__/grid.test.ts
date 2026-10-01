@@ -32,9 +32,9 @@ describe('grid', () => {
     expect(chebyshev({ x: 0, z: 0 }, { x: 3, z: -2 })).toBe(3);
   });
 
-  it('neighbors8 omits out-of-bounds tiles', () => {
-    expect(neighbors8({ x: 0, z: 0 })).toHaveLength(3);
-    expect(neighbors8({ x: 10, z: 10 })).toHaveLength(8);
+  it('neighbors8 omits water and out-of-bounds tiles', () => {
+    expect(neighbors8({ x: 0, z: 0 })).toHaveLength(0);
+    expect(neighbors8({ x: 25, z: 25 })).toHaveLength(8);
   });
 
   it('facing covers all 8 directions and yaw points along them', () => {

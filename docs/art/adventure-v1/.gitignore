@@ -1,0 +1,2 @@
+# Blender's recovery copies are local; the editable .blend sources are retained.
+*.blend[0-9]

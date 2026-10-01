@@ -1687,3 +1687,13 @@ canvas {
 @media (prefers-reduced-motion: reduce) { .giant-zzz { animation: none; } }
 .mentor-summary { margin: 0 0 10px; font-size: 12px; }
 .mentor-badge { margin-left: 6px; font-size: 10px; font-weight: 700; color: #6d5a2e; }
+
+/* Bramblewild atlas: destinations stay usable on short and narrow screens. */
+.minimap-card { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.map-caption { font-size: 12px; line-height: 1.4; margin: 8px 0; color: #776846; }
+.map-places { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.map-places button { display:flex; align-items:center; gap:6px; text-align:left; padding:7px 5px; min-height:44px; background:#f6edd5; color:#3e4f36; border:1px solid #c8bd9a; border-radius:7px; font-size:11px; cursor:pointer; }
+.map-places button:hover { background:#e8dfbf; }
+.map-places button:focus-visible { outline:2px solid #4e7250; outline-offset:2px; }
+.map-place-number { display:grid; place-items:center; flex-shrink:0; width:19px; height:19px; border-radius:50%; background:#426046; color:#fff5dc; font-weight:bold; }
+.map-places small { display:block; font-size:9px; color:#786d52; margin-top:2px; }

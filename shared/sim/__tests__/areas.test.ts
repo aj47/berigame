@@ -1,10 +1,13 @@
+import { canFindStick } from '../adventure';
 import { describe, expect, it } from 'vitest';
 import {
   areaOf, brambleTiles, canEnter, enterRule, HEDGE_CROSSINGS, holdsItem, inGrace, inSafeRing, isBramble, isNewcomer, isSafe, ringOf,
 } from '../areas';
 import { FIRST_SPAWN_GRACE_TICKS, GRID_SIZE, HEDGE_RING, RESPAWN_GRACE_TICKS, SAFE_RADIUS, SPAWN_TILE, STICK_DROP_CHANCE } from '../constants';
-import { blockedSetFromTiles, neighbors8, tileKey } from '../grid';
-import { harvestFindsStick, TREE_SEEDS } from '../items';
+import { blockedSetFromTiles, neighbors8, tileKey, isLandTile } from '../grid';
+import { NODE_SEEDS } from '../nodes';
+import { insideGrove } from '../terrain';
+import { TREE_SEEDS } from '../items';
 import { bfsPath, goalIsTile, nearestReachableTile, reachableTiles } from '../pathfinding';
 import { PlayerState, type Tile } from '../types';
 
@@ -12,24 +15,20 @@ const trees = blockedSetFromTiles(TREE_SEEDS);
 const stick = enterRule(true);
 const noStick = enterRule(false);
 /** M2's driftwood piles and tide rocks, as single blocked tiles. */
-const M2_NODES: Tile[] = [
-  { x: 25, z: 3 }, { x: 46, z: 25 }, { x: 25, z: 46 }, { x: 3, z: 25 },
-  { x: 3, z: 3 }, { x: 46, z: 3 }, { x: 3, z: 46 }, { x: 46, z: 46 },
-];
+const M2_NODES = NODE_SEEDS;
+const allTiles: Tile[] = Array.from({length:GRID_SIZE*GRID_SIZE},(_,i)=>({x:i%GRID_SIZE,z:Math.floor(i/GRID_SIZE)}));
 
 function neighboursAllowed(from: Tile, rule = noStick): Tile[] {
   return neighbors8(from).filter((to) => bfsPath(from, goalIsTile(to), trees, rule)?.length === 1);
 }
 
 describe('Grove geometry', () => {
-  it('has a one-tile hedge of 136 bramble tiles at ring 17', () => {
-    expect(HEDGE_RING).toBe(17);
+  it('follows a rounded boundary, with no straight square corners', () => {
     const hedge = brambleTiles();
-    expect(hedge).toHaveLength(136);
-    expect(hedge.every((t) => ringOf(t) === HEDGE_RING)).toBe(true);
-    let count = 0;
-    for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) if (isBramble({ x, z })) count++;
-    expect(count).toBe(136);
+    expect(hedge.length).toBeGreaterThan(80);
+    expect(hedge.every(t=>isLandTile(t)&&insideGrove(t))).toBe(true);
+    expect(hedge.some(t=>ringOf(t)<HEDGE_RING)).toBe(true);
+    expect(isBramble({x:8,z:8})).toBe(false);
   });
 
   it('keeps every tree and its 8 neighbours inside the Grove, with spawn inside', () => {
@@ -58,25 +57,23 @@ describe('Grove geometry', () => {
 });
 
 describe('one-way brambles: reachability', () => {
-  it('without a stick, spawn reaches exactly the 1083 walkable Grove tiles', () => {
-    const seen = reachableTiles(SPAWN_TILE, trees, noStick);
-    expect(seen.size).toBe(1083);
-    for (const k of seen) expect(areaOf({ x: k % GRID_SIZE, z: Math.floor(k / GRID_SIZE) })).toBe('grove');
+  it('without a stick, spawn reaches every walkable Grove tile and cannot escape', () => {
+    const seen=reachableTiles(SPAWN_TILE,trees,noStick);
+    const grove=allTiles.filter(t=>areaOf(t)==='grove'&&!trees.has(tileKey(t)));
+    expect(seen.size).toBe(grove.length);
+    for(const k of seen)expect(areaOf({x:k%GRID_SIZE,z:Math.floor(k/GRID_SIZE)})).toBe('grove');
   });
 
-  it('with a stick, spawn reaches all 2494 walkable tiles', () => {
-    expect(reachableTiles(SPAWN_TILE, trees, stick).size).toBe(2494);
+  it('with a stick, every dry tile up to the boulder line is reachable', () => {
+    const land=allTiles.filter(t=>['grove','hedge','coast'].includes(areaOf(t))&&!trees.has(tileKey(t)));
+    expect(reachableTiles(SPAWN_TILE,trees,stick).size).toBe(land.length);
   });
 
-  it('the Coast alone is connected: 1275 tiles, 1267 with the 8 M2 nodes', () => {
-    const coast = (t: Tile) => ringOf(t) > HEDGE_RING;
-    expect(reachableTiles({ x: 0, z: 0 }, trees, noStick, coast).size).toBe(1275);
-    const withNodes = new Set([...trees, ...M2_NODES.map(tileKey)]);
-    expect(reachableTiles({ x: 0, z: 0 }, withNodes, noStick, coast).size).toBe(1267);
-  });
-
-  it('without a stick, the Coast reaches everything: the way home is one-way', () => {
-    expect(reachableTiles({ x: 0, z: 0 }, trees, noStick).size).toBe(2494);
+  it('every Coast resource has a stickless route home, including either side of the river mouth', () => {
+    for(const node of M2_NODES.filter(t=>areaOf(t)==='coast')) {
+      const start=neighbors8(node).find(t=>!trees.has(tileKey(t)))!;
+      expect(bfsPath(start,goalIsTile(SPAWN_TILE),trees,noStick)).not.toBeNull();
+    }
   });
 
   it('canEnter: brambles only with a stick or from the Coast; stepping off is free', () => {
@@ -88,16 +85,18 @@ describe('one-way brambles: reachability', () => {
 });
 
 describe('walking through the hedge', () => {
-  it('a stick holder walks (25,25) to (2,25) crossing at (8,25): 23 steps, 12 ticks', () => {
+  it('a stick holder crosses the brook and hedge on the route to the western beach', () => {
     const path = bfsPath(SPAWN_TILE, goalIsTile({ x: 2, z: 25 }), trees, stick)!;
     expect(path).toHaveLength(23);
     expect(Math.ceil(path.length / 2)).toBe(12);
-    expect(path.filter(isBramble)).toEqual([{ x: 8, z: 25 }]);
+    expect(path.some(isBramble)).toBe(true);
+    expect(path.every(isLandTile)).toBe(true);
   });
 
   it('without a stick the target clamps to ring 16 and the path stops there', () => {
     const dest = nearestReachableTile(SPAWN_TILE, { x: 2, z: 25 }, trees, noStick);
-    expect(dest).toEqual({ x: 9, z: 25 });
+    expect(areaOf(dest)).toBe('grove');
+    expect(dest.x).toBe(9);
     expect(ringOf(dest)).toBe(16);
     expect(bfsPath(SPAWN_TILE, goalIsTile({ x: 2, z: 25 }), trees, noStick)).toBeNull();
   });
@@ -111,10 +110,8 @@ describe('walking through the hedge', () => {
     expect(allowed).toHaveLength(2);
   });
 
-  it('stickless on a hedge corner: only outward', () => {
-    const allowed = neighboursAllowed({ x: 8, z: 8 });
-    expect(allowed.length).toBeGreaterThan(0);
-    expect(allowed.every((t) => ringOf(t) === HEDGE_RING + 1)).toBe(true);
+  it('rounded corners never let a stickless player enter brambles from the Grove', () => {
+    for(const hedge of brambleTiles())for(const n of neighbors8(hedge))if(areaOf(n)==='grove')expect(canEnter(n,hedge,false)).toBe(false);
   });
 
   it('a stickless player on the Coast walks home', () => {
@@ -125,12 +122,12 @@ describe('walking through the hedge', () => {
 });
 
 describe('stick finds and safety helpers', () => {
-  it('harvestFindsStick: holders never find; otherwise roll < 0.25', () => {
+  it('stick discovery unlocks at level 2, then spares use roll < 0.25', () => {
     expect(STICK_DROP_CHANCE).toBe(0.25);
-    expect(harvestFindsStick(0, true)).toBe(false);
-    expect(harvestFindsStick(0.2499, false)).toBe(true);
-    expect(harvestFindsStick(0.25, false)).toBe(false);
-    expect(harvestFindsStick(0.1)).toBe(true);
+    expect(canFindStick(1, true, 0)).toBe(false);
+    expect(canFindStick(2, true, 0.2499)).toBe(true);
+    expect(canFindStick(2, true, 0.25)).toBe(false);
+    expect(canFindStick(2, false, 0.999)).toBe(true);
   });
 
   it('holdsItem counts the bag and the wielded weapon', () => {

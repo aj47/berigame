@@ -1,3 +1,5 @@
+import { progress } from './adventure';
+import { Feat } from '../../../shared/sim';
 import type { Identity } from 'spacetimedb';
 import {
   CosmeticSlot, Skill, addXp, getCosmetic, cosmeticsForLevelUp, harvestTicksAtLevel, harvestTicksFor, hasCosmetic, levelForXp, skillForNode, withCosmetic,
@@ -27,6 +29,7 @@ export function harvestTicksForPlayer(ctx: Ctx, id: Identity, node: { kind: numb
 
 /** Grants XP (capped at L30) and any skill-level cosmetics it earns. Returns the new level. */
 export function grantXp(ctx: Ctx, id: Identity, skill: Skill, amount: number): number {
+  progress(ctx, id, skill === Skill.Crafting ? 1 : skill === Skill.Beachcombing ? 2 : 0, amount, skill === Skill.Crafting ? Feat.Build : skill === Skill.Beachcombing ? Feat.Explore : Feat.Grow);
   const existing = ctx.db.playerSkill.identity.find(id);
   const row = existing ?? { identity: id, foragingXp: 0, beachcombingXp: 0, craftingXp: 0 };
   const field = XP_FIELD[skill];

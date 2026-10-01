@@ -1,15 +1,11 @@
 import {
-  BOULDER_LINE,
-  BOULDERS_MIN,
+  terrainField, trailDistance, isBridge, areaOf, LANDMARKS, SCENERY_BLOCKERS,
   GiantState,
   formatCountdown,
   raidStatus,
   type RaidRowLike,
   GARDEN_CENTER,
   GRID_SIZE,
-  ISLAND_SIZE,
-  HEDGE_CROSSINGS,
-  HEDGE_RING,
   NodeKind,
   PlayerState,
   SAFE_RADIUS,
@@ -87,40 +83,38 @@ export function minimapModel(input: {
   return { me, others, nodes, bags, giant, garden: { x: GARDEN_CENTER.x - 0.5, z: GARDEN_CENTER.z - 0.5, ripe: input.gardenRipe ?? 0 } };
 }
 
+const mapTiles = Array.from({length:GRID_SIZE*GRID_SIZE},(_,k)=>{
+  const x=k%GRID_SIZE,z=Math.floor(k/GRID_SIZE),t={x,z},a=areaOf(t),d=terrainField(x,z);
+  if(a==='sea')return d> -1.3?'#7ac7c4':null;
+  if(isBridge(t))return '#b89562';
+  if(a==='hedge')return '#344f2d';
+  if(a==='boulder-line')return '#625c54';
+  if(a==='boulders')return d<1.3?'#b2a58b':'#858876';
+  if(d<1.8)return '#ead09a';
+  if(trailDistance(x,z)<1)return '#cbb581';
+  return a==='grove'?'#75a354':'#94ac65';
+});
+
 /** Paint the map into a square canvas `size` CSS pixels wide (the context is already DPR-scaled). */
 export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size: number): void {
   const s = size / GRID_SIZE;
   const px = (t: number) => (t + 0.5) * s;
   ctx.clearRect(0, 0, size, size);
-  // Sea, then the island: the Coast (sand) and the Grove's grass inside the hedge.
-  ctx.fillStyle = "#2f9fb0";
-  ctx.fillRect(0, 0, size, size);
-  const isl = ISLAND_SIZE * s;
-  ctx.fillStyle = "#e6cf93";
-  ctx.fillRect(0, 0, isl, isl);
-  const lo = SPAWN_TILE.x - HEDGE_RING, span = HEDGE_RING * 2 + 1;
-  ctx.fillStyle = "#79a64c";
-  ctx.fillRect(1.5 * s, 1.5 * s, isl - 3 * s, isl - 3 * s);
-  // The Boulders (M3): an ash-grey L past the south-east shoreline, behind a boulder line.
-  const bl = BOULDERS_MIN * s, line = BOULDER_LINE * s, end = GRID_SIZE * s;
-  ctx.fillStyle = "#8a7d6b";
-  ctx.fillRect(line, bl, end - line, end - bl);
-  ctx.fillRect(bl, line, line - bl, end - line);
-  ctx.fillStyle = "#5d5550";
-  ctx.fillRect(line, bl, s, line - bl + s);
-  ctx.fillRect(bl, line, line - bl, s);
-  ctx.fillStyle = "#5d943a";
-  ctx.fillRect(lo * s, lo * s, span * s, span * s);
-  // Bramble hedge ring.
-  ctx.strokeStyle = "#2f4a23";
-  ctx.lineWidth = Math.max(2, s);
-  ctx.strokeRect((lo + 0.5) * s, (lo + 0.5) * s, (span - 1) * s, (span - 1) * s);
-  // Path crossings, and the safe ring at the centre.
-  ctx.fillStyle = "#d9bf85";
-  for (const c of HEDGE_CROSSINGS) ctx.fillRect(c.x * s, c.z * s, s, s);
-  ctx.fillStyle = "#ecd9a0";
-  const sr = SAFE_RADIUS;
-  ctx.fillRect((SPAWN_TILE.x - sr) * s, (SPAWN_TILE.z - sr) * s, (sr * 2 + 1) * s, (sr * 2 + 1) * s);
+  ctx.fillStyle = '#3f9fb1';
+  ctx.fillRect(0,0,size,size);
+  for(let z=0;z<GRID_SIZE;z++)for(let x=0;x<GRID_SIZE;x++){
+    const color = mapTiles[z*GRID_SIZE+x];
+    if(!color)continue;
+    ctx.fillStyle=color;ctx.fillRect(x*s,z*s,s+.25,s+.25);
+  }
+  ctx.fillStyle='#315b3c';
+  for(const t of SCENERY_BLOCKERS)ctx.fillRect(t.x*s,t.z*s,s,s);
+  ctx.fillStyle='#ecd9a0';
+  ctx.fillRect((SPAWN_TILE.x-SAFE_RADIUS)*s,(SPAWN_TILE.z-SAFE_RADIUS)*s,(SAFE_RADIUS*2+1)*s,(SAFE_RADIUS*2+1)*s);
+  if(size>=240){
+    ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+    LANDMARKS.forEach((t,i)=>{ctx.fillStyle='#fff5dc';ctx.beginPath();ctx.arc(px(t.x),px(t.z),6,0,Math.PI*2);ctx.fill();ctx.fillStyle='#364936';ctx.fillText(String(i+1),px(t.x),px(t.z));});
+  }
   // Gathering nodes: berry trees are round, coast nodes square.
   const r = Math.max(2, s * 0.9);
   for (const n of m.nodes) {
@@ -148,7 +142,7 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
     ctx.globalAlpha = 1;
     // Countdown to the next wake (or RAID while it is up), above the marker.
     if (m.giant.label) {
-      const font = Math.max(8, Math.round(size / 13));
+      const font = Math.min(12, Math.max(8, Math.round(size / 13)));
       ctx.font = `700 ${font}px system-ui, sans-serif`;
       ctx.textAlign = "right";
       ctx.textBaseline = "bottom";

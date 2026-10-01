@@ -153,6 +153,7 @@ const TradeWindowBody = ({ trades }: { trades: readonly Trade[] }) => {
           theirConfirmed && !myConfirmed ? `${otherName} is ready. Check what you get, then confirm.` :
           "Any change clears both confirmations. Stay close: walking away cancels."}
       </p>
+      {mine.some(item => ['stick', 'stone_club'].includes(item.itemId) && item.quantity >= (bag.get(item.itemId) ?? 0) && !theirs.some(other => other.itemId === item.itemId)) && <p className="fine-print" role="status">You are giving away a route key. Keep a spare if you want to cross the brambles or Boulders again.</p>}
       <div className="trade-actions">
         <button disabled={busy} onClick={() => run(() => actions.cancelTrade(trade.id))}>Cancel</button>
         <button className="primary-button" data-testid="trade-confirm" disabled={busy || myConfirmed || nothing}

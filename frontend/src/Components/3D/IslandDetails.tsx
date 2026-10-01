@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { ConeGeometry, IcosahedronGeometry, MeshStandardMaterial, Object3D, OctahedronGeometry } from 'three';
-import { GRID_SIZE } from '@sim';
+import { terrainField, trailDistance, areaOf, TILE_ORIGIN } from '@sim';
 import { merged, part, withWind } from './envArt';
 import { linear } from './nodes/lowPoly';
 
@@ -42,7 +42,7 @@ const IslandDetails = () => {
     const result: number[][] = [];
     while (result.length < GRASS) {
       const x = rand()*47-24, z = rand()*47-24;
-      if (Math.abs(x)<1.8 || Math.abs(z)<1.8 || Math.hypot(x,z)<4) continue;
+      if (terrainField(x+25,z+25)<1.8 || trailDistance(x+25,z+25)<1.4 || Math.hypot(x,z)<4) continue;
       result.push([x,z,rand(),rand()]);
     }
     return result;
@@ -54,17 +54,14 @@ const IslandDetails = () => {
       if (i<STONES) {obj.position.set(x+.4,.04,z-.3);obj.scale.set(.12+a*.12,.08+b*.04,.11+a*.1);obj.updateMatrix();stones.current.setMatrixAt(i,obj.matrix);}
       if (i<FLOWERS) {obj.position.set(x+.25,0,z+.15);obj.scale.setScalar(.2+b*.08);obj.updateMatrix();flowers.current.setMatrixAt(i,obj.matrix);flowers.current.setColorAt(i,BLOSSOMS[(i*7+Math.floor(a*6))%BLOSSOMS.length]);}
     });
-    // Palms stand on the sand rim just outside the grid, leaning out to sea.
-    const half = GRID_SIZE / 2;
-    for (let i = 0; i < PALMS; i++) {
-      const side = i % 4, t = ((i * 0.618) % 1) * 44 - 22;
-      const out = half + .05;
-      const [x, z, yaw] = side === 0 ? [t, out, -Math.PI / 2] : side === 1 ? [out, t, 0] : side === 2 ? [t, -out, Math.PI / 2] : [-out, t, Math.PI];
-      obj.position.set(x - .5 + (side === 1 ? .2 : 0), 0, z - .5 + (side === 0 ? .2 : 0));
-      obj.rotation.set(0, yaw + (i % 3 - 1) * .4, 0);
-      obj.scale.setScalar(.85 + (i % 3) * .12);
-      obj.updateMatrix();
-      palms.current.setMatrixAt(i, obj.matrix);
+    const shores: [number,number][] = [];
+    for(let z=1;z<49;z++)for(let x=1;x<49;x++){
+      const d=terrainField(x,z);
+      if(d>.2 && d<1.1 && areaOf({x,z})==='coast' && trailDistance(x,z)>2) shores.push([x,z]);
+    }
+    for(let i=0;i<PALMS;i++){
+      const [x,z]=shores[Math.floor((i+.3)*shores.length/PALMS)];
+      obj.position.set(x-TILE_ORIGIN,0,z-TILE_ORIGIN);obj.rotation.set(0,i*2.4,0);obj.scale.setScalar(.7+(i%3)*.12);obj.updateMatrix();palms.current.setMatrixAt(i,obj.matrix);
     }
     for(const ref of [grass,stones,flowers,palms]) ref.current.instanceMatrix.needsUpdate=true;
     if (flowers.current.instanceColor) flowers.current.instanceColor.needsUpdate = true;

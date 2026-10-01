@@ -21,7 +21,7 @@ export function tipFor(goal: Goal): TipSpec {
     case "eat-berry":
       return { text: "Tap the berry in your quick bar to eat it and heal", targets: [...slotTarget, ".goal-chip"] };
     case "find-stick":
-      return { text: "Keep picking: about 1 harvest in 4 turns up a sturdy stick", targets: [".goal-chip"] };
+      return { text: "Four berry harvests earn Foraging level 2 and your first stick", targets: [".goal-chip"] };
     case "wield-stick":
       return { text: "Tap your stick to wield it: it hits twice as hard", targets: [...slotTarget, ".goal-chip"] };
     case "reach-coast":

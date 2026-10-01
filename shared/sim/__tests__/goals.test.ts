@@ -60,7 +60,7 @@ describe('First Day goal chip', () => {
     expect(r.goal).toMatchObject({ id: 'reach-boulders', text: 'Take your club to the Boulders', action: { kind: 'move', x: 51, z: 51 } });
   });
 
-  it('M3/F3: in the Boulders, face the Giant; while it rests, chip obsidian; done once you hold obsidian', () => {
+  it('M3/F3: in the Boulders, face the Giant; while it rests, chip obsidian; offers an adventure once you hold obsidian', () => {
     const all = ['pick-berry', 'eat-berry', 'find-stick', 'wield-stick', 'reach-coast', 'first-day'];
     const nodes: GoalTree[] = [...trees(), ...NODE_SEEDS.map((n) => ({ ...n, cooldownUntilTick: 0 }))];
     const me = player({ weapon: 'stone_club', x: 52, z: 52 });
@@ -72,7 +72,7 @@ describe('First Day goal chip', () => {
     expect(r.goal).toMatchObject({ id: 'gather-obsidian', action: { kind: 'harvest' } });
     expect([109, 110]).toContain((r.goal!.action as any).treeId);
     r = firstDayGoal(input({ done: all, trees: nodes, me, slots: bag('stick', 'stone_club', 'obsidian'), giant: { id: 1, state: 0 } }));
-    expect(r.goal).toBeNull();
+    expect(r.goal).toMatchObject({ id: 'camp-adventure', action: { kind: 'move', x: 22, z: 18 } });
     // Without the combat grant the club never needs wielding; the Boulders are still the next step.
     r = firstDayGoal(input({ done: all, trees: nodes, canFight: false, me: player({ x: 5, z: 20 }), slots: bag('stick', 'stone_club') }));
     expect(r.goal).toMatchObject({ id: 'reach-boulders' });
@@ -143,6 +143,11 @@ describe('First Day goal chip', () => {
     const other = player({ x: 29, z: 25, pending: Pending.Harvest, pendingId: 4n });
     const r = firstDayGoal(input({ trees: t, me: player({ x: 28, z: 25 }), others: [other] }));
     expect(r.goal?.action).not.toEqual({ kind: 'harvest', treeId: 4 });
+  });
+
+  it('finds another edible berry after planting or gifting the first one', () => {
+    const r = firstDayGoal(input({ done: ['pick-berry'], slots: bag() }));
+    expect(r.goal).toMatchObject({ id: 'eat-berry', action: { kind: 'harvest' } });
   });
 
   it('is hidden while dead', () => {

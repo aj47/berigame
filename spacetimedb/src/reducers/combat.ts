@@ -1,3 +1,4 @@
+import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { HOTBAR_SIZE, PlayerState, inGrace, inSafeRing, isWeapon, retaliationSwingTick } from '../../../shared/sim';
@@ -14,6 +15,7 @@ export const wieldItem = spacetimedb.reducer(
   (ctx, { slot }) => {
     if (slot >= HOTBAR_SIZE) throw new SenderError('weapons are wielded from quick slots 1-3');
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, currentTick(ctx));
     const item = readSlots(ctx, p.identity).slots[slot];
     if (!item) throw new SenderError('empty slot');
@@ -27,6 +29,7 @@ export const wieldItem = spacetimedb.reducer(
 export const unwield = spacetimedb.reducer(
   (ctx) => {
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, currentTick(ctx));
     p.weapon = '';
     savePlayer(ctx, p);
@@ -40,12 +43,14 @@ export const attack = spacetimedb.reducer(
     requireCapability(ctx, ctx.sender, 'combat');
     requireCapability(ctx, target, 'combat');
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
+    if (duelFor(ctx, p.identity) || duelFor(ctx, target)) throw new SenderError('Finish the friendly duel before starting ordinary combat');
     if (sameId(target, p.identity)) throw new SenderError('cannot attack yourself');
     const tgt = findPlayer(ctx, target);
     if (!tgt || !tgt.online || tgt.state !== PlayerState.Alive) throw new SenderError('target unavailable');
     const T = currentTick(ctx);
     if (inSafeRing(p) || inSafeRing(tgt)) throw new SenderError('No fighting in the safe ring');
-    if (inGrace(tgt, T)) throw new SenderError('They are protected for a moment');
+    if (inGrace(tgt, T)) throw new SenderError(`They are protected for ${Math.max(1, Math.ceil((tgt.respawnTick + 10 - T) * .6))} more seconds. Invite them to a friendly duel instead.`);
     touchInput(p, T);
     // An accepted attack ends your own grace.
     p.respawnTick = 0;
@@ -77,6 +82,7 @@ export const follow = spacetimedb.reducer(
   { target: t.identity() },
   (ctx, { target }) => {
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     if (sameId(target, p.identity)) throw new SenderError('cannot follow yourself');
     const tgt = findPlayer(ctx, target);
     if (!tgt || !tgt.online) throw new SenderError('target unavailable');

@@ -1,3 +1,4 @@
+import { adventureTables } from './adventureHarness';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerState } from '../types';
 import { STICK_ITEM_ID } from '../items';
@@ -99,6 +100,7 @@ function harness() {
     sender: A, identity: identity('module'),
     get timestamp() { return { microsSinceUnixEpoch: micros }; },
     db: {
+      ...adventureTables(),
       accessPolicy: { id: { find: () => ({ id: 0, owner: identity('owner'), gateway: identity('gw'), requireAdmission: false }) } },
       playerGrant: { identity: { find: () => undefined } },
       world: { id: { find: () => ({ id: 0, tick: now }), update: (row: any) => { now = row.tick; } } },
@@ -611,7 +613,7 @@ describe('pure social rules', () => {
     const club = joinSpot({ x: 57, z: 57 }, true, new Set(), true);
     expect(club.clamped).toBe(false);
     expect(areaOf(club.tile)).toBe('boulders');
-    const edge = joinSpot({ x: 49, z: 20 }, true, new Set());
+    const edge = joinSpot({ x: 48, z: 25 }, true, new Set());
     expect(edge.clamped).toBe(false);
     expect(areaOf(edge.tile)).not.toBe('sea');
     const noStick = joinSpot({ x: 57, z: 57 }, false, new Set(), true);

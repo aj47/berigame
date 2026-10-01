@@ -5,14 +5,9 @@
  */
 
 // ---- World / grid -----------------------------------------------------------
-/**
- * The server grid is GRID_SIZE x GRID_SIZE 1-unit tiles. The original island
- * (the Grove and the Coast) is the ISLAND_SIZE square at the origin; M3 grew
- * the grid east and south, where most new tiles are water (areas.ts) and the
- * south-east L is the Boulders.
- */
+/** Server coordinates cover the island, its waterways and the south-east headlands. */
 export const GRID_SIZE = 64;
-/** The original 50x50 island: tiles 0..49 on both axes. */
+/** Historical core extent. Use isLandTile for the current coastline. */
 export const ISLAND_SIZE = 50;
 /** world = tile - TILE_ORIGIN. Integer world coords are tile centres. */
 export const TILE_ORIGIN = 25;

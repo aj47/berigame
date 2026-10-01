@@ -5,6 +5,7 @@ import { ProceduralLayer, type LayerInput } from './proceduralLayer';
 import type { AvatarClipSet, Stance } from './stance';
 
 const noEulerSync = () => {};
+const CARRY_VARIANT: Partial<Record<Clip, Clip>> = { Idle: 'CarryIdle', Run: 'CarryRun', Stop: 'CarryIdle' };
 /**
  * three.js rebuilds `rotation` (an Euler: a matrix plus asin/atan2) whenever a
  * `quaternion` is written, i.e. for every animated bone on every frame. Nothing
@@ -59,6 +60,7 @@ export interface AnimatorInput extends DirectorInput {
   yaw: number;
   /** player.weapon: 'stick' plays StickIdle/StickRun in place of Idle/Run when the rig has them. */
   weapon?: string;
+  carrying?: boolean;
 }
 
 export interface AnimatorOptions {
@@ -84,6 +86,7 @@ export class AvatarAnimator {
   private readonly feet: [Object3D | undefined, Object3D | undefined];
   /** A stick or club is wielded: Idle and Run play their armed variants. */
   private armed = false;
+  private carrying = false;
   /** Posed last frame (inside the view); off screen only clip time advances. */
   private onScreen = true;
   private readonly bounds = new Sphere(new Vector3(), CULL_RADIUS);
@@ -157,7 +160,7 @@ export class AvatarAnimator {
   }
 
   private action(clip: Clip, mirror: boolean, slot: 0 | 1): AnimationAction | null {
-    const variant = this.armed ? ARMED_VARIANT[clip] : undefined;
+    const variant = this.carrying ? CARRY_VARIANT[clip] : this.armed ? ARMED_VARIANT[clip] : undefined;
     const name = variant && this.clips.has(variant) ? variant : clip;
     const source = (mirror && this.mirrored.get(name)) || this.clips.get(name);
     return source ? this.mixer.clipAction(slot === 0 ? source : aliasOf(source)) : null;
@@ -172,9 +175,10 @@ export class AvatarAnimator {
     director.update(input);
     // Any wielded weapon (stick or stone club) uses the armed Idle/Run.
     const armed = input.weapon === 'stick' || input.weapon === 'stone_club' || input.weapon === 'flint_knife';
-    if (armed !== this.armed) {
+    if (armed !== this.armed || !!input.carrying !== this.carrying) {
       this.armed = armed;
-      // Swap playing Idle/Run/Stop actions for their (un)armed variant, keeping phase and weight.
+      this.carrying = !!input.carrying;
+      // Change the arm pose for a weapon or cargo while keeping phase and weight.
       for (let i = 0; i < director.count; i++) {
         const layer = director.layers[i];
         const old = layer.handle as AnimationAction | null;

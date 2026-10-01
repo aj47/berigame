@@ -1,20 +1,13 @@
-import { BOULDERS_MIN, GRID_SIZE, ISLAND_SIZE, TILE_ORIGIN } from './constants';
+import { GRID_SIZE, TILE_ORIGIN } from './constants';
 import type { Facing, Tile } from './types';
 
 export function inBounds(t: Tile): boolean {
   return t.x >= 0 && t.x < GRID_SIZE && t.z >= 0 && t.z < GRID_SIZE;
 }
 
-/**
- * Land, not water: the original island square, or the Boulders L past its
- * south-east shoreline (both coordinates >= BOULDERS_MIN). Everything else in
- * the grown grid is sea that nothing walks on.
- */
-export function isLandTile(t: Tile): boolean {
-  if (!inBounds(t)) return false;
-  if (t.x < ISLAND_SIZE && t.z < ISLAND_SIZE) return true;
-  return t.x >= BOULDERS_MIN && t.z >= BOULDERS_MIN;
-}
+/** Walkable land includes the two wooden river crossings. */
+export { terrainLand as isLandTile } from './terrain';
+import { terrainLand as isLandTile } from './terrain';
 
 /** LAND_MASK[tileKey] === 1 for land tiles, for tight loops (BFS). */
 export const LAND_MASK: Uint8Array = (() => {

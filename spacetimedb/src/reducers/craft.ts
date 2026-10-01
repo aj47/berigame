@@ -1,3 +1,4 @@
+import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { statsCraft } from '../lib/stats';
@@ -20,6 +21,7 @@ export const craft = spacetimedb.reducer(
     const def = getRecipe(recipe);
     if (!def) throw new SenderError('no such recipe');
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const T = currentTick(ctx);
     touchInput(p, T);
     if (p.hostile) throw new SenderError('Not while fighting');

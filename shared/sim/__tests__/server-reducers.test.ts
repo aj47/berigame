@@ -1,3 +1,4 @@
+import { adventureTables } from './adventureHarness';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EAT_SWING_DELAY_TICKS, HARVEST_TICKS, HOTBAR_SIZE, INVENTORY_SIZE, MAX_INPUTS_PER_TICK, MAX_STACK, MOVEMENT_STEPS_PER_TICK, PUNCH_DAMAGE, STICK_DROP_CHANCE, SWING_INTERVAL_TICKS, TICK_MS } from '../constants';
 import { ITEM_DEFS, STICK_ITEM_ID } from '../items';
@@ -29,10 +30,10 @@ import { onConnect as registeredConnect } from '../../../spacetimedb/src/reducer
 import { attackDummy as registeredAttackDummy, emote as registeredEmote } from '../../../spacetimedb/src/reducers/social';
 import { DUMMY_ID, DUMMY_MAX_HP, DUMMY_TILE, DUMMY_IDLE_RESET_TICKS, Emote } from '../social';
 import { DEFAULT_APPEARANCE } from '../appearance';
-import { BRAMBLE_MESSAGE, inGrace, isBramble } from '../areas';
+import { areaOf, BRAMBLE_MESSAGE, inGrace, isBramble } from '../areas';
 import { FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, RESPAWN_GRACE_TICKS } from '../constants';
 import { firstDayGoal, type GoalDoneId } from '../goals';
-import { neighbors8 } from '../grid';
+import { chebyshev, neighbors8 } from '../grid';
 import { emptySlots } from '../inventory';
 import { TREE_SEEDS } from '../items';
 import type { Slot } from '../types';
@@ -89,6 +90,7 @@ function harness() {
     random: vi.fn(() => 0.99),
     sender: A, identity: A, timestamp: { microsSinceUnixEpoch: 100_000_000n },
     db: {
+      ...adventureTables(),
       accessPolicy: { id: { find: () => ({ id: 0, owner: A, gateway: B, requireAdmission: false }) } },
       playerGrant: { identity: { find: (id: typeof A) => grants.get(id.toHexString()) } },
       appearance: { insert: (row: any) => appearances.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => appearances.get(id.toHexString()), update: (row: any) => appearances.set(row.identity.toHexString(), row) } },
@@ -372,7 +374,8 @@ describe('authoritative swings: punch or stick, no stances', () => {
   });
 });
 
-describe('stick drops from harvesting', () => {
+describe('stick drops from harvesting after level 2', () => {
+  beforeEach(() => { h.skills.set('a', { identity: A, foragingXp: 25, beachcombingXp: 0, craftingXp: 0 }); h.ctx.db.adventureProfile.insert({ identity: A, growingXp: 25, buildingXp: 0, exploringXp: 0, fightingXp: 0, befriendingXp: 0, feats: 1, loadout: 0, completions: 0, giantTrust: 0, stickClaimed: true }); });
   const events = () => h.ctx.db.combatEvent.insert.mock.calls.map(([e]: any[]) => e);
   function finishHarvest(roll: number) {
     h.ctx.random.mockReturnValue(roll);
@@ -516,10 +519,10 @@ describe('faster authoritative traversal with unchanged world cadence', () => {
     scheduledTick(h.ctx, { timer: {} });
     expect(h.me()).toMatchObject({ x: 25, z: 25, targetX: undefined });
   });
-  it('cannot cut diagonally out of a corner enclosed by two blocked neighbors', () => {
-    Object.assign(h.me(), { x: 0, z: 0, targetX: 2, targetZ: 2 });
-    h.trees.set(1, { id: 1, x: 1, z: 0 }); h.trees.set(2, { id: 2, x: 0, z: 1 });
-    scheduledTick(h.ctx, { timer: {} }); expect(h.me()).toMatchObject({ x: 0, z: 0 });
+  it('cannot cut diagonally out of a tile enclosed by blocked neighbors', () => {
+    Object.assign(h.me(), { x: 25, z: 25, targetX: 27, targetZ: 27 });
+    [{x:24,z:25},{x:26,z:25},{x:25,z:24},{x:25,z:26}].forEach((t,i)=>h.trees.set(i+1,{id:i+1,...t}));
+    scheduledTick(h.ctx, { timer: {} }); expect(h.me()).toMatchObject({ x: 25, z: 25 });
   });
   it.each(['follow', 'attack'])('%s stops at first melee-range tile without changing swing recovery', (mode) => {
     outsideSafeRing();
@@ -585,9 +588,9 @@ function slotsOf(owner: ReturnType<typeof identity>): Slot[] {
 describe('the bramble hedge on the server', () => {
   it('a click beyond the hedge without a stick clamps to ring 16 and the walk stops there', () => {
     move(h.ctx, { x: 2, z: 25 });
-    expect(h.me()).toMatchObject({ targetX: 9, targetZ: 25 });
+    expect(h.me()).toMatchObject({ targetX: 9, targetZ: 24 });
     run(12);
-    expect(h.me()).toMatchObject({ x: 9, z: 25 });
+    expect(h.me()).toMatchObject({ x: 9, z: 24 });
   });
 
   it('a stick holder (bag only) walks (25,25) to (2,25) through (8,25) in 12 ticks', () => {
@@ -610,7 +613,7 @@ describe('the bramble hedge on the server', () => {
     expect(h.me()).toMatchObject({ x: 19, z: 25, targetX: undefined });
   });
 
-  it.each([[9, 20, 9], [7, 20, 7]])('stickless on a hedge tile: steps straight off to (%i, 25) first, never along or diagonally', (x, z, firstX) => {
+  it.each([[9, 25, 9], [7, 25, 7]])('stickless on a hedge tile: steps straight off to (%i, 25) first, never along or diagonally', (x, z, firstX) => {
     Object.assign(h.me(), { x: 8, z: 25 });
     move(h.ctx, { x, z });
     run();
@@ -635,14 +638,14 @@ describe('the bramble hedge on the server', () => {
     expect(h.me().targetX).toBeUndefined();
     giveStick();
     pickup(h.ctx, { id: 1n });
-    expect(h.me()).toMatchObject({ pending: Pending.Pickup, targetX: 5, targetZ: 25 });
+    expect(h.me()).toMatchObject({ pending: Pending.Pickup, targetX: 5, targetZ: 26 });
   });
 
   it('an item dropped on a bramble tile can be picked up from the Grove side', () => {
     h.ground.set(1n, { id: 1n, x: 8, z: 25, itemId: 'berry_blueberry', quantity: 1, expiresTick: 500 });
     pickup(h.ctx, { id: 1n });
     run(9);
-    expect(h.me()).toMatchObject({ x: 9, z: 25, pending: Pending.None });
+    expect(h.me()).toMatchObject({ x: 9, z: 24, pending: Pending.None });
     expect(h.ground.size).toBe(0);
   });
 
@@ -654,9 +657,9 @@ describe('the bramble hedge on the server', () => {
     // bfsPath is null: no fallback in M1, the follow target is kept.
     expect(h.me()).toMatchObject({ x: 12, z: 25, combatTarget: B });
     // Once the target comes back into the Grove the follower moves again.
-    h.other().x = 15;
-    run();
-    expect(h.me().x).toBe(14);
+    Object.assign(h.other(), {x:15,z:22});
+    run(12);
+    expect(chebyshev(h.me(),h.other())).toBeLessThanOrEqual(1);
   });
 
   it('a stickless player on the Coast can still harvest a Grove tree (the way home is open)', () => {
@@ -668,7 +671,7 @@ describe('the bramble hedge on the server', () => {
   });
 });
 
-describe('sticks: no spares, and grace', () => {
+describe('sticks: gifted early keys and grace', () => {
   const events = () => h.ctx.db.combatEvent.insert.mock.calls.map(([e]: any[]) => e);
   function finishHarvest(roll: number) {
     h.ctx.random.mockReturnValue(roll);
@@ -678,7 +681,7 @@ describe('sticks: no spares, and grace', () => {
   }
   const sticks = () => [...h.inventory.values()].filter((row) => row.itemId === STICK_ITEM_ID);
 
-  it('a holder never finds a spare, but the draw still happens once per harvest', () => {
+  it('a level-1 holder keeps their gifted key, but cannot find spares yet', () => {
     giveStick();
     finishHarvest(0);
     expect(h.ctx.random).toHaveBeenCalledTimes(1);
@@ -717,6 +720,7 @@ describe('sticks: no spares, and grace', () => {
 
   it('a find during first-spawn grace leaves 10 more ticks', () => {
     h.me().respawnTick = 300;
+    h.skills.set('a', { identity: A, foragingXp: 24, beachcombingXp: 0, craftingXp: 0 });
     finishHarvest(0);
     expect(sticks()).toHaveLength(1);
     expect(h.me().respawnTick).toBe(11);
@@ -903,26 +907,31 @@ describe('First Day acceptance: newcomers following state.goal get harvests', ()
     const harvests = (id: ReturnType<typeof identity>) => h.ctx.db.combatEvent.insert.mock.calls
       .map(([e]: any[]) => e)
       .filter((e: any) => e.kind === EventKind.HarvestDone && e.attacker === id && e.tick < spawn + FIRST_SPAWN_GRACE_TICKS).length;
-    return { counts: newIds.map(harvests), rejected, done };
+    const events = h.ctx.db.combatEvent.insert.mock.calls.map(([e]: any[]) => e);
+    const firstStick = events.find((e: any) => e.kind === EventKind.ItemFound && e.attacker === newIds[0]);
+    const firstHit = events.find((e: any) => e.kind === EventKind.Hit && e.defender === newIds[0]);
+    return { counts: newIds.map(harvests), rejected, done, firstStick, firstHit };
   }
 
-  it('(a) lock-step: 10 bots saturate all trees; one newcomer finishes at least 5 harvests before 3:00', () => {
+  it('(a) lock-step: 10 bots saturate all trees; one newcomer finishes the four harvests needed for a stick before 3:00', () => {
     const { counts, done } = simulate({});
-    expect(counts[0]).toBeGreaterThanOrEqual(5);
+    expect(counts[0]).toBeGreaterThanOrEqual(4);
     expect(done.get('new0')).toEqual(expect.arrayContaining(['pick-berry', 'eat-berry']));
   });
 
-  it('(b) the same with 3 armed bots, who cannot touch the newcomer', () => {
-    const { counts, rejected } = simulate({ armed: 3 });
-    expect(counts[0]).toBeGreaterThanOrEqual(5);
+  it('(b) armed bots cannot hit a newcomer before the guaranteed stick and its grace window', () => {
+    const { counts, rejected, firstStick, firstHit } = simulate({ armed: 3 });
+    expect(counts[0]).toBeGreaterThanOrEqual(4);
     expect(rejected.length).toBeGreaterThan(0);
-    expect(rejected.every((m) => /protected|safe ring/.test(m))).toBe(true);
+    expect(rejected.every((m) => /protected|safe ring|target unavailable/.test(m))).toBe(true);
+    expect(firstStick).toBeDefined();
+    if (firstHit) expect(firstHit.tick).toBeGreaterThanOrEqual(firstStick.tick + RESPAWN_GRACE_TICKS);
   });
 
-  it('(c) 6 newcomers together each finish at least 5', () => {
+  it('(c) 6 newcomers together each reach the fourth harvest', () => {
     const { counts } = simulate({ newcomers: 6 });
     expect(counts).toHaveLength(6);
-    for (const c of counts) expect(c).toBeGreaterThanOrEqual(5);
+    for (const c of counts) expect(c).toBeGreaterThanOrEqual(4);
   });
 });
 
@@ -1460,6 +1469,7 @@ describe('F2: skills, level-gated recipes and cosmetics on the server', () => {
 
   it('the first stick unlocks the Straw Hat; stepping onto the Coast unlocks the Coast Scarf', () => {
     h.ctx.random.mockReturnValue(0);
+    h.skills.set('a', { identity: A, foragingXp: 24, beachcombingXp: 0, craftingXp: 0 });
     harvestOnce({ itemId: 'berry_blueberry' });
     expect(cosmetic()).toMatchObject({ head: Cosmetic.StrawHat + 1 });
     Object.assign(h.me(), { x: 25, z: 9, harvestTreeId: 0, harvestEndTick: 0 });

@@ -1,3 +1,4 @@
+import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { DUMMY_ID, MELEE_RANGE, Pending, chebyshev, emoteReady, isEmote } from '../../../shared/sim';
@@ -16,6 +17,7 @@ export const attackDummy = spacetimedb.reducer(
   { dummyId: t.u32() },
   (ctx, { dummyId }) => {
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const dummy = dummyId === DUMMY_ID ? ensureDummy(ctx) : ctx.db.trainingDummy.id.find(dummyId);
     if (!dummy) throw new SenderError('no such dummy');
     const T = currentTick(ctx);
@@ -49,6 +51,7 @@ export const emote = spacetimedb.reducer(
   (ctx, { emote }) => {
     if (!isEmote(emote)) throw new SenderError('unknown emote');
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const T = currentTick(ctx);
     touchInput(p, T);
     const last = ctx.db.emoteCooldown.identity.find(p.identity);

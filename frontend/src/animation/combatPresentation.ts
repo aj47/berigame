@@ -7,7 +7,7 @@ import { EMOTE_CLIPS } from './emotes';
  * attacks, the hit reactions (HitBack when struck from behind), defeat and
  * GetUp on respawn, and the synthesized emotes (animation/emotes.ts).
  */
-export const CLIPS = ['Idle', 'Run', 'Stop', 'Strike', STICK_SWING_CLIP, 'Hit', 'HitHeavy', 'HitBack', 'Defeat', 'GetUp', 'StickIdle', 'StickRun', 'StickStop', ...EMOTE_CLIPS] as const;
+export const CLIPS = ['Idle', 'Run', 'Stop', 'Strike', STICK_SWING_CLIP, 'Hit', 'HitHeavy', 'HitBack', 'Defeat', 'GetUp', 'StickIdle', 'StickRun', 'StickStop', 'CarryIdle', 'CarryRun', ...EMOTE_CLIPS] as const;
 /** Idle, Run and Stop while a stick is wielded (the arm holds the stick); played in their place by avatarAnimator.ts. */
 export const ARMED_VARIANT: Readonly<Partial<Record<Clip, Clip>>> = { Idle: 'StickIdle', Run: 'StickRun', Stop: 'StickStop' };
 export type Clip = (typeof CLIPS)[number];

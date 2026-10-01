@@ -1,3 +1,4 @@
+import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { GIANT_ID, GIANT_REACH, GiantState, Pending, chebyshev, formatCountdown } from '../../../shared/sim';
@@ -18,6 +19,7 @@ export const attackGiant = spacetimedb.reducer(
   { giantId: t.u32() },
   (ctx, { giantId }) => {
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const T = currentTick(ctx);
     const giant = giantId === GIANT_ID ? ensureGiant(ctx, T) : ctx.db.giant.id.find(giantId);
     if (!giant) throw new SenderError('no such giant');

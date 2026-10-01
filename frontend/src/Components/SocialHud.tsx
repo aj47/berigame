@@ -51,7 +51,7 @@ export const DeathPanel = () => {
   );
 };
 
-/** The emote wheel: a button and the E key open it; 1-4 or a click picks an emote. */
+/** E opens the eight-expression palette; number keys select before the quick bar. */
 export const EmoteWheel = () => {
   const [open, setOpen] = useState(false);
   const { emote } = useGameActions();
@@ -63,7 +63,7 @@ export const EmoteWheel = () => {
       if (isTyping(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key.toLowerCase() === EMOTE_KEY && !e.repeat) { setOpen((v) => !v); e.preventDefault(); return; }
       if (!latest.current.open) return;
-      const index = ['1', '2', '3', '4'].indexOf(e.key);
+      const index = ['1', '2', '3', '4', '5', '6', '7', '8'].indexOf(e.key);
       if (index >= 0 && EMOTE_LIST[index]) {
         // Claim the digit before the quick bar sees it.
         e.preventDefault(); e.stopImmediatePropagation();
@@ -82,7 +82,7 @@ export const EmoteWheel = () => {
           {EMOTE_LIST.map((def, i) => (
             <button key={def.key} role="menuitem" className={`emote-option emote-${def.key}`} style={{ '--i': i } as React.CSSProperties}
               onClick={() => { emote(def.id); setOpen(false); }} title={`${def.name} (${i + 1})`}>
-              <span>{def.name}</span>
+              <span className="emote-symbol" aria-hidden="true">{['✋','✦','☕','➜','♫','☺','♡','?'][i]}</span><span>{def.name}</span>
               <kbd>{i + 1}</kbd>
             </button>
           ))}

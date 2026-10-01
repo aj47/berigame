@@ -45,6 +45,11 @@ export function useGameActions() {
   );
 
   return {
+    equipTechnique: (technique: number) => run('technique', c => c.reducers.equipTechnique({ technique })),
+    expeditionAction: (action: string, expeditionId = 0n, extra: { target?: Identity; x?: number; z?: number; destination?: string } = {}) => run('expedition', c => c.reducers.expeditionAction({ action, expeditionId, target: extra.target, x: extra.x ?? 35, z: extra.z ?? 37, destination: extra.destination ?? 'market' })),
+    contributeProject: (itemId: string) => run('project', c => c.reducers.contributeProject({ itemId })),
+    shareGarden: (shared: boolean) => run('shareGarden', c => c.reducers.shareGarden({ shared })),
+    duelAction: (action: string, target: Identity) => run('duel', c => c.reducers.duelAction({ action, target })),
     setTarget: (x: number, z: number) => run('setTarget', (c) => c.reducers.setTarget({ x, z })),
     cancel: () => run('cancel', (c) => c.reducers.cancel()),
     attack: (target: Identity) => run('attack', (c) => c.reducers.attack({ target })),

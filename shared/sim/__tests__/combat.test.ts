@@ -1,7 +1,8 @@
+import { canFindStick } from '../adventure';
 import { describe, expect, it } from 'vitest';
 import { isSwingDue, retaliationSwingTick } from '../combat';
 import { HOTBAR_SIZE, PUNCH_DAMAGE, STICK_DROP_CHANCE } from '../constants';
-import { ITEM_DEFS, STICK_ITEM_ID, harvestFindsStick, inHotbar, isWeapon, swingDamage } from '../items';
+import { ITEM_DEFS, STICK_ITEM_ID, inHotbar, isWeapon, swingDamage } from '../items';
 import { emptySlots } from '../inventory';
 
 describe('swing damage', () => {
@@ -38,10 +39,10 @@ describe('hotbar', () => {
 
 describe('stick drop roll', () => {
   it('finds a stick for rolls below the drop chance only', () => {
-    expect(harvestFindsStick(0)).toBe(true);
-    expect(harvestFindsStick(STICK_DROP_CHANCE - 1e-9)).toBe(true);
-    expect(harvestFindsStick(STICK_DROP_CHANCE)).toBe(false);
-    expect(harvestFindsStick(0.999)).toBe(false);
+    expect(canFindStick(2, true, 0)).toBe(true);
+    expect(canFindStick(2, true, STICK_DROP_CHANCE - 1e-9)).toBe(true);
+    expect(canFindStick(2, true, STICK_DROP_CHANCE)).toBe(false);
+    expect(canFindStick(2, true, 0.999)).toBe(false);
   });
 });
 

@@ -1,6 +1,8 @@
+import { ADVENTURE_CAMP, BERRY_MARKET, GIANT_FEAST, BERRY_PATCH, TECHNIQUES, PATHS, PATH_FIELDS, techniqueUnlocked, hasTechnique } from '../../shared/sim';
 import { Identity } from 'spacetimedb';
 import { DbConnection, tables } from '../src/module_bindings';
 import {
+  TERRAIN_MAP, brambleTiles,
   areaOf, bestTree, BRAMBLE_KEY_ITEM, chebyshev, RESPAWN_GRACE_TICKS, BRAMBLE_MESSAGE, worldBlockedSet, DUMMY_ID, dummyHpAt, emoteByKey, GROUND_ITEM_TTL_TICKS, emptySlots, enterRule, firstDayGoal, getItemDef, GRID_SIZE, HEDGE_RING,
   holdsItem, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, isSafe, nearestReachableTile, Pending, PlayerState, PUNCH_DAMAGE, SAFE_RADIUS, SPAWN_TILE,
   STICK_DROP_CHANCE, STICK_ITEM_ID, swingDamage, TICK_MS, treeReadyTick, type Slot,
@@ -22,6 +24,7 @@ export interface GameSession {
   state(): Record<string, any>;
   action(name: string, input: Record<string, any>): Promise<ActionResult>;
   close(): Promise<void>;
+  suspend?(): Promise<void>;
 }
 export interface GameService { ready(): boolean; create(invite: Invite): Promise<GameSession>; }
 export type Backend = { uri: string; database: string };
@@ -85,7 +88,7 @@ export function connect(credential: Credential, control = false, options: Connec
             tables.playerCosmetic.where(row => row.identity.eq(identity)),
             tables.giantRaid,
             tables.mentorStat,
-            tables.gardenPlot,
+            tables.gardenPlot, tables.adventureProfile, tables.expedition, tables.expeditionMember, tables.islandProject, tables.gardenShowcase, tables.friendlyDuel,
           ]);
         }).build();
     } catch (error) { settled = true; clearTimeout(timer); reject(error); }
@@ -110,6 +113,7 @@ export async function createGameService(credential: Credential, options: Connect
     if (!ready()) throw unavailable();
     await deadline(control.conn.reducers.renewGrant({ identity: Identity.fromString(identity), lifetimeSeconds }));
   };
+  const suspend = async (identity: string) => { await deadline(control.conn.reducers.endVisit({ identity: Identity.fromString(identity) }), 3000); };
   const provision = async (invite: Invite) => {
     if (!ready()) throw unavailable();
     const player = await mintIdentity(credential);
@@ -178,6 +182,7 @@ export async function createGameService(credential: Credential, options: Connect
       return {
         identity: player.identity,
         close,
+        suspend: async () => { if (link) disconnect(link.conn); await suspend(player.identity); },
         state() {
           const self = me();
           const skillLevels = () => {
@@ -216,12 +221,13 @@ export async function createGameService(credential: Credential, options: Connect
               hasBrambleKey: hasKey, hasBoulderKey },
             goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action, ...(goal.waiting ? { waiting: goal.waiting } : {}) } : null,
             world: {
-              brambles: { center: { ...SPAWN_TILE }, ring: HEDGE_RING, key: BRAMBLE_KEY_ITEM,
-                rule: 'Tiles at Chebyshev distance 17 from center are thorny brambles. Step onto one only while holding a stick (bag or wielded), or from the Coast (distance >= 18). Stepping off is always allowed, so you can always walk home.' },
+              map: TERRAIN_MAP,
+              brambles: { center: { ...SPAWN_TILE }, ring: HEDGE_RING, tiles: brambleTiles(), key: BRAMBLE_KEY_ITEM,
+                rule: 'The rounded woodland boundary is thorny brambles; see tiles for its exact shape. Step onto one only while holding a stick (bag or wielded), or from the Coast. Stepping off is always allowed, so you can always walk home.' },
               safeRing: { center: { ...SPAWN_TILE }, radius: SAFE_RADIUS, rule: 'No attack starts or lands while either player is within this Chebyshev radius.' },
-              stickChance: STICK_DROP_CHANCE,
+              stickChance: STICK_DROP_CHANCE, stickUnlockLevel: 2, firstStickGuaranteed: true,
               boulders: { line: BOULDER_LINE, min: BOULDERS_MIN, entry: { ...BOULDERS_ENTRY }, key: BOULDER_KEY_ITEM,
-                rule: `The Boulders are the land with both x and z >= ${BOULDERS_MIN} and max(x, z) > ${BOULDER_LINE}. The boulder line (max(x, z) = ${BOULDER_LINE}) can be entered only while holding a stone club (bag or wielded), or from the Boulders; stepping off is always allowed, so you can always walk home. Other tiles with x or z >= 50 are sea.` },
+                rule: `The Boulders are the land with both x and z >= ${BOULDERS_MIN} and max(x, z) > ${BOULDER_LINE}. The boulder line (max(x, z) = ${BOULDER_LINE}) can be entered only while holding a stone club (bag or wielded), or from the Boulders; stepping off is always allowed, so you can always walk home. Check world.map.rows for the coastline, river and crossings.` },
             },
             giant: g ? {
               id: g.id, tile: { x: g.x, z: g.z }, footprint: 1, reach: GIANT_REACH, aggroRange: GIANT_AGGRO_RANGE,
@@ -263,6 +269,22 @@ export async function createGameService(credential: Credential, options: Connect
             recipes: recipeStatus(slotsOf(), skillLevels().crafting).map(r => ({ id: r.id, name: r.name, inputs: r.inputs, output: r.output, cosmetic: r.cosmetic === null ? null : COSMETICS[r.cosmetic]?.key ?? null,
               level: r.level, locked: r.locked, xp: r.xp, canCraft: r.canCraft, missing: r.missing })),
             skills: describeSkills(),
+            adventure: {
+              camp: ADVENTURE_CAMP, patch: BERRY_PATCH, market: BERRY_MARKET, feast: GIANT_FEAST,
+              expeditions: [...conn.db.expedition.iter()].map(e => ({ ...e, id: e.id.toString(), leader: e.leader.toHexString(), carrier: e.carrier?.toHexString() ?? null, porter: e.porter?.toHexString() ?? null })),
+              members: [...conn.db.expeditionMember.iter()].map(m => ({ ...m, identity: m.identity.toHexString(), expeditionId: m.expeditionId.toString() })),
+              project: conn.db.islandProject.id.find(0) ?? { wood: 0, obsidian: 0, meals: 0 },
+              projectGoal: '20 driftwood + 10 obsidian builds a permanent camp workshop: all future expedition berries gain one reward. Meals count successful expeditions.',
+              rule: 'Start at camp (22,18), then walk to the berry patch (34,17). Join others or bring Moss. Cargo needs both hands and slows movement. Pip steals unattended bites; bribe with a greenberry. Bait distracts the pursuing Giant. Deliver at market or feed at the western clearing. Only cargo is at risk. Act through expedition; inspect message and stage after every action.',
+            },
+            progression: (() => {
+              const legacy = conn.db.playerSkill.identity.find(id);
+              const p = conn.db.adventureProfile.identity.find(id) ?? { growingXp: legacy?.foragingXp ?? 0, buildingXp: legacy?.craftingXp ?? 0, exploringXp: legacy?.beachcombingXp ?? 0, fightingXp: 0, befriendingXp: 0, feats: (legacy?.foragingXp ? 1 : 0) | (legacy?.craftingXp ? 2 : 0) | (legacy?.beachcombingXp ? 4 : 0), loadout: 0, completions: 0, giantTrust: 0 };
+              return { paths: PATHS.map((name, i) => ({ name, xp: p[PATH_FIELDS[i]], level: levelForXp(p[PATH_FIELDS[i]]) })), completions: p.completions, giantTrust: p.giantTrust,
+                techniques: TECHNIQUES.map(t => ({ ...t, unlocked: techniqueUnlocked(p, t.id), equipped: hasTechnique(p, t.id) })), rule: 'Equip up to three techniques at camp, freely. Grow, build, explore, practice on the dummy, and befriend NPCs or give gifts to earn XP and milestones.' };
+            })(),
+            sharedGardens: [...conn.db.gardenShowcase.iter()].map(g => ({ playerId: g.identity.toHexString(), plants: JSON.parse(g.plants) })),
+            duels: [...conn.db.friendlyDuel.iter()].filter(d => d.a.toHexString() === player.identity || d.b.toHexString() === player.identity).map(d => ({ ...d, id: d.id.toString(), a: d.a.toHexString(), b: d.b.toHexString() })),
             cosmetics: describeCosmetics(),
             garden: (() => {
               const now = Date.now();
@@ -279,7 +301,7 @@ export async function createGameService(credential: Credential, options: Connect
                       ripe: left === 0, ripeInSeconds: Math.ceil(left / 1000), yield: getGardenCrop(plant.itemId)?.yield ?? 0 } : null };
                 }),
                 ripe: rows.filter(r => gardenRemainingMs({ itemId: r.itemId, plantedAtMs: Number(r.plantedAtMicros / 1000n) }, now) === 0).length,
-                rule: `Your own berry patch (nobody else sees your plants). plant a berry, it grows in real time even while you are offline, then harvest_garden when ripe for more berries and Foraging XP. Ripe plants wait forever. A 4th plot opens at Foraging level ${GARDEN_EXTRA_PLOT_LEVEL}.`,
+                rule: `Your own berry patch (use garden_share to show it to others). plant a berry, it grows in real time even while you are offline, then harvest_garden when ripe for more berries and Foraging XP. Ripe plants wait forever. A 4th plot opens at Foraging level ${GARDEN_EXTRA_PLOT_LEVEL}.`,
               };
             })(),
             groundItems: [...conn.db.groundItem.iter()].slice(0, 128).map(row => ({ id: row.id.toString(), itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity, tile: { x: row.x, z: row.z },
@@ -309,6 +331,7 @@ export async function createGameService(credential: Credential, options: Connect
               return { id: t.id.toString(), with: other.toHexString(), withName: conn.db.player.identity.find(other)?.name ?? null,
                 status: t.accepted ? 'open' : iAmA ? 'requested_by_you' : 'requested_by_them',
                 yourOffer: parseOffer(iAmA ? t.aOffer : t.bOffer) ?? [], theirOffer: parseOffer(iAmA ? t.bOffer : t.aOffer) ?? [],
+                warnings: (parseOffer(iAmA ? t.aOffer : t.bOffer) ?? []).filter(o => [STICK_ITEM_ID, BOULDER_KEY_ITEM].includes(o.itemId) && o.quantity >= slotsOf().reduce((n, s) => n + (s?.itemId === o.itemId ? s.quantity : 0), 0) && !(parseOffer(iAmA ? t.bOffer : t.aOffer) ?? []).some(incoming => incoming.itemId === o.itemId)).map(o => `Giving away your last ${getItemDef(o.itemId)?.name}. Its outward route closes until you find another.`),
                 youConfirmed: iAmA ? t.aConfirmed : t.bConfirmed, theyConfirmed: iAmA ? t.bConfirmed : t.aConfirmed,
                 rule: `Request within ${TRADE_RANGE} tiles; cancelled beyond ${TRADE_BREAK_RANGE}, on death or disconnect. Any offer change clears both confirmations; the swap is all or nothing.` };
             })(),
@@ -342,6 +365,11 @@ export async function createGameService(credential: Credential, options: Connect
               const byBrambles = !hasStick && (withStick.x !== destination.x || withStick.z !== destination.z);
               return { destination, ...(byBrambles ? { blockedBy: 'brambles', message: BRAMBLE_MESSAGE } : { blockedBy: 'boulders', message: BOULDER_MESSAGE }) };
             }
+            case 'expedition': await r.expeditionAction({ action: input.action, expeditionId: BigInt(input.expeditionId ?? 0), target: input.playerId ? Identity.fromString(input.playerId) : undefined, x: input.x ?? self.x, z: input.z ?? self.z, destination: input.destination ?? 'market' }); break;
+            case 'technique': await r.equipTechnique({ technique: input.technique }); break;
+            case 'project': await r.contributeProject({ itemId: input.itemId }); break;
+            case 'garden_share': await r.shareGarden({ shared: input.shared === 1 }); break;
+            case 'duel': await r.duelAction({ action: input.action, target: Identity.fromString(input.playerId) }); break;
             case 'stop': await r.cancel({}); break;
             case 'harvest': {
               // Default: the tree with the soonest claim (ripening, walk and queue), as state.goal suggests.
@@ -420,9 +448,9 @@ export async function createGameService(credential: Credential, options: Connect
           }
         },
       };
-    } catch (error) { await close(); throw error; }
+    } catch (error) { if (link) disconnect(link.conn); try { await suspend(player.identity); } catch { /* Bounded permit expires independently. */ } throw error; }
   };
-  return { ready, close: () => disconnect(control.conn), provision, renew, resume, revoke,
+  return { ready, close: () => disconnect(control.conn), provision, renew, resume, revoke, suspend,
     async create(invite: Invite) { return resume(invite, await provision(invite)); },
   };
 }

@@ -36,3 +36,6 @@ export function locateAvatar(identity: string): { x: number; z: number } | null 
   scratch.x = group.position.x; scratch.z = group.position.z;
   return scratch;
 }
+
+/** Interpolated visual transform for a held prop. Callers must not mutate it. */
+export const avatarGroup = (identity:string): Object3D | undefined => groups.get(identity);

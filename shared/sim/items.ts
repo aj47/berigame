@@ -1,9 +1,10 @@
-import { HOTBAR_SIZE, MAX_STACK, PUNCH_DAMAGE, STICK_DROP_CHANCE } from './constants';
+import { HOTBAR_SIZE, MAX_STACK, PUNCH_DAMAGE } from './constants';
 import type { Slot, Tile } from './types';
 
 export interface ItemDef {
   id: string;
   name: string;
+  description?: string;
   icon: string;
   /** HP restored when eaten; 0 for non-consumables. */
   healthRestore: number;
@@ -30,13 +31,13 @@ export const ITEM_DEFS: Record<string, ItemDef> = {
   berry_strawberry: { id: 'berry_strawberry', name: 'Strawberry', icon: '/items/strawberry.png', healthRestore: 3, weaponDamage: 0, maxStack: MAX_STACK, color: '#EF4444' },
   berry_greenberry: { id: 'berry_greenberry', name: 'Greenberry', icon: '/items/greenberry.png', healthRestore: 2, weaponDamage: 0, maxStack: MAX_STACK, color: '#22C55E' },
   berry_goldberry: { id: 'berry_goldberry', name: 'Goldberry', icon: '/items/goldberry.png', healthRestore: 10, weaponDamage: 0, maxStack: MAX_STACK, color: '#F59E0B' },
-  [STICK_ITEM_ID]: { id: STICK_ITEM_ID, name: 'Stick', icon: '/items/stick.png', healthRestore: 0, weaponDamage: 6, maxStack: 1, color: '#8A6A45' },
-  [DRIFTWOOD_ITEM_ID]: { id: DRIFTWOOD_ITEM_ID, name: 'Driftwood', icon: '/items/driftwood.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#9C8468' },
-  [FLINT_ITEM_ID]: { id: FLINT_ITEM_ID, name: 'Flint Shard', icon: '/items/flint.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#5B6470' },
-  [STONE_CLUB_ITEM_ID]: { id: STONE_CLUB_ITEM_ID, name: 'Stone Club', icon: '/items/stone_club.png', healthRestore: 0, weaponDamage: 8, maxStack: 1, color: '#6E6A62' },
-  [OBSIDIAN_ITEM_ID]: { id: OBSIDIAN_ITEM_ID, name: 'Obsidian', icon: '/items/obsidian.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#2A2238' },
+  [STICK_ITEM_ID]: { id: STICK_ITEM_ID, description: 'Opens the bramble paths. First earned at Foraging level 2; extras can be gifted or traded.', name: 'Stick', icon: '/items/stick.png', healthRestore: 0, weaponDamage: 6, maxStack: 1, color: '#8A6A45' },
+  [DRIFTWOOD_ITEM_ID]: { id: DRIFTWOOD_ITEM_ID, description: 'Build clubs, craft tools, make scent decoys, or contribute to the shared camp workshop.', name: 'Driftwood', icon: '/items/driftwood.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#9C8468' },
+  [FLINT_ITEM_ID]: { id: FLINT_ITEM_ID, description: 'Craft a stone club with driftwood, or make a flint knife.', name: 'Flint Shard', icon: '/items/flint.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#5B6470' },
+  [STONE_CLUB_ITEM_ID]: { id: STONE_CLUB_ITEM_ID, description: 'Opens the Boulders route. Keep it when trading if you want to cross again.', name: 'Stone Club', icon: '/items/stone_club.png', healthRestore: 0, weaponDamage: 8, maxStack: 1, color: '#6E6A62' },
+  [OBSIDIAN_ITEM_ID]: { id: OBSIDIAN_ITEM_ID, description: 'Donate at the gardener camp to build a permanent workshop for everyone.', name: 'Obsidian', icon: '/items/obsidian.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#2A2238' },
   // F2 recipes. Mash: 3 berries (7 HP) in one bite, still below a goldberry. Knife: a stick's damage, not a key.
-  [BERRY_MASH_ITEM_ID]: { id: BERRY_MASH_ITEM_ID, name: 'Berry Mash', icon: '/items/berry_mash.png', healthRestore: 7, weaponDamage: 0, maxStack: MAX_STACK, color: '#B0415C' },
+  [BERRY_MASH_ITEM_ID]: { id: BERRY_MASH_ITEM_ID, description: 'A portable meal. Eat it to heal or give it to another adventurer.', name: 'Berry Mash', icon: '/items/berry_mash.png', healthRestore: 7, weaponDamage: 0, maxStack: MAX_STACK, color: '#B0415C' },
   [FLINT_KNIFE_ITEM_ID]: { id: FLINT_KNIFE_ITEM_ID, name: 'Flint Knife', icon: '/items/flint_knife.png', healthRestore: 0, weaponDamage: 6, maxStack: 1, color: '#56606E' },
 };
 
@@ -61,15 +62,6 @@ export function swingDamage(weapon: string): number {
 export function inHotbar(slots: readonly Slot[], itemId: string): boolean {
   for (let i = 0; i < HOTBAR_SIZE && i < slots.length; i++) if (slots[i]?.itemId === itemId) return true;
   return false;
-}
-
-/**
- * `roll` is a uniform [0, 1) draw from the server's deterministic ctx.random,
- * drawn on every finished berry harvest. A player already holding a stick never
- * finds a spare one.
- */
-export function harvestFindsStick(roll: number, holdsStick = false): boolean {
-  return !holdsStick && roll < STICK_DROP_CHANCE;
 }
 
 export interface TreeSeed extends Tile {

@@ -13,7 +13,7 @@ import { useAvatarLabels } from './AvatarOverlay';
 import AdventurerModel, { BASE_MODEL_URL, modelUrl } from './AdventurerModel';
 import { useAppearancePreview } from '../../appearance/store';
 import { useToastStore } from '../../spacetime/stores/toastStore';
-import { useWornCosmetics } from '../../spacetime/hooks';
+import { useWornCosmetics, useExpeditions } from '../../spacetime/hooks';
 import { useProgressStore, XP_FLOAT_KIND } from '../../spacetime/stores/progressStore';
 import type { AnimationCue } from '../../animation/combatPresentation';
 import { identityHex } from '../../spacetime/identity';
@@ -59,6 +59,8 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const actionsApi = useGameActions();
   const hex = identityHex(row.identity);
+  const expeditions=useExpeditions();
+  const carrying=expeditions.some(e=>e.stage==='hauling' && e.carrier?.toHexString()===hex);
   const preview = useAppearancePreview((value) => isSelf ? value.draft : null);
   const chosen = isSelf && preview ? preview : saved;
   // Stable while the colours hold, so the memoized model skips row-only (movement) renders.
@@ -87,7 +89,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const transient = useRef<AnimationCue | null>(null);
   // Combat cues win over an emote; an emote plays as a one-off 'action' cue.
   const emoteClip = emote && !dead ? emoteCue(emote.emote) : null;
-  transient.current = cue ?? (emote && emoteClip ? { clip: emoteClip.clip, durationMs: emote.durationMs, at: emote.at, seq: 100000 + emote.seq, role: 'action' } : null);
+  transient.current = cue ?? (!carrying && emote && emoteClip ? { clip: emoteClip.clip, durationMs: emote.durationMs, at: emote.at, seq: 100000 + emote.seq, role: 'action' } : null);
   const healthShown = useHealthShown(row.hp, row.maxHp);
   useEffect(() => { if (isSelf && setPlayerRef) setPlayerRef(groupRef); }, [isSelf, setPlayerRef]);
   useAvatarDecal(groupRef, isSelf ? 'self' : targeted ? 'target' : 'other');
@@ -122,14 +124,16 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const origin = { x: 0, y: 0, z: 0 };
   // Blob shadow and ring: <AvatarDecals />. Name, health bar and chat bubble: <AvatarOverlay />.
   return (
-    <group ref={groupRef} onClick={onClick}>
+    <group ref={groupRef} onClick={onClick} userData={{ hoverTarget: isSelf || dead ? null : {
+      title: row.name, action: 'Click for player actions', detail: 'Follow · trade · friend · attack', radius: .65,
+    } }}>
       <mesh position={[0, 1.05, 0]} visible={false}><boxGeometry args={[0.9, 2.1, 0.8]} /><meshBasicMaterial /></mesh>
       {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} itemId={floating.itemId} appearAt={floating.at + floating.delayMs} />}
       {found && <DamageNumber key={`find-${hex}-${found.seq}`} playerPosition={origin} yOffset={1.8} kind={found.kind} text={found.text} itemId={found.itemId} appearAt={found.at + found.delayMs} />}
       {xpFloat && <DamageNumber key={`xp-${xpFloat.seq}`} playerPosition={origin} yOffset={2.25} kind={XP_FLOAT_KIND} text={xpFloat.text} appearAt={xpFloat.at} />}
       <Suspense fallback={<mesh position={[0,1,0]}><capsuleGeometry args={[.25,1,4,6]} /><meshStandardMaterial color="#42699c" /></mesh>}>
-        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} motion={motion} transient={transient} head={head} neck={neck} />}>
-          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} motion={motion} transient={transient} head={head} neck={neck} />
+        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} motion={motion} transient={transient} head={head} neck={neck} />}>
+          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} motion={motion} transient={transient} head={head} neck={neck} />
         </HairBoundary>
       </Suspense>
     </group>

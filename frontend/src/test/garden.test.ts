@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GARDEN_CENTER, GARDEN_PLOT_TILES } from '@sim';
-import { minimapModel } from '../Components/minimap';
+import { minimapModel } from '../Components/minimapModel';
 import { useGardenStore } from '../spacetime/stores/gardenStore';
 
 describe('garden client helpers', () => {

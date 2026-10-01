@@ -1,4 +1,5 @@
 import { BOULDER_LINE, BOULDERS_MIN, HEDGE_RING, RESPAWN_GRACE_TICKS, SAFE_RADIUS, SPAWN_TILE } from './constants';
+import { groveBoundary, insideGrove } from './terrain';
 import { chebyshev, isLandTile } from './grid';
 import { PlayerState, type Slot, type Tile } from './types';
 
@@ -16,7 +17,7 @@ export function ringOf(t: Tile): number {
 }
 
 export function isBramble(t: Tile): boolean {
-  return ringOf(t) === HEDGE_RING;
+  return groveBoundary(t);
 }
 
 /** The one-tile boulder line on the old south-east shoreline (max(x, z) = 50, both >= 36). */
@@ -34,8 +35,7 @@ export function areaOf(t: Tile): Area {
   const m = Math.max(t.x, t.z);
   if (m > BOULDER_LINE) return 'boulders';
   if (m === BOULDER_LINE) return 'boulder-line';
-  const r = ringOf(t);
-  return r < HEDGE_RING ? 'grove' : r === HEDGE_RING ? 'hedge' : 'coast';
+  return isBramble(t) ? 'hedge' : insideGrove(t) ? 'grove' : 'coast';
 }
 
 /**
@@ -46,7 +46,7 @@ export function areaOf(t: Tile): Area {
  */
 export function canEnter(from: Tile, to: Tile, hasStick: boolean, hasClub = false): boolean {
   if (!isLandTile(to)) return false;
-  if (isBramble(to)) return hasStick || ringOf(from) > HEDGE_RING;
+  if (isBramble(to)) return hasStick || !insideGrove(from);
   if (isBoulderLine(to)) return hasClub || inBoulders(from);
   return true;
 }
@@ -102,7 +102,7 @@ export function coastPastCrossing(c: Tile): Tile {
 /** Where the chip sends a club holder: straight past the Coast's south-east corner, onto the Boulders. */
 export const BOULDERS_ENTRY: Tile = { x: BOULDER_LINE + 1, z: BOULDER_LINE + 1 };
 
-/** All boulder-line tiles, in row order (29). */
+/** All boulder-line tiles, in row order. */
 export function boulderLineTiles(): Tile[] {
   const out: Tile[] = [];
   for (let z = BOULDERS_MIN; z <= BOULDER_LINE; z++) {

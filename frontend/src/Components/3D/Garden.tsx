@@ -13,6 +13,7 @@ import { useToastStore } from '../../spacetime/stores/toastStore';
 import { useLoadingStore, useUserInputStore } from '../../store';
 import { merged, part } from './envArt';
 import { slotsFromRows } from '../itemUi';
+import type { HoverTarget } from './hoverTarget';
 
 /*
  * The garden terrace: one merged, vertex-coloured mesh for the frame and the
@@ -185,6 +186,19 @@ const Garden = () => {
 
   const slots = useMemo(() => slotsFromRows(inventory), [inventory]);
 
+  const hoverTarget: HoverTarget = (point) => {
+    const index = Math.max(0, gardenPlotAt(worldToTile(point.x, point.z)));
+    const view = plots[index];
+    const left = view.plant ? gardenRemainingMs(view.plant, Date.now()) : 0;
+    const name = view.plant ? getItemDef(view.plant.itemId)?.name ?? 'Berries' : '';
+    const seeds = GARDEN_CROPS.some(crop => countItem(slots, crop.itemId) > 0);
+    return {
+      title: `Your garden · plot ${index + 1}`, action: 'Click for garden options', radius: .5, tile: GARDEN_PLOT_TILES[index],
+      detail: view.locked ? `Opens at Foraging level ${GARDEN_EXTRA_PLOT_LEVEL}` : view.plant ? left > 0 ? `${name} · ready in ${formatGardenTime(left)}` : `${name} · ready to harvest` : seeds ? 'Empty plot · choose a berry to plant' : 'Empty plot · bring a berry to plant',
+      tone: view.locked || left > 0 || (!view.plant && !seeds) ? 'muted' : 'ready',
+    };
+  };
+
   const onClick = (e: any) => {
     if (e.delta > 5) return;
     e.stopPropagation();
@@ -218,7 +232,7 @@ const Garden = () => {
 
   const [ox, , oz] = tileToWorld(ORIGIN);
   return (
-    <group position={[ox, 0, oz]} name="garden-terrace">
+    <group position={[ox, 0, oz]} name="garden-terrace" userData={{ hoverTarget }}>
       <mesh geometry={terrace()} material={material} receiveShadow onClick={onClick} />
       {plots.map((p) => p.locked && (() => { const [x, z] = rel(p.index); return <mesh key={`lock-${p.index}`} position={[x, 0, z]} geometry={lockCover()} material={material} raycast={noRaycast} />; })())}
       {plots.map((p) => {

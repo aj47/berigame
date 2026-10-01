@@ -113,7 +113,7 @@ const LoadingScreen = () => {
           <img src="/items/stick.png" alt="" />
           <img src="/items/blueberry.png" alt="" />
           <p>
-            Harvests sometimes turn up a sturdy stick (about 1 in 4). A stick
+            Four berry harvests earn Foraging level 2 and your first stick. A stick
             lets you push through the brambles. Keys 1–3 use your first three
             bag slots.
           </p>

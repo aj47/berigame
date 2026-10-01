@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Object3D } from "three";
 import SettingsPanel from "../Components/SettingsPanel";
 import { DEFAULT_SETTINGS, useSettingsStore } from "../spacetime/stores/settingsStore";
-import { drawMinimap, minimapModel } from "../Components/minimap";
+import { drawMinimap, minimapModel } from "../Components/minimapModel";
 import { tipFor, TIP_MS } from "../Components/OnboardingTip";
 import { clickHandlerOf, tapSamples } from "../Components/3D/tapAssist";
 import GoalChip from "../Components/GoalChip";
@@ -123,7 +123,8 @@ describe("minimap model", () => {
       set: () => true,
     }) as unknown as CanvasRenderingContext2D;
     drawMinimap(ctx, minimapModel({ meHex: "me", players, trees, groundItems, tick: 100 }), 120);
-    expect(calls).toContain("strokeRect");
+    expect(calls).toContain("fillRect");
+    expect(calls).not.toContain("strokeRect"); // The woodland boundary follows the terrain.
     expect(calls.filter((c) => c === "arc").length).toBeGreaterThan(2);
   });
 });

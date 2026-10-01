@@ -15,8 +15,10 @@ import LoadingScreen from '../LoadingScreen';
 import GroundItem from './GroundItem';
 import DebugBridge from './DebugBridge';
 import Garden from './Garden';
+import AdventureWorld from './AdventureWorld';
 import FxLayer from '../../fx/FxLayer';
 import HoldToWalk from './HoldToWalk';
+import WorldHover, { WorldHoverTooltip } from './WorldHover';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
 import { useGroundItems, usePlayersByHex, useTick, useTrees } from '../../spacetime/hooks';
 import { identityHex } from '../../spacetime/identity';
@@ -71,6 +73,7 @@ const GameComponent = () => {
     <div style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
       <LoadingScreen />
       <UIComponents />
+      <WorldHoverTooltip />
       {clickedOtherObject && <ClickDropdown />}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       <WorldBoundary>
@@ -79,11 +82,12 @@ const GameComponent = () => {
         <Suspense fallback={null}>
           <AlphaIsland />
           <WorldObjects />
-          <Garden />
+          <Garden /><AdventureWorld />
           <RenderOnlineUsers />
           <PlayerController setPlayerRef={setPlayerRef} />
           <CameraController playerRef={playerRef} />
           <HoldToWalk />
+          <WorldHover />
           <DebugBridge />
           <FxLayer />
         </Suspense>

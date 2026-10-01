@@ -47,7 +47,9 @@ const TrainingDummy = ({ dummy, tick }: { dummy: TrainingDummyRow; tick: number 
   };
 
   return (
-    <group position={[x, 0, z]} onClick={onClick} name="training-dummy" userData={{ berigameDummy: dummy.id }}>
+    <group position={[x, 0, z]} onClick={onClick} name="training-dummy" userData={{ berigameDummy: dummy.id, hoverTarget: {
+      title: 'Training dummy', action: 'Click for practice options', detail: 'Train your combat skills', radius: .7,
+    } }}>
       {/* Base stake and footing. */}
       <mesh position={[0, 0.04, 0]} receiveShadow><cylinderGeometry args={[0.32, 0.38, 0.08, 10]} /><meshStandardMaterial color="#8a7a5c" roughness={1} /></mesh>
       <group ref={body}>

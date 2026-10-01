@@ -57,16 +57,16 @@ export const FIRST_NODE_ID = 101;
 
 /**
  * Driftwood straight past each path crossing (N, E, S, W), tide rocks in the
- * four corners, 4-5 tiles past the hedge corners.
+ * four coves along the natural shoreline.
  */
 export const NODE_SEEDS: readonly NodeSeed[] = [
   { id: 101, x: 25, z: 3, kind: NodeKind.Driftwood, itemId: DRIFTWOOD_ITEM_ID },
   { id: 102, x: 46, z: 25, kind: NodeKind.Driftwood, itemId: DRIFTWOOD_ITEM_ID },
   { id: 103, x: 25, z: 46, kind: NodeKind.Driftwood, itemId: DRIFTWOOD_ITEM_ID },
   { id: 104, x: 3, z: 25, kind: NodeKind.Driftwood, itemId: DRIFTWOOD_ITEM_ID },
-  { id: 105, x: 3, z: 3, kind: NodeKind.TideRock, itemId: FLINT_ITEM_ID },
-  { id: 106, x: 46, z: 3, kind: NodeKind.TideRock, itemId: FLINT_ITEM_ID },
-  { id: 107, x: 3, z: 46, kind: NodeKind.TideRock, itemId: FLINT_ITEM_ID },
+  { id: 105, x: 12, z: 6, kind: NodeKind.TideRock, itemId: FLINT_ITEM_ID },
+  { id: 106, x: 39, z: 9, kind: NodeKind.TideRock, itemId: FLINT_ITEM_ID },
+  { id: 107, x: 9, z: 40, kind: NodeKind.TideRock, itemId: FLINT_ITEM_ID },
   { id: 108, x: 46, z: 46, kind: NodeKind.TideRock, itemId: FLINT_ITEM_ID },
   // M3: obsidian at the far ends of the Boulders' L, well away from the Giant.
   { id: 109, x: 60, z: 40, kind: NodeKind.Obsidian, itemId: OBSIDIAN_ITEM_ID },

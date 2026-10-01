@@ -252,7 +252,11 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
   };
 
   return (
-    <group position={[x, 0, z]} name="giant" userData={{ berigameGiant: giant.id }}>
+    <group position={[x, 0, z]} name="giant" userData={{ berigameGiant: giant.id, hoverTarget: {
+      title: 'The Giant', action: 'Click for Giant options', radius: 2.1,
+      detail: giant.state === GiantState.Asleep ? 'Asleep' : giant.state === GiantState.Defeated ? 'Resting' : 'Ready to battle',
+      tone: giant.state === GiantState.Asleep || giant.state === GiantState.Defeated ? 'muted' : 'ready',
+    } }}>
       <group ref={root}>
         <group ref={body}>
           <mesh geometry={p.body} material={coastMaterial()} castShadow />

@@ -1,0 +1,6 @@
+# Reproducible intermediate frames, review renders and process output.
+frames/
+previews/
+__pycache__/
+*.log
+*.blend1

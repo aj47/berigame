@@ -1,3 +1,4 @@
+import { adventureTables } from './adventureHarness';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerState } from '../types';
 import { emptySlots } from '../inventory';
@@ -97,6 +98,7 @@ function harness() {
   const ctx: any = {
     sender: A, timestamp: { microsSinceUnixEpoch: 1_000_000_000_000n },
     db: {
+      ...adventureTables(),
       accessPolicy: { id: { find: () => ({ id: 0, owner: owner.value, gateway: identity('g'), requireAdmission: false }) } },
       playerGrant: { identity: { find: () => undefined } },
       world: { id: { find: () => ({ id: 0, tick: 10 }) } },

@@ -1,3 +1,4 @@
+import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { MELEE_RANGE, Pending, chebyshev } from '../../../shared/sim';
@@ -18,6 +19,7 @@ export const startHarvest = spacetimedb.reducer(
     if (!tree) throw new SenderError('no such tree');
     const T = currentTick(ctx);
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, T);
     // Picking the tree you are already harvesting keeps the harvest going. Releasing
     // it first (below) would requeue you and restart the harvest from zero.

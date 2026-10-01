@@ -3,6 +3,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import UIComponents from '../Components/UIComponents';
 
+vi.mock('../Components/AdventurePanel', () => ({ default: () => null, AdventureHud: () => null, DuelHud: () => null }));
+vi.mock('../Components/SkillsPanel', () => ({ default: () => null }));
 vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => null, usePlayers: () => [], useMySkills: () => null, useMyCosmetics: () => null }));
 vi.mock('../Components/ChatBox', () => ({ default: ({ open }: any) => open ? <div>Opened chat</div> : null }));
 vi.mock('../Components/Inventory', () => ({ default: () => null }));

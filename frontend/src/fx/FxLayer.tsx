@@ -42,7 +42,9 @@ const FxLayer = () => {
     m.raycast = () => {};
     return m;
   }, []);
-  useEffect(() => () => { mesh.geometry.dispose(); (mesh.material as MeshBasicMaterial).dispose(); mesh.dispose(); }, [mesh]);
+  // R3F assigns dispose={null} onto primitives, so call the Three prototype
+  // when manually releasing the instance buffers on reconnect or hot reload.
+  useEffect(() => () => { mesh.geometry.dispose(); (mesh.material as MeshBasicMaterial).dispose(); InstancedMesh.prototype.dispose.call(mesh); }, [mesh]);
   useEffect(installAudio, []);
   useEffect(() => {
     if (!(import.meta as any).env?.DEV) return;

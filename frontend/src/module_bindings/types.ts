@@ -18,6 +18,21 @@ export const AccessPolicy = __t.object("AccessPolicy", {
 });
 export type AccessPolicy = __Infer<typeof AccessPolicy>;
 
+export const AdventureProfile = __t.object("AdventureProfile", {
+  identity: __t.identity(),
+  growingXp: __t.u32(),
+  buildingXp: __t.u32(),
+  exploringXp: __t.u32(),
+  fightingXp: __t.u32(),
+  befriendingXp: __t.u32(),
+  feats: __t.u32(),
+  loadout: __t.u32(),
+  completions: __t.u32(),
+  giantTrust: __t.u32(),
+  stickClaimed: __t.bool(),
+});
+export type AdventureProfile = __Infer<typeof AdventureProfile>;
+
 export const Appearance = __t.object("Appearance", {
   identity: __t.identity(),
   hairStyle: __t.u8(),
@@ -74,6 +89,59 @@ export const EmoteEvent = __t.object("EmoteEvent", {
 });
 export type EmoteEvent = __Infer<typeof EmoteEvent>;
 
+export const Expedition = __t.object("Expedition", {
+  id: __t.u64(),
+  leader: __t.identity(),
+  stage: __t.string(),
+  startedTick: __t.u32(),
+  untilTick: __t.u32(),
+  ripeTick: __t.u32(),
+  x: __t.i32(),
+  z: __t.i32(),
+  carrier: __t.option(__t.identity()),
+  mossCarrying: __t.bool(),
+  mossPaid: __t.bool(),
+  porter: __t.option(__t.identity()),
+  lastActiveTick: __t.u32(),
+  value: __t.u8(),
+  split: __t.bool(),
+  mossX: __t.i32(),
+  mossZ: __t.i32(),
+  pipX: __t.i32(),
+  pipZ: __t.i32(),
+  giantX: __t.i32(),
+  giantZ: __t.i32(),
+  hiddenUntil: __t.u32(),
+  pipUntil: __t.u32(),
+  giantUntil: __t.u32(),
+  baitX: __t.i32(),
+  baitZ: __t.i32(),
+  baitUntil: __t.u32(),
+  guardUntil: __t.u32(),
+  message: __t.string(),
+  destination: __t.string(),
+});
+export type Expedition = __Infer<typeof Expedition>;
+
+export const ExpeditionCredit = __t.object("ExpeditionCredit", {
+  key: __t.string(),
+  expeditionId: __t.u64(),
+  identity: __t.identity(),
+  contributions: __t.u32(),
+  rewarded: __t.bool(),
+  tracked: __t.bool(),
+});
+export type ExpeditionCredit = __Infer<typeof ExpeditionCredit>;
+
+export const ExpeditionMember = __t.object("ExpeditionMember", {
+  identity: __t.identity(),
+  expeditionId: __t.u64(),
+  contributions: __t.u32(),
+  cooldown: __t.u32(),
+  tracked: __t.bool(),
+});
+export type ExpeditionMember = __Infer<typeof ExpeditionMember>;
+
 export const Friend = __t.object("Friend", {
   id: __t.u64(),
   owner: __t.identity(),
@@ -81,6 +149,21 @@ export const Friend = __t.object("Friend", {
   since: __t.timestamp(),
 });
 export type Friend = __Infer<typeof Friend>;
+
+export const FriendlyDuel = __t.object("FriendlyDuel", {
+  id: __t.u64(),
+  a: __t.identity(),
+  b: __t.identity(),
+  stage: __t.string(),
+  startsTick: __t.u32(),
+  expiresTick: __t.u32(),
+  aHp: __t.u8(),
+  bHp: __t.u8(),
+  nextSwingTick: __t.u32(),
+  turnA: __t.bool(),
+  result: __t.string(),
+});
+export type FriendlyDuel = __Infer<typeof FriendlyDuel>;
 
 export const GardenPlot = __t.object("GardenPlot", {
   id: __t.u64(),
@@ -90,6 +173,12 @@ export const GardenPlot = __t.object("GardenPlot", {
   plantedAtMicros: __t.u64(),
 });
 export type GardenPlot = __Infer<typeof GardenPlot>;
+
+export const GardenShowcase = __t.object("GardenShowcase", {
+  identity: __t.identity(),
+  plants: __t.string(),
+});
+export type GardenShowcase = __Infer<typeof GardenShowcase>;
 
 export const Giant = __t.object("Giant", {
   id: __t.u32(),
@@ -170,6 +259,14 @@ export const InviteCode = __t.object("InviteCode", {
   expiresAtMicros: __t.u64(),
 });
 export type InviteCode = __Infer<typeof InviteCode>;
+
+export const IslandProject = __t.object("IslandProject", {
+  id: __t.u8(),
+  wood: __t.u32(),
+  obsidian: __t.u32(),
+  meals: __t.u32(),
+});
+export type IslandProject = __Infer<typeof IslandProject>;
 
 export const Mentee = __t.object("Mentee", {
   identity: __t.identity(),

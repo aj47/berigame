@@ -497,3 +497,35 @@ export const gardenPlot = table(
     plantedAtMicros: t.u64(),
   }
 );
+
+/** Adventure progression is permanent; cargo and equipment are separate. */
+export const adventureProfile = table({ name: 'adventure_profile', public: true }, {
+  identity: t.identity().primaryKey(), growingXp: t.u32(), buildingXp: t.u32(), exploringXp: t.u32(), fightingXp: t.u32(), befriendingXp: t.u32(),
+  feats: t.u32(), loadout: t.u32(), completions: t.u32(), giantTrust: t.u32(), stickClaimed: t.bool(),
+});
+export const expedition = table({ name: 'expedition', public: true }, {
+  id: t.u64().primaryKey().autoInc(), leader: t.identity(), stage: t.string(), startedTick: t.u32(), untilTick: t.u32(), ripeTick: t.u32(),
+  x: t.i32(), z: t.i32(), carrier: t.option(t.identity()), mossCarrying: t.bool(), mossPaid: t.bool(), porter: t.option(t.identity()), lastActiveTick: t.u32(), value: t.u8(), split: t.bool(),
+  mossX: t.i32(), mossZ: t.i32(), pipX: t.i32(), pipZ: t.i32(), giantX: t.i32(), giantZ: t.i32(),
+  hiddenUntil: t.u32(), pipUntil: t.u32(), giantUntil: t.u32(), baitX: t.i32(), baitZ: t.i32(), baitUntil: t.u32(), guardUntil: t.u32(),
+  message: t.string(), destination: t.string(),
+});
+export const expeditionMember = table({ name: 'expedition_member', public: true }, {
+  identity: t.identity().primaryKey(), expeditionId: t.u64().index('btree'), contributions: t.u32(), cooldown: t.u32(), tracked: t.bool(),
+});
+export const islandProject = table({ name: 'island_project', public: true }, {
+  id: t.u8().primaryKey(), wood: t.u32(), obsidian: t.u32(), meals: t.u32(),
+});
+/** Per-owner published snapshots; sharing is explicit and reversible. */
+export const gardenShowcase = table({ name: 'garden_showcase', public: true }, {
+  identity: t.identity().primaryKey(), plants: t.string(),
+});
+/** A duel has separate practice health: ordinary HP and bags never change. */
+export const friendlyDuel = table({ name: 'friendly_duel', public: true }, {
+  id: t.u64().primaryKey().autoInc(), a: t.identity(), b: t.identity(), stage: t.string(), startsTick: t.u32(), expiresTick: t.u32(),
+  aHp: t.u8(), bHp: t.u8(), nextSwingTick: t.u32(), turnA: t.bool(), result: t.string(),
+});
+/** Keeps contribution credit across leave/rejoin; retired with the expedition. */
+export const expeditionCredit = table({ name: 'expedition_credit' }, {
+  key: t.string().primaryKey(), expeditionId: t.u64().index('btree'), identity: t.identity(), contributions: t.u32(), rewarded: t.bool(), tracked: t.bool(),
+});

@@ -38,7 +38,9 @@ const CoastNode = ({ node, tick, harvester }: Props) => {
   // Seeded per id so the four piles and rocks do not look stamped.
   const rotation = ((node.id * 2.399) % (Math.PI * 2));
   const Model = node.kind === NodeKind.TideRock ? TideRock : node.kind === NodeKind.Obsidian ? ObsidianOutcrop : DriftwoodPile;
-  return <group position={[wx, wy, wz]}>
+  return <group position={[wx, wy, wz]} userData={{ hoverTarget: {
+    title: kind.name, action: 'Click for gathering options', detail: disabled ? `${label} · you can wait here` : label, tone: disabled ? 'muted' : 'ready', radius: .9,
+  } }}>
     <Model position={[0, 0, 0]} ripe={ripe} rotation={rotation} onClick={onClick} />
     {busy && endTick > 0 && <HarvestRing endTick={endTick} totalTicks={total} color={item?.color} y={1.55} size={0.95} />}
     {(busy || regrowTicks > 0) && <Html zIndexRange={[3, 0]} position={[0, busy ? 2.15 : 1.5, 0]} center style={{ pointerEvents: 'none' }}>

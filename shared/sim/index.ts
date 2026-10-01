@@ -17,3 +17,6 @@ export * from './skills';
 export * from './raid';
 export * from './mentor';
 export * from './garden';
+export * from './adventure';
+
+export * from './terrain';

@@ -2,7 +2,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import type { Identity } from 'spacetimedb';
 import spacetimedb from '../schema';
 import {
-  Cosmetic, HEDGE_RING, INVITE_TTL_MICROS, MentorMilestone, MAX_FRIENDS, PlayerState, SocialNotice, chebyshev, generateInviteCode, joinSpot, normalizeInviteCode, ringOf,
+  Cosmetic, areaOf, INVITE_TTL_MICROS, MentorMilestone, MAX_FRIENDS, PlayerState, SocialNotice, chebyshev, generateInviteCode, joinSpot, normalizeInviteCode,
 } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
 import { heldKeys } from '../lib/brambles';
@@ -99,7 +99,7 @@ export const redeemInvite = spacetimedb.reducer(
       p.x = spot.tile.x;
       p.z = spot.tile.z;
       // Landing past the hedge counts as reaching the Coast, like play_stats (the tick only sees walked steps).
-      if (ringOf(p) > HEDGE_RING && unlockCosmetic(ctx, p.identity, Cosmetic.CoastScarf)) mentorMilestone(ctx, p, MentorMilestone.Coast);
+      if ((areaOf(p) === 'coast' || areaOf(p) === 'boulders') && unlockCosmetic(ctx, p.identity, Cosmetic.CoastScarf)) mentorMilestone(ctx, p, MentorMilestone.Coast);
       text = spot.barrier === 'boulders'
         ? `${inviter.name} is past the boulder line. You need a stone club to reach them, so you landed at the nearest spot on the Coast.`
         : spot.clamped

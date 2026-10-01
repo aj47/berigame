@@ -1,3 +1,5 @@
+import { progress } from '../lib/adventure';
+import { Feat } from '../../../shared/sim';
 import { t, SenderError } from 'spacetimedb/server';
 import type { Identity } from 'spacetimedb';
 import spacetimedb from '../schema';
@@ -148,8 +150,10 @@ export const confirmTrade = spacetimedb.reducer(
     writeSlots(ctx, a.identity, snapA, result.a);
     writeSlots(ctx, b.identity, snapB, result.b);
     ctx.db.trade.id.delete(row.id);
-    notify(ctx, a.identity, b.identity, SocialNotice.TradeDone, `Traded with ${b.name}: you got ${describeOffer(offerB)}`);
-    notify(ctx, b.identity, a.identity, SocialNotice.TradeDone, `Traded with ${a.name}: you got ${describeOffer(offerA)}`);
+    if (offerA.length && !offerB.length) progress(ctx, a.identity, 4, 8, Feat.Befriend);
+    if (offerB.length && !offerA.length) progress(ctx, b.identity, 4, 8, Feat.Befriend);
+    notify(ctx, a.identity, b.identity, SocialNotice.TradeDone, offerB.length ? `Received ${describeOffer(offerB)} from ${b.name}` : `Gift delivered to ${b.name}: ${describeOffer(offerA)}`);
+    notify(ctx, b.identity, a.identity, SocialNotice.TradeDone, offerA.length ? `Received ${describeOffer(offerA)} from ${a.name}` : `Gift delivered to ${a.name}: ${describeOffer(offerB)}`);
   }
 );
 

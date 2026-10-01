@@ -1,7 +1,9 @@
+import { createPortal } from "react-dom";
 import React, { useEffect, useRef, useState } from "react";
 import { useGardenPlots, useGiantRaid, useGiants, useGroundItems, useMyIdentityHex, usePlayers, useTick, useTrees } from "../spacetime/hooks";
-import { countRipe } from "@sim";
-import { drawMinimap, minimapModel } from "./minimap";
+import { countRipe, LANDMARKS, ISLAND_NAME } from "@sim";
+import { useGameActions } from "../spacetime/actions";
+import { drawMinimap, minimapModel } from "./minimapModel";
 
 /** Redraws per second: the map is a glance aid, not a per-frame view. */
 export const MINIMAP_HZ = 4;
@@ -29,6 +31,7 @@ function useMapCanvas(size: number, source: React.MutableRefObject<() => ReturnT
  * you (with facing), other adventurers and your dropped bag. Tap to expand.
  */
 const Minimap = ({ hidden }: { hidden?: boolean }) => {
+  const { setTarget } = useGameActions();
   const meHex = useMyIdentityHex();
   const players = usePlayers();
   const trees = useTrees();
@@ -67,11 +70,11 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
         <canvas ref={small} width={120} height={120} aria-hidden="true" />
         <span className="minimap-north" aria-hidden="true">N</span>
       </button>
-      {expanded && (
-        <div className="minimap-expanded" role="dialog" aria-label="Island map" onClick={() => setExpanded(false)}>
+      {expanded && createPortal(
+        <div className="minimap-expanded" role="dialog" aria-modal="true" aria-label="Island map" onClick={() => setExpanded(false)}>
           <div className="minimap-card" onClick={(e) => e.stopPropagation()}>
             <header className="panel-heading">
-              <h2>The island</h2>
+              <h2>{ISLAND_NAME}</h2>
               <button className="close-button" aria-label="Close map" onClick={() => setExpanded(false)} autoFocus>
                 ×
               </button>
@@ -79,6 +82,12 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
             <div className="minimap-big-wrap">
               <canvas ref={big} width={300} height={300} aria-hidden="true" />
               <span className="minimap-north" aria-hidden="true">N</span>
+            </div>
+            <p className="map-caption">Follow the brook, cross the bridges, find your next story.</p>
+            <div className="map-places" aria-label="Places to explore">
+              {LANDMARKS.map((place,i)=><button key={place.id} title={place.detail} onClick={()=>{setTarget(place.x,place.z);setExpanded(false);}}>
+                <span className="map-place-number">{i+1}</span><span>{place.short}<small>{place.access==='grove'?'Walk here':place.access==='coast'?'Stick required':'Stone club required'}</small></span>
+              </button>)}
             </div>
             <ul className="minimap-legend">
               <li><i className="lg-me" />You</li>
@@ -91,7 +100,7 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
               <li><i className="lg-garden" />Your garden (gold ring: ripe)</li>
             </ul>
           </div>
-        </div>
+        </div>, document.body
       )}
     </>
   );

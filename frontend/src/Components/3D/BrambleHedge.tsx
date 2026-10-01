@@ -21,7 +21,7 @@ interface Bush { x: number; z: number; sx: number; sy: number; sz: number; yaw: 
 interface Thorn { x: number; y: number; z: number; dir: Vector3; s: number }
 
 /**
- * The bramble hedge at ring 17: one squashed, flat-shaded thorn bush per tile
+ * The rounded woodland boundary: one squashed, flat-shaded thorn bush per tile
  * plus small pale thorns, in two instanced draws. Purely visual: raycasting is
  * off so clicks reach the ground (the server decides who may pass).
  */
@@ -45,7 +45,7 @@ const BrambleHedge = () => {
     });
     for (const tile of brambleTiles()) {
       const [wx, , wz] = tileToWorld(tile);
-      const along: 'x' | 'z' = Math.abs(tile.x - SPAWN_TILE.x) === 17 ? 'z' : 'x';
+      const along: 'x' | 'z' = Math.abs(tile.x - SPAWN_TILE.x) > Math.abs(tile.z - SPAWN_TILE.z) ? 'z' : 'x';
       const b = lump(wx + (rand() - 0.5) * 0.1, wz + (rand() - 0.5) * 0.1, along,
         0.74 + rand() * 0.12, 0.56 + rand() * 0.08, 0.53 + rand() * 0.07, rand() * 0.74);
       bushList.push(b);

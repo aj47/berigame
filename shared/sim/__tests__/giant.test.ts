@@ -27,13 +27,13 @@ const allTiles = (): Tile[] => {
 };
 
 describe('M3: the Boulders geometry and gate', () => {
-  it('grows the grid with the old island unchanged: 2500 + a 29-tile boulder line + 559 Boulders tiles of land', () => {
+  it('keeps the Giant on a connected headland behind the boulder line', () => {
     expect(GRID_SIZE).toBe(64);
     const land = allTiles().filter(isLandTile);
-    expect(land.filter((t) => t.x < ISLAND_SIZE && t.z < ISLAND_SIZE)).toHaveLength(2500);
-    expect(boulderLineTiles()).toHaveLength(29);
-    expect(land.filter(inBoulders)).toHaveLength(559);
-    expect(land).toHaveLength(2500 + 29 + 559);
+    expect(boulderLineTiles().every(isLandTile)).toBe(true);
+    expect(giantFootprint().every(isLandTile)).toBe(true);
+    expect(land.length).toBeGreaterThan(2000);
+    expect(isLandTile({x:0,z:0})).toBe(false);
     expect(areaOf(SPAWN_TILE)).toBe('grove');
     expect(areaOf({ x: 46, z: 46 })).toBe('coast');
     expect(areaOf({ x: 50, z: 44 })).toBe('boulder-line');

@@ -128,11 +128,13 @@ const Inventory = memo(({ open, onClose }: Props) => {
                   ? `Weapon · ${def?.weaponDamage ?? 0} damage`
                   : def?.healthRestore
                     ? `Restores ${def.healthRestore} HP`
-                    : "Inventory item"}{" "}
+                    : "Crafting material"}{" "}
                 · {item.quantity} held
                 {selectedWielded ? " · wielded" : ""}
               </span>
             </div>
+            {(item.itemId === "stick" || item.itemId === "stone_club") && item.quantity === 1 && <p className="fine-print">Keep a spare: dropping or giving away your last {def?.name} can close its outward route until you find another.</p>}
+            {def?.description && <p className="fine-print">{def.description}</p>}
             <div className="item-actions">
               {weaponSelected ? (
                 <button
@@ -151,7 +153,7 @@ const Inventory = memo(({ open, onClose }: Props) => {
                 >
                   {selectedWielded ? "Unwield" : "Wield"}
                 </button>
-              ) : (
+              ) : def?.healthRestore ? (
                 <button
                   className="primary-button"
                   disabled={pending || !def?.healthRestore || (!!me && me.hp >= me.maxHp)}
@@ -160,7 +162,7 @@ const Inventory = memo(({ open, onClose }: Props) => {
                 >
                   Eat <span>+{def?.healthRestore ?? 0}</span>
                 </button>
-              )}
+              ) : null}
               <button
                 disabled={pending}
                 onClick={() => setMovingFrom(selected)}
