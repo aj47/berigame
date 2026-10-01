@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useChatPrefsStore } from '../../spacetime/stores/chatPrefsStore';
-import { DEFAULT_APPEARANCE, PlayerState, type Appearance } from '@sim';
+import { DEFAULT_APPEARANCE, normalizeAppearance, APPEARANCE_KEYS, PlayerState, type Appearance } from '@sim';
 import type { Player } from '../../module_bindings/types';
 import { useTileMotion } from '../../hooks/useTileMotion';
 import { useCombatFxStore } from '../../spacetime/stores/combatFxStore';
@@ -64,8 +64,8 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const preview = useAppearancePreview((value) => isSelf ? value.draft : null);
   const chosen = isSelf && preview ? preview : saved;
   // Stable while the colours hold, so the memoized model skips row-only (movement) renders.
-  const appearance = useMemo(() => ({ hairStyle:chosen.hairStyle, skinTone:chosen.skinTone, hairColor:chosen.hairColor, robeColor:chosen.robeColor, wrapColor:chosen.wrapColor }),
-    [chosen.hairStyle, chosen.skinTone, chosen.hairColor, chosen.robeColor, chosen.wrapColor]);
+  const appearanceKey = APPEARANCE_KEYS.map(key => chosen[key] ?? 0).join(':');
+  const appearance = useMemo(() => normalizeAppearance(chosen), [appearanceKey]);
   const url = modelUrl(appearance.hairStyle);
   const motion = useTileMotion(row.x, row.z, row.facing, groupRef);
   const cue = useCombatFxStore((s) => s.cues[hex]);

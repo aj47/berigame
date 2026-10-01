@@ -238,6 +238,16 @@ export const appearance = table(
     hairColor: t.u8(),
     robeColor: t.u8(),
     wrapColor: t.u8(),
+    bodyType: t.u8().default(0),
+    faceShape: t.u8().default(0),
+    eyeColor: t.u8().default(0),
+    facialHair: t.u8().default(0),
+    outfitStyle: t.u8().default(0),
+    trouserColor: t.u8().default(0),
+    bootColor: t.u8().default(0),
+    accessory: t.u8().default(0),
+    accessoryColor: t.u8().default(0),
+    setupComplete: t.bool().default(false),
   }
 );
 

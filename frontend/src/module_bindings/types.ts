@@ -40,6 +40,16 @@ export const Appearance = __t.object("Appearance", {
   hairColor: __t.u8(),
   robeColor: __t.u8(),
   wrapColor: __t.u8(),
+  bodyType: __t.u8(),
+  faceShape: __t.u8(),
+  eyeColor: __t.u8(),
+  facialHair: __t.u8(),
+  outfitStyle: __t.u8(),
+  trouserColor: __t.u8(),
+  bootColor: __t.u8(),
+  accessory: __t.u8(),
+  accessoryColor: __t.u8(),
+  setupComplete: __t.bool(),
 });
 export type Appearance = __Infer<typeof Appearance>;
 

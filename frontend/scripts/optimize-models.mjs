@@ -3,7 +3,7 @@
  * Build the shipped adventurer GLBs (frontend/public/models) from the Blender
  * sources kept in docs/art/characters/blender-v4/<hair>/.
  *
- *   npm run models:optimize            # rebuild all three
+ *   npm run models:optimize            # rebuild all four
  *   npm run models:optimize -- --check # fail if a shipped GLB is out of date
  *
  * Steps, deliberately NOT gltf-transform's default optimize():
@@ -33,6 +33,7 @@ const SOURCES = [
   ['tousled', 'starter-adventurer.glb'],
   ['cropped', 'starter-adventurer-cropped.glb'],
   ['topknot', 'starter-adventurer-topknot.glb'],
+  ['bald', 'starter-adventurer-bald.glb'],
 ];
 const EPS = 1e-5;
 

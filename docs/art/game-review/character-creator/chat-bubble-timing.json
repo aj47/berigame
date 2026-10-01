@@ -1,0 +1,18 @@
+{
+  "initial": {
+    "duration": "15s",
+    "opacity": 0,
+    "speaking": true
+  },
+  "afterNineSeconds": {
+    "duration": "15s",
+    "opacity": 1,
+    "speaking": true
+  },
+  "afterSixteenSeconds": {
+    "duration": "15s",
+    "opacity": 0,
+    "speaking": true
+  },
+  "elapsedMs": 16015
+}

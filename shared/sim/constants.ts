@@ -55,8 +55,8 @@ export const CHAT_KEEP_ROWS = 100;
 export const MAX_CHAT_LEN = 200;
 export const NAME_MIN_LEN = 2;
 export const NAME_MAX_LEN = 16;
-/** Ticks a chat bubble stays above a head (8s). */
-export const CHAT_BUBBLE_TICKS = 13;
+/** Ticks a chat bubble stays above a head (15s). */
+export const CHAT_BUBBLE_TICKS = 25;
 export const MAX_INPUTS_PER_TICK = 5;
 
 // ---- Areas / safety (M1 "The Grove") ---------------------------------------

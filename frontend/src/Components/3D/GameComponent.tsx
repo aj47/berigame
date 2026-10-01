@@ -7,6 +7,7 @@ import RenderOnlineUsers from './RenderOnlineUsers';
 import AlphaIsland from './AlphaIsland';
 import ClickDropdown from '../ClickDropdown';
 import { useLoadingStore, useUserInputStore } from '../../store';
+import CharacterSetup from '../CharacterSetup';
 import UIComponents from '../UIComponents';
 import BerryTree from './BerryTree';
 import CoastNode from './nodes/CoastNode';
@@ -73,6 +74,7 @@ const GameComponent = () => {
     <div style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
       <LoadingScreen />
       <UIComponents />
+      <CharacterSetup />
       <WorldHoverTooltip />
       {clickedOtherObject && <ClickDropdown />}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>

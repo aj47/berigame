@@ -257,3 +257,18 @@ Sources: [Maincloud deployment](https://spacetimedb.com/docs/how-to/deploy/mainc
 [Maincloud pricing](https://spacetimedb.com/pricing),
 [Durable Objects pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/),
 [Worker startup compatibility](https://developers.cloudflare.com/workers/configuration/compatibility-flags/).
+
+### Character creator (appearance defaults)
+
+The expanded creator appends nine `u8` choices (default `0`) and `setup_complete`
+(default `false`) to `appearance`. Existing indices and the five-argument
+`set_appearance` reducer remain compatible; that reducer preserves the new
+fields. `save_character` validates and saves the name and full appearance in one
+transaction. Previously named players keep their character; unfinished
+`Player-*` newcomers open setup on arrival.
+
+Publish with `--delete-data=never --yes=remote,skip-login,break-clients`, then
+immediately deploy the Worker and frontend. This disconnects existing clients;
+reload to load the new bindings. A local rehearsal from the previous main
+module preserved the player's name, HP, position and all five existing choices,
+with defaults applied to the appended fields.

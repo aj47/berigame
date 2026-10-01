@@ -289,7 +289,7 @@ async function main() {
   if (stickSlot >= HOTBAR_SIZE) {
     const free = [0, 1, 2].find((s) => !inv(A).some((row) => row.slot === s)) ?? 0;
     await A.conn.reducers.moveItem({ from: stickSlot, to: free });
-    await waitFor('stick back in the quick bar', () => rowsOf(A, STICK_ITEM_ID)[0]?.slot === free, 3_000);
+    await waitFor('stick back in the quick bar', () => rowsOf(A, STICK_ITEM_ID).some(row => row.slot === free), 3_000);
     stickSlot = free;
   }
   await A.conn.reducers.setTarget({ x: 29, z: 25 });
@@ -373,11 +373,17 @@ async function main() {
   check('C cannot be attacked in first-spawn grace', /protected|safe ring/.test(await rejection(() => A.conn.reducers.attack({ target: me(C).identity }))));
   C.conn.disconnect();
 
-  let spare = INVENTORY_SIZE - 1;
-  while (spare >= HOTBAR_SIZE && inv(A).some((row) => row.slot === spare)) spare--;
-  await A.conn.reducers.moveItem({ from: stickSlot, to: spare });
-  await waitFor('moving the stick out of the quick slots puts it away', () => me(A).weapon === '' && rowsOf(A, STICK_ITEM_ID).some((row) => row.slot === spare), 3_000);
-  check('the server unwields a stick moved out of the quick slots', true);
+  // A may have found spare sticks. The weapon stays wielded until the LAST
+  // matching item leaves the quick bar, regardless of which slot was equipped.
+  for (const row of rowsOf(A, STICK_ITEM_ID).filter(row => row.slot < HOTBAR_SIZE)) {
+    let spare = INVENTORY_SIZE - 1;
+    while (spare >= HOTBAR_SIZE && inv(A).some(item => item.slot === spare)) spare--;
+    if (spare < HOTBAR_SIZE) throw new Error('No bag slot for the quick-bar removal check');
+    await A.conn.reducers.moveItem({ from: row.slot, to: spare });
+    await waitFor('stick moved out of the quick bar', () => rowsOf(A, STICK_ITEM_ID).some(item => item.slot === spare), 3_000);
+  }
+  await waitFor('moving every stick out of the quick slots puts it away', () => me(A).weapon === '', 3_000);
+  check('the server unwields when no stick remains in the quick slots', true);
 
   // --- M2 the Coast: driftwood + 2 flint -> stone club ------------------------------
   // A still carries the stick (the bramble key), so A can cross the hedge to the Coast nodes.

@@ -1,77 +1,78 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_APPEARANCE } from '@sim';
 import AppearancePanel from '../Components/AppearancePanel';
+import CharacterSetup from '../Components/CharacterSetup';
 import { useAppearancePreview } from '../appearance/store';
+import { useLoadingStore } from '../store';
 
-const mock = vi.hoisted(() => ({ rows: [] as any[], setAppearance: vi.fn().mockResolvedValue(true) }));
-vi.mock('../spacetime/hooks', () => ({ useMyIdentityHex: () => 'self', useAppearanceRows: () => mock.rows, useMyCosmetics: () => null }));
-vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ setAppearance: mock.setAppearance }) }));
-beforeEach(() => { mock.rows = []; mock.setAppearance.mockReset().mockResolvedValue(true); useAppearancePreview.setState({ draft: null }); });
+const mock = vi.hoisted(() => ({ rows: [] as any[], me: {name:'Explorer',identity:{toHexString:()=> 'self'}}, saveCharacter: vi.fn().mockResolvedValue(true) }));
+vi.mock('../spacetime/hooks', () => ({ useMyIdentityHex: () => 'self', useMyPlayer:()=>mock.me, useAppearanceRows: () => mock.rows, useMyCosmetics: () => null }));
+vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ saveCharacter: mock.saveCharacter }) }));
+vi.mock('../Components/CharacterPreview',()=>({default:()=> <div>3D preview</div>}));
+beforeEach(() => { mock.rows = []; mock.me.name='Explorer'; mock.saveCharacter.mockReset().mockResolvedValue(true); useAppearancePreview.setState({ draft: null });useLoadingStore.setState({gameDataLoaded:true,websocketConnected:true}); });
 afterEach(() => cleanup());
+const tab=(name:string)=>fireEvent.click(screen.getByRole('tab',{name,exact:true}));
 
-describe('wardrobe preview and persistence boundary', () => {
-  it('previews choices locally and saves the complete selection only on Save', async () => {
-    const close = vi.fn();
-    render(<AppearancePanel open onClose={close} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Topknot', exact: true }));
-    fireEvent.click(screen.getByRole('button', { name: 'Robe: Forest', exact: true }));
-    expect(mock.setAppearance).not.toHaveBeenCalled();
-    expect(useAppearancePreview.getState().draft).toEqual({ ...DEFAULT_APPEARANCE, hairStyle: 2, robeColor: 1 });
-    fireEvent.click(screen.getByRole('button', { name: 'Save style', exact: true }));
-    await waitFor(() => expect(close).toHaveBeenCalledOnce());
-    expect(mock.setAppearance).toHaveBeenCalledWith({ ...DEFAULT_APPEARANCE, hairStyle: 2, robeColor: 1 });
+describe('character preview and persistence boundary', () => {
+  it('previews extended choices locally and saves name and full appearance together', async () => {
+    const close = vi.fn(); render(<AppearancePanel open onClose={close} />);
+    fireEvent.change(screen.getByLabelText('What should we call you?'),{target:{value:'  Fern  '}});
+    tab('Hair'); fireEvent.click(screen.getByRole('button',{name:'Twin braids',exact:true}));
+    tab('Face'); fireEvent.click(screen.getByRole('button',{name:'Broad',exact:true}));
+    tab('Details'); fireEvent.click(screen.getByRole('button',{name:'Round glasses',exact:true}));
+    expect(mock.saveCharacter).not.toHaveBeenCalled();
+    expect(useAppearancePreview.getState().draft).toEqual({...DEFAULT_APPEARANCE,hairStyle:7,bodyType:2,accessory:1});
+    fireEvent.click(screen.getByRole('button',{name:'Save character',exact:true}));
+    await waitFor(()=>expect(close).toHaveBeenCalledOnce());
+    expect(mock.saveCharacter).toHaveBeenCalledWith('Fern',{...DEFAULT_APPEARANCE,hairStyle:7,bodyType:2,accessory:1});
     expect(useAppearancePreview.getState().draft).toBeNull();
   });
   it('Cancel and external panel switching clear the draft without saving', () => {
-    const close = vi.fn();
-    const { rerender } = render(<AppearancePanel open onClose={close} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Skin tone: Brown', exact: true }));
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
-    expect(mock.setAppearance).not.toHaveBeenCalled();
-    expect(close).toHaveBeenCalledOnce();
-    expect(useAppearancePreview.getState().draft).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Hair color: Silver', exact: true }));
-    rerender(<AppearancePanel open={false} onClose={close} />);
-    expect(useAppearancePreview.getState().draft).toBeNull();
+    const close=vi.fn(); const {rerender}=render(<AppearancePanel open onClose={close}/>);
+    fireEvent.click(screen.getByRole('button',{name:/Sunseeker/}));
+    fireEvent.click(screen.getByRole('button',{name:'Cancel',exact:true}));
+    expect(mock.saveCharacter).not.toHaveBeenCalled();expect(close).toHaveBeenCalledOnce();expect(useAppearancePreview.getState().draft).toBeNull();
+    fireEvent.click(screen.getByRole('button',{name:/Woodland/}));
+    rerender(<AppearancePanel open={false} onClose={close}/>);expect(useAppearancePreview.getState().draft).toBeNull();
   });
-  it('opens from the local player saved row, keeps an in-progress preview, and reopens the latest saved row', () => {
-    mock.rows = [{ ...DEFAULT_APPEARANCE, hairStyle: 1, robeColor: 4, identity: { toHexString: () => 'self' } }, { ...DEFAULT_APPEARANCE, hairStyle: 2, identity: { toHexString: () => 'other' } }];
-    const { rerender } = render(<AppearancePanel open onClose={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Cropped' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Robe: Oat' })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(screen.getByRole('button', { name: 'Tousled' }));
-    mock.rows[0] = { ...mock.rows[0], wrapColor: 2 };
-    rerender(<AppearancePanel open onClose={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Tousled' })).toHaveAttribute('aria-pressed', 'true');
-    rerender(<AppearancePanel open={false} onClose={() => {}} />);
-    rerender(<AppearancePanel open onClose={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Cropped' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Wraps: Slate' })).toHaveAttribute('aria-pressed', 'true');
+  it('opens own saved appearance, preserves drafts during server updates, and reopens the latest row',()=>{
+    mock.rows=[{...DEFAULT_APPEARANCE,hairStyle:5,identity:mock.me.identity},{...DEFAULT_APPEARANCE,hairStyle:7,identity:{toHexString:()=> 'other'}}];
+    const {rerender}=render(<AppearancePanel open onClose={()=>{}}/>);
+    tab('Hair');expect(screen.getByRole('button',{name:'Bob',exact:true})).toHaveAttribute('aria-pressed','true');
+    fireEvent.click(screen.getByRole('button',{name:'Mohawk',exact:true}));
+    mock.rows[0]={...mock.rows[0],hairStyle:6};rerender(<AppearancePanel open onClose={()=>{}}/>);
+    expect(screen.getByRole('button',{name:'Mohawk',exact:true})).toHaveAttribute('aria-pressed','true');
+    rerender(<AppearancePanel open={false} onClose={()=>{}}/>);rerender(<AppearancePanel open onClose={()=>{}}/>);tab('Hair');
+    expect(screen.getByRole('button',{name:'Ponytail',exact:true})).toHaveAttribute('aria-pressed','true');
   });
-  it('keeps a failed preview for retry instead of closing or pretending it saved', async () => {
-    mock.setAppearance.mockResolvedValue(false);
-    const close = vi.fn();
-    render(<AppearancePanel open onClose={close} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Robe: Plum' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save style' }));
-    await screen.findByRole('alert');
-    expect(close).not.toHaveBeenCalled();
-    expect(useAppearancePreview.getState().draft?.robeColor).toBe(3);
-    expect(screen.getByRole('button', { name: 'Save style' })).toBeEnabled();
+  it('retains failed choices for retry',async()=>{
+    mock.saveCharacter.mockResolvedValue(false);const close=vi.fn();render(<AppearancePanel open onClose={close}/>);
+    fireEvent.click(screen.getByRole('button',{name:/Stargazer/}));fireEvent.click(screen.getByRole('button',{name:'Save character'}));
+    await screen.findByRole('alert');expect(close).not.toHaveBeenCalled();expect(useAppearancePreview.getState().draft?.robeColor).toBe(3);
+    expect(screen.getByRole('button',{name:'Save character'})).toBeEnabled();
   });
-  it('does not close a different panel when an earlier save resolves after leaving', async () => {
-    let finish!: (result: boolean) => void;
-    mock.setAppearance.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
-    const close = vi.fn();
-    const { rerender } = render(<AppearancePanel open onClose={close} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Robe: Plum' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save style' }));
-    rerender(<AppearancePanel open={false} onClose={close} />);
-    finish(true);
-    await waitFor(() => expect(mock.setAppearance).toHaveBeenCalledOnce());
-    expect(close).not.toHaveBeenCalled();
-    expect(useAppearancePreview.getState().draft).toBeNull();
+  it('ignores a late save response after leaving',async()=>{
+    let finish!:(result:boolean)=>void;mock.saveCharacter.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+    const close=vi.fn();const {rerender}=render(<AppearancePanel open onClose={close}/>);
+    fireEvent.click(screen.getByRole('button',{name:/Stargazer/}));fireEvent.click(screen.getByRole('button',{name:'Save character'}));
+    rerender(<AppearancePanel open={false} onClose={close}/>);finish(true);await waitFor(()=>expect(mock.saveCharacter).toHaveBeenCalledOnce());
+    expect(close).not.toHaveBeenCalled();expect(useAppearancePreview.getState().draft).toBeNull();
+  });
+  it('requires a valid name on the first visit and cannot be dismissed accidentally',()=>{
+    const close=vi.fn();render(<AppearancePanel open firstVisit onClose={close}/>);
+    expect(screen.queryByRole('button',{name:'Cancel'})).toBeNull();
+    const enter=screen.getByRole('button',{name:'Enter the island →'}),input=screen.getByLabelText('What should we call you?');
+    expect(enter).toBeDisabled();fireEvent.change(input,{target:{value:'!'}});expect(enter).toBeDisabled();
+    fireEvent.keyDown(input,{key:'Escape'});expect(close).not.toHaveBeenCalled();
+    fireEvent.change(input,{target:{value:'Fern'}});expect(enter).toBeEnabled();
+  });
+  it('shows setup only for an unfinished newcomer after subscription readiness',()=>{
+    mock.me.name='Player-1234';useLoadingStore.setState({gameDataLoaded:false});const {rerender}=render(<CharacterSetup/>);
+    expect(screen.queryByRole('dialog')).toBeNull();act(()=>useLoadingStore.setState({gameDataLoaded:true}));rerender(<CharacterSetup/>);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    mock.rows=[{...DEFAULT_APPEARANCE,identity:mock.me.identity,setupComplete:true}];rerender(<CharacterSetup/>);expect(screen.queryByRole('dialog')).toBeNull();
+    mock.rows=[];mock.me.name='Existing Player';rerender(<CharacterSetup/>);expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

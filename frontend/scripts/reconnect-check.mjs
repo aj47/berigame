@@ -87,6 +87,11 @@ let cdp;
 try {
   await page.goto(URL_);
   await ready(60_000);
+  if (await page.locator('[data-character-creator]').count()) {
+    await page.getByLabel('What should we call you?').fill(`Reconnect${Date.now().toString().slice(-6)}`);
+    await page.getByRole('button', { name: 'Enter the island →' }).click();
+    await page.locator('[data-character-creator]').waitFor({ state: 'hidden' });
+  }
   await advancing();
   const baseline = await state();
   report.baseline = baseline;

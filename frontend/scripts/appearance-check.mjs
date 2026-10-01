@@ -1,65 +1,58 @@
-/** Exercises the real wardrobe UI; requires a running local review game. */
+/** First-visit creator, multiplayer persistence, and responsive layout checks against a local dev server. */
 import fs from 'node:fs';
-import path from 'node:path';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 const require=createRequire(import.meta.url);
-const pw=require(process.env.PLAYWRIGHT_MODULE??'playwright');
+const playwright=require(process.env.PLAYWRIGHT_MODULE??'playwright');
 const engine=process.env.ENGINE??'chromium';
-const out=process.env.SHOT_DIR??'../docs/art/game-review/wardrobe';
+const out=process.env.SHOT_DIR??fileURLToPath(new URL('../../docs/art/game-review/character-creator',import.meta.url));
+const gameUrl=process.env.GAME_URL??'http://127.0.0.1:5173';
 fs.mkdirSync(out,{recursive:true});
-const browser=await pw[engine].launch(engine==='chromium'?{channel:'chrome'}:{});
-const report={engine,version:browser.version(),checks:[],errors:[]};
-const check=(label,pass,detail)=>{report.checks.push({label,pass:Boolean(pass),detail});if(!pass)throw new Error(label);console.log('PASS',label)};
-const ctx=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,deviceScaleFactor:2,...(engine!=='firefox'?{isMobile:true}:{})});
-const observerContext=await browser.newContext({viewport:{width:1440,height:900}});
-const observer=await observerContext.newPage();
-const page=await ctx.newPage();page.on('pageerror',e=>report.errors.push(e.message));
+(async()=>{
+const browser=await playwright[engine].launch(engine==='chromium'?{channel:'chrome',headless:true}:{headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:900}});
+const page=await context.newPage();const errors=[],checks=[];
+page.on('pageerror',e=>errors.push(e.message));
+const check=(name,pass,detail)=>{checks.push({name,pass:!!pass,detail});if(!pass)throw Error(name);console.log('PASS',name)};
 try{
- await page.goto(process.env.GAME_URL??'http://127.0.0.1:5173');
- await page.waitForFunction(()=>window.__berigame?.me&&!document.querySelector('.loading-screen'),null,{timeout:30000});
- const initial=await page.evaluate(()=>window.__berigame.me);
- const step=await page.evaluate(([x,z])=>window.__berigameProject(x,z,0),[initial.x,initial.z+3]);
- await page.touchscreen.tap(step.x,step.y);
- await page.waitForFunction(z=>window.__berigame.me.z===z,initial.z+3,{timeout:10000});
- const identity=initial.hex;
- await observer.goto(process.env.GAME_URL??'http://127.0.0.1:5173');
- await observer.waitForFunction(hex=>window.__berigameAvatars?.().some(a=>a.identity===hex),identity,{timeout:30000});
- await page.getByRole('button',{name:'Style',exact:true}).tap();
- await page.getByRole('button',{name:'Cropped',exact:true}).tap();
- await page.getByRole('button',{name:'Robe: Forest',exact:true}).tap();
- await page.waitForTimeout(1200);
- await page.waitForFunction(hex=>window.__berigameAvatars?.().some(a=>a.identity===hex&&a.appearance.hairStyle===1&&a.appearance.robeColor===1),identity);
- const remoteDraft=await observer.evaluate(hex=>window.__berigameAvatars().find(a=>a.identity===hex),identity);
- check('unsaved preview affects only the local actor',remoteDraft.appearance.hairStyle===0&&remoteDraft.appearance.robeColor===0,remoteDraft);
- await page.screenshot({path:path.join(out,`${engine}-preview-portrait.png`)});
- await page.getByRole('button',{name:'Cancel',exact:true}).tap();
- await page.getByRole('button',{name:'Style',exact:true}).tap();
- check('Cancel restores the saved hair and robe choices',await page.getByRole('button',{name:'Tousled',exact:true}).getAttribute('aria-pressed')==='true'&&await page.getByRole('button',{name:'Robe: Blue',exact:true}).getAttribute('aria-pressed')==='true');
- const names=['Topknot','Skin tone: Brown','Hair color: Silver','Robe: Plum','Wraps: Slate'];
- for(const name of names)await page.getByRole('button',{name,exact:true}).tap();
- await page.waitForTimeout(1200);
- const framing=await page.evaluate(()=>{const me=window.__berigame.me;const panel=document.querySelector('.appearance-panel').getBoundingClientRect();return{feet:window.__berigameProject(me.x,me.z,0),head:window.__berigameProject(me.x,me.z,2.1),panelTop:panel.top,hudTop:document.querySelector('.combat-hud')?.getBoundingClientRect().top??innerHeight,buttons:[...document.querySelectorAll('.appearance-actions button')].map(e=>({label:e.textContent,...e.getBoundingClientRect().toJSON()}))}});
- check('portrait actor is above the wardrobe sheet',framing.feet.y<framing.panelTop&&framing.head.y>60,framing);
- check('portrait Save and Cancel stay above the combat HUD',framing.buttons.every(b=>b.height>=44&&b.y+b.height<=framing.hudTop),framing);
- await page.screenshot({path:path.join(out,`${engine}-edited-portrait.png`)});
- await page.getByRole('button',{name:'Save style',exact:true}).tap();
- await page.locator('.appearance-panel').waitFor({state:'hidden'});
- await observer.waitForFunction(hex=>window.__berigameAvatars?.().some(a=>a.identity===hex&&a.appearance.hairStyle===2&&a.appearance.skinTone===4&&a.appearance.hairColor===3&&a.appearance.robeColor===3&&a.appearance.wrapColor===2),identity,{timeout:15000});
- check('saved full appearance reaches another client renderer',true,await observer.evaluate(hex=>window.__berigameAvatars().find(a=>a.identity===hex),identity));
- await observer.screenshot({path:path.join(out,`${engine}-remote-saved.png`)});
- await page.reload();
- await page.waitForFunction(()=>window.__berigame?.me&&!document.querySelector('.loading-screen'),null,{timeout:30000});
- await page.getByRole('button',{name:'Style',exact:true}).tap();
- for(const name of names)check(`saved ${name} persists after reload`,await page.getByRole('button',{name,exact:true}).getAttribute('aria-pressed')==='true');
- await page.setViewportSize({width:360,height:740});await page.waitForTimeout(1200);
- const compact=await page.evaluate(()=>{const a=document.querySelector('.world-header').getBoundingClientRect(),b=document.querySelector('.game-toolbar').getBoundingClientRect(),m=window.__berigame.me;return{headerRight:a.right,toolbarLeft:b.left,feet:window.__berigameProject(m.x,m.z,0),panelTop:document.querySelector('.appearance-panel').getBoundingClientRect().top}});
- check('360px toolbar clears brand and full actor clears sheet',compact.headerRight<=compact.toolbarLeft&&compact.feet.y<compact.panelTop,compact);
- await page.screenshot({path:path.join(out,`${engine}-compact.png`)});
- await page.setViewportSize({width:844,height:390});await page.waitForTimeout(1200);await page.screenshot({path:path.join(out,`${engine}-landscape.png`)});
- const save=await page.getByRole('button',{name:'Save style',exact:true}).boundingBox();check('landscape wardrobe actions fit',save&&save.y+save.height<=390);
- await page.getByRole('button',{name:'Close character style',exact:true}).tap();
- await page.setViewportSize({width:1440,height:900});await page.waitForTimeout(1200);await page.getByRole('button',{name:'Style',exact:true}).tap();await page.screenshot({path:path.join(out,`${engine}-desktop.png`)});
- check('no page errors',report.errors.length===0);
- report.status='passed';
-}catch(e){report.status='failed';report.failure=String(e.stack??e);await page.screenshot({path:path.join(out,`${engine}-failure.png`)}).catch(()=>{});console.error(e);process.exitCode=1;}
-finally{fs.writeFileSync(path.join(out,`${engine}-appearance.json`),JSON.stringify(report,null,2));await browser.close();}
+ await page.goto(gameUrl);await page.waitForFunction(()=>window.__berigame?.me&&!document.querySelector('.loading-screen'),null,{timeout:60000});
+ check('first visit opens name and character setup',await page.getByRole('dialog').isVisible());
+ const hex=await page.evaluate(()=>window.__berigame.me.hex);
+ await page.getByLabel('What should we call you?').fill('Fern'+Date.now().toString().slice(-6));
+ for(const name of ['Wayfarer','Woodland','Sunseeker','Tidewalker','Stargazer','Pathfinder']){
+  await page.getByRole('button',{name:new RegExp(name)}).click();await page.waitForTimeout(700);
+  await page.screenshot({path:`${out}/preset-${name.toLowerCase()}.png`});
+ }
+ // Cancel only exists on later edits. First setup saves the entire advanced look.
+ await page.getByRole('button',{name:/Enter the island/}).click();
+ await page.getByRole('dialog').waitFor({state:'hidden'});
+ check('save closes first setup',true);
+ const mine=await page.evaluate(hex=>window.__berigameAvatars().find(a=>a.identity===hex),hex);
+ check('new details reach own world avatar',mine.appearance.bodyType===2&&mine.appearance.outfitStyle===3&&mine.appearance.accessory===4,mine);
+ const observer=await browser.newPage({viewport:{width:1100,height:800}});await observer.goto(gameUrl);
+ await observer.waitForFunction(hex=>window.__berigameAvatars?.().some(a=>a.identity===hex&&a.appearance.accessory===4),hex,{timeout:40000});
+ check('another player receives the saved advanced appearance',true);
+ await observer.close();await page.reload();await page.waitForFunction(()=>window.__berigame?.me&&!document.querySelector('.loading-screen'),null,{timeout:40000});
+ check('reload keeps the saved setup closed',await page.getByRole('dialog').count()===0);
+ await page.getByRole('button',{name:'Character',exact:true}).click();
+ await page.getByRole('tab',{name:'Details',exact:true}).click();
+ check('saved accessory survives reload',await page.getByRole('button',{name:'Eye patch',exact:true}).getAttribute('aria-pressed')==='true');
+ await page.getByRole('button',{name:'Round glasses',exact:true}).click();await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await page.getByRole('button',{name:'Character',exact:true}).click();await page.getByRole('tab',{name:'Details',exact:true}).click();
+ check('cancel restores saved accessory',await page.getByRole('button',{name:'Eye patch',exact:true}).getAttribute('aria-pressed')==='true');
+ await page.getByRole('tab',{name:'Start',exact:true}).click();
+ await page.getByLabel('What should we call you?').fill('Renamed'+Date.now().toString().slice(-6));await page.getByRole('button',{name:'Save character',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+ check('rename-only edit succeeds',true);
+ await page.getByRole('button',{name:'Character',exact:true}).click();
+ for(const [width,height] of [[320,568],[360,640],[390,844],[768,1024],[844,390],[1024,768],[1440,900]]){
+  await page.setViewportSize({width,height});await page.waitForTimeout(250);
+  for(const tab of ['Start','Face','Hair','Outfit','Details']){
+   await page.getByRole('tab',{name:tab,exact:true}).click();
+   const layout=await page.evaluate(()=>{const d=document.querySelector('.character-creator').getBoundingClientRect();const f=document.querySelector('.creator-footer').getBoundingClientRect();const s=document.querySelector('.creator-options-scroll');return {viewport:[innerWidth,innerHeight],dialog:[d.x,d.y,d.right,d.bottom],footer:[f.x,f.y,f.right,f.bottom],overflow:s.scrollWidth>s.clientWidth+1}});
+   check(`${width}x${height} ${tab} fits with reachable actions`,layout.dialog[0]>=-1&&layout.dialog[1]>=-1&&layout.dialog[2]<=width+1&&layout.dialog[3]<=height+1&&layout.footer[3]<=height+1&&!layout.overflow,layout);
+  }
+ }
+ check('no browser exceptions',errors.length===0,errors);
+ fs.writeFileSync(`${out}/validation.json`,JSON.stringify({checks,errors},null,2));
+}catch(e){await page.screenshot({path:`${out}/failure.png`});fs.writeFileSync(`${out}/validation.json`,JSON.stringify({checks,errors,error:String(e.stack)},null,2));throw e;}finally{await browser.close();}
+})();

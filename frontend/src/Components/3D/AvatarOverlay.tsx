@@ -4,6 +4,7 @@ import { Vector3, type Camera, type Object3D } from 'three';
 import { useBeforeRender } from './beforeRender';
 import { visibleNameplates, type NameplateBounds } from './nameplateLayout';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
+import { CHAT_BUBBLE_TICKS, TICK_MS } from '@sim';
 
 /**
  * Avatar labels (name, health bar, chat bubble) as plain DOM in one layer over the
@@ -65,6 +66,7 @@ function create(group: Object3D): Entry {
   const bubble = document.createElement('div');
   bubble.className = 'player-chat-bubble';
   bubble.style.cssText = 'position:absolute;transform:translate(-50%,-100%);pointer-events:none;';
+  bubble.style.setProperty('--chat-bubble-duration', `${CHAT_BUBBLE_TICKS * TICK_MS}ms`);
   chatAnchor.appendChild(bubble);
 
   const label = (anchor: HTMLDivElement, y: number, layer: number) => ({ anchor, y, layer, shown: false, x: NaN, sy: NaN, z: NaN });

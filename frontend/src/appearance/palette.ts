@@ -1,6 +1,6 @@
 import type { MeshStandardMaterial, Texture } from 'three';
 import { CanvasTexture } from 'three';
-import { HAIR_COLORS, ROBE_COLORS, SKIN_TONES, WRAP_COLORS, type Appearance } from '@sim';
+import { HAIR_COLORS, ROBE_COLORS, SKIN_TONES, WRAP_COLORS, EYE_COLORS, TROUSER_COLORS, BOOT_COLORS, type Appearance } from '@sim';
 
 // Matches the Blender atlas contract (build_character.py `palette`); PNG rows start at the top.
 // Cells 12-14 (trousers) were lifted from 333743/414451/252B36 so legs read against the boots.
@@ -9,7 +9,7 @@ const BASE = ['42699C','355780','527DAE','E3D4B2','CABB9C','F0DDB8','C68B55','DF
   '6AA84F','8A5A33','6E4424','D9B27C'];
 const rgb = (hex: string) => hex.replace('#','').match(/../g)!.map((channel) => parseInt(channel,16));
 export function paletteKey(a: Appearance): string {
-  return [a.skinTone,a.hairColor,a.robeColor,a.wrapColor].join(':');
+  return [a.skinTone,a.hairColor,a.robeColor,a.wrapColor,a.eyeColor??0,a.trouserColor??0,a.bootColor??0].join(':');
 }
 export function paletteColors(a: Appearance): string[] {
   const colors = [...BASE];
@@ -18,6 +18,9 @@ export function paletteColors(a: Appearance): string[] {
     { indices:[3,4,5], base:3, selected:WRAP_COLORS[a.wrapColor].color },
     { indices:[6,7,8,22], base:7, selected:SKIN_TONES[a.skinTone].color },
     { indices:[16,17,18], base:17, selected:HAIR_COLORS[a.hairColor].color },
+    { indices:[9,10,11], base:10, selected:BOOT_COLORS[a.bootColor??0].color },
+    { indices:[12,13,14], base:12, selected:TROUSER_COLORS[a.trouserColor??0].color },
+    { indices:[19], base:19, selected:EYE_COLORS[a.eyeColor??0].color },
   ];
   for (const family of families) {
     const from=rgb(BASE[family.base]), to=rgb(family.selected);

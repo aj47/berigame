@@ -1,4 +1,4 @@
-import type { Appearance } from '@sim';
+import { normalizeAppearance, type Appearance } from '@sim';
 import { useCallback } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import type { Identity } from 'spacetimedb';
@@ -65,6 +65,7 @@ export function useGameActions() {
     pickupItem: (id: bigint) => run('pickupItem', (c) => c.reducers.pickupItem({ id })),
     sendChat: (text: string) => run('sendChat', (c) => c.reducers.sendChat({ text })),
     setAppearance: (appearance: Appearance) => run('setAppearance', (c) => c.reducers.setAppearance(appearance)),
+    saveCharacter: (name: string, appearance: Appearance) => run('saveCharacter', (c) => c.reducers.saveCharacter({ name, ...normalizeAppearance(appearance) })),
     setName: (name: string) => run('setName', (c) => c.reducers.setName({ name })),
     /** The verb "make": craft a recipe from shared/sim RECIPES (e.g. 'stone_club'). */
     /** Walk up to a training dummy and keep swinging at it (open to everyone, harms nobody). */

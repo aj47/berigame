@@ -1,0 +1,41 @@
+{
+  "sharedTests": 353,
+  "frontendTests": 254,
+  "agentTests": 15,
+  "typechecks": [
+    "module",
+    "agent API",
+    "Cloudflare Worker"
+  ],
+  "build": "beta production build passed",
+  "models": "all four shipped models match optimizer output",
+  "gameplaySmoke": "all checks passed against local SpacetimeDB",
+  "creatorBrowserChecks": 44,
+  "migration": {
+    "from": "316227b main module",
+    "policy": "delete-data=never",
+    "legacyAppearanceBefore": [
+      2,
+      5,
+      3,
+      4,
+      2
+    ],
+    "legacyAppearanceAfter": [
+      2,
+      5,
+      3,
+      4,
+      2
+    ],
+    "newChoices": "all default to zero",
+    "setupComplete": false,
+    "playerAfter": {
+      "name": "MigrationTest",
+      "hp": 20,
+      "x": 25,
+      "z": 25
+    }
+  },
+  "bubbleLifetimeSeconds": 15
+}

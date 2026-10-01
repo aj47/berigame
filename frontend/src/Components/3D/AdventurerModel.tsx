@@ -3,7 +3,7 @@ import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Mesh, type MeshStandardMaterial, type Object3D } from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
-import { PlayerState, HAIR_STYLES, STICK_ITEM_ID, STONE_CLUB_ITEM_ID, FLINT_KNIFE_ITEM_ID, type Appearance } from '@sim';
+import { PlayerState, HAIR_STYLES, STICK_ITEM_ID, STONE_CLUB_ITEM_ID, FLINT_KNIFE_ITEM_ID, normalizeAppearance, type Appearance } from '@sim';
 import { acquirePalette, paletteKey } from '../../appearance/palette';
 import type { AnimationCue } from '../../animation/combatPresentation';
 import { stickMount } from '../../animation/stickSwing';
@@ -17,10 +17,12 @@ import { HEAD_BONE, NECK_BONE, cosmeticGeometry, cosmeticMaterial, knifeGeometry
 import { AvatarFx } from '../../fx/avatarFx';
 import { inHitstop, knockOffset } from '../../fx/hitReaction';
 
+import { BODY_SCALES, FACE_SCALES, mountAppearanceDetails } from '../../appearance/details';
+
 const knock={x:0,z:0};
 
 export const BASE_MODEL_URL='/models/starter-adventurer.glb';
-export const modelUrl=(style:number) => style===0 ? BASE_MODEL_URL : `/models/starter-adventurer-${HAIR_STYLES[style]?.id ?? 'tousled'}.glb`;
+export const modelUrl=(style:number) => style>=3 ? '/models/starter-adventurer-bald.glb' : style===0 ? BASE_MODEL_URL : `/models/starter-adventurer-${HAIR_STYLES[style]?.id ?? 'tousled'}.glb`;
 interface Props {
   url:string;
   appearance:Appearance;
@@ -35,10 +37,11 @@ interface Props {
   /** Worn milestone cosmetics (player_cosmetic head / neck: cosmetic id + 1, 0 = none). */
   head?:number;
   neck?:number;
+  preview?:boolean;
 }
 const STICK_MOUNT=stickMount();
 
-const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=false,motion,transient,head=0,neck=0}:Props) => {
+const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=false,motion,transient,head=0,neck=0,preview=false}:Props) => {
   const {scene,animations}=useGLTF(url) as any;
   // Every clip (the GLB's, the synthesized StickSwing, rest-pose channels pruned, both stances): built once per GLB.
   const clipSet=useMemo(()=>avatarClipSet(scene,animations),[scene,animations]);
@@ -55,6 +58,14 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=fal
   // This avatar's ground group, registered so defenders can tell a blow from behind (HitBack).
   const registered=useRef<Object3D|null>(null);
   useEffect(()=>()=>{if(registered.current)unregisterAvatarGroup(identity,registered.current);registered.current=null;},[identity]);
+  const complete=normalizeAppearance(appearance);
+  const appearanceKey=JSON.stringify(complete);
+  const headBone=useMemo(()=>model.getObjectByName('Head'),[model]);
+  useLayoutEffect(()=>{
+    model.scale.fromArray(BODY_SCALES[complete.bodyType]);
+    model.userData.berigameAvatar={...model.userData.berigameAvatar,appearance:complete};
+    return mountAppearanceDetails(model,complete);
+  },[model,appearanceKey]);
   const colors=paletteKey(appearance);
   useLayoutEffect(()=>{
     const palette=acquirePalette(base,appearance);
@@ -111,17 +122,18 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=fal
     const group=model.parent;
     if(group){
       frame.x=group.position.x;frame.z=group.position.z;frame.yaw=group.rotation.y;
-      if(registered.current!==group){if(registered.current)unregisterAvatarGroup(identity,registered.current);registered.current=group;registerAvatarGroup(identity,group);}
+      if(!preview&&registered.current!==group){if(registered.current)unregisterAvatarGroup(identity,registered.current);registered.current=group;registerAvatarGroup(identity,group);}
     }
     // Knockback rides on the model inside the group (group = tile motion), in the group's local frame.
     if(knockOffset(identity,frame.now,knock)||model.position.x!==0||model.position.z!==0){
       const c=Math.cos(frame.yaw),s=Math.sin(frame.yaw);
       model.position.x=knock.x*c-knock.z*s;model.position.z=knock.x*s+knock.z*c;
     }
-    fx.beforeAnimate();
+    if(!preview)fx.beforeAnimate();
     animator.update(frame);
+    headBone?.scale.fromArray(FACE_SCALES[complete.faceShape]);
     const director=animator.director;
-    fx.afterAnimate(frame.now,delta,frame.x,frame.z,frame.moving,frame.speed,frame.dead,director.clip==='Idle'||director.clip==='Stop');
+    if(!preview)fx.afterAnimate(frame.now,delta,frame.x,frame.z,frame.moving,frame.speed,frame.dead,director.clip==='Idle'||director.clip==='Stop');
     if(director.revision!==revision.current){
       revision.current=director.revision;
       model.userData.berigameAvatar.clip=director.clip;

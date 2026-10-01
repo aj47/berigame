@@ -938,9 +938,9 @@ canvas {
   line-height: 1.3;
   box-shadow: 0 2px 4px #0003;
 }
-/* One CSS animation per chat line: pop in, hold, fade over the last second (13 ticks = 7.8 s). */
+/* The overlay sets the animation duration from the same lifetime as the chat data. */
 .player-chat-bubble.speaking {
-  animation: chat-bubble-life 7.8s linear forwards;
+  animation: chat-bubble-life var(--chat-bubble-duration) linear forwards;
 }
 @keyframes chat-bubble-life {
   0% { opacity: 0; transform: translate(-50%, -92%) scale(0.92); }

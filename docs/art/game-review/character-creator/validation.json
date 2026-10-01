@@ -1,0 +1,876 @@
+{
+  "checks": [
+    {
+      "name": "first visit opens name and character setup",
+      "pass": true
+    },
+    {
+      "name": "save closes first setup",
+      "pass": true
+    },
+    {
+      "name": "new details reach own world avatar",
+      "pass": true,
+      "detail": {
+        "appearance": {
+          "hairStyle": 3,
+          "skinTone": 8,
+          "hairColor": 0,
+          "robeColor": 10,
+          "wrapColor": 4,
+          "bodyType": 2,
+          "faceShape": 0,
+          "eyeColor": 0,
+          "facialHair": 3,
+          "outfitStyle": 3,
+          "trouserColor": 4,
+          "bootColor": 1,
+          "accessory": 4,
+          "accessoryColor": 4
+        },
+        "identity": "c2002c45063e99f2ca4b3adeea9c3351f599f181c120a267584d8180a95f19ae",
+        "modelUrl": "/models/starter-adventurer-bald.glb",
+        "weapon": "",
+        "clip": "Idle",
+        "cue": null,
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "yaw": 0
+      }
+    },
+    {
+      "name": "another player receives the saved advanced appearance",
+      "pass": true
+    },
+    {
+      "name": "reload keeps the saved setup closed",
+      "pass": true
+    },
+    {
+      "name": "saved accessory survives reload",
+      "pass": true
+    },
+    {
+      "name": "cancel restores saved accessory",
+      "pass": true
+    },
+    {
+      "name": "rename-only edit succeeds",
+      "pass": true
+    },
+    {
+      "name": "320x568 Start fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          320,
+          568
+        ],
+        "dialog": [
+          0,
+          0,
+          320,
+          568
+        ],
+        "footer": [
+          0,
+          498,
+          320,
+          568
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "320x568 Face fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          320,
+          568
+        ],
+        "dialog": [
+          0,
+          0,
+          320,
+          568
+        ],
+        "footer": [
+          0,
+          498,
+          320,
+          568
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "320x568 Hair fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          320,
+          568
+        ],
+        "dialog": [
+          0,
+          0,
+          320,
+          568
+        ],
+        "footer": [
+          0,
+          498,
+          320,
+          568
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "320x568 Outfit fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          320,
+          568
+        ],
+        "dialog": [
+          0,
+          0,
+          320,
+          568
+        ],
+        "footer": [
+          0,
+          498,
+          320,
+          568
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "320x568 Details fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          320,
+          568
+        ],
+        "dialog": [
+          0,
+          0,
+          320,
+          568
+        ],
+        "footer": [
+          0,
+          498,
+          320,
+          568
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "360x640 Start fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          360,
+          640
+        ],
+        "dialog": [
+          0,
+          0,
+          360,
+          640
+        ],
+        "footer": [
+          0,
+          571,
+          360,
+          640
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "360x640 Face fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          360,
+          640
+        ],
+        "dialog": [
+          0,
+          0,
+          360,
+          640
+        ],
+        "footer": [
+          0,
+          571,
+          360,
+          640
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "360x640 Hair fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          360,
+          640
+        ],
+        "dialog": [
+          0,
+          0,
+          360,
+          640
+        ],
+        "footer": [
+          0,
+          571,
+          360,
+          640
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "360x640 Outfit fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          360,
+          640
+        ],
+        "dialog": [
+          0,
+          0,
+          360,
+          640
+        ],
+        "footer": [
+          0,
+          571,
+          360,
+          640
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "360x640 Details fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          360,
+          640
+        ],
+        "dialog": [
+          0,
+          0,
+          360,
+          640
+        ],
+        "footer": [
+          0,
+          571,
+          360,
+          640
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "390x844 Start fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          390,
+          844
+        ],
+        "dialog": [
+          0,
+          0,
+          390,
+          844
+        ],
+        "footer": [
+          0,
+          775,
+          390,
+          844
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "390x844 Face fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          390,
+          844
+        ],
+        "dialog": [
+          0,
+          0,
+          390,
+          844
+        ],
+        "footer": [
+          0,
+          775,
+          390,
+          844
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "390x844 Hair fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          390,
+          844
+        ],
+        "dialog": [
+          0,
+          0,
+          390,
+          844
+        ],
+        "footer": [
+          0,
+          775,
+          390,
+          844
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "390x844 Outfit fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          390,
+          844
+        ],
+        "dialog": [
+          0,
+          0,
+          390,
+          844
+        ],
+        "footer": [
+          0,
+          775,
+          390,
+          844
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "390x844 Details fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          390,
+          844
+        ],
+        "dialog": [
+          0,
+          0,
+          390,
+          844
+        ],
+        "footer": [
+          0,
+          775,
+          390,
+          844
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "768x1024 Start fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          768,
+          1024
+        ],
+        "dialog": [
+          24,
+          122,
+          744,
+          902
+        ],
+        "footer": [
+          25,
+          822,
+          743,
+          901
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "768x1024 Face fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          768,
+          1024
+        ],
+        "dialog": [
+          24,
+          122,
+          744,
+          902
+        ],
+        "footer": [
+          25,
+          822,
+          743,
+          901
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "768x1024 Hair fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          768,
+          1024
+        ],
+        "dialog": [
+          24,
+          122,
+          744,
+          902
+        ],
+        "footer": [
+          25,
+          822,
+          743,
+          901
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "768x1024 Outfit fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          768,
+          1024
+        ],
+        "dialog": [
+          24,
+          122,
+          744,
+          902
+        ],
+        "footer": [
+          25,
+          822,
+          743,
+          901
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "768x1024 Details fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          768,
+          1024
+        ],
+        "dialog": [
+          24,
+          122,
+          744,
+          902
+        ],
+        "footer": [
+          25,
+          822,
+          743,
+          901
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "844x390 Start fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          844,
+          390
+        ],
+        "dialog": [
+          8,
+          8,
+          836,
+          382
+        ],
+        "footer": [
+          9,
+          320,
+          835,
+          381
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "844x390 Face fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          844,
+          390
+        ],
+        "dialog": [
+          8,
+          8,
+          836,
+          382
+        ],
+        "footer": [
+          9,
+          320,
+          835,
+          381
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "844x390 Hair fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          844,
+          390
+        ],
+        "dialog": [
+          8,
+          8,
+          836,
+          382
+        ],
+        "footer": [
+          9,
+          320,
+          835,
+          381
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "844x390 Outfit fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          844,
+          390
+        ],
+        "dialog": [
+          8,
+          8,
+          836,
+          382
+        ],
+        "footer": [
+          9,
+          320,
+          835,
+          381
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "844x390 Details fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          844,
+          390
+        ],
+        "dialog": [
+          8,
+          8,
+          836,
+          382
+        ],
+        "footer": [
+          9,
+          320,
+          835,
+          381
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "1024x768 Start fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          1024,
+          768
+        ],
+        "dialog": [
+          24,
+          24,
+          1000,
+          744
+        ],
+        "footer": [
+          25,
+          664,
+          999,
+          743
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "1024x768 Face fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          1024,
+          768
+        ],
+        "dialog": [
+          24,
+          24,
+          1000,
+          744
+        ],
+        "footer": [
+          25,
+          664,
+          999,
+          743
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "1024x768 Hair fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          1024,
+          768
+        ],
+        "dialog": [
+          24,
+          24,
+          1000,
+          744
+        ],
+        "footer": [
+          25,
+          664,
+          999,
+          743
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "1024x768 Outfit fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          1024,
+          768
+        ],
+        "dialog": [
+          24,
+          24,
+          1000,
+          744
+        ],
+        "footer": [
+          25,
+          664,
+          999,
+          743
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "1024x768 Details fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          1024,
+          768
+        ],
+        "dialog": [
+          24,
+          24,
+          1000,
+          744
+        ],
+        "footer": [
+          25,
+          664,
+          999,
+          743
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "1440x900 Start fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          1440,
+          900
+        ],
+        "dialog": [
+          180,
+          60,
+          1260,
+          840
+        ],
+        "footer": [
+          181,
+          760,
+          1259,
+          839
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "1440x900 Face fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          1440,
+          900
+        ],
+        "dialog": [
+          180,
+          60,
+          1260,
+          840
+        ],
+        "footer": [
+          181,
+          760,
+          1259,
+          839
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "1440x900 Hair fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          1440,
+          900
+        ],
+        "dialog": [
+          180,
+          60,
+          1260,
+          840
+        ],
+        "footer": [
+          181,
+          760,
+          1259,
+          839
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "1440x900 Outfit fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          1440,
+          900
+        ],
+        "dialog": [
+          180,
+          60,
+          1260,
+          840
+        ],
+        "footer": [
+          181,
+          760,
+          1259,
+          839
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "1440x900 Details fits with reachable actions",
+      "pass": true,
+      "detail": {
+        "viewport": [
+          1440,
+          900
+        ],
+        "dialog": [
+          180,
+          60,
+          1260,
+          840
+        ],
+        "footer": [
+          181,
+          760,
+          1259,
+          839
+        ],
+        "overflow": false
+      }
+    },
+    {
+      "name": "no browser exceptions",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "errors": []
+}

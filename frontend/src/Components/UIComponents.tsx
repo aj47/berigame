@@ -68,6 +68,7 @@ const UIComponents = memo(() => {
   }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (document.querySelector('[data-character-creator]')) return;
       if (isTyping(event.target)) {
         if (event.key === "Escape") (event.target as HTMLElement).blur();
         return;
@@ -145,6 +146,7 @@ const UIComponents = memo(() => {
           >
             Skills
           </button>
+          <button data-panel="appearance" aria-expanded={panel === "appearance"} onClick={() => toggle("appearance")}>Character</button>
           <button
             data-panel="help"
             aria-expanded={panel === "help"}

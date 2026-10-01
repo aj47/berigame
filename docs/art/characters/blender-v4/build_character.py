@@ -5,7 +5,7 @@ from mathutils import Vector, Matrix, Quaternion
 from math import sin, cos, pi
 
 HAIR_ID = next((a.split('=',1)[1] for a in sys.argv if a.startswith('--hair=')), 'tousled')
-if HAIR_ID not in ['tousled','cropped','topknot']:raise ValueError('Unknown hair variant: '+HAIR_ID)
+if HAIR_ID not in ['tousled','cropped','topknot','bald']:raise ValueError('Unknown hair variant: '+HAIR_ID)
 OUT = Path(next((a.split('=',1)[1] for a in sys.argv if a.startswith('--out=')), str(Path(__file__).resolve().parent))) / HAIR_ID
 FPS = int(next((a.split('=',1)[1] for a in sys.argv if a.startswith('--fps=')), '60'))
 OUT.mkdir(parents=True,exist_ok=True)
@@ -160,7 +160,7 @@ if HAIR_ID=='tousled':
         a=on_head(x0,z0,1.1);b=on_head(x1,z1,1.1);tx=(x0+x1)/2+dx+.025
         t=on_head(max(-.265,min(.265,tx)),tz,1.1)+Vector((0,-.022,0))
         mid=(a+b+t)/3+Vector((0,-.03,.02));surface([a,b,t,mid],[(0,1,3),(1,2,3),(2,0,3)],[16,17,18][k%3],'Head')
-else:
+elif HAIR_ID != 'bald':
     # A snug cut follows the actual convex head facets. The angled hairline
     # rises above the forehead and covers the nape; it has no helmet brim.
     scalp_center=Vector((0,-.005,1.84))

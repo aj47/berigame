@@ -24,7 +24,7 @@ import { tick as registeredTick } from '../../../spacetimedb/src/reducers/tick';
 import { giveItem } from '../../../spacetimedb/src/lib/inventory';
 import { dropItem as registeredDrop, eatBerry as registeredEat, moveItem as registeredMove, pickupItem as registeredPickup } from '../../../spacetimedb/src/reducers/inventory';
 
-import { setAppearance as registeredAppearance } from '../../../spacetimedb/src/reducers/appearance';
+import { setAppearance as registeredAppearance, saveCharacter as registeredCharacter } from '../../../spacetimedb/src/reducers/appearance';
 import { startHarvest as registeredHarvest } from '../../../spacetimedb/src/reducers/harvest';
 import { onConnect as registeredConnect } from '../../../spacetimedb/src/reducers/lifecycle';
 import { attackDummy as registeredAttackDummy, emote as registeredEmote } from '../../../spacetimedb/src/reducers/social';
@@ -40,6 +40,7 @@ import type { Slot } from '../types';
 
 type Reducer = (ctx: any, args?: any) => void;
 const setAppearance = registeredAppearance as unknown as Reducer;
+const saveCharacter = registeredCharacter as unknown as Reducer;
 const attack = registeredAttack as unknown as Reducer;
 const follow = registeredFollow as unknown as Reducer;
 const wield = registeredWield as unknown as Reducer;
@@ -60,7 +61,7 @@ function harness() {
   let now = 10;
   const players = new Map<string, any>();
   for (const id of [A, B, C]) players.set(id.toHexString(), {
-    identity: id, online: true, state: PlayerState.Alive,
+    identity: id, name: 'Player-' + id.toHexString(), online: true, state: PlayerState.Alive,
     x: 25, z: 25, hp: 20, maxHp: 30, respawnTick: 0, hostile: false, combatTarget: undefined,
     nextSwingTick: 0, harvestTreeId: 0, harvestEndTick: 0, pending: 0, pendingId: 0n,
     lastInputTick: 0, inputsThisTick: 0, eatCooldownUntilTick: 0, weapon: '',
@@ -566,7 +567,7 @@ function as<T>(id: ReturnType<typeof identity>, fn: () => T): T {
 function addPlayer(hexId: string, fields: Record<string, unknown> = {}) {
   const id = identity(hexId);
   h.players.set(hexId, {
-    identity: id, online: true, state: PlayerState.Alive, x: 25, z: 25, hp: 30, maxHp: 30, respawnTick: 0,
+    identity: id, name: 'Player-' + id.toHexString(), online: true, state: PlayerState.Alive, x: 25, z: 25, hp: 30, maxHp: 30, respawnTick: 0,
     hostile: false, combatTarget: undefined, nextSwingTick: 0, harvestTreeId: 0, harvestEndTick: 0,
     pending: 0, pendingId: 0n, lastInputTick: 0, inputsThisTick: 0, eatCooldownUntilTick: 0, weapon: '', ...fields,
   });
@@ -1492,5 +1493,29 @@ describe('F2: skills, level-gated recipes and cosmetics on the server', () => {
     h.tick(22);
     wear(h.ctx, { slot: CosmeticSlot.Head, cosmetic: 0 });
     expect(cosmetic().head).toBe(0);
+  });
+});
+
+
+describe('character creation and rename', () => {
+  it('saves all details and the trimmed name only for the sender', () => {
+    const h=harness(), before={...h.me()}, other={...h.other()};
+    const choices={...DEFAULT_APPEARANCE,hairStyle:8,bodyType:2,faceShape:3,eyeColor:7,facialHair:3,outfitStyle:3,trouserColor:7,bootColor:5,accessory:5,accessoryColor:9};
+    saveCharacter(h.ctx,{name:'  Fern  ',...choices});
+    expect(h.me().name).toBe('Fern');expect(h.appearances.get('a')).toEqual({identity:A,...choices,setupComplete:true});
+    expect(h.other()).toEqual(other);expect(h.me().hp).toBe(before.hp);expect(h.me().x).toBe(before.x);
+    setAppearance(h.ctx,{hairStyle:1,skinTone:0,hairColor:0,robeColor:0,wrapColor:0});
+    expect(h.appearances.get('a')).toMatchObject({bodyType:2,accessory:5,setupComplete:true,hairStyle:1});
+  });
+  it.each(['', 'x', 'A name far too long', 'hello!'])('rejects invalid name %s without completing setup', name=>{
+    const h=harness();expect(()=>saveCharacter(h.ctx,{name,...DEFAULT_APPEARANCE})).toThrow();expect(h.appearances.size).toBe(0);expect(h.me().name).toBe('Player-a');
+  });
+  it('rejects a case-insensitive duplicate without changing an existing look',()=>{
+    const h=harness();h.other().name='Fern';h.appearances.set('a',{identity:A,...DEFAULT_APPEARANCE,setupComplete:false});
+    expect(()=>saveCharacter(h.ctx,{name:'fERN',...DEFAULT_APPEARANCE,robeColor:3})).toThrow('already taken');
+    expect(h.me().name).toBe('Player-a');expect(h.appearances.get('a').robeColor).toBe(0);expect(h.appearances.get('a').setupComplete).toBe(false);
+  });
+  it.each(['bodyType','faceShape','eyeColor','facialHair','outfitStyle','trouserColor','bootColor','accessory','accessoryColor'])('rejects invalid %s before writing',key=>{
+    const h=harness();expect(()=>saveCharacter(h.ctx,{name:'Fern',...DEFAULT_APPEARANCE,[key]:255})).toThrow('available styles');expect(h.appearances.size).toBe(0);expect(h.me().name).toBe('Player-a');
   });
 });
