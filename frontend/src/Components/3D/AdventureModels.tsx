@@ -70,7 +70,7 @@ class AssetBoundary extends React.Component<{children:React.ReactNode}, {failed:
 export function AdventureAssetView(props:React.ComponentProps<typeof AdventureModel>){return <AssetBoundary><Suspense fallback={null}><AdventureModel {...props}/></Suspense></AssetBoundary>;}
 
 /** NPCs interpolate the server's 1.8-second steps; models never move authoritative state. */
-export function AdventureActor({asset,x,z,label,mood='idle',height=2.7,registryKey}: {asset:'gardener'|'moss'|'pip'|'berry-giant';x:number;z:number;label:string;mood?:ActorMood;height?:number;registryKey?:string}) {
+export function AdventureActor({asset,x,z,label,mood='idle',height=2.7,registryKey,onInteract,hoverAction}: {asset:'gardener'|'moss'|'pip'|'berry-giant';x:number;z:number;label:string;mood?:ActorMood;height?:number;registryKey?:string;onInteract?:(event:{clientX:number;clientY:number})=>void;hoverAction?:string}) {
   const group=useRef<Group>(null), moving=useRef(false);
   const initial=useRef(tileToWorld({x,z}));
   const move=useRef({from:new Vector3(...tileToWorld({x,z})),to:new Vector3(...tileToWorld({x,z})),elapsed:2,duration:1.8,yaw:Math.PI*.2});
@@ -81,7 +81,7 @@ export function AdventureActor({asset,x,z,label,mood='idle',height=2.7,registryK
   },[x,z]);
   useEffect(()=>{if(registryKey&&group.current)actors.set(registryKey,group.current);return()=>{if(registryKey)actors.delete(registryKey);};},[registryKey]);
   useFrame((_,dt)=>{const g=group.current;if(!g)return;const m=move.current;m.elapsed+=dt;const a=Math.min(1,m.elapsed/m.duration);g.position.lerpVectors(m.from,m.to,a);moving.current=a<1&&m.from.distanceToSquared(m.to)>.0001;const turn=Math.atan2(sin(m.yaw-g.rotation.y),cos(m.yaw-g.rotation.y));g.rotation.y+=turn*Math.min(1,dt*8);});
-  return <group ref={group} position={initial.current} onClick={e=>{if(e.delta>5)return;e.stopPropagation();openAdventure();}} userData={{hoverTarget:{title:label.split(' · ')[0],action:'Click to open adventures',detail:label.split(' · ').slice(1).join(' · '),click:'panel',radius:asset==='berry-giant'?1.8:.65}}}>
+  return <group ref={group} position={initial.current} onClick={e=>{if(e.delta>5)return;e.stopPropagation();if(onInteract)onInteract(e);else openAdventure();}} userData={{hoverTarget:{title:label.split(' · ')[0],action:hoverAction??'Click to open adventures',detail:label.split(' · ').slice(1).join(' · '),click:onInteract?undefined:'panel',radius:asset==='berry-giant'?1.8:.65}}}>
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,.017,0]} scale={asset==='berry-giant'?[1.8,1.25,1]:asset==='pip'?[.65,.9,1]:[.65,.45,1]} raycast={()=>null}>
       <circleGeometry args={[1,16]}/><meshBasicMaterial color="#233c2a" transparent opacity={.18} depthWrite={false}/>
     </mesh>

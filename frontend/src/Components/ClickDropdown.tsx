@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useUserInputStore } from "../store";
 import HarvestDropdownAction from "./HarvestDropdownAction";
+import BerryGiantInteraction from "./BerryGiantInteraction";
 
 const ClickDropdown = () => {
   const selected = useUserInputStore((state: any) => state.clickedOtherObject);
@@ -26,8 +27,11 @@ const ClickDropdown = () => {
       });
     };
     place();
+    // Live interactions can grow after joining, spending bait, or ending an expedition.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place);
+    if (ref.current) observer?.observe(ref.current);
     window.addEventListener("resize", place);
-    return () => window.removeEventListener("resize", place);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", place); };
   }, [selected]);
   useEffect(() => {
     const dismiss = (event: PointerEvent) => {
@@ -62,7 +66,9 @@ const ClickDropdown = () => {
           ×
         </button>
       </div>
-      {selected.harvestNodeId !== undefined ? (
+      {selected.berryGiantExpeditionId !== undefined ? (
+        <BerryGiantInteraction key={String(selected.berryGiantExpeditionId)} expeditionId={selected.berryGiantExpeditionId} onClose={() => setSelected(null)} />
+      ) : selected.harvestNodeId !== undefined ? (
         <HarvestDropdownAction nodeId={selected.harvestNodeId} onClose={() => setSelected(null)} />
       ) : selected.dropdownOptions.map((option: any, index: number) => (
         <button

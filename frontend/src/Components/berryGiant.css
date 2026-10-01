@@ -1,0 +1,5 @@
+.giant-interaction { padding: 0 6px 5px; }
+.giant-speech { margin: 8px 0; color: #344e39; font-size: 16px; font-weight: 700; line-height: 1.35; }
+.giant-mood { display: inline-block; color: #47613b; font-size: 12px; text-transform: capitalize; }
+.giant-interaction-note { margin: 8px 0; font-size: 12px; line-height: 1.4; }
+.giant-interaction .context-action { min-height: 44px; }

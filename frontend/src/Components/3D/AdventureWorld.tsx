@@ -8,6 +8,8 @@ import type { Expedition } from '../../module_bindings/types';
 import { avatarGroup } from '../../animation/avatarRegistry';
 import { openAdventure } from '../AdventurePanel';
 import { AdventureActor, AdventureAssetView, adventureActor, type AdventureAsset } from './AdventureModels';
+import { useUserInputStore } from '../../store';
+import { berryGiantMood } from '../berryGiantUi';
 
 function Place({asset,at,name}: {asset:AdventureAsset;at:{x:number;z:number};name:string}) {
   return <group position={tileToWorld(at)} onClick={e=>{if(e.delta>5)return;e.stopPropagation();openAdventure();}} userData={{hoverTarget:{title:name,action:'Click to open adventures',click:'panel',radius:asset==='market'?1.6:1.1}}}>
@@ -34,6 +36,7 @@ function Cargo({row,tick,carrierTile}:{row:Expedition;tick:number;carrierTile?:{
 }
 export default function AdventureWorld() {
   const expeditions=useExpeditions(),players=usePlayers(),projects=useIslandProjects(),tick=useTick();
+  const select=useUserInputStore((state:any)=>state.setClickedOtherObject);
   const built=(projects[0]?.wood??0)>=20&&(projects[0]?.obsidian??0)>=10;
   return <group>
     <AdventureActor asset="gardener" x={22} z={16} label="The gardener · Adventure"/>
@@ -47,7 +50,9 @@ export default function AdventureWorld() {
         <Cargo row={e} tick={tick} carrierTile={carrier}/>
         <AdventureActor asset="moss" x={e.mossX} z={e.mossZ} registryKey={`moss-${e.id}`} label={e.mossCarrying?'Moss · carrying':'Moss · porter'} mood={e.mossCarrying?'carry':'idle'}/>
         <AdventureActor asset="pip" x={e.pipX} z={e.pipZ} label={tick<e.pipUntil?'Pip · distracted':'Pip · hungry'} mood={tick<e.pipUntil?'happy':'sniff'} height={1.55}/>
-        {e.stage==='hauling'&&<AdventureActor asset="berry-giant" x={e.giantX} z={e.giantZ} label={tick<e.giantUntil?'Berry Giant · resting':'Berry Giant · following scent'} mood={tick<e.giantUntil?'rest':'sniff'} height={4.75}/>}
+        {e.stage==='hauling'&&<AdventureActor asset="berry-giant" x={e.giantX} z={e.giantZ} label={`Berry Giant · ${berryGiantMood(e,tick).label}`} mood={tick<e.giantUntil?'rest':'sniff'} height={4.75}
+          hoverAction="Click to interact with the Berry Giant"
+          onInteract={({clientX,clientY})=>select({connectionId:'Berry Giant',berryGiantExpeditionId:e.id,e:{clientX,clientY}})}/>}
         {tick<e.baitUntil&&<Place asset="scent-bait" at={{x:e.baitX,z:e.baitZ}} name="Scent bait"/>}
       </group>;
     })}

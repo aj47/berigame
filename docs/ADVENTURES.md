@@ -12,8 +12,10 @@ Carry the ripe fruit with both hands and move one tile per tick. Put it down to 
 
 - **Pip** takes bites from grounded, uncovered cargo. A greenberry bribe distracts him; Favourite snack extends the truce.
 - **Moss** carries toward the destination for one reward berry, charged once per adventure. He drops the cargo near the pursuing Giant. Porter pact removes the fee and makes him follow the player who hired him; Quiet cart speeds him up.
-- The **Berry Giant** follows the cargo's scent. Place greenberry bait away from the route; Scent decoy substitutes driftwood and lasts longer. It only eats cargo, never player health or inventory. Four or more present participants make it move faster. The Boulders raid is a separate encounter and retains its schedule.
+- The **Berry Giant** follows the cargo’s scent. Place greenberry bait away from the route; Scent decoy substitutes driftwood and lasts longer. It only eats cargo, never player health or inventory. Four or more present participants make it move faster. The Boulders raid is a separate encounter and retains its schedule.
 - Deliver at the **market (35,37)** or **feast clearing (12,36)**. Helping participants get the surviving reward and permanent XP. Feeding also builds personal Giant trust. A six-minute deadline bounds each attempt.
+
+Click the Berry Giant for a small conversation with live rest and bait countdowns. Members can put down carried cargo, drop bait where they stand, or use an equipped Interrupt within reach. The bait button shows its cost and waits for supplies and cooldowns. New helpers can join from camp or beside the berry; farther away, **Go to the giant berry** walks to the cargo. If you already help a different delivery, the interaction explains whose berry this Giant follows.
 
 Disconnected carriers put the berry down at their last position. A deserted expedition has a one-minute return window, then frees its slot. Leaving the last-member expedition ends it. Leaving and rejoining does not repeat contribution XP or cache rewards. Existing PvP and death-drop rules elsewhere on the island remain unchanged.
 
