@@ -8,6 +8,7 @@ import {
   areaOf, chebyshev, EventKind, FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, getItemDef, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, MAX_HP, MOVEMENT_STEPS_PER_TICK,
   Pending, PUNCH_DAMAGE, RESPAWN_GRACE_TICKS, STICK_ITEM_ID, TICK_MS,
   DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, NODE_SEEDS, NodeKind, STONE_CLUB_ITEM_ID,
+  enterRule, isBramble, nearestReachableTile, worldBlockedSet,
 } from '../../shared/sim';
 
 const STICK_DAMAGE = getItemDef(STICK_ITEM_ID)!.weaponDamage;
@@ -176,10 +177,12 @@ async function main() {
   await waitFor('B at 28,25', () => me(B).x === 28);
   check('nobody can attack a newcomer in grace', /protected/.test(await rejection(() => A.conn.reducers.attack({ target: me(B).identity }))));
 
-  // --- the bramble hedge: a stickless player stops at ring 16 ------------------
+  // --- the bramble hedge: a stickless player stops inside it --------------------
+  // The island layout owns the hedge shape, so ask the shared sim where the walk clamps.
+  const hedgeStop = nearestReachableTile(me(B), { x: 2, z: 25 }, worldBlockedSet(B.conn.db.tree.iter()), enterRule(false));
   await B.conn.reducers.setTarget({ x: 2, z: 25 });
-  await waitFor('B stops at the hedge', () => me(B).x === 9 && me(B).targetX === undefined, 15_000);
-  check('without a stick, a walk to the Coast stops at (9,25) inside the hedge', me(B).x === 9 && me(B).z === 25 && areaOf(me(B)) === 'grove');
+  await waitFor('B stops at the hedge', () => me(B).x === hedgeStop.x && me(B).z === hedgeStop.z && me(B).targetX === undefined, 15_000);
+  check(`without a stick, a walk to the Coast stops at (${hedgeStop.x},${hedgeStop.z}) inside the hedge`, areaOf(me(B)) === 'grove' && !isBramble(me(B)));
   await B.conn.reducers.setTarget({ x: 28, z: 25 });
   await waitFor('B back at 28,25', () => me(B).x === 28, 15_000);
 
@@ -229,14 +232,17 @@ async function main() {
   const find = A.events.find((e) => e.kind === EventKind.ItemFound && e.attacker.toHexString() === A.identity && e.itemId === STICK_ITEM_ID);
   check('the stick find is announced as ItemFound', !!find);
   check('a stick ends first-spawn grace after 10 more ticks', !!find && me(A).respawnTick <= find.tick, `respawnTick=${me(A).respawnTick} find=${find?.tick}`);
-  // No spare sticks: while you hold one, a finished harvest never finds another.
+  // Spare sticks (docs/ADVENTURES.md): after the guaranteed first, each berry harvest may find another (25%).
   const foundBefore = A.events.filter((e) => e.kind === EventKind.ItemFound).length;
+  const sticksBefore = countOf(A, STICK_ITEM_ID);
   const extra = harvestsDone(A);
   // A berry tree: a Coast node would hand A driftwood/flint and break the craft checks below.
   const spareTree = [...A.conn.db.tree.iter()].filter((t) => t.kind === NodeKind.Berry).sort((a, b) => a.cooldownUntilTick - b.cooldownUntilTick || chebyshev(me(A), a) - chebyshev(me(A), b))[0];
   await A.conn.reducers.startHarvest({ treeId: spareTree.id });
   await waitFor('one more harvest while holding the stick', () => harvestsDone(A) > extra, 60_000);
-  check('no spare stick while holding one', rowsOf(A, STICK_ITEM_ID).length === 1 && A.events.filter((e) => e.kind === EventKind.ItemFound).length === foundBefore);
+  const spareFound = A.events.filter((e) => e.kind === EventKind.ItemFound).length - foundBefore;
+  check('a harvest while holding a stick finds at most one spare, announced as ItemFound',
+    spareFound <= 1 && countOf(A, STICK_ITEM_ID) === sticksBefore + spareFound, `sticks ${sticksBefore}->${countOf(A, STICK_ITEM_ID)} found=${spareFound}`);
 
   let stickSlot = rowsOf(A, STICK_ITEM_ID)[0].slot;
   if (stickSlot >= HOTBAR_SIZE) {
@@ -268,8 +274,9 @@ async function main() {
     return p.x === 2 && p.z === 25;
   }, 30_000);
   check('a stick holder pushes through the hedge to the Coast', areaOf(me(A)) === 'coast', route.join(' '));
+  const sticksCarried = countOf(A, STICK_ITEM_ID);
   await A.conn.reducers.dropItem({ slot: stickSlot, quantity: 1 });
-  await waitFor('stick dropped on the Coast', () => rowsOf(A, STICK_ITEM_ID).length === 0, 3_000);
+  await waitFor('stick dropped on the Coast', () => countOf(A, STICK_ITEM_ID) === sticksCarried - 1, 3_000);
   await waitFor('B sees the stick on the Coast', () => [...B.conn.db.groundItem.iter()].some((g) => g.itemId === STICK_ITEM_ID && g.droppedBy.toHexString() === A.identity), 3_000);
   const coastStick = [...B.conn.db.groundItem.iter()].find((g) => g.itemId === STICK_ITEM_ID && g.droppedBy.toHexString() === A.identity)!;
   const fetchError = await rejection(() => B.conn.reducers.pickupItem({ id: coastStick.id }));
@@ -277,8 +284,8 @@ async function main() {
   check('...and nothing is queued', me(B).pending === Pending.None);
   // A, standing on the Coast next to it, picks the key back up.
   await A.conn.reducers.pickupItem({ id: coastStick.id });
-  await waitFor('A picks the stick back up', () => rowsOf(A, STICK_ITEM_ID).length === 1, 6_000);
-  stickSlot = rowsOf(A, STICK_ITEM_ID)[0].slot;
+  await waitFor('A picks the stick back up', () => countOf(A, STICK_ITEM_ID) === sticksCarried, 6_000);
+  stickSlot = Math.min(...rowsOf(A, STICK_ITEM_ID).map((row) => row.slot));
   if (stickSlot >= HOTBAR_SIZE) {
     const free = [0, 1, 2].find((s) => !inv(A).some((row) => row.slot === s)) ?? 0;
     await A.conn.reducers.moveItem({ from: stickSlot, to: free });
