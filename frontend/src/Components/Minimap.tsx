@@ -69,6 +69,10 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
       >
         <canvas ref={small} width={120} height={120} aria-hidden="true" />
         <span className="minimap-north" aria-hidden="true">N</span>
+        <span className="minimap-compact-label" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5Zm6-2v16M15 5v16" /></svg>
+          Map
+        </span>
       </button>
       {expanded && createPortal(
         <div className="minimap-expanded" role="dialog" aria-modal="true" aria-label="Island map" onClick={() => setExpanded(false)}>

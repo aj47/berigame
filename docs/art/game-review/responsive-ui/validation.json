@@ -1,0 +1,3743 @@
+{
+  "url": "http://127.0.0.1:5173",
+  "qualification": "Local frontend connected to the beta world; Chrome viewport emulation, not physical device testing.",
+  "profiles": [
+    {
+      "width": 320,
+      "height": 480,
+      "compact": true,
+      "panels": [
+        {
+          "name": "Adventure",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 422,
+              "width": 296,
+              "height": 48,
+              "top": 422,
+              "right": 308,
+              "bottom": 470,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 342,
+              "top": 72,
+              "right": 308,
+              "bottom": 414,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Bag",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 422,
+              "width": 296,
+              "height": 48,
+              "top": 422,
+              "right": 308,
+              "bottom": 470,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 342,
+              "top": 72,
+              "right": 308,
+              "bottom": 414,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 422,
+              "width": 296,
+              "height": 48,
+              "top": 422,
+              "right": 308,
+              "bottom": 470,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 342,
+              "top": 72,
+              "right": 308,
+              "bottom": 414,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Skills",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 422,
+              "width": 296,
+              "height": 48,
+              "top": 422,
+              "right": 308,
+              "bottom": 470,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 342,
+              "top": 72,
+              "right": 308,
+              "bottom": 414,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Help",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 422,
+              "width": 296,
+              "height": 48,
+              "top": 422,
+              "right": 308,
+              "bottom": 470,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 342,
+              "top": 72,
+              "right": 308,
+              "bottom": 414,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 422,
+              "width": 296,
+              "height": 48,
+              "top": 422,
+              "right": 308,
+              "bottom": 470,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 342,
+              "top": 72,
+              "right": 308,
+              "bottom": 414,
+              "left": 12
+            }
+          ]
+        }
+      ],
+      "play": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 12,
+            "y": 422,
+            "width": 296,
+            "height": 48,
+            "top": 422,
+            "right": 308,
+            "bottom": 470,
+            "left": 12
+          },
+          {
+            "selector": ".combat-hud",
+            "x": 12,
+            "y": 306,
+            "width": 296,
+            "height": 108,
+            "top": 306,
+            "right": 308,
+            "bottom": 414,
+            "left": 12
+          },
+          {
+            "selector": ".goal-chip",
+            "x": 12,
+            "y": 68,
+            "width": 216,
+            "height": 71.28125,
+            "top": 68,
+            "right": 228,
+            "bottom": 139.28125,
+            "left": 12
+          },
+          {
+            "selector": ".minimap",
+            "x": 240,
+            "y": 12,
+            "width": 68,
+            "height": 44,
+            "top": 12,
+            "right": 308,
+            "bottom": 56,
+            "left": 240
+          },
+          {
+            "selector": ".emote-wheel",
+            "x": 240,
+            "y": 68,
+            "width": 68,
+            "height": 44,
+            "top": 68,
+            "right": 308,
+            "bottom": 112,
+            "left": 240
+          }
+        ]
+      },
+      "menu": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 12,
+            "y": 422,
+            "width": 296,
+            "height": 48,
+            "top": 422,
+            "right": 308,
+            "bottom": 470,
+            "left": 12
+          },
+          {
+            "selector": ".toolbar-secondary.is-open",
+            "x": 13,
+            "y": 221,
+            "width": 294,
+            "height": 194,
+            "top": 221,
+            "right": 307,
+            "bottom": 415,
+            "left": 13
+          }
+        ]
+      },
+      "map": true
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "compact": true,
+      "panels": [
+        {
+          "name": "Adventure",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 510,
+              "width": 296,
+              "height": 48,
+              "top": 510,
+              "right": 308,
+              "bottom": 558,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 430,
+              "top": 72,
+              "right": 308,
+              "bottom": 502,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Bag",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 510,
+              "width": 296,
+              "height": 48,
+              "top": 510,
+              "right": 308,
+              "bottom": 558,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 430,
+              "top": 72,
+              "right": 308,
+              "bottom": 502,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 510,
+              "width": 296,
+              "height": 48,
+              "top": 510,
+              "right": 308,
+              "bottom": 558,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 84.515625,
+              "width": 296,
+              "height": 417.484375,
+              "top": 84.515625,
+              "right": 308,
+              "bottom": 502,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Skills",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 510,
+              "width": 296,
+              "height": 48,
+              "top": 510,
+              "right": 308,
+              "bottom": 558,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 430,
+              "top": 72,
+              "right": 308,
+              "bottom": 502,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Help",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 510,
+              "width": 296,
+              "height": 48,
+              "top": 510,
+              "right": 308,
+              "bottom": 558,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 430,
+              "top": 72,
+              "right": 308,
+              "bottom": 502,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 510,
+              "width": 296,
+              "height": 48,
+              "top": 510,
+              "right": 308,
+              "bottom": 558,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 296,
+              "height": 430,
+              "top": 72,
+              "right": 308,
+              "bottom": 502,
+              "left": 12
+            }
+          ]
+        }
+      ],
+      "play": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 12,
+            "y": 510,
+            "width": 296,
+            "height": 48,
+            "top": 510,
+            "right": 308,
+            "bottom": 558,
+            "left": 12
+          },
+          {
+            "selector": ".combat-hud",
+            "x": 12,
+            "y": 394,
+            "width": 296,
+            "height": 108,
+            "top": 394,
+            "right": 308,
+            "bottom": 502,
+            "left": 12
+          },
+          {
+            "selector": ".goal-chip",
+            "x": 12,
+            "y": 68,
+            "width": 216,
+            "height": 71.28125,
+            "top": 68,
+            "right": 228,
+            "bottom": 139.28125,
+            "left": 12
+          },
+          {
+            "selector": ".minimap",
+            "x": 240,
+            "y": 12,
+            "width": 68,
+            "height": 44,
+            "top": 12,
+            "right": 308,
+            "bottom": 56,
+            "left": 240
+          },
+          {
+            "selector": ".emote-wheel",
+            "x": 240,
+            "y": 68,
+            "width": 68,
+            "height": 44,
+            "top": 68,
+            "right": 308,
+            "bottom": 112,
+            "left": 240
+          }
+        ]
+      },
+      "menu": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 12,
+            "y": 510,
+            "width": 296,
+            "height": 48,
+            "top": 510,
+            "right": 308,
+            "bottom": 558,
+            "left": 12
+          },
+          {
+            "selector": ".toolbar-secondary.is-open",
+            "x": 13,
+            "y": 309,
+            "width": 294,
+            "height": 194,
+            "top": 309,
+            "right": 307,
+            "bottom": 503,
+            "left": 13
+          }
+        ]
+      },
+      "map": true
+    },
+    {
+      "width": 375,
+      "height": 667,
+      "compact": true,
+      "panels": [
+        {
+          "name": "Adventure",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 609,
+              "width": 351,
+              "height": 48,
+              "top": 609,
+              "right": 363,
+              "bottom": 657,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 351,
+              "height": 529,
+              "top": 72,
+              "right": 363,
+              "bottom": 601,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Bag",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 609,
+              "width": 351,
+              "height": 48,
+              "top": 609,
+              "right": 363,
+              "bottom": 657,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 351,
+              "height": 529,
+              "top": 72,
+              "right": 363,
+              "bottom": 601,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 609,
+              "width": 351,
+              "height": 48,
+              "top": 609,
+              "right": 363,
+              "bottom": 657,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 152.9375,
+              "width": 351,
+              "height": 448.0625,
+              "top": 152.9375,
+              "right": 363,
+              "bottom": 601,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Skills",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 609,
+              "width": 351,
+              "height": 48,
+              "top": 609,
+              "right": 363,
+              "bottom": 657,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 351,
+              "height": 529,
+              "top": 72,
+              "right": 363,
+              "bottom": 601,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Help",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 609,
+              "width": 351,
+              "height": 48,
+              "top": 609,
+              "right": 363,
+              "bottom": 657,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 351,
+              "height": 529,
+              "top": 72,
+              "right": 363,
+              "bottom": 601,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 609,
+              "width": 351,
+              "height": 48,
+              "top": 609,
+              "right": 363,
+              "bottom": 657,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 351,
+              "height": 529,
+              "top": 72,
+              "right": 363,
+              "bottom": 601,
+              "left": 12
+            }
+          ]
+        }
+      ],
+      "play": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 12,
+            "y": 609,
+            "width": 351,
+            "height": 48,
+            "top": 609,
+            "right": 363,
+            "bottom": 657,
+            "left": 12
+          },
+          {
+            "selector": ".combat-hud",
+            "x": 12,
+            "y": 493,
+            "width": 351,
+            "height": 108,
+            "top": 493,
+            "right": 363,
+            "bottom": 601,
+            "left": 12
+          },
+          {
+            "selector": ".goal-chip",
+            "x": 12,
+            "y": 68,
+            "width": 271,
+            "height": 71.28125,
+            "top": 68,
+            "right": 283,
+            "bottom": 139.28125,
+            "left": 12
+          },
+          {
+            "selector": ".minimap",
+            "x": 295,
+            "y": 12,
+            "width": 68,
+            "height": 44,
+            "top": 12,
+            "right": 363,
+            "bottom": 56,
+            "left": 295
+          },
+          {
+            "selector": ".emote-wheel",
+            "x": 295,
+            "y": 68,
+            "width": 68,
+            "height": 44,
+            "top": 68,
+            "right": 363,
+            "bottom": 112,
+            "left": 295
+          }
+        ]
+      },
+      "menu": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 12,
+            "y": 609,
+            "width": 351,
+            "height": 48,
+            "top": 609,
+            "right": 363,
+            "bottom": 657,
+            "left": 12
+          },
+          {
+            "selector": ".toolbar-secondary.is-open",
+            "x": 13,
+            "y": 408,
+            "width": 349,
+            "height": 194,
+            "top": 408,
+            "right": 362,
+            "bottom": 602,
+            "left": 13
+          }
+        ]
+      },
+      "map": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "compact": true,
+      "panels": [
+        {
+          "name": "Adventure",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 786,
+              "width": 366,
+              "height": 48,
+              "top": 786,
+              "right": 378,
+              "bottom": 834,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 366,
+              "height": 706,
+              "top": 72,
+              "right": 378,
+              "bottom": 778,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Bag",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 786,
+              "width": 366,
+              "height": 48,
+              "top": 786,
+              "right": 378,
+              "bottom": 834,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 366,
+              "height": 706,
+              "top": 72,
+              "right": 378,
+              "bottom": 778,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 786,
+              "width": 366,
+              "height": 48,
+              "top": 786,
+              "right": 378,
+              "bottom": 834,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 255.59375,
+              "width": 366,
+              "height": 522.40625,
+              "top": 255.59375,
+              "right": 378,
+              "bottom": 778,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Skills",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 786,
+              "width": 366,
+              "height": 48,
+              "top": 786,
+              "right": 378,
+              "bottom": 834,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 366,
+              "height": 706,
+              "top": 72,
+              "right": 378,
+              "bottom": 778,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Help",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 786,
+              "width": 366,
+              "height": 48,
+              "top": 786,
+              "right": 378,
+              "bottom": 834,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 72,
+              "width": 366,
+              "height": 706,
+              "top": 72,
+              "right": 378,
+              "bottom": 778,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 12,
+              "y": 786,
+              "width": 366,
+              "height": 48,
+              "top": 786,
+              "right": 378,
+              "bottom": 834,
+              "left": 12
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 166.0625,
+              "width": 366,
+              "height": 611.9375,
+              "top": 166.0625,
+              "right": 378,
+              "bottom": 778,
+              "left": 12
+            }
+          ]
+        }
+      ],
+      "play": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 12,
+            "y": 786,
+            "width": 366,
+            "height": 48,
+            "top": 786,
+            "right": 378,
+            "bottom": 834,
+            "left": 12
+          },
+          {
+            "selector": ".combat-hud",
+            "x": 12,
+            "y": 670,
+            "width": 366,
+            "height": 108,
+            "top": 670,
+            "right": 378,
+            "bottom": 778,
+            "left": 12
+          },
+          {
+            "selector": ".goal-chip",
+            "x": 12,
+            "y": 68,
+            "width": 286,
+            "height": 71.28125,
+            "top": 68,
+            "right": 298,
+            "bottom": 139.28125,
+            "left": 12
+          },
+          {
+            "selector": ".minimap",
+            "x": 310,
+            "y": 12,
+            "width": 68,
+            "height": 44,
+            "top": 12,
+            "right": 378,
+            "bottom": 56,
+            "left": 310
+          },
+          {
+            "selector": ".emote-wheel",
+            "x": 310,
+            "y": 68,
+            "width": 68,
+            "height": 44,
+            "top": 68,
+            "right": 378,
+            "bottom": 112,
+            "left": 310
+          }
+        ]
+      },
+      "menu": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 12,
+            "y": 786,
+            "width": 366,
+            "height": 48,
+            "top": 786,
+            "right": 378,
+            "bottom": 834,
+            "left": 12
+          },
+          {
+            "selector": ".toolbar-secondary.is-open",
+            "x": 13,
+            "y": 585,
+            "width": 364,
+            "height": 194,
+            "top": 585,
+            "right": 377,
+            "bottom": 779,
+            "left": 13
+          }
+        ]
+      },
+      "map": true
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "compact": true,
+      "panels": [
+        {
+          "name": "Adventure",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 174,
+              "y": 966,
+              "width": 420,
+              "height": 48,
+              "top": 966,
+              "right": 594,
+              "bottom": 1014,
+              "left": 174
+            },
+            {
+              "selector": ".game-panel",
+              "x": 144,
+              "y": 85.4375,
+              "width": 480,
+              "height": 872.5625,
+              "top": 85.4375,
+              "right": 624,
+              "bottom": 958,
+              "left": 144
+            }
+          ]
+        },
+        {
+          "name": "Bag",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 174,
+              "y": 966,
+              "width": 420,
+              "height": 48,
+              "top": 966,
+              "right": 594,
+              "bottom": 1014,
+              "left": 174
+            },
+            {
+              "selector": ".game-panel",
+              "x": 144,
+              "y": 220.046875,
+              "width": 480,
+              "height": 737.953125,
+              "top": 220.046875,
+              "right": 624,
+              "bottom": 958,
+              "left": 144
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 174,
+              "y": 966,
+              "width": 420,
+              "height": 48,
+              "top": 966,
+              "right": 594,
+              "bottom": 1014,
+              "left": 174
+            },
+            {
+              "selector": ".game-panel",
+              "x": 144,
+              "y": 367.984375,
+              "width": 480,
+              "height": 590.015625,
+              "top": 367.984375,
+              "right": 624,
+              "bottom": 958,
+              "left": 144
+            }
+          ]
+        },
+        {
+          "name": "Skills",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 174,
+              "y": 966,
+              "width": 420,
+              "height": 48,
+              "top": 966,
+              "right": 594,
+              "bottom": 1014,
+              "left": 174
+            },
+            {
+              "selector": ".game-panel",
+              "x": 144,
+              "y": 72,
+              "width": 480,
+              "height": 886,
+              "top": 72,
+              "right": 624,
+              "bottom": 958,
+              "left": 144
+            }
+          ]
+        },
+        {
+          "name": "Help",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 174,
+              "y": 966,
+              "width": 420,
+              "height": 48,
+              "top": 966,
+              "right": 594,
+              "bottom": 1014,
+              "left": 174
+            },
+            {
+              "selector": ".game-panel",
+              "x": 144,
+              "y": 72,
+              "width": 480,
+              "height": 886,
+              "top": 72,
+              "right": 624,
+              "bottom": 958,
+              "left": 144
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 174,
+              "y": 966,
+              "width": 420,
+              "height": 48,
+              "top": 966,
+              "right": 594,
+              "bottom": 1014,
+              "left": 174
+            },
+            {
+              "selector": ".game-panel",
+              "x": 144,
+              "y": 346.0625,
+              "width": 480,
+              "height": 611.9375,
+              "top": 346.0625,
+              "right": 624,
+              "bottom": 958,
+              "left": 144
+            }
+          ]
+        }
+      ],
+      "play": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 174,
+            "y": 966,
+            "width": 420,
+            "height": 48,
+            "top": 966,
+            "right": 594,
+            "bottom": 1014,
+            "left": 174
+          },
+          {
+            "selector": ".combat-hud",
+            "x": 174,
+            "y": 850,
+            "width": 420,
+            "height": 108,
+            "top": 850,
+            "right": 594,
+            "bottom": 958,
+            "left": 174
+          },
+          {
+            "selector": ".goal-chip",
+            "x": 12,
+            "y": 68,
+            "width": 300,
+            "height": 71.28125,
+            "top": 68,
+            "right": 312,
+            "bottom": 139.28125,
+            "left": 12
+          },
+          {
+            "selector": ".minimap",
+            "x": 688,
+            "y": 12,
+            "width": 68,
+            "height": 44,
+            "top": 12,
+            "right": 756,
+            "bottom": 56,
+            "left": 688
+          },
+          {
+            "selector": ".emote-wheel",
+            "x": 688,
+            "y": 68,
+            "width": 68,
+            "height": 44,
+            "top": 68,
+            "right": 756,
+            "bottom": 112,
+            "left": 688
+          }
+        ]
+      },
+      "menu": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 174,
+            "y": 966,
+            "width": 420,
+            "height": 48,
+            "top": 966,
+            "right": 594,
+            "bottom": 1014,
+            "left": 174
+          },
+          {
+            "selector": ".toolbar-secondary.is-open",
+            "x": 175,
+            "y": 765,
+            "width": 418,
+            "height": 194,
+            "top": 765,
+            "right": 593,
+            "bottom": 959,
+            "left": 175
+          }
+        ]
+      },
+      "map": true
+    },
+    {
+      "width": 900,
+      "height": 600,
+      "compact": true,
+      "panels": [
+        {
+          "name": "Adventure",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 240,
+              "y": 542,
+              "width": 420,
+              "height": 48,
+              "top": 542,
+              "right": 660,
+              "bottom": 590,
+              "left": 240
+            },
+            {
+              "selector": ".game-panel",
+              "x": 210,
+              "y": 72,
+              "width": 480,
+              "height": 462,
+              "top": 72,
+              "right": 690,
+              "bottom": 534,
+              "left": 210
+            }
+          ]
+        },
+        {
+          "name": "Bag",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 240,
+              "y": 542,
+              "width": 420,
+              "height": 48,
+              "top": 542,
+              "right": 660,
+              "bottom": 590,
+              "left": 240
+            },
+            {
+              "selector": ".game-panel",
+              "x": 210,
+              "y": 72,
+              "width": 480,
+              "height": 462,
+              "top": 72,
+              "right": 690,
+              "bottom": 534,
+              "left": 210
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 240,
+              "y": 542,
+              "width": 420,
+              "height": 48,
+              "top": 542,
+              "right": 660,
+              "bottom": 590,
+              "left": 240
+            },
+            {
+              "selector": ".game-panel",
+              "x": 210,
+              "y": 122.0625,
+              "width": 480,
+              "height": 411.9375,
+              "top": 122.0625,
+              "right": 690,
+              "bottom": 534,
+              "left": 210
+            }
+          ]
+        },
+        {
+          "name": "Skills",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 240,
+              "y": 542,
+              "width": 420,
+              "height": 48,
+              "top": 542,
+              "right": 660,
+              "bottom": 590,
+              "left": 240
+            },
+            {
+              "selector": ".game-panel",
+              "x": 210,
+              "y": 72,
+              "width": 480,
+              "height": 462,
+              "top": 72,
+              "right": 690,
+              "bottom": 534,
+              "left": 210
+            }
+          ]
+        },
+        {
+          "name": "Help",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 240,
+              "y": 542,
+              "width": 420,
+              "height": 48,
+              "top": 542,
+              "right": 660,
+              "bottom": 590,
+              "left": 240
+            },
+            {
+              "selector": ".game-panel",
+              "x": 210,
+              "y": 72,
+              "width": 480,
+              "height": 462,
+              "top": 72,
+              "right": 690,
+              "bottom": 534,
+              "left": 210
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 240,
+              "y": 542,
+              "width": 420,
+              "height": 48,
+              "top": 542,
+              "right": 660,
+              "bottom": 590,
+              "left": 240
+            },
+            {
+              "selector": ".game-panel",
+              "x": 210,
+              "y": 72,
+              "width": 480,
+              "height": 462,
+              "top": 72,
+              "right": 690,
+              "bottom": 534,
+              "left": 210
+            }
+          ]
+        }
+      ],
+      "play": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 240,
+            "y": 542,
+            "width": 420,
+            "height": 48,
+            "top": 542,
+            "right": 660,
+            "bottom": 590,
+            "left": 240
+          },
+          {
+            "selector": ".combat-hud",
+            "x": 240,
+            "y": 426,
+            "width": 420,
+            "height": 108,
+            "top": 426,
+            "right": 660,
+            "bottom": 534,
+            "left": 240
+          },
+          {
+            "selector": ".goal-chip",
+            "x": 12,
+            "y": 68,
+            "width": 300,
+            "height": 71.28125,
+            "top": 68,
+            "right": 312,
+            "bottom": 139.28125,
+            "left": 12
+          },
+          {
+            "selector": ".minimap",
+            "x": 820,
+            "y": 12,
+            "width": 68,
+            "height": 44,
+            "top": 12,
+            "right": 888,
+            "bottom": 56,
+            "left": 820
+          },
+          {
+            "selector": ".emote-wheel",
+            "x": 820,
+            "y": 68,
+            "width": 68,
+            "height": 44,
+            "top": 68,
+            "right": 888,
+            "bottom": 112,
+            "left": 820
+          }
+        ]
+      },
+      "menu": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 240,
+            "y": 542,
+            "width": 420,
+            "height": 48,
+            "top": 542,
+            "right": 660,
+            "bottom": 590,
+            "left": 240
+          },
+          {
+            "selector": ".toolbar-secondary.is-open",
+            "x": 241,
+            "y": 341,
+            "width": 418,
+            "height": 194,
+            "top": 341,
+            "right": 659,
+            "bottom": 535,
+            "left": 241
+          }
+        ]
+      },
+      "map": true
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "compact": false,
+      "panels": [
+        {
+          "name": "Adventure",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 421.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1006,
+              "bottom": 60,
+              "left": 421.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 302,
+              "y": 603.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 603.5,
+              "right": 722,
+              "bottom": 754,
+              "left": 302
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 944,
+              "y": 688,
+              "width": 64,
+              "height": 64,
+              "top": 688,
+              "right": 1008,
+              "bottom": 752,
+              "left": 944
+            },
+            {
+              "selector": ".game-panel",
+              "x": 586,
+              "y": 72,
+              "width": 420,
+              "height": 518,
+              "top": 72,
+              "right": 1006,
+              "bottom": 590,
+              "left": 586
+            }
+          ]
+        },
+        {
+          "name": "Bag",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 421.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1006,
+              "bottom": 60,
+              "left": 421.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 302,
+              "y": 603.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 603.5,
+              "right": 722,
+              "bottom": 754,
+              "left": 302
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 944,
+              "y": 688,
+              "width": 64,
+              "height": 64,
+              "top": 688,
+              "right": 1008,
+              "bottom": 752,
+              "left": 944
+            },
+            {
+              "selector": ".game-panel",
+              "x": 670,
+              "y": 72,
+              "width": 336,
+              "height": 518,
+              "top": 72,
+              "right": 1006,
+              "bottom": 590,
+              "left": 670
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 421.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1006,
+              "bottom": 60,
+              "left": 421.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 302,
+              "y": 603.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 603.5,
+              "right": 722,
+              "bottom": 754,
+              "left": 302
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 944,
+              "y": 688,
+              "width": 64,
+              "height": 64,
+              "top": 688,
+              "right": 1008,
+              "bottom": 752,
+              "left": 944
+            },
+            {
+              "selector": ".game-panel",
+              "x": 670,
+              "y": 72,
+              "width": 336,
+              "height": 382.9375,
+              "top": 72,
+              "right": 1006,
+              "bottom": 454.9375,
+              "left": 670
+            }
+          ]
+        },
+        {
+          "name": "Skills",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 421.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1006,
+              "bottom": 60,
+              "left": 421.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 302,
+              "y": 603.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 603.5,
+              "right": 722,
+              "bottom": 754,
+              "left": 302
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 944,
+              "y": 688,
+              "width": 64,
+              "height": 64,
+              "top": 688,
+              "right": 1008,
+              "bottom": 752,
+              "left": 944
+            },
+            {
+              "selector": ".game-panel",
+              "x": 670,
+              "y": 72,
+              "width": 336,
+              "height": 518,
+              "top": 72,
+              "right": 1006,
+              "bottom": 590,
+              "left": 670
+            }
+          ]
+        },
+        {
+          "name": "Help",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 421.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1006,
+              "bottom": 60,
+              "left": 421.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 302,
+              "y": 603.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 603.5,
+              "right": 722,
+              "bottom": 754,
+              "left": 302
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 944,
+              "y": 688,
+              "width": 64,
+              "height": 64,
+              "top": 688,
+              "right": 1008,
+              "bottom": 752,
+              "left": 944
+            },
+            {
+              "selector": ".game-panel",
+              "x": 670,
+              "y": 72,
+              "width": 336,
+              "height": 518,
+              "top": 72,
+              "right": 1006,
+              "bottom": 590,
+              "left": 670
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 421.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1006,
+              "bottom": 60,
+              "left": 421.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 302,
+              "y": 603.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 603.5,
+              "right": 722,
+              "bottom": 754,
+              "left": 302
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 944,
+              "y": 688,
+              "width": 64,
+              "height": 64,
+              "top": 688,
+              "right": 1008,
+              "bottom": 752,
+              "left": 944
+            },
+            {
+              "selector": ".game-panel",
+              "x": 670,
+              "y": 72,
+              "width": 336,
+              "height": 518,
+              "top": 72,
+              "right": 1006,
+              "bottom": 590,
+              "left": 670
+            }
+          ]
+        }
+      ],
+      "play": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 18,
+            "y": 16,
+            "width": 161.046875,
+            "height": 41,
+            "top": 16,
+            "right": 179.046875,
+            "bottom": 57,
+            "left": 18
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 421.828125,
+            "y": 16,
+            "width": 584.171875,
+            "height": 44,
+            "top": 16,
+            "right": 1006,
+            "bottom": 60,
+            "left": 421.828125
+          },
+          {
+            "selector": ".combat-hud",
+            "x": 302,
+            "y": 603.5,
+            "width": 420,
+            "height": 150.5,
+            "top": 603.5,
+            "right": 722,
+            "bottom": 754,
+            "left": 302
+          },
+          {
+            "selector": ".goal-chip",
+            "x": 18,
+            "y": 72,
+            "width": 198.484375,
+            "height": 60,
+            "top": 72,
+            "right": 216.484375,
+            "bottom": 132,
+            "left": 18
+          },
+          {
+            "selector": ".minimap",
+            "x": 878,
+            "y": 72,
+            "width": 128,
+            "height": 128,
+            "top": 72,
+            "right": 1006,
+            "bottom": 200,
+            "left": 878
+          },
+          {
+            "selector": ".emote-wheel",
+            "x": 944,
+            "y": 688,
+            "width": 64,
+            "height": 64,
+            "top": 688,
+            "right": 1008,
+            "bottom": 752,
+            "left": 944
+          }
+        ]
+      },
+      "map": true
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "compact": false,
+      "panels": [
+        {
+          "name": "Adventure",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 837.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1422,
+              "bottom": 60,
+              "left": 837.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 510,
+              "y": 735.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 735.5,
+              "right": 930,
+              "bottom": 886,
+              "left": 510
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 1360,
+              "y": 820,
+              "width": 64,
+              "height": 64,
+              "top": 820,
+              "right": 1424,
+              "bottom": 884,
+              "left": 1360
+            },
+            {
+              "selector": ".game-panel",
+              "x": 1002,
+              "y": 72,
+              "width": 420,
+              "height": 650,
+              "top": 72,
+              "right": 1422,
+              "bottom": 722,
+              "left": 1002
+            }
+          ]
+        },
+        {
+          "name": "Bag",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 837.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1422,
+              "bottom": 60,
+              "left": 837.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 510,
+              "y": 735.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 735.5,
+              "right": 930,
+              "bottom": 886,
+              "left": 510
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 1360,
+              "y": 820,
+              "width": 64,
+              "height": 64,
+              "top": 820,
+              "right": 1424,
+              "bottom": 884,
+              "left": 1360
+            },
+            {
+              "selector": ".game-panel",
+              "x": 1086,
+              "y": 72,
+              "width": 336,
+              "height": 650,
+              "top": 72,
+              "right": 1422,
+              "bottom": 722,
+              "left": 1086
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 837.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1422,
+              "bottom": 60,
+              "left": 837.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 510,
+              "y": 735.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 735.5,
+              "right": 930,
+              "bottom": 886,
+              "left": 510
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 1360,
+              "y": 820,
+              "width": 64,
+              "height": 64,
+              "top": 820,
+              "right": 1424,
+              "bottom": 884,
+              "left": 1360
+            },
+            {
+              "selector": ".game-panel",
+              "x": 1086,
+              "y": 72,
+              "width": 336,
+              "height": 382.9375,
+              "top": 72,
+              "right": 1422,
+              "bottom": 454.9375,
+              "left": 1086
+            }
+          ]
+        },
+        {
+          "name": "Skills",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 837.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1422,
+              "bottom": 60,
+              "left": 837.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 510,
+              "y": 735.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 735.5,
+              "right": 930,
+              "bottom": 886,
+              "left": 510
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 1360,
+              "y": 820,
+              "width": 64,
+              "height": 64,
+              "top": 820,
+              "right": 1424,
+              "bottom": 884,
+              "left": 1360
+            },
+            {
+              "selector": ".game-panel",
+              "x": 1086,
+              "y": 72,
+              "width": 336,
+              "height": 650,
+              "top": 72,
+              "right": 1422,
+              "bottom": 722,
+              "left": 1086
+            }
+          ]
+        },
+        {
+          "name": "Help",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 837.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1422,
+              "bottom": 60,
+              "left": 837.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 510,
+              "y": 735.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 735.5,
+              "right": 930,
+              "bottom": 886,
+              "left": 510
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 1360,
+              "y": 820,
+              "width": 64,
+              "height": 64,
+              "top": 820,
+              "right": 1424,
+              "bottom": 884,
+              "left": 1360
+            },
+            {
+              "selector": ".game-panel",
+              "x": 1086,
+              "y": 72,
+              "width": 336,
+              "height": 650,
+              "top": 72,
+              "right": 1422,
+              "bottom": 722,
+              "left": 1086
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 18,
+              "y": 16,
+              "width": 161.046875,
+              "height": 41,
+              "top": 16,
+              "right": 179.046875,
+              "bottom": 57,
+              "left": 18
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 837.828125,
+              "y": 16,
+              "width": 584.171875,
+              "height": 44,
+              "top": 16,
+              "right": 1422,
+              "bottom": 60,
+              "left": 837.828125
+            },
+            {
+              "selector": ".combat-hud",
+              "x": 510,
+              "y": 735.5,
+              "width": 420,
+              "height": 150.5,
+              "top": 735.5,
+              "right": 930,
+              "bottom": 886,
+              "left": 510
+            },
+            {
+              "selector": ".emote-wheel",
+              "x": 1360,
+              "y": 820,
+              "width": 64,
+              "height": 64,
+              "top": 820,
+              "right": 1424,
+              "bottom": 884,
+              "left": 1360
+            },
+            {
+              "selector": ".game-panel",
+              "x": 1086,
+              "y": 72,
+              "width": 336,
+              "height": 615.9375,
+              "top": 72,
+              "right": 1422,
+              "bottom": 687.9375,
+              "left": 1086
+            }
+          ]
+        }
+      ],
+      "play": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 18,
+            "y": 16,
+            "width": 161.046875,
+            "height": 41,
+            "top": 16,
+            "right": 179.046875,
+            "bottom": 57,
+            "left": 18
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 837.828125,
+            "y": 16,
+            "width": 584.171875,
+            "height": 44,
+            "top": 16,
+            "right": 1422,
+            "bottom": 60,
+            "left": 837.828125
+          },
+          {
+            "selector": ".combat-hud",
+            "x": 510,
+            "y": 735.5,
+            "width": 420,
+            "height": 150.5,
+            "top": 735.5,
+            "right": 930,
+            "bottom": 886,
+            "left": 510
+          },
+          {
+            "selector": ".goal-chip",
+            "x": 18,
+            "y": 72,
+            "width": 198.484375,
+            "height": 60,
+            "top": 72,
+            "right": 216.484375,
+            "bottom": 132,
+            "left": 18
+          },
+          {
+            "selector": ".minimap",
+            "x": 1294,
+            "y": 72,
+            "width": 128,
+            "height": 128,
+            "top": 72,
+            "right": 1422,
+            "bottom": 200,
+            "left": 1294
+          },
+          {
+            "selector": ".emote-wheel",
+            "x": 1360,
+            "y": 820,
+            "width": 64,
+            "height": 64,
+            "top": 820,
+            "right": 1424,
+            "bottom": 884,
+            "left": 1360
+          }
+        ]
+      },
+      "map": true
+    },
+    {
+      "width": 568,
+      "height": 320,
+      "compact": true,
+      "panels": [
+        {
+          "name": "Adventure",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 290,
+              "y": 262,
+              "width": 266,
+              "height": 48,
+              "top": 262,
+              "right": 556,
+              "bottom": 310,
+              "left": 290
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 260,
+              "height": 242,
+              "top": 68,
+              "right": 272,
+              "bottom": 310,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Bag",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 290,
+              "y": 262,
+              "width": 266,
+              "height": 48,
+              "top": 262,
+              "right": 556,
+              "bottom": 310,
+              "left": 290
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 260,
+              "height": 242,
+              "top": 68,
+              "right": 272,
+              "bottom": 310,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 290,
+              "y": 262,
+              "width": 266,
+              "height": 48,
+              "top": 262,
+              "right": 556,
+              "bottom": 310,
+              "left": 290
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 260,
+              "height": 242,
+              "top": 68,
+              "right": 272,
+              "bottom": 310,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Skills",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 290,
+              "y": 262,
+              "width": 266,
+              "height": 48,
+              "top": 262,
+              "right": 556,
+              "bottom": 310,
+              "left": 290
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 260,
+              "height": 242,
+              "top": 68,
+              "right": 272,
+              "bottom": 310,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Help",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 290,
+              "y": 262,
+              "width": 266,
+              "height": 48,
+              "top": 262,
+              "right": 556,
+              "bottom": 310,
+              "left": 290
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 260,
+              "height": 242,
+              "top": 68,
+              "right": 272,
+              "bottom": 310,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 290,
+              "y": 262,
+              "width": 266,
+              "height": 48,
+              "top": 262,
+              "right": 556,
+              "bottom": 310,
+              "left": 290
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 260,
+              "height": 242,
+              "top": 68,
+              "right": 272,
+              "bottom": 310,
+              "left": 12
+            }
+          ]
+        }
+      ],
+      "play": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 290,
+            "y": 262,
+            "width": 266,
+            "height": 48,
+            "top": 262,
+            "right": 556,
+            "bottom": 310,
+            "left": 290
+          },
+          {
+            "selector": ".combat-hud",
+            "x": 290,
+            "y": 158,
+            "width": 266,
+            "height": 96,
+            "top": 158,
+            "right": 556,
+            "bottom": 254,
+            "left": 290
+          },
+          {
+            "selector": ".goal-chip",
+            "x": 12,
+            "y": 68,
+            "width": 260,
+            "height": 71.28125,
+            "top": 68,
+            "right": 272,
+            "bottom": 139.28125,
+            "left": 12
+          },
+          {
+            "selector": ".minimap",
+            "x": 488,
+            "y": 12,
+            "width": 68,
+            "height": 44,
+            "top": 12,
+            "right": 556,
+            "bottom": 56,
+            "left": 488
+          },
+          {
+            "selector": ".emote-wheel",
+            "x": 488,
+            "y": 68,
+            "width": 68,
+            "height": 44,
+            "top": 68,
+            "right": 556,
+            "bottom": 112,
+            "left": 488
+          }
+        ]
+      },
+      "menu": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 290,
+            "y": 262,
+            "width": 266,
+            "height": 48,
+            "top": 262,
+            "right": 556,
+            "bottom": 310,
+            "left": 290
+          },
+          {
+            "selector": ".toolbar-secondary.is-open",
+            "x": 291,
+            "y": 77,
+            "width": 264,
+            "height": 178,
+            "top": 77,
+            "right": 555,
+            "bottom": 255,
+            "left": 291
+          }
+        ]
+      },
+      "map": true
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "compact": true,
+      "panels": [
+        {
+          "name": "Adventure",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 472,
+              "y": 332,
+              "width": 360,
+              "height": 48,
+              "top": 332,
+              "right": 832,
+              "bottom": 380,
+              "left": 472
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 398,
+              "height": 312,
+              "top": 68,
+              "right": 410,
+              "bottom": 380,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Bag",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 472,
+              "y": 332,
+              "width": 360,
+              "height": 48,
+              "top": 332,
+              "right": 832,
+              "bottom": 380,
+              "left": 472
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 398,
+              "height": 312,
+              "top": 68,
+              "right": 410,
+              "bottom": 380,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 472,
+              "y": 332,
+              "width": 360,
+              "height": 48,
+              "top": 332,
+              "right": 832,
+              "bottom": 380,
+              "left": 472
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 398,
+              "height": 312,
+              "top": 68,
+              "right": 410,
+              "bottom": 380,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Skills",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 472,
+              "y": 332,
+              "width": 360,
+              "height": 48,
+              "top": 332,
+              "right": 832,
+              "bottom": 380,
+              "left": 472
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 398,
+              "height": 312,
+              "top": 68,
+              "right": 410,
+              "bottom": 380,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Help",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 472,
+              "y": 332,
+              "width": 360,
+              "height": 48,
+              "top": 332,
+              "right": 832,
+              "bottom": 380,
+              "left": 472
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 398,
+              "height": 312,
+              "top": 68,
+              "right": 410,
+              "bottom": 380,
+              "left": 12
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "overflow": false,
+          "boxes": [
+            {
+              "selector": ".world-header",
+              "x": 12,
+              "y": 12,
+              "width": 137.65625,
+              "height": 44,
+              "top": 12,
+              "right": 149.65625,
+              "bottom": 56,
+              "left": 12
+            },
+            {
+              "selector": ".game-toolbar",
+              "x": 472,
+              "y": 332,
+              "width": 360,
+              "height": 48,
+              "top": 332,
+              "right": 832,
+              "bottom": 380,
+              "left": 472
+            },
+            {
+              "selector": ".game-panel",
+              "x": 12,
+              "y": 68,
+              "width": 398,
+              "height": 312,
+              "top": 68,
+              "right": 410,
+              "bottom": 380,
+              "left": 12
+            }
+          ]
+        }
+      ],
+      "play": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 472,
+            "y": 332,
+            "width": 360,
+            "height": 48,
+            "top": 332,
+            "right": 832,
+            "bottom": 380,
+            "left": 472
+          },
+          {
+            "selector": ".combat-hud",
+            "x": 472,
+            "y": 228,
+            "width": 360,
+            "height": 96,
+            "top": 228,
+            "right": 832,
+            "bottom": 324,
+            "left": 472
+          },
+          {
+            "selector": ".goal-chip",
+            "x": 12,
+            "y": 68,
+            "width": 280,
+            "height": 71.28125,
+            "top": 68,
+            "right": 292,
+            "bottom": 139.28125,
+            "left": 12
+          },
+          {
+            "selector": ".minimap",
+            "x": 764,
+            "y": 12,
+            "width": 68,
+            "height": 44,
+            "top": 12,
+            "right": 832,
+            "bottom": 56,
+            "left": 764
+          },
+          {
+            "selector": ".emote-wheel",
+            "x": 764,
+            "y": 68,
+            "width": 68,
+            "height": 44,
+            "top": 68,
+            "right": 832,
+            "bottom": 112,
+            "left": 764
+          }
+        ]
+      },
+      "menu": {
+        "overflow": false,
+        "boxes": [
+          {
+            "selector": ".world-header",
+            "x": 12,
+            "y": 12,
+            "width": 137.65625,
+            "height": 44,
+            "top": 12,
+            "right": 149.65625,
+            "bottom": 56,
+            "left": 12
+          },
+          {
+            "selector": ".game-toolbar",
+            "x": 472,
+            "y": 332,
+            "width": 360,
+            "height": 48,
+            "top": 332,
+            "right": 832,
+            "bottom": 380,
+            "left": 472
+          },
+          {
+            "selector": ".toolbar-secondary.is-open",
+            "x": 473,
+            "y": 147,
+            "width": 358,
+            "height": 178,
+            "top": 147,
+            "right": 831,
+            "bottom": 325,
+            "left": 473
+          }
+        ]
+      },
+      "map": true
+    }
+  ],
+  "errors": [],
+  "resizeTransition": true,
+  "secondaryPanels": {
+    "profiles": [
+      [
+        320,
+        480
+      ],
+      [
+        390,
+        844
+      ],
+      [
+        568,
+        320
+      ],
+      [
+        844,
+        390
+      ],
+      [
+        1440,
+        900
+      ]
+    ],
+    "checks": [
+      "Style choices remain usable and Cancel is reachable",
+      "Friends closes back to Chat with focus restored",
+      "Last inventory slot is reachable by scrolling",
+      "Inventory rows do not overlap"
+    ],
+    "passed": true
+  },
+  "uiTests": {
+    "runtime": "Node 22.5.1",
+    "files": 4,
+    "passed": 52
+  },
+  "checkedAt": "2026-10-01T18:37:35.795Z"
+}

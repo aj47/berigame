@@ -17,7 +17,7 @@ vi.mock('../Components/TickDebug', () => ({ default: () => null }));
 vi.mock('../Components/Minimap', () => ({ default: () => null }));
 vi.mock('../Components/FriendsPanel', () => ({ default: () => null, FriendSync: () => null, InviteRedeemer: () => null }));
 vi.mock('../Components/TradeWindow', () => ({ default: () => null }));
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('panel keyboard shortcuts respect native controls', () => {
   it.each([/^Bag/, /^Help/, /^Quick slot 1/])('does not consume Enter on a focused button', (name) => {
@@ -40,5 +40,26 @@ describe('panel keyboard shortcuts respect native controls', () => {
     expect(screen.queryByRole('region', { name: 'Settings' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Settings/ }));
     expect(screen.getByRole('button', { name: /Settings/ })).toHaveAttribute('aria-expanded', 'true');
+  });
+  it('opens secondary panels from Menu and returns focus to the compact trigger', () => {
+    render(<UIComponents />);
+    const menu = screen.getByRole('button', { name: /Menu/ });
+    vi.spyOn(menu, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+    fireEvent.click(menu);
+    expect(menu).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /Settings/ }));
+    expect(menu).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('region', { name: 'Settings' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
+    expect(menu).toHaveFocus();
+  });
+  it('closes the compact menu with Escape and restores its trigger', () => {
+    render(<UIComponents />);
+    const menu = screen.getByRole('button', { name: /Menu/ });
+    vi.spyOn(menu, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+    fireEvent.click(menu);
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(menu).toHaveAttribute('aria-expanded', 'false');
+    expect(menu).toHaveFocus();
   });
 });

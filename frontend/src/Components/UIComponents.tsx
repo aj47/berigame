@@ -16,10 +16,11 @@ import AdventurePanel, { AdventureHud, DuelHud } from "./AdventurePanel";
 import SkillsPanel from "./SkillsPanel";
 import MilestoneBanner from "./MilestoneBanner";
 import "./skills.css";
+import "./responsiveHud.css";
 import { PUNCH_DAMAGE, STICK_ITEM_ID, getItemDef } from "@sim";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 
-type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | null;
+type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "menu" | null;
 const stick = getItemDef(STICK_ITEM_ID);
 /** Name and online count: the only part of the HUD shell that follows player rows. */
 const WorldHeader = memo(() => {
@@ -42,15 +43,29 @@ const WorldHeader = memo(() => {
 const UIComponents = memo(() => {
   const [panel, setPanel] = useState<Panel>(null);
   const toolbar = useRef<HTMLElement>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const toggle = (next: Panel) =>
     setPanel((current) => (current === next ? null : next));
   const close = () => {
-    const previous = panel === "appearance" ? "skills" : panel;
+    const previous = panel === "appearance" ? "skills" : panel === "friends" ? "chat" : panel;
     setPanel(null);
-    toolbar.current
-      ?.querySelector<HTMLButtonElement>(`[data-panel="${previous}"]`)
-      ?.focus();
+    // Secondary controls disappear with the compact menu; return to its trigger.
+    const secondary = ["menu", "skills", "help", "settings"].includes(previous ?? "");
+    const target = secondary && menuButton.current?.getClientRects().length
+      ? menuButton.current
+      : toolbar.current?.querySelector<HTMLButtonElement>(`[data-panel="${previous}"]`);
+    target?.focus();
   };
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    const compact = window.matchMedia?.("(max-width: 900px), (max-height: 500px)");
+    const onResize = () => {
+      if (!compact?.matches) setPanel((current) => current === "menu" ? null : current);
+    };
+    compact?.addEventListener("change", onResize);
+    return () => compact?.removeEventListener("change", onResize);
+  }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (isTyping(event.target)) {
@@ -81,7 +96,7 @@ const UIComponents = memo(() => {
         toggle("help");
       else if (event.key.toLowerCase() === "o") toggle("settings");
       else if (event.key.toLowerCase() === "k") toggle("skills");
-      else if (event.key === "Escape") setPanel(null);
+      else if (event.key === "Escape") closeRef.current();
     };
     const openAdventure = () => setPanel("adventure");
     window.addEventListener("berigame-adventure", openAdventure);
@@ -89,7 +104,7 @@ const UIComponents = memo(() => {
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("berigame-adventure", openAdventure); };
   }, []);
   return (
-    <div className="ui-group">
+    <div className="ui-group" data-panel-open={panel !== null}>
       <WorldHeader />
       <nav className="game-toolbar" aria-label="Game panels" ref={toolbar}>
         <button data-panel="adventure" aria-expanded={panel === "adventure"} onClick={() => toggle("adventure")}>Adventure</button>
@@ -108,36 +123,55 @@ const UIComponents = memo(() => {
           Chat <kbd>↵</kbd>
         </button>
         <button
-          data-panel="skills"
-          aria-expanded={panel === "appearance" || panel === "skills"}
-          onClick={() => setPanel((current) => (current === "appearance" || current === "skills" ? null : "skills"))}
+          className="toolbar-menu-toggle"
+          data-panel="menu"
+          ref={menuButton}
+          aria-expanded={panel === "menu"}
+          aria-controls="game-menu"
+          data-active={["menu", "skills", "appearance", "help", "settings"].includes(panel ?? "")}
+          onClick={() => toggle("menu")}
         >
-          Skills
+          <span aria-hidden="true">☰</span> Menu
         </button>
-        <button
-          data-panel="help"
-          aria-expanded={panel === "help"}
-          onClick={() => toggle("help")}
-        >
-          Help <kbd>?</kbd>
-        </button>
-        <button
-          data-panel="settings"
-          aria-expanded={panel === "settings"}
-          aria-label="Settings (O)"
-          onClick={() => toggle("settings")}
-        >
-          <span aria-hidden="true" className="toolbar-gear">⚙</span>
-          <span className="toolbar-label">Settings</span> <kbd>O</kbd>
-        </button>
-        <a className="agent-entry-link" href="/agent" target="_blank" rel="noreferrer" aria-label="Open BeriGame's agent onboarding page in a new tab">
-          Agent
-        </a>
+        <div id="game-menu" className={`toolbar-secondary ${panel === "menu" ? "is-open" : ""}`}>
+          <header className="compact-menu-heading panel-heading">
+            <div><span className="eyebrow">Make yourself at home</span><h2>Island menu</h2></div>
+            <button className="close-button" onClick={close} aria-label="Close menu">×</button>
+          </header>
+          <button
+            data-panel="skills"
+            aria-expanded={panel === "appearance" || panel === "skills"}
+            onClick={() => setPanel((current) => (current === "appearance" || current === "skills" ? null : "skills"))}
+          >
+            Skills
+          </button>
+          <button
+            data-panel="help"
+            aria-expanded={panel === "help"}
+            onClick={() => toggle("help")}
+          >
+            Help <kbd>?</kbd>
+          </button>
+          <button
+            data-panel="settings"
+            aria-expanded={panel === "settings"}
+            aria-label="Settings (O)"
+            onClick={() => toggle("settings")}
+          >
+            <span aria-hidden="true" className="toolbar-gear">⚙</span>
+            <span className="toolbar-label">Settings</span> <kbd>O</kbd>
+          </button>
+          <a className="agent-entry-link" href="/agent" target="_blank" rel="noreferrer" aria-label="Open BeriGame's agent onboarding page in a new tab">
+            Agent
+          </a>
+        </div>
       </nav>
       <AdventurePanel open={panel === "adventure"} onClose={close} />
-      <AdventureHud visible={panel === null} />
-      <DuelHud />
-      <GoalChip visible={panel === null} />
+      <div className="world-objectives">
+        <GoalChip visible={panel === null} />
+        <DuelHud />
+        <AdventureHud visible={panel === null} />
+      </div>
       <Inventory open={panel === "inventory"} onClose={close} />
       {/* Friends and invites live behind Chat (no new toolbar button). */}
       <ChatBox open={panel === "chat"} onClose={close} onOpenFriends={() => setPanel("friends")} />
