@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset=utf-8><style>html,body{margin:0;background:#9fc27a}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script></head><body>
+<script type="module">
+import * as T from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
+const q=new URLSearchParams(location.search);const W=+q.get('w')||800,H=+q.get('h')||800;
+const r=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(W,H);r.outputEncoding=T.sRGBEncoding;document.body.appendChild(r.domElement);
+const sc=new T.Scene();sc.background=new T.Color('#9fc27a');
+const dl=new T.DirectionalLight('#ffe2b8',1.0);dl.position.set(-12,24,10);sc.add(dl);sc.add(new T.HemisphereLight('#cfe8ff','#8c7a52',.55));
+const cam=new T.PerspectiveCamera(+q.get('fov')||30,W/H,.05,100);
+const BASE7=[0xDF,0xA7,0x6E];const skin=(q.get('skin')||'DFA76E').match(/../g).map(h=>parseInt(h,16));
+const g=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('/'+q.get('set')+'/'+q.get('m'));
+const root=g.scene;sc.add(root);
+root.traverse(o=>{if(o.isMesh&&o.material.map){const img=o.material.map.image;const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d');x.drawImage(img,0,0);
+ const d=x.getImageData(0,0,c.width,c.height);for(const ci of [6,7,8,22]){const cx=ci%8,cy=7-Math.floor(ci/8);for(let yy=0;yy<8;yy++)for(let xx=0;xx<8;xx++){const i=((cy*8+yy)*64+cx*8+xx)*4;for(let k=0;k<3;k++)d.data[i+k]=Math.min(255,Math.round(d.data[i+k]*skin[k]/BASE7[k]));}}
+ x.putImageData(d,0,0);const t=new T.CanvasTexture(c);t.flipY=o.material.map.flipY;t.encoding=o.material.map.encoding;t.magFilter=T.NearestFilter;o.material=o.material.clone();o.material.map=t;}});
+const mix=new T.AnimationMixer(root);const clip=g.animations.find(a=>a.name===(q.get('clip')||'Idle'))||g.animations[0];const act=mix.clipAction(clip);if(!q.get('anim')){act.setLoop(T.LoopOnce);act.clampWhenFinished=true;}act.play();
+window.clips=g.animations.map(a=>a.name);
+const view=q.get('view')||'close';const P={close:[[0.45,1.8,1.2],[0,1.6,0]],three:[[2.0,1.8,3.8],[0,1.08,0]],game:[[6,9,9],[0,1,0]]}[view];
+function place(a){const [p,t]=P;const dx=p[0]-t[0],dz=p[2]-t[2];const rr=Math.hypot(dx,dz),a0=Math.atan2(dx,dz);cam.position.set(t[0]+rr*Math.sin(a+a0),p[1],t[2]+rr*Math.cos(a+a0));cam.lookAt(...t);}
+let yaw=(+q.get('yaw')||0)*Math.PI/180;place(yaw);
+const anim=q.get('anim');let last=performance.now();mix.setTime(+q.get('t')||0);
+function loop(now){const dt=(now-last)/1000;last=now;if(anim==='spin'){yaw+=dt*Math.PI/3;place(yaw);}if(anim==='play')mix.update(dt);r.render(sc,cam);requestAnimationFrame(loop)}
+requestAnimationFrame(loop);setTimeout(()=>window.ready=true,300);
+</script></body></html>

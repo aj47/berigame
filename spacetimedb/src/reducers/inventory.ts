@@ -1,19 +1,30 @@
+import { carrying } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import {
   EAT_COOLDOWN_TICKS, EAT_SWING_DELAY_TICKS, EventKind, INVENTORY_SIZE, MELEE_RANGE, Pending,
-  chebyshev, getItemDef, moveItem as moveSlots, nearestReachableTile, removeFromSlot,
+  STICK_ITEM_ID, chebyshev, getItemDef, inHotbar, moveItem as moveSlots, removeFromSlot, type Slot,
 } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
+import { interactionTile } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
 import { dropOnGround, readSlots, takeGroundItem, writeSlots } from '../lib/inventory';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
+import type { PlayerRow } from '../lib/types';
+import { unlockCosmetic } from '../lib/progress';
+import { Cosmetic } from '../../../shared/sim';
+
+/** A weapon is only held while a copy of it sits in the quick slots. Mutates `p`. */
+function sheatheIfGone(p: PlayerRow, slots: readonly Slot[]): void {
+  if (p.weapon !== '' && !inHotbar(slots, p.weapon)) p.weapon = '';
+}
 
 export const eatBerry = spacetimedb.reducer(
   { slot: t.u8() },
   (ctx, { slot }) => {
     if (slot >= INVENTORY_SIZE) throw new SenderError('bad slot');
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const T = currentTick(ctx);
     touchInput(p, T);
     if (T < p.eatCooldownUntilTick) throw new SenderError('still chewing');
@@ -43,7 +54,9 @@ export const moveItem = spacetimedb.reducer(
     touchInput(p, currentTick(ctx));
     const snap = readSlots(ctx, p.identity);
     if (!snap.slots[from]) throw new SenderError('empty slot');
-    writeSlots(ctx, p.identity, snap, moveSlots(snap.slots, from, to));
+    const slots = moveSlots(snap.slots, from, to);
+    writeSlots(ctx, p.identity, snap, slots);
+    sheatheIfGone(p, slots);
     savePlayer(ctx, p);
   }
 );
@@ -60,6 +73,7 @@ export const dropItem = spacetimedb.reducer(
     if (!item) throw new SenderError('empty slot');
     const { slots, removed } = removeFromSlot(snap.slots, slot, quantity);
     writeSlots(ctx, p.identity, snap, slots);
+    sheatheIfGone(p, slots);
     dropOnGround(ctx, p.identity, item.itemId, removed, p, T);
     savePlayer(ctx, p);
   }
@@ -75,11 +89,14 @@ export const pickupItem = spacetimedb.reducer(
     touchInput(p, T);
     clearInteractions(ctx, p);
     if (chebyshev(p, item) <= MELEE_RANGE) {
-      takeGroundItem(ctx, p.identity, item);
+      const taken = takeGroundItem(ctx, p.identity, item);
+      // A stick ends first-spawn grace: 10 more ticks to wield it and step back.
+      if (taken > 0 && item.itemId === STICK_ITEM_ID && p.respawnTick > T) p.respawnTick = T;
+      if (taken > 0 && item.itemId === STICK_ITEM_ID) unlockCosmetic(ctx, p.identity, Cosmetic.StrawHat);
     } else {
+      const dest = interactionTile(ctx, p, item, blockedTiles(ctx), MELEE_RANGE);
       p.pending = Pending.Pickup;
       p.pendingId = item.id;
-      const dest = nearestReachableTile(p, item, blockedTiles(ctx));
       p.targetX = dest.x;
       p.targetZ = dest.z;
     }

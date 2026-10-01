@@ -13,3 +13,11 @@ export * from './reducers/inventory';
 export * from './reducers/chat';
 export * from './reducers/appearance';
 export * from './reducers/access';
+export * from './reducers/craft';
+export * from './reducers/social';
+export * from './reducers/friends';
+export * from './reducers/trade';
+export * from './reducers/giant';
+export * from './reducers/garden';
+
+export * from './reducers/adventure';

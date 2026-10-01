@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Driftwood Crown keepsake icon: hand-drawn source for frontend/public/items/driftwood_crown.png (render at 128x128, transparent). A band of pale driftwood with five points, the middle one tipped with flint. -->
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E0CDAE"/>
+      <stop offset="1" stop-color="#9D8A6C"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#2A2420" stroke-width="4.5" stroke-linejoin="round" fill="url(#wood)">
+    <path d="M16 92 L 12 50 L 32 70 L 42 36 L 56 64 L 64 22 L 72 64 L 86 36 L 96 70 L 116 50 L 112 92 C 90 100, 38 100, 16 92 Z"/>
+    <path d="M16 92 C 38 100, 90 100, 112 92 L 112 106 C 90 114, 38 114, 16 106 Z"/>
+  </g>
+  <path d="M64 8 L 72 22 L 64 30 L 56 22 Z" fill="#55657C" stroke="#2A2420" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M62 14 L 58 22" stroke="#B7C4D6" stroke-width="2.4" stroke-linecap="round"/>
+  <g fill="none" stroke="#F4EAD6" stroke-width="3" stroke-linecap="round" opacity="0.85">
+    <path d="M24 100 C 46 106, 82 106, 104 100"/>
+    <path d="M40 46 L 36 64"/><path d="M64 34 L 62 58"/><path d="M88 46 L 92 64"/>
+  </g>
+  <g stroke="#3A2211" stroke-width="1.6" fill="#C9934E">
+    <circle cx="40" cy="103" r="4"/><circle cx="64" cy="106" r="4"/><circle cx="88" cy="103" r="4"/>
+  </g>
+</svg>

@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "title": "BeriGame cinematic trailer typography",
+  "design": "Warm ivory Georgia, custom berry sprig, shallow forest extrusion, restrained gilded accents.",
+  "frame_size": [
+    1920,
+    1080
+  ],
+  "safe_area": [
+    120,
+    80,
+    1800,
+    1010
+  ],
+  "end_card_primary_type_bottom": 537,
+  "overlays": [
+    {
+      "file": "01_every_big_adventure.png",
+      "start": 0.7,
+      "end": 3.7,
+      "fade_in": 0.55,
+      "fade_out": 0.5,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "alpha_bounds": [
+        127,
+        787,
+        827,
+        910
+      ],
+      "text": [
+        "Every big adventure\u2026"
+      ]
+    },
+    {
+      "file": "02_starts_small.png",
+      "start": 5.0,
+      "end": 7.8,
+      "fade_in": 0.55,
+      "fade_out": 0.5,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "alpha_bounds": [
+        128,
+        787,
+        584,
+        895
+      ],
+      "text": [
+        "\u2026starts small."
+      ]
+    },
+    {
+      "file": "03_some_friends.png",
+      "start": 18.0,
+      "end": 21.6,
+      "fade_in": 0.55,
+      "fade_out": 0.5,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "alpha_bounds": [
+        125,
+        737,
+        691,
+        947
+      ],
+      "text": [
+        "Some friends",
+        "are a little bigger."
+      ]
+    },
+    {
+      "file": "04_better_together.png",
+      "start": 24.0,
+      "end": 26.8,
+      "fade_in": 0.55,
+      "fade_out": 0.5,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "alpha_bounds": [
+        128,
+        787,
+        656,
+        910
+      ],
+      "text": [
+        "Better, together."
+      ]
+    },
+    {
+      "file": "05_end_card.png",
+      "start": 33.5,
+      "end": 40.0,
+      "fade_in": 0.55,
+      "fade_out": 0.5,
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "alpha_bounds": [
+        504,
+        116,
+        1796,
+        1032
+      ],
+      "text": [
+        "BeriGame",
+        "Little island. Giant adventures.",
+        "beta.berigame.com",
+        "CINEMATIC TRAILER"
+      ]
+    }
+  ]
+}

@@ -1,23 +1,24 @@
-import { Html } from '@react-three/drei';
-import React, { Suspense, useEffect, useRef } from 'react';
-import { CHAT_BUBBLE_TICKS, DEFAULT_APPEARANCE, PlayerState } from '@sim';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useChatPrefsStore } from '../../spacetime/stores/chatPrefsStore';
+import { DEFAULT_APPEARANCE, PlayerState, type Appearance } from '@sim';
 import type { Player } from '../../module_bindings/types';
 import { useTileMotion } from '../../hooks/useTileMotion';
 import { useCombatFxStore } from '../../spacetime/stores/combatFxStore';
 import { useGameActions } from '../../spacetime/actions';
-import { useAppearanceRows, useMyPlayer } from '../../spacetime/hooks';
 import { useUserInputStore } from '../../store';
-import ChatBubble from './ChatBubble';
-import { useNameplateVisibility } from './useNameplateVisibility';
 import DamageNumber from './DamageNumber';
-import HealthBar from './HealthBar';
-import StanceBadge from './StanceBadge';
+import { useAvatarDecal } from './AvatarDecals';
+import { useAvatarLabels } from './AvatarOverlay';
 
 import AdventurerModel, { BASE_MODEL_URL, modelUrl } from './AdventurerModel';
 import { useAppearancePreview } from '../../appearance/store';
 import { useToastStore } from '../../spacetime/stores/toastStore';
+import { useWornCosmetics, useExpeditions } from '../../spacetime/hooks';
+import { useProgressStore, XP_FLOAT_KIND } from '../../spacetime/stores/progressStore';
 import type { AnimationCue } from '../../animation/combatPresentation';
 import { identityHex } from '../../spacetime/identity';
+import { useSocialStore } from '../../spacetime/stores/socialStore';
+import { emoteCue } from '../../animation/emotes';
 
 class HairBoundary extends React.Component<{ children:React.ReactNode; fallback:React.ReactNode }, { failed:boolean }> {
   state={failed:false};
@@ -28,33 +29,78 @@ class HairBoundary extends React.Component<{ children:React.ReactNode; fallback:
 interface Props {
   row: Player;
   isSelf: boolean;
+  /** This player's saved appearance row (looked up once by the parent), if any. */
+  saved?: Appearance;
+  /** You are hostile and this player is your combat target. */
+  targeted?: boolean;
+  /** A chat line still fresh enough to float above the head. */
   chatText?: string;
-  chatTick?: number;
-  currentTick: number;
   setPlayerRef?: (ref: React.MutableRefObject<any>) => void;
 }
 
-/** One shared rig and mechanically identical silhouette for every adventurer. */
-const PlayerAvatar = ({ row, isSelf, chatText, chatTick, currentTick, setPlayerRef }: Props) => {
+/** Health bar: while below max, and for 5 s after any change. */
+function useHealthShown(hp: number, maxHp: number): boolean {
+  const [recent, setRecent] = useState(false);
+  useEffect(() => {
+    // As before: a bar also flashes up for 5 s when the avatar first appears.
+    setRecent(true);
+    const timer = setTimeout(() => setRecent(false), 5000);
+    return () => clearTimeout(timer);
+  }, [hp]);
+  return hp < maxHp || recent;
+}
+
+/**
+ * One shared rig and mechanically identical silhouette for every adventurer.
+ * Memoized: a server tick re-renders only the avatars whose row (or labels) changed.
+ */
+const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = false, chatText, setPlayerRef }: Props) => {
   const groupRef = useRef<any>(null);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const actionsApi = useGameActions();
-  const me = useMyPlayer();
   const hex = identityHex(row.identity);
-  const saved = useAppearanceRows().find((value) => value.identity.__identity__ === row.identity.__identity__) ?? DEFAULT_APPEARANCE;
+  const expeditions=useExpeditions();
+  const carrying=expeditions.some(e=>e.stage==='hauling' && e.carrier?.toHexString()===hex);
   const preview = useAppearancePreview((value) => isSelf ? value.draft : null);
   const chosen = isSelf && preview ? preview : saved;
-  const appearance = { hairStyle:chosen.hairStyle, skinTone:chosen.skinTone, hairColor:chosen.hairColor, robeColor:chosen.robeColor, wrapColor:chosen.wrapColor };
+  // Stable while the colours hold, so the memoized model skips row-only (movement) renders.
+  const appearance = useMemo(() => ({ hairStyle:chosen.hairStyle, skinTone:chosen.skinTone, hairColor:chosen.hairColor, robeColor:chosen.robeColor, wrapColor:chosen.wrapColor }),
+    [chosen.hairStyle, chosen.skinTone, chosen.hairColor, chosen.robeColor, chosen.wrapColor]);
   const url = modelUrl(appearance.hairStyle);
-  const targeted = me?.hostile && me.combatTarget?.__identity__ === row.identity.__identity__;
-  const nameRef = useNameplateVisibility(hex, isSelf ? 3 : targeted ? 2 : 1);
   const motion = useTileMotion(row.x, row.z, row.facing, groupRef);
   const cue = useCombatFxStore((s) => s.cues[hex]);
   const floating = useCombatFxStore((s) => s.numbers[hex]);
-  const transient = useRef<AnimationCue | null>(null);
-  transient.current = cue ?? null;
+  const found = useCombatFxStore((s) => s.finds[hex]);
+  const emote = useSocialStore((s) => s.emotes[hex]);
+  const worn = useWornCosmetics(hex);
+  const head = worn >> 8, neck = worn & 255;
+  // XP floaters are yours alone (other players' XP is not broadcast as events).
+  const xpFloat = useProgressStore((s) => (isSelf ? s.xpFloat : null));
   const dead = row.state === PlayerState.Dead;
+  // Moving, fighting, harvesting or dying ends an emote (a Sit holds until then).
+  const activity = `${row.x},${row.z},${row.hostile},${row.pending},${row.harvestTreeId},${row.state}`;
+  const lastActivity = useRef(activity);
+  useEffect(() => {
+    if (lastActivity.current === activity) return;
+    lastActivity.current = activity;
+    const current = useSocialStore.getState().emotes[hex];
+    if (current) useSocialStore.getState().clearEmote(hex);
+  }, [activity, hex]);
+  const transient = useRef<AnimationCue | null>(null);
+  // Combat cues win over an emote; an emote plays as a one-off 'action' cue.
+  const emoteClip = emote && !dead ? emoteCue(emote.emote) : null;
+  transient.current = cue ?? (!carrying && emote && emoteClip ? { clip: emoteClip.clip, durationMs: emote.durationMs, at: emote.at, seq: 100000 + emote.seq, role: 'action' } : null);
+  const healthShown = useHealthShown(row.hp, row.maxHp);
   useEffect(() => { if (isSelf && setPlayerRef) setPlayerRef(groupRef); }, [isSelf, setPlayerRef]);
+  useAvatarDecal(groupRef, isSelf ? 'self' : targeted ? 'target' : 'other');
+  useAvatarLabels(groupRef, {
+    id: hex,
+    name: `${isSelf ? 'You' : row.name}${targeted ? ' · Target' : ''}`,
+    tone: isSelf ? 'self' : targeted ? 'targeted' : '',
+    priority: isSelf ? 3 : targeted ? 2 : 1,
+    health: !dead && healthShown ? row.hp / row.maxHp : null,
+    chat: chatText || null,
+  });
 
   const onClick = (e: any) => {
     if (isSelf || dead || e.delta > 5) return;
@@ -62,32 +108,35 @@ const PlayerAvatar = ({ row, isSelf, chatText, chatTick, currentTick, setPlayerR
     setClickedOtherObject({ connectionId: row.name, e, dropdownOptions: [
       { label: 'Attack', onClick: () => { actionsApi.attack(row.identity); setClickedOtherObject(null); } },
       { label: 'Follow', onClick: () => { actionsApi.follow(row.identity); setClickedOtherObject(null); } },
+      { label: 'Trade', onClick: () => { actionsApi.requestTrade(row.identity); setClickedOtherObject(null); } },
+      ...(useChatPrefsStore.getState().friends.has(hex) ? [] : [
+        { label: 'Add friend', onClick: () => { actionsApi.addFriend(row.identity); setClickedOtherObject(null); } },
+      ]),
+      { label: useChatPrefsStore.getState().muted.has(hex) ? 'Unmute chat' : 'Mute chat', onClick: () => {
+        const prefs = useChatPrefsStore.getState();
+        const wasMuted = prefs.muted.has(hex);
+        prefs.toggleMute(hex);
+        useToastStore.getState().show(wasMuted ? `${row.name} unmuted` : `${row.name} muted: you will not see their chat`);
+        setClickedOtherObject(null);
+      } },
     ] });
   };
-  const showChat = chatText && chatTick !== undefined && currentTick - chatTick <= CHAT_BUBBLE_TICKS;
   const origin = { x: 0, y: 0, z: 0 };
+  // Blob shadow and ring: <AvatarDecals />. Name, health bar and chat bubble: <AvatarOverlay />.
   return (
-    <group ref={groupRef} onClick={onClick}>
+    <group ref={groupRef} onClick={onClick} userData={{ hoverTarget: isSelf || dead ? null : {
+      title: row.name, action: 'Click for player actions', detail: 'Follow · trade · friend · attack', radius: .65,
+    } }}>
       <mesh position={[0, 1.05, 0]} visible={false}><boxGeometry args={[0.9, 2.1, 0.8]} /><meshBasicMaterial /></mesh>
-      {!dead && <HealthBar playerPosition={origin} health={row.hp} maxHealth={row.maxHp} yOffset={2.45} isOwnPlayer={isSelf} />}
-      {!dead && <StanceBadge stance={row.stance} fightState={row.fightState} yOffset={3.05} />}
-      <Html zIndexRange={[3,0]} center position={[0,2.63,0]} style={{ pointerEvents:'none' }}>
-        <span ref={nameRef} data-player-name={hex} className={`adventurer-name ${isSelf ? 'self' : targeted ? 'targeted' : ''}`}>{isSelf ? 'You' : row.name}{targeted ? ' · Target' : ''}</span>
-      </Html>
-      {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} appearAt={floating.at + floating.delayMs} />}
-      {showChat && <ChatBubble playerPosition={origin} yOffset={3.65} chatMessage={chatText} />}
+      {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} itemId={floating.itemId} appearAt={floating.at + floating.delayMs} />}
+      {found && <DamageNumber key={`find-${hex}-${found.seq}`} playerPosition={origin} yOffset={1.8} kind={found.kind} text={found.text} itemId={found.itemId} appearAt={found.at + found.delayMs} />}
+      {xpFloat && <DamageNumber key={`xp-${xpFloat.seq}`} playerPosition={origin} yOffset={2.25} kind={XP_FLOAT_KIND} text={xpFloat.text} appearAt={xpFloat.at} />}
       <Suspense fallback={<mesh position={[0,1,0]}><capsuleGeometry args={[.25,1,4,6]} /><meshStandardMaterial color="#42699c" /></mesh>}>
-        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} stance={row.stance} motion={motion} transient={transient} />}>
-          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} stance={row.stance} motion={motion} transient={transient} />
+        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} motion={motion} transient={transient} head={head} neck={neck} />}>
+          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} motion={motion} transient={transient} head={head} neck={neck} />
         </HairBoundary>
       </Suspense>
-      <mesh position={[0, 0.016, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[1, 0.65, 1]}>
-        <circleGeometry args={[0.55, 16]} /><meshBasicMaterial color="#233c2a" transparent opacity={0.19} depthWrite={false} />
-      </mesh>
-      <mesh position={[0, 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.48, 0.58, 24]} /><meshBasicMaterial color={isSelf ? '#fff2c9' : targeted ? '#e67855' : '#a7c1d0'} transparent opacity={isSelf || targeted ? 1 : 0.35} depthWrite={false} />
-      </mesh>
     </group>
   );
 };
-export default PlayerAvatar;
+export default React.memo(PlayerAvatar);

@@ -34,34 +34,80 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AddFriendReducer from "./add_friend_reducer";
 import AttackReducer from "./attack_reducer";
+import AttackDummyReducer from "./attack_dummy_reducer";
+import AttackGiantReducer from "./attack_giant_reducer";
 import CancelReducer from "./cancel_reducer";
+import CancelTradeRequestReducer from "./cancel_trade_request_reducer";
 import ConfigureAccessReducer from "./configure_access_reducer";
+import ConfirmTradeReducer from "./confirm_trade_reducer";
+import ContributeProjectReducer from "./contribute_project_reducer";
+import CraftReducer from "./craft_reducer";
+import CreateInviteReducer from "./create_invite_reducer";
 import DropItemReducer from "./drop_item_reducer";
+import DuelActionReducer from "./duel_action_reducer";
 import EatBerryReducer from "./eat_berry_reducer";
+import EmoteReducer from "./emote_reducer";
+import EndVisitReducer from "./end_visit_reducer";
+import EquipTechniqueReducer from "./equip_technique_reducer";
+import ExpeditionActionReducer from "./expedition_action_reducer";
 import FollowReducer from "./follow_reducer";
+import GardenDevRipenReducer from "./garden_dev_ripen_reducer";
 import GrantAgentReducer from "./grant_agent_reducer";
 import GrantPlayerReducer from "./grant_player_reducer";
+import HarvestGardenReducer from "./harvest_garden_reducer";
 import MoveItemReducer from "./move_item_reducer";
 import PickupItemReducer from "./pickup_item_reducer";
+import PlantGardenReducer from "./plant_garden_reducer";
+import RedeemInviteReducer from "./redeem_invite_reducer";
+import RemoveFriendReducer from "./remove_friend_reducer";
+import RenewGrantReducer from "./renew_grant_reducer";
+import RequestTradeReducer from "./request_trade_reducer";
+import RespondTradeReducer from "./respond_trade_reducer";
 import RevokePlayerReducer from "./revoke_player_reducer";
 import SendChatReducer from "./send_chat_reducer";
 import SetAppearanceReducer from "./set_appearance_reducer";
 import SetNameReducer from "./set_name_reducer";
-import SetStanceReducer from "./set_stance_reducer";
 import SetTargetReducer from "./set_target_reducer";
+import SetTradeOfferReducer from "./set_trade_offer_reducer";
+import ShareGardenReducer from "./share_garden_reducer";
 import StartHarvestReducer from "./start_harvest_reducer";
+import TriggerGiantRaidReducer from "./trigger_giant_raid_reducer";
+import UnwieldReducer from "./unwield_reducer";
+import WearCosmeticReducer from "./wear_cosmetic_reducer";
+import WieldItemReducer from "./wield_item_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
 import AccessPolicyRow from "./access_policy_table";
+import AdventureProfileRow from "./adventure_profile_table";
 import AppearanceRow from "./appearance_table";
 import ChatMessageRow from "./chat_message_table";
 import CombatEventRow from "./combat_event_table";
+import DummyEventRow from "./dummy_event_table";
+import EmoteEventRow from "./emote_event_table";
+import ExpeditionRow from "./expedition_table";
+import ExpeditionMemberRow from "./expedition_member_table";
+import FriendRow from "./friend_table";
+import FriendlyDuelRow from "./friendly_duel_table";
+import GardenPlotRow from "./garden_plot_table";
+import GardenShowcaseRow from "./garden_showcase_table";
+import GiantRow from "./giant_table";
+import GiantEventRow from "./giant_event_table";
+import GiantRaidRow from "./giant_raid_table";
 import GroundItemRow from "./ground_item_table";
 import InventorySlotRow from "./inventory_slot_table";
+import InviteCodeRow from "./invite_code_table";
+import IslandProjectRow from "./island_project_table";
+import MentorStatRow from "./mentor_stat_table";
 import PlayerRow from "./player_table";
+import PlayerCosmeticRow from "./player_cosmetic_table";
+import PlayerSkillRow from "./player_skill_table";
+import SocialEventRow from "./social_event_table";
+import TradeRow from "./trade_table";
+import TrainingDummyRow from "./training_dummy_table";
 import TreeRow from "./tree_table";
 import WorldRow from "./world_table";
 
@@ -80,6 +126,17 @@ const tablesSchema = __schema({
       { name: 'access_policy_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, AccessPolicyRow),
+  adventureProfile: __table({
+    name: 'adventure_profile',
+    indexes: [
+      { accessor: 'identity', name: 'adventure_profile_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'adventure_profile_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, AdventureProfileRow),
   appearance: __table({
     name: 'appearance',
     indexes: [
@@ -110,6 +167,127 @@ const tablesSchema = __schema({
     ],
     event: true,
   }, CombatEventRow),
+  dummyEvent: __table({
+    name: 'dummy_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, DummyEventRow),
+  emoteEvent: __table({
+    name: 'emote_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, EmoteEventRow),
+  expedition: __table({
+    name: 'expedition',
+    indexes: [
+      { accessor: 'id', name: 'expedition_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'expedition_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ExpeditionRow),
+  expeditionMember: __table({
+    name: 'expedition_member',
+    indexes: [
+      { accessor: 'expeditionId', name: 'expedition_member_expedition_id_idx_btree', algorithm: 'btree', columns: [
+        'expeditionId',
+      ] },
+      { accessor: 'identity', name: 'expedition_member_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'expedition_member_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, ExpeditionMemberRow),
+  friend: __table({
+    name: 'friend',
+    indexes: [
+      { accessor: 'id', name: 'friend_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'owner', name: 'friend_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+    ],
+    constraints: [
+      { name: 'friend_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, FriendRow),
+  friendlyDuel: __table({
+    name: 'friendly_duel',
+    indexes: [
+      { accessor: 'id', name: 'friendly_duel_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'friendly_duel_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, FriendlyDuelRow),
+  gardenPlot: __table({
+    name: 'garden_plot',
+    indexes: [
+      { accessor: 'id', name: 'garden_plot_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'owner', name: 'garden_plot_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+    ],
+    constraints: [
+      { name: 'garden_plot_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, GardenPlotRow),
+  gardenShowcase: __table({
+    name: 'garden_showcase',
+    indexes: [
+      { accessor: 'identity', name: 'garden_showcase_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'garden_showcase_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, GardenShowcaseRow),
+  giant: __table({
+    name: 'giant',
+    indexes: [
+      { accessor: 'id', name: 'giant_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'giant_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, GiantRow),
+  giantEvent: __table({
+    name: 'giant_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, GiantEventRow),
+  giantRaid: __table({
+    name: 'giant_raid',
+    indexes: [
+      { accessor: 'id', name: 'giant_raid_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'giant_raid_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, GiantRaidRow),
   groundItem: __table({
     name: 'ground_item',
     indexes: [
@@ -135,6 +313,43 @@ const tablesSchema = __schema({
       { name: 'inventory_slot_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, InventorySlotRow),
+  inviteCode: __table({
+    name: 'invite_code',
+    indexes: [
+      { accessor: 'code', name: 'invite_code_code_idx_btree', algorithm: 'btree', columns: [
+        'code',
+      ] },
+      { accessor: 'inviter', name: 'invite_code_inviter_idx_btree', algorithm: 'btree', columns: [
+        'inviter',
+      ] },
+    ],
+    constraints: [
+      { name: 'invite_code_code_key', constraint: 'unique', columns: ['code'] },
+      { name: 'invite_code_inviter_key', constraint: 'unique', columns: ['inviter'] },
+    ],
+  }, InviteCodeRow),
+  islandProject: __table({
+    name: 'island_project',
+    indexes: [
+      { accessor: 'id', name: 'island_project_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'island_project_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, IslandProjectRow),
+  mentorStat: __table({
+    name: 'mentor_stat',
+    indexes: [
+      { accessor: 'identity', name: 'mentor_stat_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'mentor_stat_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, MentorStatRow),
   player: __table({
     name: 'player',
     indexes: [
@@ -150,6 +365,64 @@ const tablesSchema = __schema({
       { name: 'player_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, PlayerRow),
+  playerCosmetic: __table({
+    name: 'player_cosmetic',
+    indexes: [
+      { accessor: 'identity', name: 'player_cosmetic_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_cosmetic_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerCosmeticRow),
+  playerSkill: __table({
+    name: 'player_skill',
+    indexes: [
+      { accessor: 'identity', name: 'player_skill_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_skill_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, PlayerSkillRow),
+  socialEvent: __table({
+    name: 'social_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, SocialEventRow),
+  trade: __table({
+    name: 'trade',
+    indexes: [
+      { accessor: 'a', name: 'trade_a_idx_btree', algorithm: 'btree', columns: [
+        'a',
+      ] },
+      { accessor: 'b', name: 'trade_b_idx_btree', algorithm: 'btree', columns: [
+        'b',
+      ] },
+      { accessor: 'id', name: 'trade_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'trade_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TradeRow),
+  trainingDummy: __table({
+    name: 'training_dummy',
+    indexes: [
+      { accessor: 'id', name: 'training_dummy_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'training_dummy_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TrainingDummyRow),
   tree: __table({
     name: 'tree',
     indexes: [
@@ -176,23 +449,49 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("add_friend", AddFriendReducer),
   __reducerSchema("attack", AttackReducer),
+  __reducerSchema("attack_dummy", AttackDummyReducer),
+  __reducerSchema("attack_giant", AttackGiantReducer),
   __reducerSchema("cancel", CancelReducer),
+  __reducerSchema("cancel_trade_request", CancelTradeRequestReducer),
   __reducerSchema("configure_access", ConfigureAccessReducer),
+  __reducerSchema("confirm_trade", ConfirmTradeReducer),
+  __reducerSchema("contribute_project", ContributeProjectReducer),
+  __reducerSchema("craft", CraftReducer),
+  __reducerSchema("create_invite", CreateInviteReducer),
   __reducerSchema("drop_item", DropItemReducer),
+  __reducerSchema("duel_action", DuelActionReducer),
   __reducerSchema("eat_berry", EatBerryReducer),
+  __reducerSchema("emote", EmoteReducer),
+  __reducerSchema("end_visit", EndVisitReducer),
+  __reducerSchema("equip_technique", EquipTechniqueReducer),
+  __reducerSchema("expedition_action", ExpeditionActionReducer),
   __reducerSchema("follow", FollowReducer),
+  __reducerSchema("garden_dev_ripen", GardenDevRipenReducer),
   __reducerSchema("grant_agent", GrantAgentReducer),
   __reducerSchema("grant_player", GrantPlayerReducer),
+  __reducerSchema("harvest_garden", HarvestGardenReducer),
   __reducerSchema("move_item", MoveItemReducer),
   __reducerSchema("pickup_item", PickupItemReducer),
+  __reducerSchema("plant_garden", PlantGardenReducer),
+  __reducerSchema("redeem_invite", RedeemInviteReducer),
+  __reducerSchema("remove_friend", RemoveFriendReducer),
+  __reducerSchema("renew_grant", RenewGrantReducer),
+  __reducerSchema("request_trade", RequestTradeReducer),
+  __reducerSchema("respond_trade", RespondTradeReducer),
   __reducerSchema("revoke_player", RevokePlayerReducer),
   __reducerSchema("send_chat", SendChatReducer),
   __reducerSchema("set_appearance", SetAppearanceReducer),
   __reducerSchema("set_name", SetNameReducer),
-  __reducerSchema("set_stance", SetStanceReducer),
   __reducerSchema("set_target", SetTargetReducer),
+  __reducerSchema("set_trade_offer", SetTradeOfferReducer),
+  __reducerSchema("share_garden", ShareGardenReducer),
   __reducerSchema("start_harvest", StartHarvestReducer),
+  __reducerSchema("trigger_giant_raid", TriggerGiantRaidReducer),
+  __reducerSchema("unwield", UnwieldReducer),
+  __reducerSchema("wear_cosmetic", WearCosmeticReducer),
+  __reducerSchema("wield_item", WieldItemReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

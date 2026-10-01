@@ -1,0 +1,125 @@
+/* Death panel, bag compass, emote wheel and the training dummy's HP bar. */
+.social-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+.social-hud button { pointer-events: auto; }
+
+.death-panel {
+  position: absolute;
+  left: 50%;
+  top: calc(max(16px, env(safe-area-inset-top)) + 8px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line, #8a6a45);
+  background: #302a23f0;
+  color: var(--parchment, #f7f1e3);
+  font-size: 14px;
+  box-shadow: 0 6px 18px #0006;
+  text-align: center;
+}
+.death-panel.down { border-color: #c2553d; }
+/* Above the combat HUD (about 150px tall on desktop). */
+.death-panel.compact { top: auto; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 164px); padding: 6px 12px 6px; font-size: 13px; }
+.death-title { font-size: 18px; color: #ffb49f; letter-spacing: 0.02em; }
+.death-bag-line { display: flex; align-items: center; gap: 8px; }
+.death-bag-line b { color: #ffd36b; }
+.death-respawn { font-size: 12px; opacity: 0.85; }
+.bag-urgent { color: #ff8a70; font-weight: 700; }
+.bag-compass {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  color: #ffd36b;
+  /* The arrow points up the screen at 0; rotation is clockwise from there. */
+}
+.bag-compass svg { width: 20px; height: 20px; fill: currentColor; }
+.death-dismiss {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 0 2px;
+}
+.bag-life { width: 100%; height: 3px; background: #ffffff22; border-radius: 2px; overflow: hidden; }
+.bag-life > div { height: 100%; background: #ffd36b; transition: width 0.6s linear; }
+
+.emote-wheel {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: 64px;
+  height: 64px;
+}
+.emote-toggle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--line, #8a6a45);
+  background: #302a23f0;
+  color: var(--parchment, #f7f1e3);
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+}
+.emote-wheel.open .emote-toggle { border-color: #ffd36b; }
+.emote-toggle:hover:enabled, .emote-toggle:focus-visible { background: #514331; color: #fff6df; }
+.emote-toggle kbd, .emote-option kbd {
+  font: inherit;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.emote-ring { position: absolute; right: 0; bottom: calc(100% + 12px); width: min(300px, calc(100vw - 32px)); display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; padding: 10px; border: 2px solid var(--line, #8a6a45); border-radius: 16px; background: #f7f1e3f5; box-shadow: 0 8px 28px #201c2244; }
+.emote-option {
+  position: relative;
+  min-width: 0;
+  height: 66px;
+  border-radius: 10px;
+  border: 1px solid var(--line, #8a6a45);
+  background: #f7f1e3f5;
+  color: var(--ink, #2b211a);
+  font-weight: 700;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  box-shadow: 0 2px 3px #201c2215;
+}
+.emote-symbol { font-size: 23px; line-height: 24px; color: #805725; }
+.emote-option kbd { position: absolute; top: 3px; right: 5px; }
+.emote-option:hover, .emote-option:focus-visible { background: #ffd36b; }
+
+@media (max-width: 700px) {
+  .emote-wheel { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 156px); width: 52px; height: 52px; }
+  .death-panel.compact { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 210px); }
+}
+/* Short landscape screens anchor the combat HUD bottom-right (App.css): sit just left of it, not over Stop. */
+@media (max-height: 500px) and (min-width: 540px) {
+  .death-panel.compact { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 112px); }
+  .emote-wheel { bottom: max(8px, env(safe-area-inset-bottom)); right: calc(max(12px, env(safe-area-inset-right)) + 385px + 10px); width: 52px; height: 52px; }
+  .emote-ring { position: fixed; left: max(12px, env(safe-area-inset-left)); right: auto; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 64px); width: min(300px, calc(50vw - 24px)); }
+}
+@media (min-width: 540px) and (max-width: 700px) and (max-height: 500px) and (orientation: landscape) {
+  .emote-wheel { right: calc(max(12px, env(safe-area-inset-right)) + 50vw - 12px + 10px); }
+}

@@ -5,7 +5,10 @@ import { useTileMotion } from '../hooks/useTileMotion';
 
 const harness = vi.hoisted(() => ({ frame: () => {}, now: 0, trees: [] as { x: number; z: number }[] }));
 vi.mock('@react-three/fiber', () => ({ useFrame: (frame: () => void) => { harness.frame = frame; } }));
-vi.mock('../spacetime/hooks', () => ({ useTrees: () => harness.trees }));
+vi.mock('../spacetime/hooks', async () => {
+  const { worldBlockedSet } = await import('@sim');
+  return { useTrees: () => harness.trees, useWorldBlocked: () => worldBlockedSet(harness.trees) };
+});
 vi.mock('../spacetime/tickClock', () => ({ tickClock: { period: 600 } }));
 
 beforeEach(() => {

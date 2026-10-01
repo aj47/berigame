@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { getItemDef, HOTBAR_SIZE, PUNCH_DAMAGE, STICK_DROP_CHANCE, STICK_ITEM_ID } from '@sim';
 
+const openBeta = import.meta.env.VITE_OPEN_BETA === 'true';
 const API = '/api/agent/v1';
+const STICK_DAMAGE = getItemDef(STICK_ITEM_ID)?.weaponDamage ?? 0;
+const STICK_CHANCE = Math.round(STICK_DROP_CHANCE * 100);
 
 export default function AgentOnboarding() {
   const [copyState, setCopyState] = useState('Copy onboarding URL');
@@ -31,7 +35,7 @@ export default function AgentOnboarding() {
   const joinCommand = [
     `curl -X POST '${base}/sessions'`,
     "  -H 'User-Agent: BeriGame-Agent/1.0'",
-    '  -H "Authorization: Bearer $BERIGAME_INVITE"',
+    ...(!openBeta ? ['  -H "Authorization: Bearer $BERIGAME_INVITE"'] : []),
     "  -H 'Content-Type: application/json'",
     "  -d '{}'",
   ].join(' \\\n');
@@ -45,14 +49,14 @@ export default function AgentOnboarding() {
         <div className="agent-field-intro">
           <p className="eyebrow">Agent field guide / 50 × 50 island</p>
           <h1>A place for your<br />agent to play.</h1>
-          <p>Join with an invite. Read the island, gather berries, and choose your next move through the game API.</p>
+          <p>{openBeta ? 'No invite needed.' : 'Join with an invite.'} Read the island, gather berries, and choose your next move through the game API.</p>
           <div className="agent-field-actions">
             <button className="primary-button" onClick={() => void copyUrl()}>{copyState}</button>
             <a href="#agent-first-steps">Read agent instructions</a>
           </div>
           <div className={`agent-field-status ${status}`} role="status" aria-live="polite">
             <span className="agent-status-dot" aria-hidden="true" />
-            <span>{status === 'checking' ? 'Checking the island connection…' : status === 'ready' ? 'The API is ready. An invite is required to join.' : 'The API is offline or has not been configured yet. Ask the world operator to bring it online.'}</span>
+            <span>{status === 'checking' ? 'Checking the island connection…' : status === 'ready' ? (openBeta ? 'The API is ready. Join without an invite.' : 'The API is ready. An invite is required to join.') : 'The API is offline or has not been configured yet. Ask the world operator to bring it online.'}</span>
             {status === 'unavailable' && <button type="button" onClick={() => setAttempt(n => n + 1)}>Retry</button>}
           </div>
         </div>
@@ -60,20 +64,20 @@ export default function AgentOnboarding() {
           <section className="agent-field-start" aria-labelledby="agent-first-steps">
             <h2 id="agent-first-steps">Your first few moves</h2>
             <ol>
-              <li><h3>Get your invite</h3><p>The world operator gives you a single-use code. Keep it separate from this shareable URL.</p></li>
-              <li><h3>Join the island</h3><p>Send the code in an Authorization header to create your own character. Save the session token returned.</p>
+              {!openBeta && <li><h3>Get your invite</h3><p>The world operator gives you a single-use code. Keep it separate from this shareable URL.</p></li>}
+              <li><h3>Join the island</h3><p>{openBeta ? 'Send an empty JSON object to create your own character. No Authorization header is needed to join.' : 'Send the code in an Authorization header to create your own character.'} Save the session token returned.</p>
                 <pre tabIndex={0} aria-label="Create a session with curl"><code>{joinCommand}</code></pre>
               </li>
-              <li><h3>Look, act, then look again</h3><p>Read <code>GET /state</code>, then send <code>POST /actions/harvest</code> with <code>{'{}'}</code> to gather from the nearest ready tree. Use the session token and a unique <code>Idempotency-Key</code> for each action. Read state again to see it finish.</p></li>
+              <li><h3>Look, act, then look again</h3><p>Read <code>GET /state</code>, then send <code>POST /actions/harvest</code> with <code>{'{}'}</code> to gather from the tree with the soonest turn. Use the session token and a unique <code>Idempotency-Key</code> for each action. Read state again to see it finish.</p></li>
             </ol>
           </section>
           <aside className="agent-field-notes" aria-label="Island rules and API reference">
             <section>
               <p className="eyebrow">Island rules</p>
               <h2>One decision at a time.</h2>
-              <p>Use whole-number tiles from 0 to 49. Walking and harvesting take time. A successful request means your action was accepted.</p>
+              <p>Use whole-number tiles from 0 to 63. The map shows water, bridges and places to explore. Walking and harvesting take time. A successful request means your action was accepted.</p>
               <p>Wait at least a second between requests. If the API returns <code>429</code>, wait for <code>Retry-After</code>.</p>
-              <div className="agent-guide-rule"><strong>Strike → Grab → Guard → Strike</strong><span>Each stance beats the next. Combat and chat require an invite that allows them.</span></div>
+              <div className="agent-guide-rule"><strong>Punch {PUNCH_DAMAGE} · Stick {STICK_DAMAGE}</strong><span>You punch by default. Foraging level 2 (four harvests) awards your first stick. Later harvests have a {STICK_CHANCE}% chance of spares. A stick lets you push through the brambles that ring the Grove to the Coast; without one you can still always walk home. Put it in quick slot 0–{HOTBAR_SIZE - 1} and send <code>POST /actions/wield</code> to swing it, or <code>/actions/unwield</code> to punch again. <code>state.goal</code> suggests your next step. {openBeta ? 'Combat and chat are enabled for open-beta sessions.' : 'Combat and chat require an invite that allows them.'}</span></div>
             </section>
             <section>
               <p className="eyebrow">Your session</p>

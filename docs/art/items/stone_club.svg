@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Stone Club item icon: hand-drawn source for frontend/public/items/stone_club.png (render at 128x128, transparent). Driftwood haft with a flint head lashed on with cord. -->
+  <defs>
+    <linearGradient id="haft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E0CDAE"/>
+      <stop offset="0.55" stop-color="#B69E7D"/>
+      <stop offset="1" stop-color="#85705A"/>
+    </linearGradient>
+    <linearGradient id="stone" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8A9AB0"/>
+      <stop offset="0.5" stop-color="#55657C"/>
+      <stop offset="1" stop-color="#2F3A4C"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#2A2420" stroke-linejoin="round" stroke-linecap="round">
+    <!-- haft -->
+    <path d="M14 118 C 9 113, 10 106, 16 101 L 76 41 C 80 37, 88 37, 91 41 C 94 45, 92 51, 88 55 L 29 114 C 24 119, 18 122, 14 118 Z" fill="url(#haft)" stroke-width="4.5"/>
+    <!-- flint head across the top of the haft -->
+    <path transform="translate(87 38) scale(1.2) translate(-92 -34)" d="M70 22 L 96 8 L 120 24 L 118 50 L 100 60 L 78 52 L 64 36 Z" fill="url(#stone)" stroke-width="4.5"/>
+  </g>
+  <path transform="translate(87 38) scale(1.2) translate(-92 -34)" d="M96 10 L 94 30 L 72 24 Z" fill="#B7C4D6" opacity="0.7"/>
+  <g transform="translate(87 38) scale(1.2) translate(-92 -34)" fill="none" stroke="#1C2230" stroke-width="1.8" stroke-linejoin="round" opacity="0.85">
+    <path d="M96 8 L 94 32 L 120 24"/>
+    <path d="M94 32 L 100 60"/>
+    <path d="M94 32 L 64 36"/>
+  </g>
+  <path transform="translate(87 38) scale(1.2) translate(-92 -34)" d="M74 22 L 94 11" stroke="#EEF3FA" stroke-width="3" stroke-linecap="round"/>
+  <!-- cord lashing -->
+  <g stroke="#3A2211" stroke-width="1.6" fill="#C9934E" stroke-linejoin="round">
+    <path d="M70 44 L 84 58 L 88 54 L 74 40 Z"/>
+    <path d="M65 49 L 79 63 L 83 59 L 69 45 Z"/>
+    <path d="M78 34 L 92 48 L 95 44 L 82 31 Z"/>
+  </g>
+  <!-- haft highlight and shadow -->
+  <path d="M19 104 L 62 61" fill="none" stroke="#F4EAD6" stroke-width="3.2" stroke-linecap="round" opacity="0.9"/>
+  <path d="M30 110 L 64 76" fill="none" stroke="#6E5E4A" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+  <!-- grip wrap -->
+  <g stroke="#3A2211" stroke-width="1.6" fill="#A8723C">
+    <path d="M24 96 L 34 106 L 38 102 L 28 92 Z"/>
+    <path d="M30 90 L 40 100 L 44 96 L 34 86 Z"/>
+  </g>
+  <!-- butt end -->
+  <ellipse cx="18" cy="113" rx="6" ry="7.5" transform="rotate(-45 18 113)" fill="#DCCAA8" stroke="#2A2420" stroke-width="3"/>
+  <!-- sparkles -->
+  <path d="M24 36 l 3 8 l 8 3 l -8 3 l -3 8 l -3 -8 l -8 -3 l 8 -3 Z" fill="#FFE27A" stroke="#C99A2E" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M112 76 l 2 5 l 5 2 l -5 2 l -2 5 l -2 -5 l -5 -2 l 5 -2 Z" fill="#FFE27A" stroke="#C99A2E" stroke-width="1" stroke-linejoin="round"/>
+</svg>

@@ -33,11 +33,14 @@ for (const name of engines) {
     await page.waitForFunction(() => window.__berigame?.me && window.__berigameRender?.triangles > 1000 && !document.querySelector('.loading-screen'), null, { timeout: 30000 });
     check('world connected, animated model fetched and WebGL scene rendered', modelRequests.includes(200), await page.evaluate(() => window.__berigameRender));
     await page.screenshot({ path: path.join(output, `${name}-initial.png`) });
-    for (const [label, value] of [['Grab', 1], ['Guard', 2], ['Strike', 0]]) {
-      await page.locator('.stance-button').filter({ has: page.getByText(label, { exact: true }) }).tap();
-      await page.waitForFunction(stance => window.__berigame.me.stance === stance, value, { timeout: 5000 });
-    }
-    check('three stance controls work via touch', true);
+    // Quick slots replace the stance buttons: three touch targets that are empty (disabled) for a fresh character.
+    const quickLabels = await page.locator('.combat-hud .hotbar-slot').evaluateAll(els => els.map(el => el.getAttribute('aria-label')));
+    check('three quick slots render, empty, and the character punches', quickLabels.length === 3
+      && quickLabels.every((label, i) => label === `Quick slot ${i + 1}: empty`)
+      && await page.evaluate(() => window.__berigame.me.weapon === '')
+      && /Punch/.test(await page.locator('.combat-hud').textContent()), quickLabels);
+    await page.locator('.combat-hud .stop-button').tap();
+    check('Stop control works via touch', await page.evaluate(() => window.__berigame.me.weapon === '' && !window.__berigame.me.hostile));
     const original = await page.evaluate(() => window.__berigame.me);
     const target = await page.evaluate(([x, z]) => window.__berigameProject(x, z, 0), [original.x, original.z + 2]);
     await page.touchscreen.tap(target.x, target.y);
@@ -64,12 +67,15 @@ for (const name of engines) {
     await page.locator('.context-action').filter({hasText:'Harvest'}).tap({timeout:5000});
     await page.getByRole('button',{name:/^Bag/}).tap();
     await page.locator('.inventory-slot.filled').first().waitFor({timeout:18000});
-    check(`tree ${tree.id} harvest produces a berry`,true);
+    // A harvest may also add a stick in the same update, so check the berry by name rather than by count.
+    check(`tree ${tree.id} harvest produces a berry`, /^Slot 1: \w+berry, 1\b/.test(await page.locator('.inventory-slot').first().getAttribute('aria-label')));
     await page.locator('.inventory-slot.filled').first().tap();
     await page.getByRole('button',{name:'Move',exact:true}).tap();
     await page.locator('.inventory-slot').nth(3).tap();
     await page.waitForFunction(() => document.querySelectorAll('.inventory-slot')[3]?.classList.contains('filled'));
     check('touch inventory Move persists',true);
+    await page.waitForFunction(() => document.querySelector('.combat-hud .hotbar-slot[data-slot="0"]')?.getAttribute('aria-label') === 'Quick slot 1: empty', null, { timeout: 5000 });
+    check('moving the berry out of slot 1 empties quick slot 1', true);
     await page.screenshot({path:path.join(output,`${name}-inventory.png`)});
     await page.getByRole('button',{name:'Close inventory'}).tap();
     await page.getByRole('button',{name:/^Chat/}).tap();

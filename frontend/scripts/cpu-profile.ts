@@ -9,7 +9,7 @@ import { createHash } from 'node:crypto';
 import { DbConnection, tables } from '../src/module_bindings';
 const requireModule = createRequire(path.join(__dirname, 'cpu-profile.ts'));
 const { chromium } = requireModule(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
-const output = path.resolve(__dirname, '../../docs/art/game-review/cpu-investigation');
+const output = path.resolve(process.env.SHOT_DIR ?? path.join(__dirname, '../../docs/art/game-review/cpu-investigation'));
 fs.mkdirSync(output, { recursive: true });
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const fixtures: DbConnection[] = [];

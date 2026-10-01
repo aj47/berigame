@@ -26,8 +26,12 @@ even if the client keeps its connection open.
 Admission covers **all players in that world**, including browser players.
 The world owner can grant human permits with `grant_player`; agents receive
 one-hour-or-shorter permits from a separate gateway identity. The gateway cannot
-change admission policy, grant human access, renew agent permits, impersonate an
-existing character, or appoint another gateway. A combat-restricted player also
+change admission policy, grant owner-level human access, impersonate an existing
+character, or appoint another gateway. It can extend (`renew_grant`) only an
+unrevoked permit it issued itself, by at most one hour at a time; the beta uses
+this solely for returning browser players (docs/CLOUDFLARE_BETA.md). Agent API
+sessions are never renewed: each agent invite still yields one fresh character
+for at most one hour. A combat-restricted player also
 cannot be targeted by another player. Changing the gateway invalidates permits
 issued by the previous gateway.
 
@@ -115,6 +119,213 @@ Receipts remain for the whole session; conflicting reuse is rejected. Only one
 action can be in flight per session. A timeout closes the session because the
 action outcome may be uncertain. An accepted move or harvest may still be in
 progress; read state to observe completion.
+
+### Gameplay through the API
+
+Actions mirror the browser controls: `move`, `harvest`, `craft`, `eat`, `wield`, `unwield`,
+`stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`, `wear`,
+`attack_dummy`, `attack_giant`, `plant`, `harvest_garden`, `emote`, the social actions `invite_create`, `invite_redeem`,
+`friend_add`, `friend_remove`, `trade_request`, `trade_respond`, `trade_offer`,
+`trade_confirm`, `trade_cancel`, and the scoped `attack` and `chat`. OpenAPI has
+the exact schemas.
+
+- **Invite links.** `invite_create` makes (or replaces) your 8-character code,
+  valid for one hour (`state.invite`: `code`, `expiresInSeconds`, `linkQuery`
+  such as `?join=K7M2Q9XA`). The browser link is the game URL with only that
+  query; it never carries an identity or token. `invite_redeem` with someone's
+  code makes you friends both ways and places you beside them, unless you are
+  fighting or down. Without a stick you never land past the brambles: if the
+  inviter is on the hedge or the Coast you land on the nearest Grove tile, and
+  `state.notices` explains why. Without a stone club you never land past the
+  boulder line: you land on the nearest Coast tile instead.
+- **Friends.** `friend_add` / `friend_remove` (one-way list). `state.friends`
+  gives each friend's `online`, `area` and `tile`; walk to one with `follow`.
+- **Trading.** `trade_request` a player within 3 tiles (if they already asked
+  you, it accepts); they answer with `trade_respond` (`accept`/`decline`).
+  Both then `trade_offer` everything they give as `itemId:qty` pairs joined by
+  commas (`""` for nothing). Items stay in the bags and must not be wielded.
+  Any offer change clears both confirmations. `trade_confirm` agrees to the
+  trade exactly as `state.trade` shows it; when both have confirmed the swap
+  runs at once, all or nothing. A full bag, a missing or wielded item leaves
+  both bags unchanged, clears confirmations and adds a notice. Walking more
+  than 6 tiles apart, dying, leaving, or an unanswered request (30 s) cancels.
+- **Chat filter.** Each `state.chat` row has `nearby`: said within 12 tiles
+  (Chebyshev) of where you stand now. `state.notices` holds your last 10
+  personal notices (trade and invite results).
+
+- **Training dummy.** `attack_dummy` walks you to the practice post at (28,28)
+  (`state.dummies`) and keeps swinging with your punch or wielded weapon. No
+  combat access needed; it works in the safe ring and during grace (it does not
+  end grace), hurts nobody and never dies (60 HP that springs back to full).
+- **Emotes.** `emote` with `wave`, `cheer`, `sit` or `point`: cosmetic, seen by
+  everyone, ended by moving or acting; at most one every 2 ticks.
+- **Death drops.** Ground items you dropped on defeat carry `yourDeathDrop: true`
+  and `expiresInTicks` (piles last `groundItemTtlTicks`, 500).
+
+- **Combat is punch-or-stick.** While attacking, you swing automatically. Bare
+  fists punch for `PUNCH_DAMAGE` (3). A wielded stick hits for its
+  `weaponDamage` (6), a wielded stone club 8. Numbers come from `shared/sim`.
+- **Quick slots.** Inventory slots `0..HOTBAR_SIZE-1` (0..2) are the quick slots,
+  the same slots behind the game's 1/2/3 keys. State reports `hotbarSize`,
+  `punchDamage`, and a `hotbar`, `wielded` and `weaponDamage` value on every
+  inventory row.
+- **Getting a stick.** While you hold no stick (bag or wielded), each completed
+  berry harvest has a `STICK_DROP_CHANCE` (25%, about 1 in 4) chance to add a
+  sturdy stick next to the berry. It is pure luck: no meter, no guarantee. A
+  player already holding a stick never finds a spare. One harvest can add two
+  inventory rows, so find rows by `itemId`.
+- **The Grove and the bramble hedge.** You spawn at (25,25) in the Grove.
+  `ring(t)` is the Chebyshev distance from (25,25). Ring 17 (x or z = 8 or 42,
+  136 tiles) is a thorny bramble hedge; ring 18 and beyond is the Coast.
+  You may step onto a bramble tile only while holding a stick, or when stepping
+  in from the Coast. Stepping off is always allowed, so brambles keep a
+  stickless player in the Grove but never keep anyone out: you can always walk
+  home. Diagonals also need both orthogonal tiles to be enterable. State
+  reports `world.brambles {center, ring: 17, key: 'stick', rule}`,
+  `player.area` (`grove`, `hedge` or `coast`, also on every listed player) and
+  `me {area, safe, graceTicks, hasBrambleKey}`.
+- **Moving into the hedge.** `move` beyond the hedge without a stick is accepted
+  but clamped to the nearest reachable Grove tile; the receipt then contains
+  `destination` and `blockedBy: "brambles"`. `harvest` or `pickup` of something
+  you cannot reach because of the brambles is rejected with `422` and error code
+  `brambles` ("Thorny brambles — you need a sturdy stick to push through") and
+  queues nothing. Dropping the stick mid-walk stops you where you are.
+- **The Coast: nodes and the stone club (M2).** `state.nodes` lists every
+  gathering node: `{id, kind, name, tile, gives, ready, regrowTicks, harvesting}`
+  with `kind` `berry`, `driftwood` or `tide_rock`. Four driftwood piles lie on
+  the beach straight past the path crossings, (25,3), (46,25), (25,46), (3,25):
+  4 ticks to gather, 25 to wash up again, 1 driftwood. Four tide rocks sit in
+  the corners, (3,3), (46,3), (3,46), (46,46): 6 ticks, 40 to regrow, 1 flint.
+  Only berry trees find sticks. `harvest {nodeId}` gathers a given node
+  (`treeId` still works); `harvest {kind: "tide_rock"}` picks the node of that
+  kind with the soonest claim. You need a stick to reach them (they are past the
+  brambles). `state.recipes[] {id, name, inputs, canCraft, missing}` lists
+  what you can make; `POST /actions/craft {"recipe": "stone_club"}` turns
+  1 driftwood + 2 flint into a stone club instantly (rejected while dead or
+  attacking; a full bag drops it at your feet). Wield it like the stick: 8
+  damage a swing. `state.trees` (berry trees only) is kept for one release.
+- **The Boulders (M3).** The grid is now 64x64 (`state.gridSize`); the old
+  island keeps tiles 0-49 unchanged. Past its south-east corner lies the
+  Boulders: land with both x and z >= 36 and `max(x, z) > 50` (an L, 559
+  tiles). A one-tile **boulder line** (`max(x, z) = 50`, 29 tiles) guards it
+  with the same one-way rule as the brambles, keyed by the **stone club** (bag
+  or wielded): you may step onto it only while holding a club, or from the
+  Boulders; stepping off is always allowed, so you can always walk home. Every
+  other tile with x or z >= 50 is sea and never walkable. `state.world.boulders
+  {line: 50, min: 36, entry: {x: 51, z: 51}, key: 'stone_club', rule}`,
+  `player.area` (`boulder-line`, `boulders`, `sea` join `grove`, `hedge`,
+  `coast`) and `me.hasBoulderKey`. `move` past the line without a club is
+  clamped with `blockedBy: "boulders"` (a sea target gives `blockedBy: "sea"`);
+  `harvest`/`pickup`/`attack_giant` you cannot reach fail with `422` and error
+  code `boulders` ("Huge boulders — you need a stone club to clamber over").
+- **Obsidian.** Two obsidian outcrops (`kind: "obsidian"`) sit at the far ends
+  of the Boulders' L, (60,40) and (40,60): 8 ticks to chip, 150 to reform, 1
+  obsidian (about 1.3 a minute world-wide). `harvest {kind: "obsidian"}` works.
+- **Scheduled raids (1.4.0).** The Giant **sleeps between raids** and wakes
+  every 3 hours on the UTC hour (00:00, 03:00, ... UTC). `state.giant.asleep`,
+  `state.giant.nextWakeAt` (ISO time, null during a raid),
+  `nextWakeInSeconds`, and `state.giant.raid {active, endsAt?, endsInSeconds?,
+  playersAtWake?, lastOutcome: none|defeated|slept, count, schedule}`. Asleep
+  (`state: "asleep"`) it cannot be attacked: `attack_giant` fails with "The
+  Giant is asleep. It wakes in m:ss". Its raid HP is 600 plus 200 per extra
+  player standing in the Boulders when it wakes (at most 2000). A raid lasts 15
+  minutes; undefeated, it goes back to sleep. Everyone online who dealt at
+  least 24 damage that raid gets 6 obsidian and the Giant's Tooth keepsake
+  (`reward {itemId, quantity, minDamage, keepsake}`); then it sleeps until the
+  next wake. Cosmetic only; no power.
+- **Mentors (1.4.0).** `state.mentor {mentees, pinTiers, rule}` and
+  `friends[].mentees`. When a newer player first reaches the Coast or makes
+  their first stone club, the player whose invite link they used (or a mutual
+  friend online within 8 tiles) who joined at least a day earlier, or had
+  already crafted before they joined, earns the Mentor's Pin (finer at 3 and 10
+  mentees) and they earn the Welcomed Ribbon. One mentor per newcomer. Cosmetic.
+- **The Giant (F3).** `state.giant {id, tile: {x: 57, z: 57}, footprint: 1,
+  reach: 2, aggroRange: 8, state, health, maxHealth, telegraph?, asleep,
+  nextWakeAt, raid, reward, rule}`. A PvE world boss **open to everyone**: no
+  combat access needed, and hitting it never ends grace or makes you hostile.
+  `attack_giant` walks you within Chebyshev 2 of its centre (it blocks the 3x3
+  around it) and keeps swinging with your punch or weapon; its HP pool is
+  shared by everyone and does not regenerate during a raid. It attacks
+  players in the Boulders within 8 tiles: `state` goes `idle` ->
+  `winding_up` (with `telegraph {attack: slam|stomp, center, radius, damage,
+  landsInTicks, youAreInside}`) -> the blow lands -> `recovering`. A slam hits
+  the 3x3 around the targeted player's tile for 9 after a 3-tick wind-up; every
+  third attack is a stomp hitting everyone within 3 of its centre for 6 after 4
+  ticks. **Walk out of the marked square** (Chebyshev > radius) before
+  `landsInTicks` reaches 0 and you take nothing; then `attack_giant` again
+  (moving stops your swings; so does being hit). A blow can kill you (the whole
+  bag drops, club included). When it falls, the raid reward above goes to
+  every qualifying contributor (equal shares; online players only), and it
+  sleeps until the next scheduled wake.
+- **Your garden (1.5.0).** `state.garden {plots[] {plot, tile, locked, inReach, plant: null |
+  {itemId, name, stage: seed|sprout|bush|ripe, ripe, ripeInSeconds, yield}}, ripe, rule}`.
+  A private berry patch on the garden terrace (tiles (21,20), (22,20), (21,21), (22,21), just
+  north-west of the safe ring): every player has their own plots on the same tiles and only sees
+  their own plants. `POST /actions/plant {"plot": 0-3, "berry": "<berry itemId>"}` plants one
+  berry from your bag; it grows in **real time, also while you are offline**: greenberry 2 h ->
+  3 berries, strawberry 4 h -> 3, blueberry 6 h -> 3, goldberry 8 h -> 2. `POST
+  /actions/harvest_garden {"plot": n}` on a ripe plot gives the berries and Foraging XP (12 /
+  16 / 20 / 24). Ripe plants never wither. You must stand within Chebyshev 1 of the plot; from
+  farther away either action walks you there and returns `walking {tile}` (send it again on
+  arrival). 3 plots; the 4th opens at Foraging level 5. Rejections: "Walk to your garden
+  first", "Something is already growing there", "You need a berry of that kind to plant",
+  "Not ripe yet: 1h 20m to go", "Your bag is full: make room, your berries will wait" (the
+  plant stays).
+- **Skills (F2).** `state.skills[] {id, name, xp, level, maxLevel, xpToNext, harvestTicksSaved?}`
+  for `foraging` (every finished berry harvest, 8 XP), `beachcombing` (driftwood 6 XP,
+  flint 10 XP) and `crafting` (every make: club 40, mash 15, knife 25, crown 30).
+  `level` follows `xpForLevel(L) = 25·(L−1)²`, capped at 30 (21 025 XP). Levels are
+  persistent per identity and never change damage, HP, area access or the gold tree:
+  Foraging/Beachcombing 10 and 20 each shave one harvest tick (never below 3 ticks;
+  the goldberry tree is never faster), and Crafting levels unlock recipes.
+- **Recipes.** `state.recipes[] {id, name, inputs, output, cosmetic, level, locked, xp,
+  canCraft, missing}`. `stone_club` (1 driftwood + 2 flint, 8 damage) and `berry_mash`
+  (2 greenberry + 1 strawberry, eaten for +7 HP) are open to everyone; `flint_knife`
+  (1 driftwood + 1 flint, 6 damage, wielded like the stick but not a bramble key) needs
+  Crafting 2; `driftwood_crown` (3 driftwood + 1 flint) needs Crafting 5 and makes no
+  item: it unlocks the Driftwood Crown keepsake (once). A locked recipe is rejected
+  with "Needs Crafting level N".
+- **Keepsakes (cosmetics).** `state.cosmetics {worn {head, neck}, all[] {id, name, slot,
+  unlocked, how}}`. Earned by milestones: `straw_hat` (your first stick), `coast_scarf`
+  (stepping onto the Coast), `flower_crown` (Foraging 10), `shell_necklace`
+  (Beachcombing 10), `driftwood_crown` (the recipe), `woven_sash` (Crafting 10). A new
+  one is worn at once if that slot is empty. `POST /actions/wear {"slot": "head" |
+  "neck", "cosmetic": "<id>" | "none"}` changes what you wear. Purely visual; everyone
+  sees it.
+- **Busy trees: wait and claim.** `harvest` on a regrowing or claimed tree is
+  not an error: you walk next to it and wait. On the tick it ripens, waiters
+  claim it in this order: newcomers (in first-spawn grace), then the earliest
+  last input (any new action resets yours), then server order. The receipt has
+  `waiting {treeId, ripeInTicks}` when the tree is not ready yet. Without
+  `treeId`, `harvest` picks the tree with the soonest claim for you.
+- **Safety.** No attack starts or lands while either player is inside the safe
+  ring (`world.safeRing`, radius 2 around spawn). A player is also protected for
+  10 ticks after respawning, and a new character is protected until it gets a
+  stick (then 10 more ticks), attacks, or 3:00 (300 ticks) pass. Attacking ends
+  your own protection. New characters start at 20/30 HP.
+- **The goal.** `state.goal {id, text, hint, action, waiting?}` is the same
+  "First Day" chip the browser shows: `pick-berry`, `eat-berry`, `find-stick`,
+  `wield-stick` (only with combat access), `reach-coast`. `action` is the next
+  step as an action (`harvest {treeId}`, `eat {slot}`, `wield {slot}`,
+  `move {x, z}`) or `null` while you walk, wait or harvest. After First Day it
+  continues on the Coast: `gather-coast` ("Gather driftwood and 2 flint on the
+  Coast (n/3)", action `harvest {treeId}` on the right node), `make-club`
+  (action `craft {recipe}`), then `wield-club`; after that it is `null`. If
+  you lose your stick, `find-stick` and `reach-coast` return first.
+- **Wielding.** `POST /actions/wield {"slot": n}` wields the weapon in quick slot
+  `n`. Slots outside 0..2 get `400`. A slot without a weapon gets `422`.
+  `POST /actions/unwield {}` goes back to punching.
+- **Losing the stick.** Moving it out of the quick slots, dropping it, or dying
+  unwields it.
+- **Player state.** Each player in state has `weapon: null` (punching) or
+  `{ itemId, name, damage }`. Other players' weapons are public, because the stick
+  is drawn in their hand. Inventories stay private.
+
+API version **1.5.0** (personal garden) added `plant`, `harvest_garden` and `state.garden`. API version **1.4.0** (scheduled raids, mentors) added `state.giant.asleep`/`nextWakeAt`/`nextWakeInSeconds`/`raid`, the `asleep` giant state, `state.mentor` and `friends[].mentees`, and new cosmetics (`welcomed_ribbon`, `mentor_pin`, `mentor_pin_silver`, `mentor_pin_gold`, `giants_tooth`); `respawnInTicks` is gone (the Giant sleeps instead). API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
+fields `output`, `cosmetic`, `level`, `locked` and `xp`. API version **1.2.0** (M2) added `craft`, `harvest {nodeId | kind}`,
+`state.nodes` and `state.recipes`. API version **1.1.0** removed the rock-paper-scissors `stance` action and the
+`stance`/`fightState` player fields. `/actions/stance` now returns 404
+(`unknown_action` from the Node gateway, `not_found` at the Cloudflare edge).
 
 To revoke a player as the gateway operator:
 
@@ -209,5 +420,7 @@ SpacetimeDB server at `127.0.0.1:3010`. It requires
 `berigame-agent-api-check`, `BERIGAME_AGENT_TEST_OWNER` pointing to its disposable
 owner credential JSON, and `BERIGAME_AGENT_TEST_DATA` pointing to its private test
 directory. It checks real gameplay, separate identities, invite replay, scope
-enforcement, direct connection rejection, revocation and throttling. It never
+enforcement, direct connection rejection, revocation and throttling. Wielding a
+berry must be rejected. The stick wield/unwield round trip runs only when its
+first harvest happened to find a stick; otherwise it prints `SKIP`. It never
 targets the ordinary game world.

@@ -1,29 +1,47 @@
+import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { HARVEST_TICKS, MELEE_RANGE, Pending, chebyshev, nearestReachableTile } from '../../../shared/sim';
+import { MELEE_RANGE, Pending, chebyshev } from '../../../shared/sim';
+import { harvestTicksForPlayer } from '../lib/progress';
 import { blockedTiles } from '../lib/blocked';
-import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
+import { interactionTile } from '../lib/brambles';
+import { clearInteractions, currentTick, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 
-/** Walk next to a berry tree and pick from it. */
+/**
+ * Walk next to a berry tree (or a Coast node: driftwood pile, tide rock) and pick from it. A regrowing or claimed tree is
+ * not an error: the player waits next to it and claims it when it ripens
+ * (newcomers first, then whoever has waited longest).
+ */
 export const startHarvest = spacetimedb.reducer(
   { treeId: t.u32() },
   (ctx, { treeId }) => {
     const tree = ctx.db.tree.id.find(treeId);
     if (!tree) throw new SenderError('no such tree');
     const T = currentTick(ctx);
-    if (tree.cooldownUntilTick > T) throw new SenderError('tree is regrowing');
-    if (tree.harvester !== undefined) throw new SenderError('someone is already harvesting');
     const p = requireAlivePlayer(ctx);
+    if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, T);
+    // Picking the tree you are already harvesting keeps the harvest going. Releasing
+    // it first (below) would requeue you and restart the harvest from zero.
+    if (p.harvestTreeId === tree.id && sameId(tree.harvester, p.identity)) {
+      savePlayer(ctx, p);
+      return;
+    }
     clearInteractions(ctx, p);
+    const free = tree.harvester === undefined && tree.cooldownUntilTick <= T;
     if (chebyshev(p, tree) <= MELEE_RANGE) {
-      ctx.db.tree.id.update({ ...tree, harvester: p.identity });
-      p.harvestTreeId = tree.id;
-      p.harvestEndTick = T + HARVEST_TICKS;
+      if (free) {
+        ctx.db.tree.id.update({ ...tree, harvester: p.identity });
+        p.harvestTreeId = tree.id;
+        p.harvestEndTick = T + harvestTicksForPlayer(ctx, p.identity, tree);
+      } else {
+        p.pending = Pending.Harvest;
+        p.pendingId = BigInt(tree.id);
+      }
     } else {
+      const dest = interactionTile(ctx, p, tree, blockedTiles(ctx), MELEE_RANGE);
       p.pending = Pending.Harvest;
       p.pendingId = BigInt(tree.id);
-      const dest = nearestReachableTile(p, tree, blockedTiles(ctx));
       p.targetX = dest.x;
       p.targetZ = dest.z;
     }

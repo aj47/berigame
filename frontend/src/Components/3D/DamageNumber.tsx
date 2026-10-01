@@ -1,24 +1,30 @@
 import { Html } from '@react-three/drei';
 import React, { useEffect, useState } from 'react';
 import { Vector3 } from 'three';
-import { EventKind } from '@sim';
+import { EventKind, isWeapon } from '@sim';
 
 interface DamageNumberProps {
   playerPosition: { x: number; y: number; z: number };
   yOffset: number;
   kind: number;
   text: string;
+  /** The event's item: a Hit's weapon ('' = punch), a harvested berry or a found item. */
+  itemId?: string;
   appearAt?: number;
 }
 
 const KIND_CLASS: Record<number, string> = {
   [EventKind.Hit]: 'normal-damage',
-  [EventKind.Counter]: 'counter-damage',
-  [EventKind.Clash]: 'clash',
   [EventKind.Eat]: 'heal',
   [EventKind.Death]: 'death',
   [EventKind.HarvestDone]: 'harvest',
+  [EventKind.ItemFound]: 'item-found',
+  /** progressStore XP_FLOAT_KIND: skill XP gained. */
+  100: 'xp-gain',
 };
+
+const kindClass = (kind: number, itemId?: string) =>
+  kind === EventKind.Hit && itemId && isWeapon(itemId) ? 'stick-damage' : KIND_CLASS[kind] ?? '';
 
 const DamageNumber = React.memo<DamageNumberProps>((props) => {
   const remaining = () => Math.max(0, (props.appearAt ?? 0) - performance.now());
@@ -29,14 +35,10 @@ const DamageNumber = React.memo<DamageNumberProps>((props) => {
   }, [props.appearAt]);
   const position = new Vector3(props.playerPosition.x, props.playerPosition.y + props.yOffset, props.playerPosition.z);
   const [randBool] = useState(() => Math.random() < 0.5);
-  const clash = props.kind === EventKind.Clash;
-  const className = clash ? 'combat-impact' : `damage-number ${KIND_CLASS[props.kind] ?? ''} ${randBool ? 'animation1' : 'animation2'}`;
   if (!visible) return null;
   return (
-    <Html zIndexRange={[6, 4]} prepend center position={position} className={className}>
-      {clash ? <span className="clash-spark" role="img" aria-label="Clash" /> : (
-        <span aria-label={props.kind === EventKind.Counter ? `${props.text} counter damage` : undefined}>{props.text}</span>
-      )}
+    <Html zIndexRange={[6, 4]} prepend center position={position} className={`damage-number ${kindClass(props.kind, props.itemId)} ${randBool ? 'animation1' : 'animation2'}`}>
+      <span>{props.text}</span>
     </Html>
   );
 });

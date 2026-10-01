@@ -1,4 +1,5 @@
 import type { Identity } from 'spacetimedb';
+import { statsItem } from './stats';
 import { GROUND_ITEM_TTL_TICKS, INVENTORY_SIZE, addItem, emptySlots, type Slot, type Tile } from '../../../shared/sim';
 import type { Ctx, GroundItemRow, InventorySlotRow } from './types';
 
@@ -72,6 +73,7 @@ function addToInventory(ctx: Ctx, owner: Identity, itemId: string, quantity: num
 /** A harvested reward is new, so overflow needs a new ground pile. */
 export function giveItem(ctx: Ctx, owner: Identity, itemId: string, quantity: number, at: Tile, tick: number): number {
   const taken = addToInventory(ctx, owner, itemId, quantity);
+  statsItem(ctx, owner, itemId);
   const remaining = quantity - taken;
   if (remaining > 0) dropOnGround(ctx, owner, itemId, remaining, at, tick);
   return taken;

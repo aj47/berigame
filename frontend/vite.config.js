@@ -29,6 +29,19 @@ export default defineConfig({
       '@sim': path.resolve(__dirname, '../shared/sim'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // three.js (half the bundle, no dependencies of its own) changes far less
+        // often than the game: its own chunk stays cached across deploys and
+        // downloads in parallel with the entry (modulepreload).
+        manualChunks(id) {
+          if (/node_modules\/three\//.test(id)) return 'three'
+          return undefined
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       '/api/agent': { target: process.env.BERIGAME_AGENT_API_ORIGIN ?? 'http://127.0.0.1:3001', changeOrigin: true },

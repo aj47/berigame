@@ -4,7 +4,15 @@
  */
 import { DbConnection, tables, type EventContext } from '../src/module_bindings';
 import type { CombatEvent, Player } from '../src/module_bindings/types';
-import { EventKind, FightState, MOVEMENT_STEPS_PER_TICK, Stance, TICK_MS } from '../../shared/sim';
+import {
+  areaOf, chebyshev, EventKind, FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, getItemDef, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, MAX_HP, MOVEMENT_STEPS_PER_TICK,
+  Pending, PUNCH_DAMAGE, RESPAWN_GRACE_TICKS, STICK_ITEM_ID, TICK_MS,
+  DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, NODE_SEEDS, NodeKind, STONE_CLUB_ITEM_ID,
+  enterRule, isBramble, nearestReachableTile, worldBlockedSet,
+} from '../../shared/sim';
+
+const STICK_DAMAGE = getItemDef(STICK_ITEM_ID)!.weaponDamage;
+const CLUB_DAMAGE = getItemDef(STONE_CLUB_ITEM_ID)!.weaponDamage;
 
 const URI = process.env.SPACETIME_URI ?? 'ws://127.0.0.1:3000';
 const DB = process.env.SPACETIME_DB ?? 'berigame';
@@ -61,9 +69,42 @@ function other(c: Client, id: string): Player {
   throw new Error(`${c.name}: player ${id.slice(0, 6)} missing`);
 }
 
+/** Every swing is a Hit now; there are no clashes, counters or knockbacks. */
 function exchanges(c: Client, first: string, second: string): CombatEvent[] {
-  return c.events.filter((event) => [EventKind.Hit, EventKind.Counter, EventKind.Clash].includes(event.kind) &&
+  return c.events.filter((event) => event.kind === EventKind.Hit &&
     [first, second].includes(event.attacker.toHexString()) && [first, second].includes(event.defender.toHexString()));
+}
+
+/** Own inventory rows. A harvest can add two rows at once (berry + stick), so callers filter by itemId. */
+function inv(c: Client) {
+  return [...c.conn.db.inventorySlot.iter()].filter((row) => row.owner.toHexString() === c.identity);
+}
+const rowsOf = (c: Client, itemId: string) => inv(c).filter((row) => row.itemId === itemId);
+const countOf = (c: Client, itemId: string) => rowsOf(c, itemId).reduce((n, row) => n + row.quantity, 0);
+const isBerry = (itemId: string) => (getItemDef(itemId)?.healthRestore ?? 0) > 0;
+const harvestsDone = (c: Client) => c.events.filter((e) => e.kind === EventKind.HarvestDone && e.attacker.toHexString() === c.identity).length;
+
+/**
+ * Harvest the nearest ready tree again and again until the STICK_DROP_CHANCE
+ * roll turns up a stick. Six trees with a 50-tick regrow, so allow minutes.
+ */
+async function findStick(c: Client, timeoutMs = 420_000): Promise<number> {
+  const start = Date.now();
+  let harvests = 0;
+  while (rowsOf(c, STICK_ITEM_ID).length === 0) {
+    if (Date.now() - start > timeoutMs) throw new Error(`${c.name}: no stick after ${harvests} harvests`);
+    const p = me(c);
+    const T = tick(c);
+    // Berry trees only: the tree table also holds the Coast/Boulders nodes (M2/M3).
+    const tree = [...c.conn.db.tree.iter()].filter((t) => t.kind === NodeKind.Berry && t.harvester === undefined && t.cooldownUntilTick <= T)
+      .sort((a, b) => chebyshev(p, a) - chebyshev(p, b) || a.id - b.id)[0];
+    if (!tree) { await sleep(TICK_MS); continue; }
+    const before = harvestsDone(c);
+    try { await c.conn.reducers.startHarvest({ treeId: tree.id }); } catch { await sleep(TICK_MS); continue; }
+    try { await waitFor('stick-hunt harvest completes', () => harvestsDone(c) > before, 20_000); harvests++; }
+    catch { await c.conn.reducers.cancel({}); }
+  }
+  return harvests;
 }
 
 async function availableTree(c: Client, treeId: number): Promise<void> {
@@ -85,13 +126,22 @@ function check(label: string, ok: boolean, extra = ''): void {
   if (!ok) failures++;
 }
 
+async function rejection(fn: () => Promise<unknown>): Promise<string> {
+  try { await fn(); return ''; } catch (e: any) { return String(e?.message ?? e); }
+}
+
 async function main() {
   const A = await connect('A');
   const B = await connect('B');
+  // A freshly published database may not have run its first tick yet.
+  await waitFor('both clients see a running world', () => tick(A) > 0 && tick(B) > 0, 10_000);
   check('both clients see the world row', tick(A) > 0 && tick(B) > 0, `tick=${tick(A)}`);
   await waitFor('both clients see each other online', () => [...A.conn.db.player.iter()].some((p) => p.identity.toHexString() === B.identity && p.online) && [...B.conn.db.player.iter()].some((p) => p.identity.toHexString() === A.identity && p.online));
   check('both clients see each other online', true);
-  check('A spawned at 25,25 with 30hp', me(A).x === 25 && me(A).z === 25 && me(A).hp === 30);
+  check(`A spawned at 25,25 tired: ${FIRST_SPAWN_HP}/${MAX_HP} HP`, me(A).x === 25 && me(A).z === 25 && me(A).hp === FIRST_SPAWN_HP && me(A).maxHp === MAX_HP);
+  check('a new character is in first-spawn grace until +300 ticks', inGrace(me(A), tick(A)) && Math.abs(me(A).respawnTick + RESPAWN_GRACE_TICKS - (tick(A) + FIRST_SPAWN_GRACE_TICKS)) <= 20,
+    `respawnTick=${me(A).respawnTick} tick=${tick(A)}`);
+  check('a new player fights with bare fists', me(A).weapon === '' && me(B).weapon === '');
 
   // --- tick cadence ---------------------------------------------------------
   const t0 = tick(A); const w0 = Date.now();
@@ -119,14 +169,147 @@ async function main() {
   await sleep(TICK_MS * 3);
   check('cannot stand on a tree tile', !(me(A).x === 30 && me(A).z === 25), `at ${me(A).x},${me(A).z}`);
 
-  // --- combat ----------------------------------------------------------------
-  await B.conn.reducers.setTarget({ x: 27, z: 25 });
-  await waitFor('B at 27,25', () => me(B).x === 27);
+  // --- safety: the safe ring and newcomer grace -------------------------------
+  await B.conn.reducers.setTarget({ x: 26, z: 25 });
+  await waitFor('B at 26,25 (in the safe ring)', () => me(B).x === 26);
+  check('nobody can attack into the safe ring', /safe ring/.test(await rejection(() => A.conn.reducers.attack({ target: me(B).identity }))));
+  await B.conn.reducers.setTarget({ x: 28, z: 25 });
+  await waitFor('B at 28,25', () => me(B).x === 28);
+  check('nobody can attack a newcomer in grace', /protected/.test(await rejection(() => A.conn.reducers.attack({ target: me(B).identity }))));
+
+  // --- the bramble hedge: a stickless player stops inside it --------------------
+  // The island layout owns the hedge shape, so ask the shared sim where the walk clamps.
+  const hedgeStop = nearestReachableTile(me(B), { x: 2, z: 25 }, worldBlockedSet(B.conn.db.tree.iter()), enterRule(false));
+  await B.conn.reducers.setTarget({ x: 2, z: 25 });
+  await waitFor('B stops at the hedge', () => me(B).x === hedgeStop.x && me(B).z === hedgeStop.z && me(B).targetX === undefined, 15_000);
+  check(`without a stick, a walk to the Coast stops at (${hedgeStop.x},${hedgeStop.z}) inside the hedge`, areaOf(me(B)) === 'grove' && !isBramble(me(B)));
+  await B.conn.reducers.setTarget({ x: 28, z: 25 });
+  await waitFor('B back at 28,25', () => me(B).x === 28, 15_000);
+
+  // --- harvest -----------------------------------------------------------------
+  await availableTree(A, 4);
+  await A.conn.reducers.startHarvest({ treeId: 4 });
+  await waitFor('A claims tree 4', () => A.conn.db.tree.id.find(4)?.harvester?.toHexString() === A.identity, 6_000);
+  await waitFor('A gets a berry', () => countOf(A, 'berry_blueberry') === 1, 6_000);
+  const berry = rowsOf(A, 'berry_blueberry')[0];
+  check('berry is a blueberry in slot 0', berry.itemId === 'berry_blueberry' && berry.slot === 0 && berry.quantity === 1);
+  const bonusStick = rowsOf(A, STICK_ITEM_ID).length > 0;
+  check('a harvest adds only a berry and at most one bonus stick', inv(A).length === (bonusStick ? 2 : 1), inv(A).map((r) => r.itemId).join(','));
+  check('an ItemFound event accompanies exactly the bonus stick',
+    A.events.some((e) => e.kind === EventKind.ItemFound && e.attacker.toHexString() === A.identity && e.itemId === STICK_ITEM_ID) === bonusStick);
+  check('tree 4 is on cooldown', (A.conn.db.tree.id.find(4)?.cooldownUntilTick ?? 0) > tick(A));
+  check('B cannot see A inventory (RLS)', [...B.conn.db.inventorySlot.iter()].length === 0);
+  const waitError = await rejection(() => B.conn.reducers.startHarvest({ treeId: 4 }));
+  check('harvesting a regrowing tree queues instead of failing', waitError === '', waitError);
+  await waitFor('B waits beside tree 4', () => chebyshev(me(B), { x: 30, z: 25 }) <= 1 && me(B).pending === Pending.Harvest && me(B).harvestTreeId === 0, 6_000);
+  check('B waits beside the regrowing tree with the harvest queued', true);
+  await B.conn.reducers.cancel({});
+
+  // --- eat -----------------------------------------------------------------------
+  const hpBefore = me(A).hp;
+  await A.conn.reducers.eatBerry({ slot: berry.slot });
+  await waitFor('hp restored and berry consumed', () => me(A).hp === Math.min(MAX_HP, hpBefore + 5) && countOf(A, 'berry_blueberry') === 0, 3_000);
+  check('eating test began below full health', hpBefore < MAX_HP);
+  check('blueberry healed 5', me(A).hp === Math.min(MAX_HP, hpBefore + 5), `${hpBefore}->${me(A).hp}`);
+  check('berry consumed', countOf(A, 'berry_blueberry') === 0);
+  const eatEvent = A.events.find((event) => event.kind === EventKind.Eat && event.attacker.toHexString() === A.identity);
+  check('eating while disengaged still delays the next swing', !!eatEvent && me(A).nextSwingTick >= eatEvent.tick + 3);
+
+  // --- drop / pickup ----------------------------------------------------------
+  await availableTree(A, 2);
+  await A.conn.reducers.startHarvest({ treeId: 2 });
+  await waitFor('A gets a greenberry', () => countOf(A, 'berry_greenberry') === 1, 15_000);
+  await A.conn.reducers.dropItem({ slot: rowsOf(A, 'berry_greenberry')[0].slot, quantity: 1 });
+  await waitFor('our ground item appears', () => [...B.conn.db.groundItem.iter()].some((item) => item.droppedBy.toHexString() === A.identity && item.itemId === 'berry_greenberry'), 3_000);
+  const gi = [...B.conn.db.groundItem.iter()].find((item) => item.droppedBy.toHexString() === A.identity && item.itemId === 'berry_greenberry')!;
+  await B.conn.reducers.pickupItem({ id: gi.id });
+  await waitFor('B picked it up', () => !B.conn.db.groundItem.id.find(gi.id) && [...B.conn.db.inventorySlot.iter()].length === 1, 15_000);
+  check('B now holds the greenberry', [...B.conn.db.inventorySlot.iter()][0]?.itemId === 'berry_greenberry');
+
+  // --- stick: found by harvesting, wielded from a quick slot, seen by everyone ---
+  const stickHarvests = await findStick(A);
+  check('harvesting eventually finds a stick', rowsOf(A, STICK_ITEM_ID).length > 0, `${stickHarvests} extra harvest(s)`);
+  const find = A.events.find((e) => e.kind === EventKind.ItemFound && e.attacker.toHexString() === A.identity && e.itemId === STICK_ITEM_ID);
+  check('the stick find is announced as ItemFound', !!find);
+  check('a stick ends first-spawn grace after 10 more ticks', !!find && me(A).respawnTick <= find.tick, `respawnTick=${me(A).respawnTick} find=${find?.tick}`);
+  // Spare sticks (docs/ADVENTURES.md): after the guaranteed first, each berry harvest may find another (25%).
+  const foundBefore = A.events.filter((e) => e.kind === EventKind.ItemFound).length;
+  const sticksBefore = countOf(A, STICK_ITEM_ID);
+  const extra = harvestsDone(A);
+  // A berry tree: a Coast node would hand A driftwood/flint and break the craft checks below.
+  const spareTree = [...A.conn.db.tree.iter()].filter((t) => t.kind === NodeKind.Berry).sort((a, b) => a.cooldownUntilTick - b.cooldownUntilTick || chebyshev(me(A), a) - chebyshev(me(A), b))[0];
+  await A.conn.reducers.startHarvest({ treeId: spareTree.id });
+  await waitFor('one more harvest while holding the stick', () => harvestsDone(A) > extra, 60_000);
+  const spareFound = A.events.filter((e) => e.kind === EventKind.ItemFound).length - foundBefore;
+  check('a harvest while holding a stick finds at most one spare, announced as ItemFound',
+    spareFound <= 1 && countOf(A, STICK_ITEM_ID) === sticksBefore + spareFound, `sticks ${sticksBefore}->${countOf(A, STICK_ITEM_ID)} found=${spareFound}`);
+
+  let stickSlot = rowsOf(A, STICK_ITEM_ID)[0].slot;
+  if (stickSlot >= HOTBAR_SIZE) {
+    await A.conn.reducers.moveItem({ from: stickSlot, to: 0 });
+    await waitFor('stick moved into quick slot 1', () => rowsOf(A, STICK_ITEM_ID).some((row) => row.slot === 0), 3_000);
+    stickSlot = 0;
+  }
+  let wieldError = await rejection(() => A.conn.reducers.wieldItem({ slot: HOTBAR_SIZE }));
+  check('wielding outside the quick slots is rejected', wieldError.length > 0, wieldError);
+  const hotbarBerry = inv(A).find((row) => row.slot < HOTBAR_SIZE && isBerry(row.itemId));
+  if (hotbarBerry) {
+    wieldError = await rejection(() => A.conn.reducers.wieldItem({ slot: hotbarBerry.slot }));
+    check('a berry cannot be wielded', wieldError.length > 0 && me(A).weapon === '', wieldError);
+  }
+  await A.conn.reducers.wieldItem({ slot: stickSlot });
+  await waitFor('A wields the stick', () => me(A).weapon === STICK_ITEM_ID, 3_000);
+  await waitFor('B sees the stick in A\'s hand', () => other(B, A.identity).weapon === STICK_ITEM_ID, 3_000);
+  check('the wielded stick is public on the player row', true);
+  await A.conn.reducers.unwield({});
+  await waitFor('unwield returns to punching', () => me(A).weapon === '', 3_000);
+
+  // --- the stick is the key: through the hedge to the Coast, and home again ------
+  await A.conn.reducers.setTarget({ x: 2, z: 25 });
+  const route: string[] = [];
+  await waitFor('A reaches the Coast at (2,25)', () => {
+    const p = me(A);
+    const at = `${p.x},${p.z}`;
+    if (route.at(-1) !== at) route.push(at);
+    return p.x === 2 && p.z === 25;
+  }, 30_000);
+  check('a stick holder pushes through the hedge to the Coast', areaOf(me(A)) === 'coast', route.join(' '));
+  const sticksCarried = countOf(A, STICK_ITEM_ID);
+  await A.conn.reducers.dropItem({ slot: stickSlot, quantity: 1 });
+  await waitFor('stick dropped on the Coast', () => countOf(A, STICK_ITEM_ID) === sticksCarried - 1, 3_000);
+  await waitFor('B sees the stick on the Coast', () => [...B.conn.db.groundItem.iter()].some((g) => g.itemId === STICK_ITEM_ID && g.droppedBy.toHexString() === A.identity), 3_000);
+  const coastStick = [...B.conn.db.groundItem.iter()].find((g) => g.itemId === STICK_ITEM_ID && g.droppedBy.toHexString() === A.identity)!;
+  const fetchError = await rejection(() => B.conn.reducers.pickupItem({ id: coastStick.id }));
+  check('a stickless player cannot fetch an item beyond the brambles', /brambles/.test(fetchError), fetchError);
+  check('...and nothing is queued', me(B).pending === Pending.None);
+  // A, standing on the Coast next to it, picks the key back up.
+  await A.conn.reducers.pickupItem({ id: coastStick.id });
+  await waitFor('A picks the stick back up', () => countOf(A, STICK_ITEM_ID) === sticksCarried, 6_000);
+  stickSlot = Math.min(...rowsOf(A, STICK_ITEM_ID).map((row) => row.slot));
+  if (stickSlot >= HOTBAR_SIZE) {
+    const free = [0, 1, 2].find((s) => !inv(A).some((row) => row.slot === s)) ?? 0;
+    await A.conn.reducers.moveItem({ from: stickSlot, to: free });
+    await waitFor('stick back in the quick bar', () => rowsOf(A, STICK_ITEM_ID)[0]?.slot === free, 3_000);
+    stickSlot = free;
+  }
+  await A.conn.reducers.setTarget({ x: 29, z: 25 });
+  await waitFor('A home at 29,25', () => me(A).x === 29 && me(A).z === 25, 30_000);
+
+  // --- combat: wait for B's first-spawn grace (3:00) to end --------------------
+  await B.conn.reducers.setTarget({ x: 31, z: 27 });
+  await waitFor('B at 31,27', () => me(B).x === 31 && me(B).z === 27, 10_000);
+  const graceEnds = me(B).respawnTick + RESPAWN_GRACE_TICKS;
+  console.log(`      waiting ${Math.max(0, graceEnds - tick(A))} ticks for B's first-spawn grace to end`);
+  await waitFor('B leaves first-spawn grace', () => tick(A) >= graceEnds, 200_000);
+  const hpB0 = me(B).hp;
   await A.conn.reducers.attack({ target: me(B).identity });
-  await waitFor('A adjacent to B', () => Math.max(Math.abs(me(A).x - me(B).x), Math.abs(me(A).z - me(B).z)) <= 1);
-  await waitFor('first swing lands (both Strike => clash)', () => exchanges(A, A.identity, B.identity).length >= 1, 5_000);
+  check('an accepted attack ends the attacker\'s grace', me(A).respawnTick === 0);
+  await waitFor('A adjacent to B', () => chebyshev(me(A), me(B)) <= 1);
+  await waitFor('first swing lands', () => exchanges(A, A.identity, B.identity).length >= 1, 5_000);
   const first = exchanges(A, A.identity, B.identity)[0];
-  check('first exchange is a clash', first.kind === EventKind.Clash, `kind=${first.kind}`);
+  check('first exchange is a bare-handed Hit by A', first.kind === EventKind.Hit && first.attacker.toHexString() === A.identity && first.itemId === '',
+    `kind=${first.kind} itemId=${JSON.stringify(first.itemId)}`);
+  check(`a punch deals ${PUNCH_DAMAGE}`, first.damage === PUNCH_DAMAGE && first.defenderHp === hpB0 - PUNCH_DAMAGE, `dmg=${first.damage} hp=${hpB0}->${first.defenderHp}`);
   await waitFor('B receives the same exchange', () => exchanges(B, A.identity, B.identity).some((event) => event.tick === first.tick));
   check('B received the same event', true);
 
@@ -139,66 +322,109 @@ async function main() {
   const spamSwings = exchanges(A, A.identity, B.identity).filter((event) => event.attacker.toHexString() === A.identity);
   check('repeated Attack preserves four-tick swing spacing', spamSwings.length >= 3 && spamSwings.slice(1).every((event, i) => event.tick - spamSwings[i].tick === 4), spamSwings.map((event) => event.tick).join(','));
 
-  // B switches to Guard (beats Strike): A's swings now get countered, A takes 2.
-  await B.conn.reducers.setStance({ stance: Stance.Guard });
-  const hpA0 = me(A).hp;
-  await waitFor('A gets countered', () => exchanges(A, A.identity, B.identity).some((e) => e.kind === EventKind.Counter), 5_000);
-  await sleep(200);
-  check('counter cost A 2hp', me(A).hp === hpA0 - 2, `${hpA0}->${me(A).hp}`);
-  check('B in Advantage, A in Disadvantage', me(B).fightState === FightState.Advantage && me(A).fightState === FightState.Disadvantage);
-
-  // B retaliates: swings should alternate with A's (offset by 2 ticks).
+  // B retaliates: swings should alternate with A's (offset by 2 ticks), every one a punch.
   await B.conn.reducers.attack({ target: me(A).identity });
   const nBefore = exchanges(A, A.identity, B.identity).length;
   await waitFor('several exchanges', () => exchanges(A, A.identity, B.identity).length >= nBefore + 4, 12_000);
-  const exch = exchanges(A, A.identity, B.identity).slice(nBefore);
+  const exch = exchanges(A, A.identity, B.identity).slice(nBefore, nBefore + 4);
   const attackersAlternate = exch.every((e, i) => i === 0 || e.attacker.toHexString() !== exch[i - 1].attacker.toHexString());
   const ticksApart = exch.every((e, i) => i === 0 || e.tick - exch[i - 1].tick === 2);
   check('exchanges alternate between A and B', attackersAlternate, exch.map((e) => e.attacker.toHexString().slice(4, 8)).join(','));
   check('exchanges are 2 ticks apart', ticksApart, exch.map((e) => e.tick).join(','));
-  const hitByB = exch.find((e) => e.attacker.toHexString() === B.identity && e.kind === EventKind.Hit);
-  check('B (Guard) hits A (Strike)', !!hitByB, hitByB ? `dmg=${hitByB.damage}` : '');
-  check('advantage hit deals 6 and knocks back', !!hitByB && hitByB.damage === 6 && A.events.some((e) => e.kind === EventKind.Knockback));
+  const hitByB = exch.find((e) => e.attacker.toHexString() === B.identity);
+  check('B hits A back', !!hitByB, hitByB ? `dmg=${hitByB.damage}` : '');
+  check(`every rally swing is a ${PUNCH_DAMAGE}-damage punch`, exch.every((e) => e.damage === PUNCH_DAMAGE && e.itemId === ''),
+    exch.map((e) => `${e.damage}${e.itemId ? ':' + e.itemId : ''}`).join(','));
+  check('no retired exchange kinds (1-3) arrive', ![...A.events, ...B.events].some((e) => e.kind >= 1 && e.kind <= 3));
+  await B.conn.reducers.cancel({});
 
-  // --- harvest -----------------------------------------------------------------
-  await A.conn.reducers.cancel();
-  await B.conn.reducers.cancel();
-  await availableTree(A, 4);
-  await A.conn.reducers.startHarvest({ treeId: 4 });
-  await waitFor('A claims tree 4', () => A.conn.db.tree.id.find(4)?.harvester?.toHexString() === A.identity, 6_000);
-  await waitFor('A gets a berry', () => [...A.conn.db.inventorySlot.iter()].length === 1, 6_000);
-  const berry = [...A.conn.db.inventorySlot.iter()][0];
-  check('berry is a blueberry in slot 0', berry.itemId === 'berry_blueberry' && berry.slot === 0 && berry.quantity === 1);
-  check('tree 4 is on cooldown', (A.conn.db.tree.id.find(4)?.cooldownUntilTick ?? 0) > tick(A));
-  check('B cannot see A inventory (RLS)', [...B.conn.db.inventorySlot.iter()].length === 0);
-  let rejected = '';
-  try { await B.conn.reducers.startHarvest({ treeId: 4 }); } catch (e: any) { rejected = String(e?.message ?? e); }
-  check('harvesting a regrowing tree is rejected', rejected.length > 0, rejected);
+  // --- stick swing and death with real carried inventory -------------------------
+  const carried = [...B.conn.db.inventorySlot.iter()].map(({ itemId, quantity }) => ({ itemId, quantity }));
+  check('death test begins with a carried greenberry', carried.length === 1 && carried[0].itemId === 'berry_greenberry' && carried[0].quantity === 1);
+  const lootBefore = countOf(A, carried[0]?.itemId ?? '');
+  const stickHitsBefore = A.events.filter((e) => e.kind === EventKind.Hit && e.attacker.toHexString() === A.identity && e.itemId === STICK_ITEM_ID).length;
+  await A.conn.reducers.wieldItem({ slot: stickSlot });
+  await waitFor('A swings the stick at B', () => A.events.filter((e) => e.kind === EventKind.Hit && e.attacker.toHexString() === A.identity && e.itemId === STICK_ITEM_ID).length > stickHitsBefore, 20_000);
+  const stickHit = A.events.filter((e) => e.kind === EventKind.Hit && e.attacker.toHexString() === A.identity && e.itemId === STICK_ITEM_ID)[stickHitsBefore];
+  check(`a stick swing deals ${STICK_DAMAGE} and names the stick`, stickHit.damage === STICK_DAMAGE && stickHit.itemId === STICK_ITEM_ID, `dmg=${stickHit.damage} itemId=${stickHit.itemId}`);
+  // B's copy of the event can arrive a moment after A's.
+  await waitFor('B sees the stick hit', () => B.events.some((e) => e.tick === stickHit.tick && e.kind === EventKind.Hit && e.itemId === STICK_ITEM_ID), 5_000).catch(() => {});
+  check('B received the stick Hit event', B.events.some((e) => e.tick === stickHit.tick && e.kind === EventKind.Hit && e.itemId === STICK_ITEM_ID));
+  await waitFor('B dies and drops carried inventory', () => me(B).state === 1 && [...B.conn.db.inventorySlot.iter()].length === 0, 40_000);
+  await waitFor('A sees the death drop', () => [...A.conn.db.groundItem.iter()].some((item) => item.droppedBy.toHexString() === B.identity && item.droppedOnDeath));
+  const deathDrops = [...A.conn.db.groundItem.iter()].filter((item) => item.droppedBy.toHexString() === B.identity && item.droppedOnDeath);
+  check('death drop preserves the exact carried item and quantity', deathDrops.length === 1 && deathDrops[0].itemId === carried[0]?.itemId && deathDrops[0].quantity === carried[0]?.quantity);
+  check('death event identifies B', A.events.some((event) => event.kind === EventKind.Death && event.defender.toHexString() === B.identity));
+  const killingBlow = A.events.filter((e) => e.kind === EventKind.Hit && e.defender.toHexString() === B.identity).at(-1);
+  check('B died purely from HP reaching 0', !!killingBlow && killingBlow.defenderHp === 0, killingBlow ? `dmg=${killingBlow.damage} hp=${killingBlow.defenderHp}` : 'no hit');
+  check('A stopped targeting the dead player', me(A).combatTarget === undefined);
+  await waitFor('B respawns', () => me(B).state === 0 && me(B).hp === MAX_HP, 6_000);
+  check('B respawned at spawn at full HP with an empty inventory', me(B).x === 25 && me(B).z === 25 && [...B.conn.db.inventorySlot.iter()].length === 0);
+  check('a respawned player is protected (safe ring and 10-tick grace)', inGrace(me(B), tick(A))
+    && (await rejection(() => A.conn.reducers.attack({ target: me(B).identity }))).length > 0);
+  await A.conn.reducers.pickupItem({ id: deathDrops[0].id });
+  await waitFor('A recovers death loot and B sees the pile disappear', () => !B.conn.db.groundItem.id.find(deathDrops[0].id) && countOf(A, carried[0].itemId) === lootBefore + carried[0].quantity);
+  check('death loot is collectible by the other player', true);
 
-  // --- eat -----------------------------------------------------------------------
-  const hpBefore = me(A).hp;
-  await A.conn.reducers.eatBerry({ slot: 0 });
-  await waitFor('hp restored and berry consumed', () => me(A).hp === Math.min(30, hpBefore + 5) && [...A.conn.db.inventorySlot.iter()].length === 0, 3_000);
-  check('eating test began below full health', hpBefore < 30);
-  check('blueberry healed 5', me(A).hp === Math.min(30, hpBefore + 5), `${hpBefore}->${me(A).hp}`);
-  check('berry consumed', [...A.conn.db.inventorySlot.iter()].length === 0);
-  const eatEvent = A.events.find((event) => event.kind === EventKind.Eat && event.attacker.toHexString() === A.identity);
-  const recovery = me(A).nextSwingTick;
-  check('eating while disengaged still delays the next swing', !!eatEvent && recovery >= eatEvent.tick + 3);
+  // --- a third, fresh player is protected ------------------------------------------
+  const C = await connect('C');
+  await waitFor('A sees C online', () => [...A.conn.db.player.iter()].some((p) => p.identity.toHexString() === C.identity && p.online));
+  check(`C washes ashore at ${FIRST_SPAWN_HP} HP`, me(C).hp === FIRST_SPAWN_HP);
+  check('C cannot be attacked in first-spawn grace', /protected|safe ring/.test(await rejection(() => A.conn.reducers.attack({ target: me(C).identity }))));
+  C.conn.disconnect();
+
+  let spare = INVENTORY_SIZE - 1;
+  while (spare >= HOTBAR_SIZE && inv(A).some((row) => row.slot === spare)) spare--;
+  await A.conn.reducers.moveItem({ from: stickSlot, to: spare });
+  await waitFor('moving the stick out of the quick slots puts it away', () => me(A).weapon === '' && rowsOf(A, STICK_ITEM_ID).some((row) => row.slot === spare), 3_000);
+  check('the server unwields a stick moved out of the quick slots', true);
+
+  // --- M2 the Coast: driftwood + 2 flint -> stone club ------------------------------
+  // A still carries the stick (the bramble key), so A can cross the hedge to the Coast nodes.
+  const rock = NODE_SEEDS.find((n) => n.kind === NodeKind.TideRock)!;
+  const pile = NODE_SEEDS.filter((n) => n.kind === NodeKind.Driftwood).sort((x, y) => chebyshev(x, rock) - chebyshev(y, rock))[0];
+  check('the Coast nodes are seeded into the tree table', NODE_SEEDS.every((n) => A.conn.db.tree.id.find(n.id)?.kind === n.kind));
+  const gather = async (node: { id: number; x: number; z: number }, itemId: string, timeout = 60_000) => {
+    const before = countOf(A, itemId);
+    await A.conn.reducers.startHarvest({ treeId: node.id });
+    await waitFor(`A gathers ${itemId} at node ${node.id}`, () => countOf(A, itemId) > before, timeout);
+  };
+  await gather(rock, FLINT_ITEM_ID);
+  check('a tide rock yields flint on the Coast', countOf(A, FLINT_ITEM_ID) === 1 && areaOf(me(A)) === 'coast', `area=${areaOf(me(A))}`);
+  // The rock is regrowing: harvesting it again waits beside it and claims it when it is ready.
+  await gather(rock, FLINT_ITEM_ID, 90_000);
+  check('waiting at a regrowing tide rock yields a second flint', countOf(A, FLINT_ITEM_ID) === 2);
+  const craftError = await rejection(() => A.conn.reducers.craft({ recipe: STONE_CLUB_ITEM_ID }));
+  check('crafting without driftwood is refused', /need/i.test(craftError), craftError);
+  await gather(pile, DRIFTWOOD_ITEM_ID);
+  check('a driftwood pile yields driftwood', countOf(A, DRIFTWOOD_ITEM_ID) === 1);
+  await A.conn.reducers.craft({ recipe: STONE_CLUB_ITEM_ID });
+  await waitFor('A crafts a stone club', () => countOf(A, STONE_CLUB_ITEM_ID) === 1, 3_000);
+  check('crafting consumes 1 driftwood + 2 flint and makes one stone club',
+    countOf(A, STONE_CLUB_ITEM_ID) === 1 && countOf(A, DRIFTWOOD_ITEM_ID) === 0 && countOf(A, FLINT_ITEM_ID) === 0);
+  let clubSlot = rowsOf(A, STONE_CLUB_ITEM_ID)[0].slot;
+  if (clubSlot >= HOTBAR_SIZE) {
+    const free = [...Array(HOTBAR_SIZE).keys()].find((slot) => !inv(A).some((row) => row.slot === slot))!;
+    await A.conn.reducers.moveItem({ from: clubSlot, to: free });
+    await waitFor('club in a quick slot', () => rowsOf(A, STONE_CLUB_ITEM_ID).some((row) => row.slot === free), 3_000);
+    clubSlot = free;
+  }
+  await A.conn.reducers.wieldItem({ slot: clubSlot });
+  await waitFor('A wields the club', () => me(A).weapon === STONE_CLUB_ITEM_ID, 3_000);
+  check('the stone club wields from a quick slot', true);
+  // Back in the Grove, south of the safe ring, A clubs B (B's respawn grace is long over).
+  await A.conn.reducers.setTarget({ x: 25, z: 30 });
+  await B.conn.reducers.setTarget({ x: 25, z: 31 });
+  await waitFor('A and B meet south of the safe ring', () => me(A).x === 25 && me(A).z === 30 && me(B).x === 25 && me(B).z === 31, 60_000);
+  const clubHitsBefore = A.events.filter((e) => e.kind === EventKind.Hit && e.itemId === STONE_CLUB_ITEM_ID).length;
+  const hpBeforeClub = me(B).hp;
   await A.conn.reducers.attack({ target: me(B).identity });
-  check('re-entering combat preserves eating recovery', me(A).nextSwingTick === recovery);
-  await A.conn.reducers.cancel();
-
-  // --- drop / pickup ----------------------------------------------------------
-  await availableTree(A, 2);
-  await A.conn.reducers.startHarvest({ treeId: 2 });
-  await waitFor('A gets a greenberry', () => [...A.conn.db.inventorySlot.iter()].length === 1, 15_000);
-  await A.conn.reducers.dropItem({ slot: 0, quantity: 1 });
-  await waitFor('our ground item appears', () => [...B.conn.db.groundItem.iter()].some((item) => item.droppedBy.toHexString() === A.identity && item.itemId === 'berry_greenberry'), 3_000);
-  const gi = [...B.conn.db.groundItem.iter()].find((item) => item.droppedBy.toHexString() === A.identity && item.itemId === 'berry_greenberry')!;
-  await B.conn.reducers.pickupItem({ id: gi.id });
-  await waitFor('B picked it up', () => !B.conn.db.groundItem.id.find(gi.id) && [...B.conn.db.inventorySlot.iter()].length === 1, 15_000);
-  check('B now holds the greenberry', [...B.conn.db.inventorySlot.iter()][0]?.itemId === 'berry_greenberry');
+  await waitFor('A swings the club at B', () => A.events.filter((e) => e.kind === EventKind.Hit && e.itemId === STONE_CLUB_ITEM_ID).length > clubHitsBefore, 10_000);
+  await A.conn.reducers.cancel({});
+  const clubHit = A.events.filter((e) => e.kind === EventKind.Hit && e.itemId === STONE_CLUB_ITEM_ID)[clubHitsBefore];
+  check(`a stone club hit deals ${CLUB_DAMAGE}`, CLUB_DAMAGE === 8 && clubHit.damage === CLUB_DAMAGE && clubHit.defenderHp === hpBeforeClub - CLUB_DAMAGE,
+    `dmg=${clubHit.damage} hp=${hpBeforeClub}->${clubHit.defenderHp}`);
+  await A.conn.reducers.unwield({});
 
   // --- chat / name -----------------------------------------------------------
   const testName = `Test_${A.identity.slice(-10)}`;
@@ -209,29 +435,12 @@ async function main() {
   check('name propagated', other(B, A.identity).name === testName);
 
   // --- persistence across reconnect ------------------------------------------
+  const respawnTickBefore = me(A).respawnTick;
   A.conn.disconnect();
   await sleep(500);
   const A2 = await connect('A2', A.token);
   check('reconnect keeps identity', A2.identity === A.identity);
-  check('reconnect keeps name and hp', me(A2).name === testName && me(A2).hp === other(B, A.identity).hp, `hp=${me(A2).hp}`);
-
-  // --- death with real carried inventory, visible drops, and recovery ---------
-  const carried = [...B.conn.db.inventorySlot.iter()].map(({ itemId, quantity }) => ({ itemId, quantity }));
-  check('death test begins with a carried greenberry', carried.length === 1 && carried[0].itemId === 'berry_greenberry' && carried[0].quantity === 1);
-  await B.conn.reducers.setStance({ stance: Stance.Grab });
-  await A2.conn.reducers.setStance({ stance: Stance.Strike });
-  await A2.conn.reducers.attack({ target: me(B).identity });
-  await waitFor('B dies and drops carried inventory', () => me(B).state === 1 && [...B.conn.db.inventorySlot.iter()].length === 0, 40_000);
-  await waitFor('A2 sees the death drop', () => [...A2.conn.db.groundItem.iter()].some((item) => item.droppedBy.toHexString() === B.identity && item.droppedOnDeath));
-  const deathDrops = [...A2.conn.db.groundItem.iter()].filter((item) => item.droppedBy.toHexString() === B.identity && item.droppedOnDeath);
-  check('death drop preserves the exact carried item and quantity', deathDrops.length === 1 && deathDrops[0].itemId === carried[0]?.itemId && deathDrops[0].quantity === carried[0]?.quantity);
-  check('death event identifies B', A2.events.some((event) => event.kind === EventKind.Death && event.defender.toHexString() === B.identity));
-  check('A2 stopped targeting the dead player', me(A2).combatTarget === undefined);
-  await waitFor('B respawns', () => me(B).state === 0 && me(B).hp === 30, 6_000);
-  check('B respawned at spawn with an empty inventory', me(B).x === 25 && me(B).z === 25 && [...B.conn.db.inventorySlot.iter()].length === 0);
-  await A2.conn.reducers.pickupItem({ id: deathDrops[0].id });
-  await waitFor('A2 recovers death loot and B sees the pile disappear', () => !B.conn.db.groundItem.id.find(deathDrops[0].id) && [...A2.conn.db.inventorySlot.iter()].some((item) => item.itemId === carried[0].itemId && item.quantity === carried[0].quantity));
-  check('death loot is collectible by the other player', true);
+  check('reconnect keeps name, hp and grace state', me(A2).name === testName && me(A2).hp === other(B, A.identity).hp && me(A2).respawnTick === respawnTickBefore, `hp=${me(A2).hp}`);
 
   console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
   A2.conn.disconnect();

@@ -4,11 +4,19 @@ import { readFile, mkdtemp, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Identity } from 'spacetimedb';
+import { HOTBAR_SIZE, INVENTORY_SIZE, STICK_ITEM_ID } from '../../shared/sim';
 import { connect, createGameService, mintIdentity, type Credential } from './game';
 import { createAgentServer } from './http';
 import { InviteStore } from './security';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// A harvest can add two rows at once (the berry plus a bonus stick), so count berries by item ID.
+const berries = (state: any): any[] => state.inventory.filter((row: any) => row.itemId.startsWith('berry_'));
+const freeSlot = (state: any, below = INVENTORY_SIZE) => {
+  const used = new Set(state.inventory.map((row: any) => row.slot));
+  for (let i = 0; i < below; i++) if (!used.has(i)) return i;
+  return -1;
+};
 async function main() {
   const uri = process.env.BERIGAME_AGENT_URI ?? '';
   const database = process.env.BERIGAME_AGENT_DB ?? '';
@@ -59,24 +67,55 @@ async function main() {
     console.log('PASS invite redemption, replay rejection, and private player session');
     const key = randomUUID();
     assert.equal((await request('/actions/harvest', a.token, {}, key)).status, 200);
-    let current = await waitState(a.token, s => s.inventory.length === 1);
-    assert.equal(current.inventory[0].quantity, 1);
+    let current = await waitState(a.token, s => berries(s).length === 1);
+    assert.equal(berries(current)[0].quantity, 1);
     assert.equal((await request('/actions/harvest', a.token, {}, key)).status, 200);
     console.log('PASS API-only walk, harvest, inventory receipt, and safe action retry');
     await action(a.token, 'name', { name: 'API_Check' });
     await action(a.token, 'appearance', { hairStyle: 1, skinTone: 2, hairColor: 1, robeColor: 1, wrapColor: 1 });
-    await action(a.token, 'stance', { stance: 'guard' });
+    // Wielding: a berry is not a weapon, unwield always succeeds, and a stick (a chance on each harvest) round-trips.
+    const attempt = async (token: string, name: string, body: object) => { await sleep(1050); return (await request('/actions/' + name, token, body, randomUUID())).status; };
+    const firstBerry = berries(current)[0].slot;
+    assert.equal(await attempt(a.token, 'wield', { slot: firstBerry }), firstBerry < HOTBAR_SIZE ? 422 : 400);
+    await action(a.token, 'unwield', {});
+    current = await state(a.token);
+    assert.equal(current.player.weapon, null);
+    assert.equal(current.hotbarSize, HOTBAR_SIZE);
+    let stick = current.inventory.find((row: any) => row.itemId === STICK_ITEM_ID);
+    if (stick) {
+      if (stick.slot >= HOTBAR_SIZE) {
+        const to = freeSlot(current, HOTBAR_SIZE);
+        assert.ok(to >= 0, 'no free quick slot for the stick');
+        await action(a.token, 'inventory_move', { from: stick.slot, to });
+        current = await waitState(a.token, s => s.inventory.some((row: any) => row.itemId === STICK_ITEM_ID && row.slot === to));
+        stick = current.inventory.find((row: any) => row.itemId === STICK_ITEM_ID);
+      }
+      assert.equal(stick.hotbar, true);
+      await action(a.token, 'wield', { slot: stick.slot });
+      current = await waitState(a.token, s => s.player.weapon?.itemId === STICK_ITEM_ID);
+      assert.ok(current.player.weapon.damage > current.punchDamage);
+      assert.ok(current.inventory.some((row: any) => row.itemId === STICK_ITEM_ID && row.wielded));
+      await action(a.token, 'unwield', {});
+      await waitState(a.token, s => s.player.weapon === null);
+      console.log('PASS stick found on harvest, wielded and unwielded through HTTP');
+    } else {
+      console.log('SKIP stick wield round-trip: this harvest found no stick (chance per harvest)');
+    }
     await action(a.token, 'move', { x: 26, z: 26 });
     await waitState(a.token, s => s.player.tile.x === 26 && s.player.tile.z === 26);
     await action(a.token, 'stop', {});
-    await action(a.token, 'inventory_move', { from: 0, to: 1 });
-    await action(a.token, 'drop', { slot: 1, quantity: 1 });
-    current = await waitState(a.token, s => s.inventory.length === 0 && s.groundItems.length > 0);
-    await action(a.token, 'pickup', { id: current.groundItems[0].id });
-    current = await waitState(a.token, s => s.inventory.length === 1);
-    await action(a.token, 'eat', { slot: current.inventory[0].slot });
-    await waitState(a.token, s => s.inventory.length === 0);
-    console.log('PASS movement, appearance, stance, name, stop, inventory move/drop/pickup and eat through HTTP');
+    current = await state(a.token);
+    const berry = berries(current)[0];
+    const spare = freeSlot(current);
+    await action(a.token, 'inventory_move', { from: berry.slot, to: spare });
+    await waitState(a.token, s => berries(s).some(row => row.slot === spare));
+    await action(a.token, 'drop', { slot: spare, quantity: 1 });
+    current = await waitState(a.token, s => berries(s).length === 0 && s.groundItems.some((item: any) => item.itemId === berry.itemId));
+    await action(a.token, 'pickup', { id: current.groundItems.find((item: any) => item.itemId === berry.itemId).id });
+    current = await waitState(a.token, s => berries(s).length === 1);
+    await action(a.token, 'eat', { slot: berries(current)[0].slot });
+    await waitState(a.token, s => berries(s).length === 0);
+    console.log('PASS movement, appearance, wield/unwield, name, stop, inventory move/drop/pickup and eat through HTTP');
     const b = await enter(true, true), c = await enter(true, true);
     assert.notEqual(b.playerId, a.playerId); assert.notEqual(b.playerId, c.playerId);
     assert.equal((await request('/actions/attack', a.token, { playerId: b.playerId }, randomUUID())).status, 403);

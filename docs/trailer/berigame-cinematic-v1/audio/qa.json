@@ -1,0 +1,33 @@
+{
+  "sample_rate": 48000,
+  "channels": 2,
+  "duration_seconds": 40,
+  "samples": 1920000,
+  "mix_peak_dbfs": -1.249999999999999,
+  "premaster_loudness": {
+    "input_i": "-22.20",
+    "input_tp": "-7.40",
+    "input_lra": "10.30",
+    "input_thresh": "-32.48",
+    "output_i": "-14.55",
+    "output_tp": "-1.20",
+    "output_lra": "7.20",
+    "output_thresh": "-24.69",
+    "normalization_type": "dynamic",
+    "target_offset": "-1.45"
+  },
+  "linear_master_gain_db": 6.156734779642336,
+  "music_peak_dbfs": -1.2658820423517836,
+  "sfx_peak_dbfs": -19.66007063666016,
+  "score_title": "Small Friends, Great Big World",
+  "verified_final": {
+    "integrated_lufs": -16.04,
+    "true_peak_dbtp": -1.24,
+    "loudness_range_lu": 10.2,
+    "clipped_samples": 0,
+    "stem_sum_max_error": 1.1920928955078125e-07,
+    "final_sample_max_abs": 0.0,
+    "all_finite": true,
+    "stereo_correlation": 0.8827890069861356
+  }
+}

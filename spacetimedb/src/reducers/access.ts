@@ -34,6 +34,30 @@ export const grantAgent = spacetimedb.reducer(
   },
 );
 
+/**
+ * The gateway extends a permit it issued earlier, so a returning browser keeps
+ * its character (F1). Only an existing, gateway-issued, unrevoked permit can be
+ * renewed: revocation writes expiresAtMicros = 0, which is final here.
+ */
+export const renewGrant = spacetimedb.reducer(
+  { identity: t.identity(), lifetimeSeconds: t.u32() },
+  (ctx, { identity, lifetimeSeconds }) => {
+    const policy = ctx.db.accessPolicy.id.find(0);
+    if (!policy?.requireAdmission || !sameId(policy.gateway, ctx.sender)) throw new SenderError('agent gateway required');
+    if (lifetimeSeconds < 60 || lifetimeSeconds > 3600) throw new SenderError('agent lifetime must be 60..3600 seconds');
+    const grant = ctx.db.playerGrant.identity.find(identity);
+    if (!grant || !grant.agent || !sameId(grant.issuer, ctx.sender)) throw new SenderError('no renewable permit for this identity');
+    if (grant.expiresAtMicros === 0n) throw new SenderError('this permit was revoked');
+    const now = ctx.timestamp.microsSinceUnixEpoch;
+    if (grant.expiresAtMicros <= now) {
+      let active = 0;
+      for (const other of ctx.db.playerGrant.iter()) if (other.agent && other.expiresAtMicros > now) active++;
+      if (active >= 32) throw new SenderError('agent capacity reached');
+    }
+    ctx.db.playerGrant.identity.update({ ...grant, expiresAtMicros: now + BigInt(lifetimeSeconds) * 1_000_000n });
+  },
+);
+
 /** Human players in an admitted world are explicitly approved by its owner. */
 export const grantPlayer = spacetimedb.reducer(
   { identity: t.identity(), lifetimeSeconds: t.u32(), combat: t.bool(), chat: t.bool() },
@@ -69,4 +93,13 @@ export const revokePlayer = spacetimedb.reducer({ identity: t.identity() }, (ctx
       ctx.db.player.identity.update(p);
     }
   }
+});
+
+/** End one visit while keeping its identity renewable. Admin revocation (zero) remains final. */
+export const endVisit = spacetimedb.reducer({ identity: t.identity() }, (ctx, { identity }) => {
+  const policy = ctx.db.accessPolicy.id.find(0), grant = ctx.db.playerGrant.identity.find(identity);
+  if (!grant?.agent || !sameId(policy?.gateway, ctx.sender) || !sameId(grant.issuer, ctx.sender)) throw new SenderError('issuing gateway required');
+  if (grant.expiresAtMicros !== 0n) ctx.db.playerGrant.identity.update({ ...grant, expiresAtMicros: ctx.timestamp.microsSinceUnixEpoch });
+  const row = ctx.db.player.identity.find(identity);
+  if (row) { const p = { ...row, online: false }; clearInteractions(ctx, p); ctx.db.player.identity.update(p); }
 });

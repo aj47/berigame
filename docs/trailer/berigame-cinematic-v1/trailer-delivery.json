@@ -1,0 +1,44 @@
+{
+  "status": "rendered_and_verified",
+  "created_utc": "2026-09-30T23:10:40.638967+00:00",
+  "title": "BeriGame \u2014 Little island. Giant adventures.",
+  "duration_seconds": 40,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "fps": 24,
+  "frames": 960,
+  "video_codec": "H.264 High",
+  "audio_codec": "AAC stereo 48 kHz",
+  "encoded_audio_lufs": -16.05,
+  "encoded_audio_true_peak_dbtp": -1.24,
+  "full_decode": "passed",
+  "encoded_contact_sheet_and_exact_final_frame": "visually_checked",
+  "delivery_type": "cinematic interpretation using original BeriGame characters; separately staged set",
+  "publication_status": "local export only",
+  "files": [
+    {
+      "file": "berigame-cinematic-trailer-1080p.mp4",
+      "bytes": 27924226,
+      "sha256": "c9721d3473d1a15f9c2454701df5374f747d05662b3a22b499b25be189483ffb"
+    },
+    {
+      "file": "berigame-cinematic-trailer-textless-1080p.mp4",
+      "bytes": 27539481,
+      "sha256": "6474b1293dbddc97d4a0ad13010f9deff9eba2da1f37b34a1e5fad1e97e5815f"
+    },
+    {
+      "file": "berigame-cinematic.blend",
+      "bytes": 7572084,
+      "sha256": "0bb6e56bd31ff310372e95b1017ff813496094238746d2e9f6e29be39b92a99b"
+    },
+    {
+      "file": "berigame-trailer-poster.jpg",
+      "bytes": 438218,
+      "sha256": "94c2dabf85e124e7aa0e6a8e5e58fe35a5c72f5b8273f2ee922bf1a82f0bdf95"
+    }
+  ],
+  "independent_full_video_qa": "passed: 960 frames, zero adjacent duplicates, expected cuts, no severe visual issues",
+  "qa_report": "previews/final-encoded-qa.json"
+}

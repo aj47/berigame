@@ -6,3 +6,17 @@ export * from './combat';
 export * from './items';
 export * from './inventory';
 export * from './appearance';
+export * from './areas';
+export * from './goals';
+export * from './nodes';
+export * from './social';
+export * from './friends';
+export * from './trade';
+export * from './giant';
+export * from './skills';
+export * from './raid';
+export * from './mentor';
+export * from './garden';
+export * from './adventure';
+
+export * from './terrain';

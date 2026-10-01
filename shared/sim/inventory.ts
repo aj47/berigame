@@ -1,5 +1,5 @@
-import { INVENTORY_SIZE } from './constants';
-import { getItemDef } from './items';
+import { HOTBAR_SIZE, INVENTORY_SIZE } from './constants';
+import { getItemDef, isWeapon } from './items';
 import type { Slot } from './types';
 
 export function emptySlots(): Slot[] {
@@ -12,9 +12,22 @@ function stackLimit(itemId: string): number {
 
 /**
  * Add `quantity` of `itemId`, topping up existing stacks first, then filling
- * empty slots. Returns the new slot array and whatever did not fit.
+ * empty slots. Weapons go to the quick bar instead (see placeWeapon), so a
+ * found stick can always be wielded straight away. Returns the new slot array
+ * and whatever did not fit.
  */
 export function addItem(slots: readonly Slot[], itemId: string, quantity: number): { slots: Slot[]; remaining: number } {
+  if (isWeapon(itemId)) {
+    let out = slots.slice();
+    let remaining = quantity;
+    while (remaining > 0) {
+      const placed = placeWeapon(out, itemId);
+      if (!placed) break;
+      out = placed;
+      remaining -= 1;
+    }
+    return { slots: out, remaining };
+  }
   const out = slots.slice();
   const limit = stackLimit(itemId);
   let remaining = quantity;
@@ -34,6 +47,32 @@ export function addItem(slots: readonly Slot[], itemId: string, quantity: number
     }
   }
   return { slots: out, remaining };
+}
+
+/**
+ * Put one weapon in the first empty quick slot. With the quick bar full, it
+ * takes the last quick slot that does not hold a weapon, and that stack moves
+ * to the first empty bag slot. Otherwise it goes to the first empty slot.
+ * Returns null when the bag is full.
+ */
+function placeWeapon(slots: Slot[], itemId: string): Slot[] | null {
+  const out = slots.slice();
+  const item = { itemId, quantity: 1 };
+  const bar = Math.min(HOTBAR_SIZE, out.length);
+  for (let i = 0; i < bar; i++) {
+    if (out[i] === null) { out[i] = item; return out; }
+  }
+  const free = out.indexOf(null, bar);
+  if (free < 0) return null;
+  for (let i = bar - 1; i >= 0; i--) {
+    if (!isWeapon(out[i]!.itemId)) {
+      out[free] = out[i];
+      out[i] = item;
+      return out;
+    }
+  }
+  out[free] = item;
+  return out;
 }
 
 /** Remove up to `quantity` from `slot`. Returns how many were removed. */

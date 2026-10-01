@@ -16,9 +16,6 @@ export default __t.row({
   attacker: __t.identity(),
   defender: __t.identity(),
   damage: __t.u8(),
-  attackerStance: __t.u8().name("attacker_stance"),
-  defenderStance: __t.u8().name("defender_stance"),
-  attackerState: __t.u8().name("attacker_state"),
-  defenderState: __t.u8().name("defender_state"),
+  itemId: __t.string().name("item_id"),
   defenderHp: __t.u8().name("defender_hp"),
 });

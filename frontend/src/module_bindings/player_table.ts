@@ -39,4 +39,5 @@ export default __t.row({
   eatCooldownUntilTick: __t.u32().name("eat_cooldown_until_tick"),
   lastInputTick: __t.u32().name("last_input_tick"),
   inputsThisTick: __t.u8().name("inputs_this_tick"),
+  weapon: __t.string(),
 });

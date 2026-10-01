@@ -13,7 +13,7 @@ function run(executable, argv, env = {}) {
 }
 function build() {
   run('npm', ['run', 'build', '--prefix', 'frontend'], {
-    VITE_SPACETIME_URI: 'wss://maincloud.spacetimedb.com', VITE_SPACETIME_DB: 'berigame-beta', VITE_INVITE_REQUIRED: 'true',
+    VITE_SPACETIME_URI: 'wss://maincloud.spacetimedb.com', VITE_SPACETIME_DB: 'berigame-beta', VITE_INVITE_REQUIRED: 'true', VITE_OPEN_BETA: 'true',
   });
 }
 try {

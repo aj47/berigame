@@ -2,10 +2,13 @@ import { ScheduleAt } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import {
-  FightState, MAX_HP, PlayerState, Pending, SPAWN_TILE, Stance, TICK_MS, TREE_SEEDS,
+  FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, MAX_HP, PlayerState, RESPAWN_GRACE_TICKS, Pending, SPAWN_TILE, TICK_MS, TREE_SEEDS, NodeKind,
 } from '../../../shared/sim';
 import { clearInteractions, findPlayer, hex, sameId, savePlayer } from '../lib/players';
 import { requireAdmission } from '../lib/access';
+import { seedMissingNodes } from '../lib/nodes';
+import { statsSessionEnd, statsSessionStart } from '../lib/stats';
+import { cancelTrade, tradesOf } from '../lib/social';
 
 export const init = spacetimedb.init((ctx) => {
   if (!ctx.db.accessPolicy.id.find(0)) {
@@ -16,9 +19,10 @@ export const init = spacetimedb.init((ctx) => {
   }
   for (const seed of TREE_SEEDS) {
     if (!ctx.db.tree.id.find(seed.id)) {
-      ctx.db.tree.insert({ id: seed.id, x: seed.x, z: seed.z, itemId: seed.itemId, cooldownUntilTick: 0, harvester: undefined });
+      ctx.db.tree.insert({ id: seed.id, x: seed.x, z: seed.z, itemId: seed.itemId, cooldownUntilTick: 0, harvester: undefined, kind: NodeKind.Berry });
     }
   }
+  seedMissingNodes(ctx);
   if (ctx.db.tickSchedule.count() === 0n) {
     ctx.db.tickSchedule.insert({ scheduledId: 0n, scheduledAt: ScheduleAt.interval(BigInt(TICK_MS) * 1000n) });
   }
@@ -34,6 +38,9 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   if ((!existing || !existing.online) && [...ctx.db.player.iter()].filter(p => p.online).length >= 128) {
     throw new SenderError('world is full');
   }
+  // Only a real live connection counts as "already online": after a module
+  // restart, stale session state is closed out and a new session starts.
+  statsSessionStart(ctx, ctx.sender, Boolean(existing && existing.online && existing.connections > 0));
   if (existing) {
     savePlayer(ctx, {
       ...existing,
@@ -55,12 +62,13 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     facing: 0,
     targetX: undefined,
     targetZ: undefined,
-    hp: MAX_HP,
+    // New characters wash ashore tired, protected until a stick, an attack or 3:00.
+    hp: FIRST_SPAWN_HP,
     maxHp: MAX_HP,
     state: PlayerState.Alive,
-    respawnTick: 0,
-    stance: Stance.Strike,
-    fightState: FightState.Neutral,
+    respawnTick: (ctx.db.world.id.find(0)?.tick ?? 0) + FIRST_SPAWN_GRACE_TICKS - RESPAWN_GRACE_TICKS,
+    stance: 0,
+    fightState: 0,
     combatTarget: undefined,
     hostile: false,
     nextSwingTick: 0,
@@ -73,6 +81,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     eatCooldownUntilTick: 0,
     lastInputTick: 0,
     inputsThisTick: 0,
+    weapon: '',
   });
 });
 
@@ -83,12 +92,14 @@ export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
   if (p.connections === 0) {
     p.online = false;
     clearInteractions(ctx, p);
+    statsSessionEnd(ctx, p.identity);
     // Nobody can keep fighting or following someone who left.
     for (const other of [...ctx.db.player.iter()]) {
       if (other.combatTarget && other.combatTarget.toHexString() === hex(p.identity)) {
         ctx.db.player.identity.update({ ...other, combatTarget: undefined, hostile: false });
       }
     }
+    for (const row of tradesOf(ctx, p.identity)) cancelTrade(ctx, row, `Trade cancelled: ${p.name} left`);
   }
   savePlayer(ctx, p);
 });

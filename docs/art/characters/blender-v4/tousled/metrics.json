@@ -1,31 +1,43 @@
 {
   "hair_id": "tousled",
   "blender": "5.2.1 LTS",
-  "triangles": 1970,
-  "mesh_vertices": 1146,
+  "triangles": 2171,
+  "mesh_vertices": 1263,
   "materials": 1,
   "mesh_objects": 1,
-  "bones": 26,
+  "bones": 27,
   "atlas": [
     64,
     64
   ],
   "max_vertex_influences": 2,
   "clips": {
+    "StickSwing": {
+      "seconds": 0.6166666666666667,
+      "loop": false
+    },
+    "StickIdle": {
+      "seconds": 2.0,
+      "loop": true
+    },
+    "StickRun": {
+      "seconds": 0.6,
+      "loop": true
+    },
     "Idle": {
       "seconds": 2.0,
       "loop": true
     },
     "Run": {
-      "seconds": 0.6666666666666666,
+      "seconds": 0.6,
       "loop": true
     },
     "RunGrab": {
-      "seconds": 0.6666666666666666,
+      "seconds": 0.6,
       "loop": true
     },
     "RunGuard": {
-      "seconds": 0.6666666666666666,
+      "seconds": 0.6,
       "loop": true
     },
     "Walk": {
@@ -33,6 +45,10 @@
       "loop": true
     },
     "Stop": {
+      "seconds": 0.5,
+      "loop": false
+    },
+    "StickStop": {
       "seconds": 0.5,
       "loop": false
     },
@@ -72,6 +88,10 @@
       "seconds": 0.4,
       "loop": false
     },
+    "HitHeavy": {
+      "seconds": 0.55,
+      "loop": false
+    },
     "Stagger": {
       "seconds": 0.5,
       "loop": false
@@ -79,9 +99,17 @@
     "Defeat": {
       "seconds": 1.2,
       "loop": false
+    },
+    "HitBack": {
+      "seconds": 0.45,
+      "loop": false
+    },
+    "GetUp": {
+      "seconds": 1.1,
+      "loop": false
     }
   },
-  "glb_bytes": 524944,
+  "glb_bytes": 590364,
   "orientation": "Blender -Y forward, Z up; glTF +Z forward, Y up",
   "status": "Asset build only; integration and device qualification tracked in docs/PLAYABLE_GRAPHICS_PROGRESS.md"
 }

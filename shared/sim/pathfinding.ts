@@ -1,61 +1,97 @@
 import { GRID_SIZE } from './constants';
-import { chebyshev, inBounds, tileEquals, tileKey } from './grid';
+import { chebyshev, isLandTile, LAND_MASK, tileEquals, tileKey } from './grid';
 import type { Tile } from './types';
 
 const DELTAS: ReadonlyArray<readonly [number, number]> = [
   [0, 1], [-1, 0], [0, -1], [1, 0], [-1, 1], [-1, -1], [1, -1], [1, 1],
 ];
+const DX = Int8Array.from(DELTAS, ([dx]) => dx);
+const DZ = Int8Array.from(DELTAS, ([, dz]) => dz);
 
-function canStep(from: Tile, dx: number, dz: number, blocked: Set<number>): Tile | null {
+/** Extra per-player passability, e.g. the bramble rule. Default: every step allowed. */
+export type EnterRule = (from: Tile, to: Tile) => boolean;
+const allowAll: EnterRule = () => true;
+
+function canStep(from: Tile, dx: number, dz: number, blocked: Set<number>, enter: EnterRule): Tile | null {
   const to = { x: from.x + dx, z: from.z + dz };
-  if (!inBounds(to) || blocked.has(tileKey(to))) return null;
-  // No corner cutting: a diagonal needs both orthogonal neighbours free.
+  if (!isLandTile(to) || blocked.has(tileKey(to)) || !enter(from, to)) return null;
+  // No corner cutting: a diagonal needs both orthogonal neighbours free (and enterable).
   if (dx !== 0 && dz !== 0) {
-    if (blocked.has(tileKey({ x: from.x + dx, z: from.z }))) return null;
-    if (blocked.has(tileKey({ x: from.x, z: from.z + dz }))) return null;
+    const a = { x: from.x + dx, z: from.z };
+    const b = { x: from.x, z: from.z + dz };
+    if (!isLandTile(a) || blocked.has(tileKey(a)) || !enter(from, a)) return null;
+    if (!isLandTile(b) || blocked.has(tileKey(b)) || !enter(from, b)) return null;
   }
   return to;
 }
+
+/*
+ * BFS scratch, reused by every call (the tick runs one search per moving
+ * player). A cell is visited in this search iff visitStamp[key] === stamp, so
+ * nothing is cleared between searches. Single-threaded and never re-entered:
+ * isGoal and enter are plain predicates.
+ */
+const CELLS = GRID_SIZE * GRID_SIZE;
+const visitStamp = new Int32Array(CELLS);
+const parentOf = new Int32Array(CELLS);
+const queueKeys = new Int32Array(CELLS);
+let stamp = 0;
 
 /**
  * Breadth-first search over the 8-connected grid. Returns the full path from
  * `start` (exclusive) to the first tile satisfying `isGoal`, or null if
  * unreachable. `start` itself satisfying the goal returns [].
  */
-export function bfsPath(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<number>): Tile[] | null {
+export function bfsPath(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<number>, enter: EnterRule = allowAll): Tile[] | null {
   if (isGoal(start)) return [];
+  if (++stamp === 0x7fffffff) { visitStamp.fill(0); stamp = 1; }
   const startKey = tileKey(start);
-  const parent = new Int32Array(GRID_SIZE * GRID_SIZE).fill(-1);
-  parent[startKey] = startKey;
-  const queue: Tile[] = [start];
-  let head = 0;
-  while (head < queue.length) {
-    const cur = queue[head++];
-    for (const [dx, dz] of DELTAS) {
-      const next = canStep(cur, dx, dz, blocked);
-      if (!next) continue;
-      const k = tileKey(next);
-      if (parent[k] !== -1) continue;
-      parent[k] = tileKey(cur);
-      if (isGoal(next)) {
+  const checkEnter = enter !== allowAll;
+  // Same discovery order and step rules as canStep; tiles are only allocated
+  // for the predicates, and a visited cell is skipped before any of them.
+  visitStamp[startKey] = stamp;
+  parentOf[startKey] = startKey;
+  queueKeys[0] = startKey;
+  let head = 0, tail = 1;
+  let from: Tile = start;
+  while (head < tail) {
+    const curKey = queueKeys[head++];
+    const cx = curKey % GRID_SIZE, cz = (curKey - cx) / GRID_SIZE;
+    if (head > 1) from = { x: cx, z: cz };
+    for (let d = 0; d < 8; d++) {
+      const dx = DX[d], dz = DZ[d];
+      const nx = cx + dx, nz = cz + dz;
+      if (nx < 0 || nx >= GRID_SIZE || nz < 0 || nz >= GRID_SIZE) continue;
+      const k = nz * GRID_SIZE + nx;
+      if (visitStamp[k] === stamp || LAND_MASK[k] === 0 || blocked.has(k)) continue;
+      const to = { x: nx, z: nz };
+      if (checkEnter && !enter(from, to)) continue;
+      // No corner cutting: a diagonal needs both orthogonal neighbours free (and enterable).
+      if (dx !== 0 && dz !== 0) {
+        if (LAND_MASK[cz * GRID_SIZE + nx] === 0 || blocked.has(cz * GRID_SIZE + nx) || (checkEnter && !enter(from, { x: nx, z: cz }))) continue;
+        if (LAND_MASK[nz * GRID_SIZE + cx] === 0 || blocked.has(nz * GRID_SIZE + cx) || (checkEnter && !enter(from, { x: cx, z: nz }))) continue;
+      }
+      visitStamp[k] = stamp;
+      parentOf[k] = curKey;
+      if (isGoal(to)) {
         const path: Tile[] = [];
         let walk = k;
         while (walk !== startKey) {
           path.push({ x: walk % GRID_SIZE, z: Math.floor(walk / GRID_SIZE) });
-          walk = parent[walk];
+          walk = parentOf[walk];
         }
         path.reverse();
         return path;
       }
-      queue.push(next);
+      queueKeys[tail++] = k;
     }
   }
   return null;
 }
 
 /** First tile of the BFS path, or null when already there / unreachable. */
-export function bfsNextStep(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<number>): Tile | null {
-  const path = bfsPath(start, isGoal, blocked);
+export function bfsNextStep(start: Tile, isGoal: (t: Tile) => boolean, blocked: Set<number>, enter: EnterRule = allowAll): Tile | null {
+  const path = bfsPath(start, isGoal, blocked, enter);
   if (!path || path.length === 0) return null;
   return path[0];
 }
@@ -73,8 +109,8 @@ export function goalAdjacentTo(target: Tile, blocked: Set<number>, range = 1): (
  * `goal` if reachable, else the reachable tile with the smallest Chebyshev
  * distance to `goal` (ties broken by BFS order, i.e. closest to start).
  */
-export function nearestReachableTile(start: Tile, goal: Tile, blocked: Set<number>): Tile {
-  if (!blocked.has(tileKey(goal)) && bfsPath(start, goalIsTile(goal), blocked)) return goal;
+export function nearestReachableTile(start: Tile, goal: Tile, blocked: Set<number>, enter: EnterRule = allowAll): Tile {
+  if (!blocked.has(tileKey(goal)) && bfsPath(start, goalIsTile(goal), blocked, enter)) return goal;
   const seen = new Set<number>([tileKey(start)]);
   const queue: Tile[] = [start];
   let head = 0;
@@ -83,7 +119,7 @@ export function nearestReachableTile(start: Tile, goal: Tile, blocked: Set<numbe
   while (head < queue.length) {
     const cur = queue[head++];
     for (const [dx, dz] of DELTAS) {
-      const next = canStep(cur, dx, dz, blocked);
+      const next = canStep(cur, dx, dz, blocked, enter);
       if (!next) continue;
       const k = tileKey(next);
       if (seen.has(k)) continue;
@@ -97,4 +133,23 @@ export function nearestReachableTile(start: Tile, goal: Tile, blocked: Set<numbe
     }
   }
   return best;
+}
+
+/** Every tile reachable from `start` (inclusive), for tests and tools. `within` limits the flood. */
+export function reachableTiles(start: Tile, blocked: Set<number>, enter: EnterRule = allowAll, within: (t: Tile) => boolean = () => true): Set<number> {
+  const seen = new Set<number>([tileKey(start)]);
+  const queue: Tile[] = [start];
+  let head = 0;
+  while (head < queue.length) {
+    const cur = queue[head++];
+    for (const [dx, dz] of DELTAS) {
+      const next = canStep(cur, dx, dz, blocked, enter);
+      if (!next || !within(next)) continue;
+      const k = tileKey(next);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      queue.push(next);
+    }
+  }
+  return seen;
 }

@@ -1,0 +1,23 @@
+.adventure-panel { display: flex; flex-direction: column; max-height: min(76vh, 700px); width: min(420px, calc(100vw - 24px)); }
+.adventure-scroll { overflow-y: auto; min-height: 0; padding-right: 4px; }
+.adventure-card { padding: 12px; margin: 12px 0; border: 1px solid #ba9d71; border-radius: 10px; background: #fff9e6cc; }
+.adventure-card h3 { margin: 0 0 6px; font-size: 16px; color: #344e39; }
+.adventure-card p { font-size: 13px; line-height: 1.5; margin: 8px 0; }
+.adventure-card label { display: block; font-size: 13px; margin: 10px 0; }
+.adventure-card select { max-width: 100%; padding: 8px; background: #fffaf0; border: 1px solid #ba9d71; border-radius: 6px; }
+.adventure-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.adventure-panel button { min-height: 36px; }
+.adventure-hud { position: absolute; bottom: 130px; left: 16px; width: min(340px, calc(100vw - 32px)); pointer-events: auto; z-index: 10; background: #f8efd9ed; padding: 10px 12px; border: 2px solid #699151; border-radius: 10px; text-align: left; }
+.adventure-hud span { display: block; margin-top: 4px; font-size: 12px; }
+.duel-hud { position: absolute; top: 155px; right: 16px; width: min(340px, calc(100vw - 32px)); z-index: 30; background: #f8efd9f5; border: 2px solid #997544; border-radius: 10px; padding: 12px; pointer-events: auto; }
+.duel-hud button { margin: 8px 6px 0 0; }.duel-hud small { display:block; margin-top: 6px; }
+.technique-grid { display: grid; gap: 8px; }.technique { text-align:left; padding:10px; min-height:68px; }.technique span,.technique small { display:block; margin-top:4px; }.technique[aria-pressed=true] { background: #d8edc9; border: 2px solid #648844; }.technique:disabled { opacity:.65; }.skills-scroll { overflow-y:auto; min-height:0; }.skills-scroll .skill-list { overflow:visible; }.path-heading { margin:18px 0 6px; }
+.adventure-world-label { background:#263828e8; color:#fff5d8; border:1px solid #a9bd78; padding:4px 8px; border-radius:8px; white-space:nowrap; font-size:11px; pointer-events:none; }
+@media(max-width:600px) { .adventure-panel { top:90px; bottom:142px; max-height:none; }.adventure-hud { bottom:175px; }.duel-hud { top:155px; }.game-toolbar { gap:4px; }.game-toolbar button { padding-left:7px; padding-right:7px; } }
+@media(max-width:600px) {
+  .ui-group .adventure-panel { bottom:calc(max(10px, env(safe-area-inset-bottom)) + 162px); }
+  .ui-group .world-header { display:none; }
+  .ui-group .game-toolbar { left:12px; right:12px; justify-content:flex-end; flex-wrap:wrap; }
+  .adventure-scroll > p { font-size:14px; line-height:1.5; }
+}
+@media(max-width:340px) { .ui-group .game-toolbar { justify-content:center; gap:3px; }.ui-group .game-toolbar button { font-size:11px; padding:7px 6px; }.adventure-panel h2 { font-size:20px; } }

@@ -16,14 +16,6 @@ export const useUserInputStore = create((set) => ({
   setClickedOtherObject: (newObject) => set({ clickedOtherObject: newObject }),
 }));
 
-export const useInventoryUiStore = create((set) => ({
-  draggedFromSlot: null,
-  dragOverSlot: null,
-  setDraggedFromSlot: (slot) => set({ draggedFromSlot: slot }),
-  setDragOverSlot: (slot) => set({ dragOverSlot: slot }),
-  clearDragState: () => set({ draggedFromSlot: null, dragOverSlot: null }),
-}));
-
 // Recompute readiness from current state; no delayed callback can hide a disconnect.
 const loadingState = (state) => {
   const assetProgress = state.loadedAssets.filter((url) => state.assetsToLoad.includes(url)).length / state.assetsToLoad.length;
@@ -51,6 +43,15 @@ export const useLoadingStore = create((set) => ({
   }),
   gameDataLoaded: false,
   websocketConnected: false,
+  /** Reconnect controller state (src/spacetime/reconnect.ts). */
+  reconnectStatus: "connecting",
+  reconnectAttempt: 0,
+  nextRetryAt: null,
+  setReconnectState: ({ status, attempt, nextRetryAt }) =>
+    set({ reconnectStatus: status, reconnectAttempt: attempt, nextRetryAt }),
+  /** Retry now (set by SpacetimeProvider); falls back to a page reload. */
+  retryConnection: () => window.location.reload(),
+  setRetryConnection: (retryConnection) => set({ retryConnection }),
   setConnectionIssue: (connectionIssue, hasSavedSignIn) => set((state) => {
     const next = { ...state, connectionIssue, hasSavedSignIn };
     return { ...next, ...loadingState(next) };

@@ -1,0 +1,70 @@
+{
+  "generator": "Original BeriGame models; Blender 5.2.1 LTS",
+  "assets": {
+    "gardener": {
+      "triangles": 2646,
+      "meshes": 4,
+      "bytes": 252872
+    },
+    "moss": {
+      "triangles": 2870,
+      "meshes": 3,
+      "bytes": 267192
+    },
+    "pip": {
+      "triangles": 1664,
+      "meshes": 7,
+      "bytes": 205436
+    },
+    "berry-giant": {
+      "triangles": 3112,
+      "meshes": 6,
+      "bytes": 390308
+    },
+    "handcart": {
+      "triangles": 1376,
+      "meshes": 1,
+      "bytes": 109420
+    },
+    "market": {
+      "triangles": 4984,
+      "meshes": 1,
+      "bytes": 477032
+    },
+    "feast": {
+      "triangles": 1200,
+      "meshes": 1,
+      "bytes": 98320
+    },
+    "workshop": {
+      "triangles": 1912,
+      "meshes": 1,
+      "bytes": 157232
+    },
+    "giant-berry": {
+      "triangles": 908,
+      "meshes": 1,
+      "bytes": 114312
+    },
+    "strange-seed": {
+      "triangles": 196,
+      "meshes": 1,
+      "bytes": 24588
+    },
+    "leaf-cover": {
+      "triangles": 40,
+      "meshes": 1,
+      "bytes": 5248
+    },
+    "scent-bait": {
+      "triangles": 324,
+      "meshes": 1,
+      "bytes": 42156
+    },
+    "workshop-site": {
+      "triangles": 260,
+      "meshes": 1,
+      "bytes": 22592
+    }
+  }
+}

@@ -5,8 +5,10 @@
  */
 
 // ---- World / grid -----------------------------------------------------------
-/** The island is a GRID_SIZE x GRID_SIZE grid of 1-unit tiles. */
-export const GRID_SIZE = 50;
+/** Server coordinates cover the island, its waterways and the south-east headlands. */
+export const GRID_SIZE = 64;
+/** Historical core extent. Use isLandTile for the current coastline. */
+export const ISLAND_SIZE = 50;
 /** world = tile - TILE_ORIGIN. Integer world coords are tile centres. */
 export const TILE_ORIGIN = 25;
 export const SPAWN_TILE = { x: 25, z: 25 } as const;
@@ -27,20 +29,8 @@ export const MELEE_RANGE = 1;
 export const SWING_INTERVAL_TICKS = 4;
 /** A retaliating player swings this many ticks after their opponent, so a pair alternates. */
 export const RETALIATE_OFFSET_TICKS = 2;
-/** Damage dealt to the defender when the attacker wins the RPS, by the attacker's fight state. */
-export const DAMAGE = {
-  NEUTRAL: 4,
-  ADVANTAGE: 6,
-  DISADVANTAGE: 3,
-  /** Damage the attacker takes when the defender's stance beats theirs. */
-  COUNTER: 2,
-} as const;
-/** Tiles a defender is pushed when hit by an attacker in Advantage. */
-export const KNOCKBACK_TILES = 1;
-/** Fight state returns to Neutral after this many ticks without an exchange. */
-export const STATE_DECAY_TICKS = 8;
-/** Fight state returns to Neutral after this many consecutive ticks out of range. */
-export const OUT_OF_RANGE_DECAY_TICKS = 2;
+/** Damage of a bare-handed swing. Weapons set their own `weaponDamage` in items.ts. */
+export const PUNCH_DAMAGE = 3;
 /** Ticks spent dead before respawning. */
 export const DEATH_TICKS = 5;
 
@@ -50,9 +40,13 @@ export const TREE_COOLDOWN_TICKS = 50;
 export const EAT_COOLDOWN_TICKS = 3;
 /** Eating pushes the eater's next swing back by this many ticks. */
 export const EAT_SWING_DELAY_TICKS = 3;
+/** Chance that a finished harvest also yields a stick, rolled with the server's ctx.random. */
+export const STICK_DROP_CHANCE = 0.25;
 
 // ---- Items ------------------------------------------------------------------
 export const INVENTORY_SIZE = 28;
+/** Inventory slots 0..HOTBAR_SIZE-1 double as the quick-access bar (keys 1-3). Weapons are wielded from here. */
+export const HOTBAR_SIZE = 3;
 export const MAX_STACK = 99;
 export const GROUND_ITEM_TTL_TICKS = 500;
 
@@ -64,3 +58,21 @@ export const NAME_MAX_LEN = 16;
 /** Ticks a chat bubble stays above a head (8s). */
 export const CHAT_BUBBLE_TICKS = 13;
 export const MAX_INPUTS_PER_TICK = 5;
+
+// ---- Areas / safety (M1 "The Grove") ---------------------------------------
+/** Chebyshev ring around SPAWN_TILE holding the one-tile bramble hedge. Inside: the Grove; outside: the Coast. */
+export const HEDGE_RING = 17;
+/** Tiles within this Chebyshev radius of spawn are the safe ring: no attacks start or land there. */
+export const SAFE_RADIUS = 2;
+/** Ticks after a respawn during which nobody can hit you. */
+export const RESPAWN_GRACE_TICKS = 10;
+/** A new character is protected until it finds a stick, attacks, or this many ticks pass (3:00). */
+export const FIRST_SPAWN_GRACE_TICKS = 300;
+/** New characters wash ashore tired, so the first berry heals for real. */
+export const FIRST_SPAWN_HP = 20;
+
+// ---- Areas (M3 "The Boulders") ---------------------------------------------
+/** max(x, z) of the one-tile boulder line on the old south-east shoreline. */
+export const BOULDER_LINE = 50;
+/** The Boulders plateau starts at this x and z (an L past the old shoreline). */
+export const BOULDERS_MIN = 36;

@@ -5,6 +5,17 @@ export function inBounds(t: Tile): boolean {
   return t.x >= 0 && t.x < GRID_SIZE && t.z >= 0 && t.z < GRID_SIZE;
 }
 
+/** Walkable land includes the two wooden river crossings. */
+export { terrainLand as isLandTile } from './terrain';
+import { terrainLand as isLandTile } from './terrain';
+
+/** LAND_MASK[tileKey] === 1 for land tiles, for tight loops (BFS). */
+export const LAND_MASK: Uint8Array = (() => {
+  const m = new Uint8Array(GRID_SIZE * GRID_SIZE);
+  for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) if (isLandTile({ x, z })) m[z * GRID_SIZE + x] = 1;
+  return m;
+})();
+
 export function clampTile(t: Tile): Tile {
   return {
     x: Math.min(GRID_SIZE - 1, Math.max(0, t.x)),
@@ -39,12 +50,12 @@ const DELTAS: ReadonlyArray<readonly [number, number]> = [
   [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1],
 ];
 
-/** The 8 surrounding tiles, in facing order (S, SW, W, NW, N, NE, E, SE), in-bounds only. */
+/** The 8 surrounding tiles, in facing order (S, SW, W, NW, N, NE, E, SE), land only. */
 export function neighbors8(t: Tile): Tile[] {
   const out: Tile[] = [];
   for (const [dx, dz] of DELTAS) {
     const n = { x: t.x + dx, z: t.z + dz };
-    if (inBounds(n)) out.push(n);
+    if (isLandTile(n)) out.push(n);
   }
   return out;
 }
@@ -69,17 +80,4 @@ export function blockedSetFromTiles(tiles: Iterable<Tile>): Set<number> {
   const s = new Set<number>();
   for (const t of tiles) s.add(tileKey(t));
   return s;
-}
-
-/**
- * Tile the defender is pushed to when knocked back by the attacker: one step
- * directly away. Returns null when that tile is out of bounds or blocked.
- */
-export function knockbackTile(defender: Tile, attacker: Tile, blocked: Set<number>): Tile | null {
-  const dx = Math.sign(defender.x - attacker.x);
-  const dz = Math.sign(defender.z - attacker.z);
-  if (dx === 0 && dz === 0) return null;
-  const t = { x: defender.x + dx, z: defender.z + dz };
-  if (!inBounds(t) || blocked.has(tileKey(t))) return null;
-  return t;
 }

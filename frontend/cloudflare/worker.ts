@@ -5,6 +5,7 @@ import { ACTIONS, openapi, validateAction, validateObject } from '../agent-api/c
 import { ApiError, digest, secret, type Invite } from '../agent-api/portable';
 import { createGameService, deadline, type Credential, type GameSession } from '../agent-api/game';
 import { openCloudflareSocket } from './socket';
+import { issueRenewal, lookupRenewal, MAX_RENEWALS, renewedElsewhere, rotateRenewal, visitEnded, type RenewalRow, type RenewalStore } from '../agent-api/renewal';
 
 interface Env {
   ASSETS: Fetcher;
@@ -25,6 +26,11 @@ const PREFIX = '/api/agent/v1';
 const IDLE_MS = 10 * 60_000;
 const unavailable = () => new ApiError(503, 'world_unavailable', 'The island is unavailable. Retry shortly.');
 const unauthorized = () => new ApiError(401, 'invalid_session', 'A valid, unexpired session bearer token is required.');
+function playerRejection(error: unknown): string {
+  const message = String(error instanceof Error ? error.message : error).replace(/^SenderError:\s*/, '').slice(0, 300);
+  return /^(Needs |Walk |Put |Pick |The |This |That |You |Both |One |Finish |Change |Earn |Three |Visit |Four |Join |Choose |Catch |Pass |Ask |Equip |Fresh |No |They |Only |empty slot|still chewing|not a weapon|No fighting)/i.test(message) && !/token|credential|sql|stack|https?:/i.test(message)
+    ? message : 'The game rejected this action. Inspect state before trying again.';
+}
 const errorBody = (error: ApiError) => ({ error: { code: error.code, message: error.message } });
 function send(status: number, body?: unknown, retryAfter?: number) {
   return new Response(body === undefined ? null : JSON.stringify(body), { status, headers: {
@@ -36,7 +42,7 @@ function send(status: number, body?: unknown, retryAfter?: number) {
 }
 function bearer(request: Request) {
   const value = request.headers.get('Authorization');
-  if (!value || !/^Bearer bg[isha]_[A-Za-z0-9_-]{43}$/.test(value)) throw unauthorized();
+  if (!value || !/^Bearer bg[ishar]_[A-Za-z0-9_-]{43}$/.test(value)) throw unauthorized();
   return value.slice(7);
 }
 function isAdmin(request: Request, env: Env) {
@@ -82,14 +88,14 @@ export default {
       if (request.headers.get('Origin') && request.headers.get('Origin') !== env.PUBLIC_ORIGIN) {
         throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       }
-      if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/sessions`, `${PREFIX}/session`, `${PREFIX}/state`,
-        '/api/play/v1/sessions', '/api/admin/invites', '/api/admin/revoke'].includes(url.pathname)
+      if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/sessions`, `${PREFIX}/renewals`, `${PREFIX}/session`, `${PREFIX}/state`,
+        '/api/play/v1/sessions', '/api/play/v1/renewals', '/api/admin/invites', '/api/admin/revoke'].includes(url.pathname)
         && !Object.keys(ACTIONS).some(name => url.pathname === `${PREFIX}/actions/${name}`)) {
         throw new ApiError(404, 'not_found', 'Unknown endpoint. See /api/agent/v1/openapi.json.');
       }
       const publicRead = request.method === 'GET' && [PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`].includes(url.pathname);
       if (url.pathname.startsWith('/api/admin/')) { if (!isAdmin(request, env)) throw unauthorized(); }
-      else if (!publicRead) bearer(request);
+      else if (!publicRead && !(request.method === 'POST' && [ `${PREFIX}/sessions`, '/api/play/v1/sessions' ].includes(url.pathname))) bearer(request);
       const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
       if (!(await env.EDGE_LIMIT.limit({ key: `berigame-beta:${ip}` })).success) {
         throw new ApiError(429, 'rate_limited', 'Slow down and honor Retry-After.', 60);
@@ -111,6 +117,7 @@ export class AgentGateway extends DurableObject<Env> {
   private busy = new Set<string>();
   private reaping?: Promise<void>;
   private inflight = 0;
+  private renewing = new Set<string>();
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     const sql = ctx.storage.sql;
@@ -120,9 +127,29 @@ export class AgentGateway extends DurableObject<Env> {
     sql.exec('CREATE TABLE IF NOT EXISTS buckets (key TEXT PRIMARY KEY, tokens REAL NOT NULL, updated INTEGER NOT NULL, expires_at INTEGER NOT NULL)');
     sql.exec('CREATE TABLE IF NOT EXISTS daily (day TEXT PRIMARY KEY, joins INTEGER NOT NULL DEFAULT 0, requests INTEGER NOT NULL DEFAULT 0)');
     sql.exec('CREATE INDEX IF NOT EXISTS buckets_expiry ON buckets(expires_at)');
+    // Returning browsers (F1): token digests only, bound to one identity each. No IP or other personal data.
+    sql.exec('CREATE TABLE IF NOT EXISTS renewals (key TEXT PRIMARY KEY, prev_key TEXT, prev_until INTEGER NOT NULL, identity TEXT NOT NULL UNIQUE, session_id TEXT NOT NULL, config TEXT NOT NULL, expires_at INTEGER NOT NULL)');
+    sql.exec('CREATE INDEX IF NOT EXISTS renewals_prev ON renewals(prev_key)');
+    sql.exec('CREATE INDEX IF NOT EXISTS renewals_session ON renewals(session_id)');
   }
   private one<T extends Record<string, any>>(query: string, ...args: (string | number | null)[]): T | undefined {
     return this.ctx.storage.sql.exec<T>(query, ...args).toArray()[0];
+  }
+  private renewals(): RenewalStore {
+    const sql = this.ctx.storage.sql;
+    return {
+      byKey: key => this.one<RenewalRow>('SELECT * FROM renewals WHERE key = ?', key),
+      byPrev: key => this.one<RenewalRow>('SELECT * FROM renewals WHERE prev_key = ?', key),
+      count: () => this.count('SELECT COUNT(*) AS n FROM renewals'),
+      put: row => { sql.exec('INSERT OR REPLACE INTO renewals VALUES (?, ?, ?, ?, ?, ?, ?)', row.key, row.prev_key, row.prev_until, row.identity, row.session_id, row.config, row.expires_at); },
+      removeIdentity: identity => { sql.exec('DELETE FROM renewals WHERE identity = ?', identity); },
+    };
+  }
+  private humanCapacity(ip: string) {
+    if (this.count("SELECT COUNT(*) AS n FROM sessions WHERE kind = 'human'") >= 16
+      || this.count('SELECT COUNT(*) AS n FROM sessions WHERE ip = ?', ip) >= 4) {
+      throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
+    }
   }
   private count(query: string, ...args: (string | number | null)[]) { return this.one<{ n: number }>(query, ...args)?.n ?? 0; }
   private take(key: string, capacity: number, perSecond: number, now: number) {
@@ -174,8 +201,12 @@ export class AgentGateway extends DurableObject<Env> {
     this.ctx.storage.sql.exec("UPDATE sessions SET state = 'closing' WHERE key = ?", row.key);
     const live = this.live.get(row.key);
     this.live.delete(row.key);
-    if (live) await live.close();
-    if (row.credential && row.expires_at > Date.now()) {
+    const returning = row.kind === 'agent' && this.one<RenewalRow>('SELECT * FROM renewals WHERE session_id = ?', row.id);
+    if (returning && row.credential) {
+      if (live?.suspend) await live.suspend();
+      else await (await this.game()).suspend((JSON.parse(row.credential) as Credential).identity);
+    } else if (live) await live.close();
+    if (!returning && row.credential && row.expires_at > Date.now()) {
       // Keep a closing record and retry on the alarm if Maincloud is unavailable.
       await (await this.game()).revoke((JSON.parse(row.credential) as Credential).identity);
     }
@@ -188,6 +219,7 @@ export class AgentGateway extends DurableObject<Env> {
       const rows = this.ctx.storage.sql.exec<SessionRow>("SELECT * FROM sessions WHERE expires_at <= ? OR state = 'closing' OR (kind = 'agent' AND last_seen <= ?) OR (state = 'pending' AND last_seen <= ?)", now, now - IDLE_MS, now - 30_000).toArray();
       for (const row of rows) { try { await this.remove(row); } catch { /* Retry; the permit also expires in SpacetimeDB. */ } }
       this.ctx.storage.sql.exec('DELETE FROM invites WHERE expires_at <= ?', now);
+      this.ctx.storage.sql.exec('DELETE FROM renewals WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM buckets WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM daily WHERE day < ?', new Date(now - 7 * 86400_000).toISOString().slice(0, 10));
     })();
@@ -223,6 +255,12 @@ export class AgentGateway extends DurableObject<Env> {
           const value = validateObject(input, { sessionId: { type: 'string', minLength: 36, maxLength: 36 } }, ['sessionId']);
           const row = this.one<SessionRow>('SELECT * FROM sessions WHERE id = ?', value.sessionId);
           if (row) await this.remove(row);
+          // A returning browser keeps its sessionId across renewals; revoking it ends renewal for good.
+          const renewal = this.one<RenewalRow>('SELECT * FROM renewals WHERE session_id = ?', value.sessionId);
+          if (renewal) {
+            await (await this.game()).revoke(renewal.identity);
+            this.renewals().removeIdentity(renewal.identity);
+          }
           return send(204);
         }
         const value = validateObject(input, { kind: { type: 'string', minLength: 5, maxLength: 5, enum: ['agent', 'human'] },
@@ -239,48 +277,129 @@ export class AgentGateway extends DurableObject<Env> {
         let ready = false;
         try { ready = (await this.game()).ready(); } catch { /* Public status is safe without credentials configured. */ }
         return send(200, { name: 'BeriGame', version: 1, ready, onboarding: '/agent', openapi: `${PREFIX}/openapi.json`,
-          access: 'single-use invite', pollIntervalMs: 1000, actionIntervalMs: 1000, idleTimeoutSeconds: 600 });
+          access: 'open beta', pollIntervalMs: 1000, actionIntervalMs: 1000, idleTimeoutSeconds: 600 });
       }
-      if (path === `${PREFIX}/openapi.json` && request.method === 'GET') return send(200, openapi);
+      if (path === `${PREFIX}/openapi.json` && request.method === 'GET') return send(200, { ...openapi, paths: { ...openapi.paths, '/sessions': { post: { ...openapi.paths['/sessions'].post, summary: 'Join the open beta', security: [] } } } });
       if ([`${PREFIX}/sessions`, '/api/play/v1/sessions'].includes(path) && request.method === 'POST') {
         this.take(`join:${ip}`, 5, 1 / 60, now);
-        const token = bearer(request);
+        const token = request.headers.has('Authorization') ? bearer(request) : null;
         validateObject(await readJson(request), {}, []);
         const kind: Kind = path === '/api/play/v1/sessions' ? 'human' : 'agent';
-        const invitation = this.one<{ config: string; kind: Kind; expires_at: number }>('SELECT * FROM invites WHERE key = ?', digest(token));
-        if (!invitation || invitation.kind !== kind || invitation.expires_at <= now) throw new ApiError(401, 'invalid_invite', 'This invite is invalid, expired, already used, or intended for a different type of player.');
+        const invitation = this.one<{ config: string; kind: Kind; expires_at: number }>('SELECT * FROM invites WHERE key = ?', digest(token ?? ''));
+        if (token && (!invitation || invitation.kind !== kind || invitation.expires_at <= now)) throw new ApiError(401, 'invalid_invite', 'This invite is invalid, expired, already used, or intended for a different type of player.');
         if (this.count('SELECT COUNT(*) AS n FROM sessions WHERE kind = ?', kind) >= 16
           || this.count('SELECT COUNT(*) AS n FROM sessions WHERE ip = ?', ip) >= 4
           || this.count('SELECT joins AS n FROM daily WHERE day = ?', day) >= 100) {
           throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
         }
+        if (this.count('SELECT COUNT(*) AS n FROM renewals') >= MAX_RENEWALS) {
+          throw new ApiError(429, 'renewal_capacity', 'Returning-player capacity reached.', 3600);
+        }
         const service = await this.game();
         // Claim and reserve synchronously after the last await. Racing requests cannot reuse an invite or oversubscribe slots.
-        if (!this.one('SELECT key FROM invites WHERE key = ?', digest(token))) throw new ApiError(401, 'invalid_invite', 'This invite has already been used.');
+        if (token && !this.one('SELECT key FROM invites WHERE key = ?', digest(token))) throw new ApiError(401, 'invalid_invite', 'This invite has already been used.');
         if (this.count('SELECT COUNT(*) AS n FROM sessions WHERE kind = ?', kind) >= 16
           || this.count('SELECT COUNT(*) AS n FROM sessions WHERE ip = ?', ip) >= 4
           || this.count('SELECT joins AS n FROM daily WHERE day = ?', day) >= 100) throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
         const sessionToken = secret('bgs_');
         const key = digest(sessionToken);
-        const invite = JSON.parse(invitation.config) as Invite;
+        const invite: Invite = token && invitation ? JSON.parse(invitation.config) : { expiresAt: now + 3600_000, lifetimeSeconds: 3600, combat: true, chat: true };
         const row: SessionRow = { key, id: crypto.randomUUID(), ip, kind, expires_at: now + invite.lifetimeSeconds * 1000,
-          last_seen: now, config: invitation.config, credential: null, state: 'pending', actions_count: 0 };
+          last_seen: now, config: JSON.stringify(invite), credential: null, state: 'pending', actions_count: 0 };
         this.ctx.storage.transactionSync(() => {
-          this.ctx.storage.sql.exec('DELETE FROM invites WHERE key = ?', digest(token));
+          if (token) this.ctx.storage.sql.exec('DELETE FROM invites WHERE key = ?', digest(token));
           this.ctx.storage.sql.exec('INSERT INTO sessions (key,id,ip,kind,expires_at,last_seen,config,state) VALUES (?,?,?,?,?,?,?,?)', key, row.id, ip, kind, row.expires_at, now, row.config, 'pending');
           this.ctx.storage.sql.exec('UPDATE daily SET joins = joins + 1 WHERE day = ?', day);
         });
         await this.ctx.storage.setAlarm(Date.now() + 30_000);
         try {
           const credential = await service.provision(invite);
-          row.credential = JSON.stringify(credential);
+          // Browsers hold their own SpacetimeDB token; the gateway keeps only the identity for revocation.
+          row.credential = JSON.stringify(kind === 'agent' ? credential : { identity: credential.identity });
           this.ctx.storage.sql.exec('UPDATE sessions SET credential = ? WHERE key = ?', row.credential, key);
           if (kind === 'agent') this.live.set(key, await service.resume(invite, credential));
+          const renewToken = issueRenewal(this.renewals(), credential.identity, row.id, kind === 'agent' ? JSON.stringify({ ...invite, kind, credential }) : row.config, now);
           this.ctx.storage.sql.exec("UPDATE sessions SET state = 'active' WHERE key = ?", key);
-          return send(201, { ...(kind === 'agent' ? { token: sessionToken } : { token: credential.token, uri: credential.uri, database: credential.database }),
+          return send(201, { ...(kind === 'agent' ? { token: sessionToken, renewToken } : { token: credential.token, uri: credential.uri, database: credential.database, renewToken }),
             sessionId: row.id, playerId: credential.identity, expiresAt: new Date(row.expires_at).toISOString(),
             permissions: { combat: invite.combat, chat: invite.chat }, pollIntervalMs: 1000 });
-        } catch (error) { try { await this.remove(row); } catch { /* Alarm retries revocation. */ } throw error; }
+        } catch (error) {
+          if (row.credential) this.renewals().removeIdentity((JSON.parse(row.credential) as Credential).identity);
+          try { await this.remove(row); } catch { /* Alarm retries revocation. */ }
+          throw error;
+        }
+      }
+      if (path === `${PREFIX}/renewals` && request.method === 'POST') {
+        this.take(`join:${ip}`, 5, 1 / 60, now);
+        validateObject(await readJson(request), {}, []);
+        const store = this.renewals(), found = lookupRenewal(store, bearer(request), now);
+        const config = JSON.parse(found.config) as Invite & { kind?: string; credential?: Credential };
+        if (config.kind !== 'agent' || !config.credential) throw visitEnded();
+        if (this.renewing.has(found.identity)) throw renewedElsewhere();
+        this.renewing.add(found.identity);
+        let reserved: SessionRow | undefined;
+        try {
+          const service = await this.game();
+          const old = this.one<SessionRow>('SELECT * FROM sessions WHERE id = ?', found.session_id);
+          if (old && this.busy.has(old.key)) throw new ApiError(409, 'action_in_progress', 'Wait for the current action before returning.');
+          if (old) await this.remove(old);
+          if (this.count("SELECT COUNT(*) AS n FROM sessions WHERE kind = 'agent'") >= 16 || this.count('SELECT COUNT(*) AS n FROM sessions WHERE ip = ?', ip) >= 4) throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
+          const token = secret('bgs_'), at = Date.now(), key = digest(token);
+          const invite: Invite = { expiresAt: at + config.lifetimeSeconds * 1000, lifetimeSeconds: config.lifetimeSeconds, combat: config.combat, chat: config.chat };
+          reserved = { key, id: found.session_id, ip, kind: 'agent', expires_at: invite.expiresAt, last_seen: at, config: JSON.stringify(invite), credential: JSON.stringify(config.credential), state: 'pending', actions_count: 0 };
+          this.ctx.storage.sql.exec('INSERT INTO sessions (key,id,ip,kind,expires_at,last_seen,config,credential,state) VALUES (?,?,?,?,?,?,?,?,?)', key, reserved.id, ip, 'agent', reserved.expires_at, at, reserved.config, reserved.credential, 'pending');
+          try { await service.renew(found.identity, config.lifetimeSeconds); }
+          catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            if (/revoked|no renewable permit/.test(message)) { store.removeIdentity(found.identity); throw visitEnded(); }
+            throw unavailable();
+          }
+          const game = await service.resume(invite, config.credential);
+          this.live.set(key, game);
+          const renewToken = rotateRenewal(store, found, Date.now());
+          this.ctx.storage.sql.exec("UPDATE sessions SET state = 'active' WHERE key = ?", key);
+          await this.ctx.storage.setAlarm(Date.now() + 30_000);
+          return send(200, { token, renewToken, sessionId: found.session_id, playerId: found.identity, expiresAt: new Date(reserved.expires_at).toISOString(), permissions: { combat: config.combat, chat: config.chat }, pollIntervalMs: 1000 });
+        } catch (error) { if (reserved) { try { await this.remove(reserved); } catch { /* Alarm retries; permit also expires. */ } } throw error; }
+        finally { this.renewing.delete(found.identity); }
+      }
+      if (path === '/api/play/v1/renewals' && request.method === 'POST') {
+        this.take(`join:${ip}`, 5, 1 / 60, now);
+        const token = bearer(request);
+        validateObject(await readJson(request), {}, []);
+        const store = this.renewals();
+        const found = lookupRenewal(store, token, now);
+        if (this.renewing.has(found.identity)) throw renewedElsewhere();
+        const invite = JSON.parse(found.config) as Invite & { kind?: string };
+        if (invite.kind === 'agent') throw visitEnded();
+        const visit = () => this.one<SessionRow>("SELECT * FROM sessions WHERE id = ? AND kind = 'human'", found.session_id);
+        if (visit() && visit()!.state !== 'active') throw visitEnded();
+        if (!visit()) this.humanCapacity(ip);
+        this.renewing.add(found.identity);
+        try {
+          const service = await this.game();
+          try { await service.renew(found.identity, invite.lifetimeSeconds); }
+          catch (error) {
+            if (error instanceof ApiError) throw error;
+            const message = error instanceof Error ? error.message : String(error);
+            if (/capacity/.test(message)) throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
+            if (/revoked|no renewable permit/.test(message)) { store.removeIdentity(found.identity); throw visitEnded(); }
+            throw unavailable();
+          }
+          // Synchronous from here: rotation and the visit slot commit together.
+          const at = Date.now();
+          const current = visit();
+          if (current && current.state !== 'active') throw visitEnded();
+          if (!current) this.humanCapacity(ip);
+          const renewToken = rotateRenewal(store, found, at);
+          const expiresAt = at + invite.lifetimeSeconds * 1000;
+          if (current) this.ctx.storage.sql.exec('UPDATE sessions SET expires_at = ?, last_seen = ?, ip = ? WHERE key = ?', expiresAt, at, ip, current.key);
+          else this.ctx.storage.sql.exec("INSERT INTO sessions (key,id,ip,kind,expires_at,last_seen,config,credential,state) VALUES (?,?,?,'human',?,?,?,?,'active')",
+            digest(secret('bgs_')), found.session_id, ip, expiresAt, at, found.config, JSON.stringify({ identity: found.identity }));
+          await this.ctx.storage.setAlarm(Date.now() + 30_000);
+          return send(200, { renewToken, sessionId: found.session_id, playerId: found.identity, expiresAt: new Date(expiresAt).toISOString(),
+            permissions: { combat: invite.combat, chat: invite.chat } });
+        } finally { this.renewing.delete(found.identity); }
       }
       const token = bearer(request);
       if (!token.startsWith('bgs_')) throw unauthorized();
@@ -298,7 +417,7 @@ export class AgentGateway extends DurableObject<Env> {
         try { return send(200, (await this.sessionGame(row)).state()); }
         catch (error) {
           if (error instanceof ApiError && error.status === 401) await this.remove(row);
-          else { const stale = this.live.get(key); this.live.delete(key); if (stale) await stale.close(); await this.remove(row); }
+          else { const stale = this.live.get(key); this.live.delete(key); if (stale?.suspend) await stale.suspend(); else if (stale) await stale.close(); await this.remove(row); }
           throw error;
         }
       }
@@ -332,9 +451,12 @@ export class AgentGateway extends DurableObject<Env> {
           await this.ctx.storage.sync(); // Persist the intent before sending a game action.
           let status = 200;
           let body: unknown = { accepted: true, action, idempotencyKey, message: 'Read /state to observe the result.' };
-          try { await deadline(game.action(action, input), 5000); }
+          try {
+            const result = await deadline(game.action(action, input), 5000);
+            if (result) body = { ...(body as object), ...result };
+          }
           catch (error) {
-            const safe = error instanceof ApiError ? error : new ApiError(422, 'action_rejected', 'The game rejected this action. Inspect state before trying again.');
+            const safe = error instanceof ApiError ? error : new ApiError(422, 'action_rejected', playerRejection(error));
             status = safe.status; body = errorBody(safe);
             if ([401, 503].includes(status)) { await this.remove(row); return send(status, body); }
           }

@@ -1,22 +1,44 @@
-import { MAX_STACK } from './constants';
-import type { Tile } from './types';
+import { HOTBAR_SIZE, MAX_STACK, PUNCH_DAMAGE } from './constants';
+import type { Slot, Tile } from './types';
 
 export interface ItemDef {
   id: string;
   name: string;
+  description?: string;
   icon: string;
   /** HP restored when eaten; 0 for non-consumables. */
   healthRestore: number;
+  /** Damage per swing while wielded; 0 for items that cannot be wielded. */
+  weaponDamage: number;
   maxStack: number;
   color: string;
 }
 
-/** Mirrors shared/itemDefinitions.js (the legacy CommonJS copy used by the Lambda backend). */
+export const STICK_ITEM_ID = 'stick';
+export const DRIFTWOOD_ITEM_ID = 'driftwood';
+export const FLINT_ITEM_ID = 'flint';
+export const STONE_CLUB_ITEM_ID = 'stone_club';
+export const OBSIDIAN_ITEM_ID = 'obsidian';
+export const BERRY_MASH_ITEM_ID = 'berry_mash';
+export const FLINT_KNIFE_ITEM_ID = 'flint_knife';
+
+/**
+ * Berries started as a copy of shared/itemDefinitions.js (the legacy CommonJS
+ * file used by the retired Lambda backend); the stick exists only here.
+ */
 export const ITEM_DEFS: Record<string, ItemDef> = {
-  berry_blueberry: { id: 'berry_blueberry', name: 'Blueberry', icon: '/items/blueberry.png', healthRestore: 5, maxStack: MAX_STACK, color: '#4F46E5' },
-  berry_strawberry: { id: 'berry_strawberry', name: 'Strawberry', icon: '/items/strawberry.png', healthRestore: 3, maxStack: MAX_STACK, color: '#EF4444' },
-  berry_greenberry: { id: 'berry_greenberry', name: 'Greenberry', icon: '/items/greenberry.png', healthRestore: 2, maxStack: MAX_STACK, color: '#22C55E' },
-  berry_goldberry: { id: 'berry_goldberry', name: 'Goldberry', icon: '/items/goldberry.png', healthRestore: 10, maxStack: MAX_STACK, color: '#F59E0B' },
+  berry_blueberry: { id: 'berry_blueberry', name: 'Blueberry', icon: '/items/blueberry.png', healthRestore: 5, weaponDamage: 0, maxStack: MAX_STACK, color: '#4F46E5' },
+  berry_strawberry: { id: 'berry_strawberry', name: 'Strawberry', icon: '/items/strawberry.png', healthRestore: 3, weaponDamage: 0, maxStack: MAX_STACK, color: '#EF4444' },
+  berry_greenberry: { id: 'berry_greenberry', name: 'Greenberry', icon: '/items/greenberry.png', healthRestore: 2, weaponDamage: 0, maxStack: MAX_STACK, color: '#22C55E' },
+  berry_goldberry: { id: 'berry_goldberry', name: 'Goldberry', icon: '/items/goldberry.png', healthRestore: 10, weaponDamage: 0, maxStack: MAX_STACK, color: '#F59E0B' },
+  [STICK_ITEM_ID]: { id: STICK_ITEM_ID, description: 'Opens the bramble paths. First earned at Foraging level 2; extras can be gifted or traded.', name: 'Stick', icon: '/items/stick.png', healthRestore: 0, weaponDamage: 6, maxStack: 1, color: '#8A6A45' },
+  [DRIFTWOOD_ITEM_ID]: { id: DRIFTWOOD_ITEM_ID, description: 'Build clubs, craft tools, make scent decoys, or contribute to the shared camp workshop.', name: 'Driftwood', icon: '/items/driftwood.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#9C8468' },
+  [FLINT_ITEM_ID]: { id: FLINT_ITEM_ID, description: 'Craft a stone club with driftwood, or make a flint knife.', name: 'Flint Shard', icon: '/items/flint.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#5B6470' },
+  [STONE_CLUB_ITEM_ID]: { id: STONE_CLUB_ITEM_ID, description: 'Opens the Boulders route. Keep it when trading if you want to cross again.', name: 'Stone Club', icon: '/items/stone_club.png', healthRestore: 0, weaponDamage: 8, maxStack: 1, color: '#6E6A62' },
+  [OBSIDIAN_ITEM_ID]: { id: OBSIDIAN_ITEM_ID, description: 'Donate at the gardener camp to build a permanent workshop for everyone.', name: 'Obsidian', icon: '/items/obsidian.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#2A2238' },
+  // F2 recipes. Mash: 3 berries (7 HP) in one bite, still below a goldberry. Knife: a stick's damage, not a key.
+  [BERRY_MASH_ITEM_ID]: { id: BERRY_MASH_ITEM_ID, description: 'A portable meal. Eat it to heal or give it to another adventurer.', name: 'Berry Mash', icon: '/items/berry_mash.png', healthRestore: 7, weaponDamage: 0, maxStack: MAX_STACK, color: '#B0415C' },
+  [FLINT_KNIFE_ITEM_ID]: { id: FLINT_KNIFE_ITEM_ID, name: 'Flint Knife', icon: '/items/flint_knife.png', healthRestore: 0, weaponDamage: 6, maxStack: 1, color: '#56606E' },
 };
 
 export function getItemDef(itemId: string): ItemDef | undefined {
@@ -25,6 +47,21 @@ export function getItemDef(itemId: string): ItemDef | undefined {
 
 export function isValidItemId(itemId: string): boolean {
   return itemId in ITEM_DEFS;
+}
+
+export function isWeapon(itemId: string): boolean {
+  return (getItemDef(itemId)?.weaponDamage ?? 0) > 0;
+}
+
+/** Damage of one swing with `weapon` wielded ('' = bare fists). */
+export function swingDamage(weapon: string): number {
+  return weapon ? getItemDef(weapon)?.weaponDamage || PUNCH_DAMAGE : PUNCH_DAMAGE;
+}
+
+/** Whether `itemId` sits in one of the quick-access slots, where it can stay wielded. */
+export function inHotbar(slots: readonly Slot[], itemId: string): boolean {
+  for (let i = 0; i < HOTBAR_SIZE && i < slots.length; i++) if (slots[i]?.itemId === itemId) return true;
+  return false;
 }
 
 export interface TreeSeed extends Tile {

@@ -14,6 +14,9 @@ const LoadingScreen = () => {
     connectionIssue,
     worldUpdatesStalled,
     hasSavedSignIn,
+    reconnectStatus,
+    reconnectAttempt,
+    retryConnection,
   } = useLoadingStore();
   const [waitingLong, setWaitingLong] = useState(false);
   const [recoveryError, setRecoveryError] = useState("");
@@ -31,7 +34,10 @@ const LoadingScreen = () => {
   }, [isLoading, websocketConnected]);
   const disconnected =
     hasPlayed.current && (!websocketConnected || !gameDataLoaded || worldUpdatesStalled);
-  const showing = isLoading || disconnected;
+  // With the reconnect controller running, a dropped link after play shows a
+  // small banner over the (frozen) world instead of the full loading overlay.
+  const banner = disconnected && !assetError && Boolean(reconnectStatus);
+  const showing = (isLoading || disconnected) && !banner;
   useEffect(() => {
     if (!showing) {
       setWaitingLong(false);
@@ -40,6 +46,7 @@ const LoadingScreen = () => {
     const timer = window.setTimeout(() => setWaitingLong(true), 9000);
     return () => window.clearTimeout(timer);
   }, [showing]);
+  if (banner) return <ConnectionBanner status={reconnectStatus} attempt={reconnectAttempt} retry={retryConnection} />;
   if (!showing) return null;
   return (
     <div
@@ -102,15 +109,39 @@ const LoadingScreen = () => {
           </details>
         )}
         <div className="loading-tips">
-          <img src="/ui/stance-strike.png" alt="" />
-          <img src="/ui/stance-grab.png" alt="" />
-          <img src="/ui/stance-guard.png" alt="" />
-          <p>Strike beats Grab. Grab beats Guard. Guard beats Strike.</p>
+          <img src="/ui/punch.png" alt="" />
+          <img src="/items/stick.png" alt="" />
+          <img src="/items/blueberry.png" alt="" />
+          <p>
+            Four berry harvests earn Foraging level 2 and your first stick. A stick
+            lets you push through the brambles. Keys 1–3 use your first three
+            bag slots.
+          </p>
         </div>
         <p className="fine-print">
           Tap the ground to move. Tap a tree to gather. Open Help anytime.
         </p>
       </div>
+    </div>
+  );
+};
+/** "Reconnecting…" while retrying; "Connection lost — Retry" once the controller gives up. */
+export const ConnectionBanner = ({ status, attempt, retry }: { status: string; attempt: number; retry?: () => void }) => {
+  const failed = status === "failed";
+  const text = failed
+    ? "Connection lost —"
+    : status === "offline"
+      ? "You're offline. Waiting for the network…"
+      : attempt > 1
+        ? `Reconnecting… (attempt ${attempt})`
+        : "Reconnecting…";
+  return (
+    <div className={`connection-banner ${failed ? "failed" : ""}`} role="status" aria-live="polite" data-testid="connection-banner" data-status={status}>
+      {!failed && <span className="spinner" aria-hidden="true" />}
+      <span>{text}</span>
+      {(failed || status === "offline") && (
+        <button className="primary-button" onClick={() => (retry ? retry() : window.location.reload())}>Retry</button>
+      )}
     </div>
   );
 };

@@ -1,0 +1,38 @@
+{
+  "errors": [],
+  "shots": [],
+  "audio": {
+    "state": "running",
+    "rate": 44100
+  },
+  "frameMs": 614.0105263157895,
+  "harvestShots": [
+    {
+      "file": "/home/user/berigame/docs/art/game-review/fx-audio/harvest-seq-01.png",
+      "endTick": 0,
+      "tick": 3085
+    },
+    {
+      "file": "/home/user/berigame/docs/art/game-review/fx-audio/harvest-seq-02.png",
+      "endTick": 3093,
+      "tick": 3092
+    }
+  ],
+  "resources": {
+    "sceneMaterialCount": 33,
+    "paletteEntries": 1,
+    "paletteUsers": 3
+  },
+  "render": {
+    "calls": 34,
+    "triangles": 48555,
+    "geometries": 32,
+    "textures": 4,
+    "pixelRatio": 1,
+    "camera": [
+      5.0516604123725735,
+      6.96547144071519,
+      9.471863273198574
+    ]
+  }
+}

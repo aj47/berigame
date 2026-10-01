@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Driftwood item icon: hand-drawn source for frontend/public/items/driftwood.png (render at 128x128, transparent). Sun-bleached, grey-tan, smooth, with a forked stub. -->
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E6D6BC"/>
+      <stop offset="0.55" stop-color="#BFAA8A"/>
+      <stop offset="1" stop-color="#8C7A62"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#3B2F24" stroke-linejoin="round" stroke-linecap="round">
+    <!-- forked branch stub -->
+    <path d="M84 44 C 90 30, 98 22, 110 18 C 115 17, 118 22, 114 26 C 104 31, 98 38, 94 50 Z" fill="url(#wood)" stroke-width="4"/>
+    <!-- main log: wavy, tapering, lying diagonally -->
+    <path d="M12 104 C 8 96, 12 88, 22 84 C 40 78, 50 70, 62 58 C 74 46, 88 40, 104 42 C 114 43, 120 50, 116 58 C 112 64, 104 62, 96 64 C 84 67, 76 76, 64 88 C 52 100, 40 108, 26 112 C 20 114, 14 110, 12 104 Z" fill="url(#wood)" stroke-width="4.5"/>
+  </g>
+  <!-- highlight -->
+  <path d="M20 90 C 38 84, 50 76, 62 64 C 74 52, 88 46, 104 47" fill="none" stroke="#F6EEDD" stroke-width="3.2" stroke-linecap="round" opacity="0.9"/>
+  <!-- weathered grain lines -->
+  <path d="M28 100 C 44 94, 54 84, 66 74 C 76 64, 86 58, 98 56" fill="none" stroke="#7C6A54" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+  <path d="M40 101 C 50 96, 58 88, 66 81" fill="none" stroke="#7C6A54" stroke-width="1.6" stroke-linecap="round" opacity="0.6"/>
+  <!-- worn hole -->
+  <ellipse cx="78" cy="58" rx="5" ry="3.2" transform="rotate(-35 78 58)" fill="#6E5E4A" stroke="#3B2F24" stroke-width="2.2"/>
+  <!-- broken end -->
+  <ellipse cx="18" cy="98" rx="6" ry="8" transform="rotate(-20 18 98)" fill="#D8C7A8" stroke="#3B2F24" stroke-width="3"/>
+  <ellipse cx="18" cy="98" rx="2.4" ry="3.4" transform="rotate(-20 18 98)" fill="none" stroke="#9E8A6C" stroke-width="1.5"/>
+  <!-- sparkles, like the berry icons -->
+  <path d="M28 34 l 3 8 l 8 3 l -8 3 l -3 8 l -3 -8 l -8 -3 l 8 -3 Z" fill="#FFE27A" stroke="#C99A2E" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M108 84 l 2 5 l 5 2 l -5 2 l -2 5 l -2 -5 l -5 -2 l 5 -2 Z" fill="#FFE27A" stroke="#C99A2E" stroke-width="1" stroke-linejoin="round"/>
+</svg>

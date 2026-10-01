@@ -5,6 +5,7 @@ vi.mock('../module_bindings', () => ({
   DbConnection: { builder: () => {
     const builder: any = {};
     for (const name of ['withUri', 'withDatabaseName']) builder[name] = () => builder;
+    builder.getUri = () => 'ws://x';
     builder.withToken = (token: string) => { test.token = token; return builder; };
     for (const name of ['onConnect', 'onConnectError', 'onDisconnect']) builder[name] = (callback: any) => { test.callbacks[name] = callback; return builder; };
     return builder;
@@ -48,5 +49,14 @@ describe('failed connection recovery preserves identity', () => {
     expect(test.loading.setConnectionIssue).toHaveBeenCalledWith(null, false);
     expect(test.subscribe).toHaveBeenCalledWith(expect.arrayContaining(['appearance']));
     log.mockRestore();
+  });
+});
+
+describe('each reconnect attempt opens a new socket at once', () => {
+  it('every builder gets its own pool key, so the SDK never hands back the old connection', () => {
+    const first = buildConnection() as any;
+    const second = buildConnection() as any;
+    expect(first.getUri()).not.toBe(second.getUri());
+    expect(first.getUri()).toMatch(/#attempt-\d+$/);
   });
 });

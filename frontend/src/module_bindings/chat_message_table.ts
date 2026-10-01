@@ -16,4 +16,6 @@ export default __t.row({
   text: __t.string(),
   tick: __t.u32(),
   sentAt: __t.timestamp().name("sent_at"),
+  x: __t.i32(),
+  z: __t.i32(),
 });
