@@ -1,9 +1,9 @@
 import React from 'react';
 import { Html } from '@react-three/drei';
 import { BufferGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, MeshBasicMaterial, MeshStandardMaterial, CircleGeometry, OctahedronGeometry } from 'three';
-import { HARVEST_TICKS, TICK_MS, getItemDef, tileToWorld } from '@sim';
+import { HARVEST_TICKS, getItemDef, tileToWorld } from '@sim';
 import type { Player, Tree } from '../../module_bindings/types';
-import { useGameActions } from '../../spacetime/actions';
+import { harvestStatus } from '../harvestUi';
 import { useMyIdentityHex, useMyPlayer, usePlayerByHex } from '../../spacetime/hooks';
 import { identityHex } from '../../spacetime/identity';
 import { useUserInputStore } from '../../store';
@@ -99,7 +99,6 @@ const shadowMat = new MeshBasicMaterial({ color: '#2f4a2a', transparent: true, o
 interface Props { tree: Tree; tick: number; harvester: Player | null; }
 const BerryTree = ({ tree, tick, harvester }: Props) => {
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
-  const { startHarvest } = useGameActions();
   const me = useMyPlayer();
   const myHex = useMyIdentityHex();
   // Only your row and your target's: other players' moves do not re-render every tree.
@@ -107,15 +106,12 @@ const BerryTree = ({ tree, tick, harvester }: Props) => {
   const faded = [me, target].some((p) => p && Math.hypot(p.x-tree.x, p.z-tree.z) < 2.3);
   const def = getItemDef(tree.itemId);
   const [wx, wy, wz] = tileToWorld(tree);
-  const regrowTicks = Math.max(0, tree.cooldownUntilTick - tick);
-  const busy = tree.harvester !== undefined;
+  const { label, busy, regrowTicks, unavailable: disabled } = harvestStatus(tree, tick, harvester, myHex);
   const endTick = harvester?.harvestEndTick ?? 0;
-  const label = busy ? (harvester && myHex && identityHex(harvester.identity) === myHex ? 'You are harvesting' : `${harvester?.name ?? 'Someone'} is harvesting`) : regrowTicks > 0 ? `Regrowing (${Math.ceil(regrowTicks * TICK_MS / 1000)}s)` : `Harvest ${def?.name ?? 'berries'}`;
-  const disabled = busy || regrowTicks > 0;
   const onClick = (e: any) => {
     if (e.delta > 5) return;
     e.stopPropagation();
-    setClickedOtherObject({ connectionId: def?.name ?? 'Berry tree', e, dropdownOptions: [{ label, disabled, onClick: () => { if (!disabled) startHarvest(tree.id); setClickedOtherObject(null); } }] });
+    setClickedOtherObject({ connectionId: def?.name ?? 'Berry tree', e, harvestNodeId: tree.id });
   };
   const s = getShape(tree.itemId);
   const ripe = regrowTicks === 0;

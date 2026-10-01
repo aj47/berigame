@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useUserInputStore } from "../store";
+import HarvestDropdownAction from "./HarvestDropdownAction";
 
 const ClickDropdown = () => {
   const selected = useUserInputStore((state: any) => state.clickedOtherObject);
@@ -61,7 +62,9 @@ const ClickDropdown = () => {
           ×
         </button>
       </div>
-      {selected.dropdownOptions.map((option: any, index: number) => (
+      {selected.harvestNodeId !== undefined ? (
+        <HarvestDropdownAction nodeId={selected.harvestNodeId} onClose={() => setSelected(null)} />
+      ) : selected.dropdownOptions.map((option: any, index: number) => (
         <button
           className="context-action"
           key={index}

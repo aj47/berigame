@@ -1,11 +1,10 @@
 import React from 'react';
 import { Html } from '@react-three/drei';
-import { NodeKind, TICK_MS, getItemDef, harvestTicksFor, nodeKindDef, tileToWorld } from '@sim';
+import { NodeKind, getItemDef, harvestTicksFor, nodeKindDef, tileToWorld } from '@sim';
 import type { Player, Tree } from '../../../module_bindings/types';
-import { useGameActions } from '../../../spacetime/actions';
+import { harvestStatus } from '../../harvestUi';
 import { useUserInputStore } from '../../../store';
 import { useMyIdentityHex } from '../../../spacetime/hooks';
-import { identityHex } from '../../../spacetime/identity';
 import DriftwoodPile from './DriftwoodPile';
 import TideRock from './TideRock';
 import ObsidianOutcrop from './ObsidianOutcrop';
@@ -17,23 +16,17 @@ interface Props { node: Tree; tick: number; harvester: Player | null; }
 const CoastNode = ({ node, tick, harvester }: Props) => {
   const myHex = useMyIdentityHex();
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
-  const { startHarvest } = useGameActions();
   const kind = nodeKindDef(node.kind);
   const item = getItemDef(node.itemId);
   const [wx, wy, wz] = tileToWorld(node);
-  const regrowTicks = Math.max(0, node.cooldownUntilTick - tick);
+  const { label, busy, regrowTicks, unavailable: disabled } = harvestStatus(node, tick, harvester, myHex);
   const ripe = regrowTicks === 0;
-  const busy = node.harvester !== undefined;
   const total = harvestTicksFor(node.kind);
   const endTick = harvester?.harvestEndTick ?? 0;
-  const verb = node.kind === NodeKind.TideRock ? 'Knap' : node.kind === NodeKind.Obsidian ? 'Chip' : 'Gather';
-  const label = busy ? (harvester && myHex && identityHex(harvester.identity) === myHex ? 'You are gathering' : `${harvester?.name ?? 'Someone'} is gathering`) : regrowTicks > 0 ? `${node.kind === NodeKind.TideRock ? 'More flint in' : node.kind === NodeKind.Obsidian ? 'Reforming in' : 'Washing up in'} ${Math.ceil(regrowTicks * TICK_MS / 1000)}s` : `${verb} ${item?.name ?? 'it'}`;
-  const disabled = busy || regrowTicks > 0;
   const onClick = (e: any) => {
     if (e.delta > 5) return;
     e.stopPropagation();
-    // A busy or regrowing node still queues: you wait beside it (wait-and-claim).
-    setClickedOtherObject({ connectionId: kind.name, e, dropdownOptions: [{ label: disabled ? `${label} — wait here` : label, disabled: false, onClick: () => { startHarvest(node.id); setClickedOtherObject(null); } }] });
+    setClickedOtherObject({ connectionId: kind.name, e, harvestNodeId: node.id });
   };
   // Seeded per id so the four piles and rocks do not look stamped.
   const rotation = ((node.id * 2.399) % (Math.PI * 2));
