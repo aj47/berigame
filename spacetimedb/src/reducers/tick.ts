@@ -10,7 +10,7 @@ import {
   bfsPath, chebyshev, facingFromDelta, goalAdjacentTo,
   goalIsTile, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
   neighbors8, swingDamage, tileKey, DUMMY_TILE, dummyAfterHit, worldBlockedSet,
-  TRADE_BREAK_RANGE, TRADE_REQUEST_TICKS,
+  TRADE_BREAK_RANGE, TRADE_REQUEST_TICKS, TRADE_RANGE, SocialNotice,
   GIANT_ID, GIANT_REACH, GIANT_TILE, GiantEventKind, GiantState, giantAfterHit, giantForgot,
   inBoulders, stepGiant, type GiantCandidate,
   RAID_REWARD, RaidOutcome, raidDue, raidRewardees,
@@ -26,7 +26,8 @@ import { statsDeath, statsPosition } from '../lib/stats';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
 import { clearInteractions, hex, sameId } from '../lib/players';
 import { canPlay } from '../lib/access';
-import { cancelTrade } from '../lib/social';
+import { cancelTrade, notify } from '../lib/social';
+import { requestTradeInRange, tradePartnerProblem } from '../lib/trade';
 import { grantXp, harvestTicksForPlayer, unlockCosmetic } from '../lib/progress';
 import type { Ctx, GiantRow, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
 import { MentorMilestone } from '../../../shared/sim';
@@ -62,10 +63,15 @@ function releaseTreeInTick(s: TickState, p: PlayerRow): void {
   p.harvestEndTick = 0;
 }
 
-/** Anything that hurts you interrupts what you were doing with your hands. */
+/** Damage interrupts gathering and queued interactions. */
 function interrupt(s: TickState, p: PlayerRow): void {
   if (p.harvestTreeId !== 0 || p.pending !== Pending.None) {
     releaseTreeInTick(s, p);
+    if (p.pending === Pending.Trade) {
+      p.combatTarget = undefined;
+      p.targetX = undefined; p.targetZ = undefined;
+      notify(s.ctx, p.identity, p.identity, SocialNotice.Info, 'Trade approach cancelled: you were hit');
+    }
     p.pending = Pending.None;
     p.pendingId = 0n;
     mark(s, p);
@@ -104,8 +110,21 @@ function tryClaimTree(s: TickState, p: PlayerRow, tree: TreeRow): boolean {
   return true;
 }
 
+/** Stop the approach without leaving an ordinary follow action behind. */
+function stopTradeApproach(s: TickState, p: PlayerRow, reason?: string): void {
+  p.pending = Pending.None; p.pendingId = 0n;
+  p.combatTarget = undefined; p.hostile = false;
+  p.targetX = undefined; p.targetZ = undefined;
+  mark(s, p);
+  if (reason) notify(s.ctx, p.identity, p.identity, SocialNotice.Info, reason);
+}
+
 function resolvePending(s: TickState, p: PlayerRow): void {
-  if (p.pending === Pending.Harvest) {
+  if (p.pending === Pending.Trade) {
+    const other = p.combatTarget ? s.players.get(hex(p.combatTarget)) : undefined;
+    const problem = tradePartnerProblem(s.ctx, p, other);
+    if (problem) { stopTradeApproach(s, p, problem); return; }
+  } else if (p.pending === Pending.Harvest) {
     const tree = s.trees.get(Number(p.pendingId));
     if (!tree) {
       p.pending = Pending.None; p.pendingId = 0n; mark(s, p);
@@ -181,6 +200,10 @@ function phaseMovement(s: TickState): void {
   for (const h of s.order) {
     const p = s.players.get(h)!;
     if (!alive(p)) continue;
+    if (p.pending === Pending.Trade) {
+      resolvePending(s, p);
+      if (!p.combatTarget) continue;
+    }
 
     let goal: ((t: { x: number; z: number }) => boolean) | null = null;
     if (p.combatTarget) {
@@ -189,8 +212,9 @@ function phaseMovement(s: TickState): void {
         p.combatTarget = undefined;
         p.hostile = false;
         mark(s, p);
-      } else if (chebyshev(p, tgt) > MELEE_RANGE) {
-        goal = goalAdjacentTo(tgt, s.blocked, MELEE_RANGE);
+      } else {
+        const range = p.pending === Pending.Trade ? TRADE_RANGE : MELEE_RANGE;
+        if (chebyshev(p, tgt) > range) goal = goalAdjacentTo(tgt, s.blocked, range);
       }
     } else if (p.targetX !== undefined && p.targetZ !== undefined) {
       const target = { x: p.targetX, z: p.targetZ };
@@ -209,6 +233,10 @@ function phaseMovement(s: TickState): void {
       // key mid-route makes the path fail and the player stops where they are.
       const path = bfsPath(p, goal, s.blocked, playerEnterRule(s.ctx, p));
       if (!path || path.length === 0) {
+        if (p.pending === Pending.Trade) {
+          stopTradeApproach(s, p, 'Cannot reach them to trade');
+          continue;
+        }
         if (!p.combatTarget) { p.targetX = undefined; p.targetZ = undefined; }
         if (p.pending !== Pending.None) { p.pending = Pending.None; p.pendingId = 0n; }
         mark(s, p);
@@ -228,7 +256,7 @@ function phaseMovement(s: TickState): void {
           // including when that is the first half of this tick's travel.
           if (p.pending !== Pending.None) {
             resolvePending(s, p);
-            if (p.pending === Pending.None || p.targetX === undefined) break;
+            if (p.pending === Pending.None || (!p.combatTarget && p.targetX === undefined)) break;
           }
         }
         if ((fromArea === 'grove' || fromArea === 'hedge') && areaOf(p) === 'coast' && unlockCosmetic(s.ctx, p.identity, Cosmetic.CoastScarf)) {
@@ -238,6 +266,21 @@ function phaseMovement(s: TickState): void {
     }
 
     if (p.pending !== Pending.None) resolvePending(s, p);
+  }
+}
+
+/** Check arrival after everyone moves, so a moving partner cannot create an out-of-range request. */
+function phaseTradeApproaches(s: TickState): void {
+  for (const h of s.order) {
+    const p = s.players.get(h)!;
+    if (!alive(p) || p.pending !== Pending.Trade) continue;
+    const other = p.combatTarget ? s.players.get(hex(p.combatTarget)) : undefined;
+    const problem = tradePartnerProblem(s.ctx, p, other);
+    if (problem) { stopTradeApproach(s, p, problem); continue; }
+    if (chebyshev(p, other!) <= TRADE_RANGE) {
+      stopTradeApproach(s, p);
+      requestTradeInRange(s.ctx, p, other!, s.T);
+    }
   }
 }
 
@@ -605,6 +648,7 @@ export const tick = spacetimedb.reducer(
 
     phaseRespawn(s);
     phaseMovement(s);
+    phaseTradeApproaches(s);
     phaseHarvest(s);
     phaseSwings(s);
     phaseDummySwings(s);

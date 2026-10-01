@@ -160,7 +160,7 @@ export async function createGameService(credential: Credential, options: Connect
         combatTarget: p.combatTarget?.toHexString() ?? null, hostile: p.hostile,
         destination: p.targetX === undefined ? null : { x: p.targetX, z: p.targetZ },
         area: areaOf(p),
-        action: p.harvestEndTick ? 'harvesting' : p.pending === Pending.Harvest ? (chebyshev(p, conn.db.tree.id.find(Number(p.pendingId)) ?? p) <= 1 ? 'waiting at tree' : 'walking to tree')
+        action: p.pending === Pending.Trade ? 'walking to trade' : p.harvestEndTick ? 'harvesting' : p.pending === Pending.Harvest ? (chebyshev(p, conn.db.tree.id.find(Number(p.pendingId)) ?? p) <= 1 ? 'waiting at tree' : 'walking to tree')
           : p.pending === Pending.Giant ? (p.targetX === undefined ? 'fighting the giant' : 'walking to the giant')
           : p.pending === Pending.Pickup ? 'walking to item' : p.pending === Pending.Dummy ? (p.targetX === undefined ? 'training at dummy' : 'walking to dummy') : p.combatTarget ? (p.hostile ? 'combat' : 'following') : p.targetX === undefined ? 'idle' : 'moving',
       });

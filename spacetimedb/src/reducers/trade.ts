@@ -4,12 +4,13 @@ import { t, SenderError } from 'spacetimedb/server';
 import type { Identity } from 'spacetimedb';
 import spacetimedb from '../schema';
 import {
-  PlayerState, SocialNotice, TRADE_BREAK_RANGE, TRADE_RANGE, chebyshev, describeOffer, executeTrade, formatOffer, offerProblem, parseOffer,
+  Pending, PlayerState, SocialNotice, TRADE_BREAK_RANGE, TRADE_RANGE, chebyshev, describeOffer, executeTrade, formatOffer, offerProblem, parseOffer,
 } from '../../../shared/sim';
 import { readSlots, writeSlots } from '../lib/inventory';
-import { currentTick, findPlayer, requireAlivePlayer, requirePlayer, sameId, savePlayer, touchInput } from '../lib/players';
-import { cancelTrade, notify, notifyThrottled, tradesOf, withdrawTrade } from '../lib/social';
+import { clearInteractions, currentTick, findPlayer, requireAlivePlayer, requirePlayer, sameId, savePlayer, touchInput } from '../lib/players';
+import { cancelTrade, notify, tradesOf, withdrawTrade } from '../lib/social';
 import type { Ctx, PlayerRow, TradeRow } from '../lib/types';
+import { requestTradeInRange, tradePartnerProblem } from '../lib/trade';
 
 function requireTrade(ctx: Ctx, id: bigint, me: Identity): TradeRow {
   const row = ctx.db.trade.id.find(id);
@@ -24,37 +25,29 @@ function requirePartner(ctx: Ctx, me: PlayerRow, other: Identity, range: number)
   return o;
 }
 
-/**
- * Ask a nearby player to trade. If they already asked you, this accepts. Any
- * other trade you were in (or had asked for) is cancelled: one at a time.
- */
+/** Walk into range, then ask to trade. A nearby reciprocal request accepts immediately. */
 export const requestTrade = spacetimedb.reducer(
   { target: t.identity() },
   (ctx, { target }) => {
     const p = requireAlivePlayer(ctx);
     const T = currentTick(ctx);
     touchInput(p, T);
-    savePlayer(ctx, p);
     if (sameId(target, p.identity)) throw new SenderError('You cannot trade with yourself');
-    const o = requirePartner(ctx, p, target, TRADE_RANGE);
-    const mine = tradesOf(ctx, p.identity);
-    const theirs = tradesOf(ctx, target);
-    const incoming = mine.find((r) => sameId(r.a, target) && sameId(r.b, p.identity));
-    if (incoming) {
-      if (!incoming.accepted) {
-        ctx.db.trade.id.update({ ...incoming, accepted: true });
-        notify(ctx, target, p.identity, SocialNotice.Info, `${p.name} accepted your trade`);
+    const other = findPlayer(ctx, target);
+    const problem = tradePartnerProblem(ctx, p, other);
+    if (problem) throw new SenderError(problem);
+    clearInteractions(ctx, p);
+    if (chebyshev(p, other!) > TRADE_RANGE) {
+      // Keep a reciprocal request while approaching, but withdraw trades with anyone else.
+      for (const row of tradesOf(ctx, p.identity)) {
+        if (!sameId(row.a, target) && !sameId(row.b, target)) withdrawTrade(ctx, row, p.identity, 'Trade cancelled');
       }
-      for (const r of mine) if (r.id !== incoming.id) withdrawTrade(ctx, r, p.identity, 'Trade cancelled');
-      return;
+      p.pending = Pending.Trade;
+      p.combatTarget = target;
+    } else {
+      requestTradeInRange(ctx, p, other!, T);
     }
-    if (mine.some((r) => sameId(r.b, target))) return; // already asked them
-    if (theirs.some((r) => r.accepted)) throw new SenderError(`${o.name} is busy trading`);
-    for (const r of mine) withdrawTrade(ctx, r, p.identity, 'Trade cancelled');
-    ctx.db.trade.insert({ id: 0n, a: p.identity, b: target, accepted: false, aOffer: '', bOffer: '', aConfirmed: false, bConfirmed: false, createdTick: T });
-    // Throttled per (you, them): request/cancel loops cannot flood them. The
-    // trade row itself still reaches them, so the request is never lost.
-    notifyThrottled(ctx, target, p.identity, SocialNotice.TradeRequest, `${p.name} wants to trade`);
+    savePlayer(ctx, p);
   }
 );
 
@@ -70,6 +63,8 @@ export const respondTrade = spacetimedb.reducer(
     if (row.accepted) return;
     if (!accept) { cancelTrade(ctx, row, `${p.name} declined the trade`); return; }
     requirePartner(ctx, p, row.a, TRADE_RANGE);
+    clearInteractions(ctx, p);
+    savePlayer(ctx, p);
     for (const r of tradesOf(ctx, p.identity)) if (r.id !== row.id) cancelTrade(ctx, r, 'Trade cancelled');
     for (const r of tradesOf(ctx, row.a)) if (r.id !== row.id) cancelTrade(ctx, r, 'Trade cancelled');
     ctx.db.trade.id.update({ ...row, accepted: true });

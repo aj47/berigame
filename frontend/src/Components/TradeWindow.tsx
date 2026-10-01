@@ -1,7 +1,7 @@
 import React, { memo, useMemo, useState } from "react";
-import { MAX_TRADE_STACKS, formatOffer, getItemDef, parseOffer, type ItemStack } from "@sim";
+import { MAX_TRADE_STACKS, Pending, formatOffer, getItemDef, parseOffer, type ItemStack } from "@sim";
 import { useGameActions } from "../spacetime/actions";
-import { useInventoryRows, useMyIdentityHex, useMyPlayer, usePlayersByHex, useTradeRows } from "../spacetime/hooks";
+import { useInventoryRows, useMyIdentityHex, useMyPlayer, usePlayerByHex, usePlayersByHex, useTradeRows } from "../spacetime/hooks";
 import { identityHex } from "../spacetime/identity";
 import type { Trade } from "../module_bindings/types";
 import "./friends.css";
@@ -27,9 +27,21 @@ const ItemChip = ({ item, onClick, label, disabled, note }: { item: ItemStack; o
  */
 const TradeWindow = memo(() => {
   const trades = useTradeRows();
-  // Nothing to show (almost always): no subscription to players or the bag.
+  const me = useMyPlayer();
+  if (me?.pending === Pending.Trade && me.combatTarget) {
+    return <TradeApproach targetHex={identityHex(me.combatTarget)} />;
+  }
   return trades.length ? <TradeWindowBody trades={trades} /> : null;
 });
+
+const TradeApproach = ({ targetHex }: { targetHex: string }) => {
+  const other = usePlayerByHex(targetHex);
+  const { cancel } = useGameActions();
+  return <section className="trade-window trade-request" role="status" data-testid="trade-approach">
+    <span>Walking to <b>{other?.name ?? 'them'}</b> to trade…</span>
+    <button className="close-button" onClick={() => void cancel()} aria-label="Cancel walking to trade">×</button>
+  </section>;
+};
 
 const TradeWindowBody = ({ trades }: { trades: readonly Trade[] }) => {
   const meHex = useMyIdentityHex();

@@ -1,16 +1,16 @@
 import { adventureTables } from './adventureHarness';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PlayerState } from '../types';
+import { Pending, PlayerState } from '../types';
 import { STICK_ITEM_ID } from '../items';
 import { INVENTORY_SIZE } from '../constants';
-import { TRADE_BREAK_RANGE, TRADE_REQUEST_TICKS, executeTrade, formatOffer, parseOffer, removeItemCount } from '../trade';
+import { TRADE_BREAK_RANGE, TRADE_RANGE, TRADE_REQUEST_TICKS, executeTrade, formatOffer, parseOffer, removeItemCount } from '../trade';
 import {
   CHAT_BUBBLE_MAX_CHARS, CHAT_NEARBY_RADIUS, INVITE_CODE_LEN, INVITE_TTL_MICROS, bubbleText, chatVisible, generateInviteCode,
   inviteUrl, joinSpot, normalizeInviteCode, MAX_FRIENDS,
 } from '../friends';
 import { areaOf, isBramble } from '../areas';
 import { emptySlots } from '../inventory';
-import { tileKey } from '../grid';
+import { chebyshev, tileKey } from '../grid';
 import { Cosmetic, hasCosmetic } from '../skills';
 import type { Slot } from '../types';
 
@@ -28,6 +28,7 @@ vi.mock('../../../spacetimedb/src/schema', () => ({
 }));
 vi.mock('../../../spacetimedb/src/tables', () => ({ tickSchedule: { rowType: {} } }));
 import * as tradeReducers from '../../../spacetimedb/src/reducers/trade';
+import { cancel as registeredStop, setTarget as registeredMove } from '../../../spacetimedb/src/reducers/movement';
 import * as friendReducers from '../../../spacetimedb/src/reducers/friends';
 import { onConnect as registeredConnect, onDisconnect as registeredDisconnect } from '../../../spacetimedb/src/reducers/lifecycle';
 import { NOTICE_COOLDOWN_MICROS } from '../../../spacetimedb/src/lib/social';
@@ -49,6 +50,8 @@ const onDisconnect = R(registeredDisconnect);
 const onConnect = R(registeredConnect);
 const scheduledTick = R(registeredTick);
 const sendChat = R(registeredChat);
+const stop = R(registeredStop);
+const move = R(registeredMove);
 
 const identity = (value: string) => ({ toHexString: () => value });
 const A = identity('a');
@@ -317,11 +320,7 @@ describe('trading: request, offers, two-sided confirmation, atomic swap', () => 
     expect(h.count(A, 'berry_greenberry')).toBe(99);
   });
 
-  it('requests need range; a counter-request accepts; one trade at a time', () => {
-    h.p(B).x = 40;
-    expect(() => requestTrade(h.as(A), { target: B })).toThrow('closer');
-    h.p(B).x = 31;
-    h.advance();
+  it('a nearby counter-request accepts; one trade at a time', () => {
     requestTrade(h.as(A), { target: B });
     h.advance();
     requestTrade(h.as(B), { target: A }); // B asks back: that accepts A's request
@@ -384,6 +383,102 @@ describe('trading: request, offers, two-sided confirmation, atomic swap', () => 
     expect(h.trades.size).toBe(1);
     cancelTrade(h.as(B), { tradeId: row.id });
     expect(h.trades.size).toBe(0);
+  });
+});
+
+describe('walk into range to trade', () => {
+  function separate() {
+    Object.assign(h.p(A), { x: 22, z: 25 });
+    Object.assign(h.p(B), { x: 31, z: 25 });
+  }
+  function arrive(maxTicks = 30) {
+    for (let i = 0; i < maxTicks && !h.trades.size; i++) h.runTick();
+    expect(h.trades.size).toBe(1);
+    expect(chebyshev(h.p(A), h.p(B))).toBeLessThanOrEqual(TRADE_RANGE);
+  }
+  it('walks at normal speed, sends one request on arrival, and stops following', () => {
+    separate();
+    requestTrade(h.as(A), { target: B });
+    expect(h.p(A)).toMatchObject({ pending: Pending.Trade, combatTarget: B, hostile: false });
+    expect(h.trades.size).toBe(0);
+    const start = { ...h.p(A) };
+    h.runTick();
+    expect(chebyshev(start, h.p(A))).toBe(2);
+    expect(h.trades.size).toBe(0);
+    arrive();
+    expect(h.p(A)).toMatchObject({ pending: Pending.None, combatTarget: undefined });
+    expect(current()).toMatchObject({ a: A, b: B, accepted: false });
+    const atArrival = { ...h.p(A) };
+    for (let i = 0; i < 4; i++) h.runTick();
+    expect(h.trades.size).toBe(1);
+    expect(chebyshev(atArrival, h.p(A))).toBe(0);
+    expect(h.notices.filter(n => n.text === 'Ann wants to trade')).toHaveLength(1);
+  });
+  it('tracks a moving partner and waits until both final positions are in range', () => {
+    separate();
+    move(h.as(B), { x: 34, z: 29 });
+    requestTrade(h.as(A), { target: B });
+    arrive();
+  });
+  it('handles reciprocal approaches without duplicate trades', () => {
+    separate();
+    requestTrade(h.as(A), { target: B });
+    requestTrade(h.as(B), { target: A });
+    arrive();
+    expect(current().accepted).toBe(true);
+    expect(h.p(B).pending).toBe(Pending.None);
+  });
+  it.each(['stop', 'move'])('cancels the queued request when the player chooses %s', (action) => {
+    separate();
+    requestTrade(h.as(A), { target: B });
+    h.runTick();
+    if (action === 'stop') stop(h.as(A));
+    else move(h.as(A), { x: 23, z: 27 });
+    for (let i = 0; i < 12; i++) h.runTick();
+    expect(h.trades.size).toBe(0);
+    expect(h.p(A)).toMatchObject({ pending: Pending.None, combatTarget: undefined });
+  });
+  it.each(['offline', 'dead', 'busy'])('cancels if the partner becomes %s while approaching', (reason) => {
+    separate();
+    requestTrade(h.as(A), { target: B });
+    if (reason === 'offline') onDisconnect(h.as(B));
+    else if (reason === 'dead') Object.assign(h.p(B), { state: PlayerState.Dead, respawnTick: h.tickNow() + 100 });
+    else h.ctx.db.trade.insert({ id: 0n, a: B, b: C, accepted: true, aOffer: '', bOffer: '', aConfirmed: false, bConfirmed: false, createdTick: h.tickNow() });
+    h.runTick();
+    expect(h.p(A)).toMatchObject({ pending: Pending.None, combatTarget: undefined });
+    expect([...h.trades.values()].some(t => t.a === A || t.b === A)).toBe(false);
+    expect(h.notices.some(n => /not available|busy trading/.test(n.text))).toBe(true);
+  });
+  it('stops and explains an unreachable partner instead of bypassing route locks', () => {
+    separate();
+    Object.assign(h.p(B), { x: 60, z: 40 });
+    requestTrade(h.as(A), { target: B });
+    h.runTick();
+    expect(h.p(A)).toMatchObject({ x: 22, z: 25, pending: Pending.None, combatTarget: undefined });
+    expect(h.trades.size).toBe(0);
+    expect(h.notices.some(n => n.text === 'Cannot reach them to trade')).toBe(true);
+  });
+  it('being hit cancels the approach without leaving a follow target', () => {
+    Object.assign(h.p(A), { x: 20, z: 34 });
+    Object.assign(h.p(B), { x: 30, z: 34 });
+    Object.assign(h.p(C), { x: 21, z: 33, hostile: true, combatTarget: A, nextSwingTick: 0 });
+    requestTrade(h.as(A), { target: B });
+    h.runTick();
+    expect(h.p(A).hp).toBeLessThan(30);
+    expect(h.p(A)).toMatchObject({ pending: Pending.None, combatTarget: undefined });
+    expect(h.trades.size).toBe(0);
+  });
+  it('replaces a pending partner and keeps repeated requests idempotent', () => {
+    separate();
+    Object.assign(h.p(C), { x: 30, z: 30 });
+    requestTrade(h.as(A), { target: B });
+    h.advance();
+    requestTrade(h.as(A), { target: C });
+    h.advance();
+    requestTrade(h.as(A), { target: C });
+    for (let i = 0; i < 30 && !h.trades.size; i++) h.runTick();
+    expect(h.trades.size).toBe(1);
+    expect(current().b).toBe(C);
   });
 });
 

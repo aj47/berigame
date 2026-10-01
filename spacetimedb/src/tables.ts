@@ -75,7 +75,7 @@ export const player = table(
     stance: t.u8(),
     fightState: t.u8(),
     combatTarget: t.option(t.identity()),
-    /** true = attacking combatTarget, false = just following them */
+    /** true = attacking combatTarget, false = following or approaching to trade */
     hostile: t.bool(),
     nextSwingTick: t.u32(),
     lastExchangeTick: t.u32(),

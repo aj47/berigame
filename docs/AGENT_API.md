@@ -140,8 +140,10 @@ the exact schemas.
   boulder line: you land on the nearest Coast tile instead.
 - **Friends.** `friend_add` / `friend_remove` (one-way list). `state.friends`
   gives each friend's `online`, `area` and `tile`; walk to one with `follow`.
-- **Trading.** `trade_request` a player within 3 tiles (if they already asked
-  you, it accepts); they answer with `trade_respond` (`accept`/`decline`).
+- **Trading.** `trade_request` walks toward the player and sends the request
+  once you are within 3 tiles (if they already asked you, it accepts). While
+  approaching, `state.player.action` is `walking to trade`; `stop` or a new movement
+  cancels the approach. They answer with `trade_respond` (`accept`/`decline`).
   Both then `trade_offer` everything they give as `itemId:qty` pairs joined by
   commas (`""` for nothing). Items stay in the bags and must not be wielded.
   Any offer change clears both confirmations. `trade_confirm` agrees to the

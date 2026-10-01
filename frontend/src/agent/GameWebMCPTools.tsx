@@ -236,7 +236,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                   safe: isSafe(player, state.tick),
                   hostile: player.hostile,
                   target: targetId ? byIdentity.get(targetId)?.name ?? targetId : null,
-                  action: player.harvestEndTick > state.tick
+                  action: player.pending === Pending.Trade ? "walking to trade" : player.harvestEndTick > state.tick
                     ? "harvesting"
                       : player.pending === Pending.Harvest
                       ? "walking to a tree"
