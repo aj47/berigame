@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { hitReactionPrefs } from '../../fx/hitReaction';
+import { DEFAULT_AMBIENT_VOLUME } from '../../audio/defaults';
 
 /** Player preferences. Persisted per browser; never sent to the server. */
 export interface Settings {
@@ -26,7 +27,7 @@ const prefersReduced = (): boolean => {
 export const DEFAULT_SETTINGS: Settings = {
   masterVolume: 0.8,
   sfxVolume: 1,
-  ambientVolume: 0.6,
+  ambientVolume: DEFAULT_AMBIENT_VOLUME,
   muted: false,
   graphics: 'auto',
   showNameplates: true,
@@ -35,11 +36,20 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 const KEY = 'berigame.settings.v1';
+const AMBIENT_DEFAULT_VERSION = 1;
 
 function load(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (raw) {
+      const { ambientDefaultVersion, ...saved } = JSON.parse(raw);
+      // Older saves included all defaults even when only another setting changed.
+      // Adopt the quieter default once; later explicit selections of 60% persist.
+      if (ambientDefaultVersion === undefined && saved.ambientVolume === 0.6) {
+        saved.ambientVolume = DEFAULT_AMBIENT_VOLUME;
+      }
+      return { ...DEFAULT_SETTINGS, ...saved };
+    }
   } catch {
     // Private windows and blocked storage fall back to defaults.
   }
@@ -57,7 +67,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set(patch);
     try {
       const { set: _s, reset: _r, ...values } = { ...get() };
-      localStorage.setItem(KEY, JSON.stringify(values));
+      localStorage.setItem(KEY, JSON.stringify({ ...values, ambientDefaultVersion: AMBIENT_DEFAULT_VERSION }));
     } catch {
       // Ignore storage failures; the setting still applies for this session.
     }

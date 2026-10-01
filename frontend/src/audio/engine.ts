@@ -1,4 +1,5 @@
 import { AMBIENT, SFX, VARIANTS, renderAmbient, renderSound, type AmbientName, type SfxName } from './synth';
+import { DEFAULT_AMBIENT_VOLUME } from './defaults';
 
 /**
  * A small Web Audio engine: pre-rendered procedural buffers (synth.ts), three
@@ -63,7 +64,7 @@ export class AudioEngine {
   plays = 0;
   listenerX = 0;
   listenerZ = 0;
-  private volumes: Volumes = { masterVolume: 0.8, sfxVolume: 1, ambientVolume: 0.6, muted: false };
+  private volumes: Volumes = { masterVolume: 0.8, sfxVolume: 1, ambientVolume: DEFAULT_AMBIENT_VOLUME, muted: false };
   private readonly onEnded = () => { this.active = Math.max(0, this.active - 1); };
 
   constructor(private readonly factory: ContextFactory, private readonly clock: () => number = () => performance.now()) {}

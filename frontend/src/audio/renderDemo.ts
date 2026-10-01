@@ -7,6 +7,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { renderAmbient, renderSound, type SfxName } from './synth';
+import { DEFAULT_AMBIENT_VOLUME } from './defaults';
 
 const SR = 22050;
 const out = process.argv[2] ?? 'fx-audio-demo.wav';
@@ -30,9 +31,9 @@ t += 1.5;
 
 const length = Math.ceil(t * SR);
 const mix = new Float32Array(length);
-// Ambient bed at the default ambientVolume (0.6) under the default master (0.8).
+// Ambient bed at the current default under the default master (0.8).
 const ocean = renderAmbient('ocean', SR), wind = renderAmbient('wind', SR);
-for (let i = 0; i < length; i++) mix[i] += (ocean[i % ocean.length] * 0.9 + wind[i % wind.length] * 0.55) * 0.6;
+for (let i = 0; i < length; i++) mix[i] += (ocean[i % ocean.length] * 0.9 + wind[i % wind.length] * 0.55) * DEFAULT_AMBIENT_VOLUME;
 for (const [at, name, volume, variant] of cues) {
   const s = renderSound(name, SR, variant ?? 0);
   const start = Math.floor(at * SR);
