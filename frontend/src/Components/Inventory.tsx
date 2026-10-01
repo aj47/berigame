@@ -1,31 +1,35 @@
-import React, { memo, useEffect, useMemo, useState } from "react";
-import { HOTBAR_SIZE, INVENTORY_SIZE, getCosmetic, getItemDef, hasCosmetic, isWeapon, levelForXp, recipeStatus } from "@sim";
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
+import { HOTBAR_SIZE, INVENTORY_SIZE, getItemDef, isWeapon } from "@sim";
 import { useGameActions } from "../spacetime/actions";
-import { useInventoryRows, useMyCosmetics, useMyPlayer, useMySkills } from "../spacetime/hooks";
+import { useInventoryRows, useMyPlayer } from "../spacetime/hooks";
 import { isWieldedSlot, slotsFromRows } from "./itemUi";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  onCraft?: () => void;
+  initialQuickSlot?: number | null;
 }
 
-/** Every inventory operation has the same explicit tap/click flow. */
-const Inventory = memo(({ open, onClose }: Props) => {
+/** Quick-slot assignment takes two taps, with swaps handled by the server. */
+const Inventory = memo(({ open, onClose, onCraft, initialQuickSlot = null }: Props) => {
   const rows = useInventoryRows();
   const me = useMyPlayer();
-  const { eatBerry, wieldItem, unwield, moveItem, dropItem, craft } = useGameActions();
+  const { eatBerry, wieldItem, unwield, moveItem, dropItem } = useGameActions();
   const [selected, setSelected] = useState<number | null>(null);
   const [movingFrom, setMovingFrom] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
+  const busy = useRef(false), session = useRef(0);
+  const [assignTo, setAssignTo] = useState<number | null>(null);
+  const [error, setError] = useState('');
   const slots = useMemo(() => slotsFromRows(rows), [rows]);
-  const skills = useMySkills();
-  const cosmetics = useMyCosmetics();
-  const craftingLevel = levelForXp(skills?.craftingXp ?? 0);
   const weapon: string = me?.weapon ?? "";
   const wielded = (index: number) => isWieldedSlot(slots, index, weapon, HOTBAR_SIZE);
   useEffect(() => {
-    if (!open) setMovingFrom(null);
-  }, [open]);
+    session.current++;
+    setMovingFrom(null); setSelected(null); setError('');
+    setAssignTo(open && initialQuickSlot !== null && initialQuickSlot >= 0 && initialQuickSlot < HOTBAR_SIZE ? initialQuickSlot : null);
+  }, [open, initialQuickSlot]);
   useEffect(() => {
     if (movingFrom !== null && !slots[movingFrom]) setMovingFrom(null);
   }, [slots, movingFrom]);
@@ -37,35 +41,62 @@ const Inventory = memo(({ open, onClose }: Props) => {
   const weaponSelected = !!item && isWeapon(item.itemId);
   const selectedWielded = selected !== null && wielded(selected);
   const inQuickBar = selected !== null && selected < HOTBAR_SIZE;
-  const run = async (action: () => Promise<unknown>) => {
-    if (pending) return;
-    setPending(true);
+  const run = async (action: () => Promise<unknown>, onSuccess?: () => void) => {
+    if (busy.current) return;
+    busy.current = true; setPending(true); setError('');
+    const started = session.current;
     try {
-      await action();
-    } finally {
-      setPending(false);
-    }
+      const success = await action();
+      if (started !== session.current) return;
+      if (success !== false) onSuccess?.();
+      else setError('Could not update your bag. Try again.');
+    } finally { busy.current = false; setPending(false); }
+  };
+  const move = (from: number, to: number) => {
+    if (from === to || !slots[from]) return;
+    void run(() => moveItem(from, to), () => {
+      setSelected(to); setAssignTo(null); setMovingFrom(null);
+    });
   };
   const selectSlot = (slot: number) => {
-    if (movingFrom !== null) {
-      if (slot !== movingFrom) void run(() => moveItem(movingFrom, slot));
-      setMovingFrom(null);
+    if (busy.current) return;
+    if (assignTo !== null) {
+      if (slots[slot]) move(slot, assignTo);
+      return;
     }
-    setSelected(slot);
+    if (movingFrom !== null) {
+      if (slot !== movingFrom) move(movingFrom, slot);
+      else setMovingFrom(null);
+      return;
+    }
+    setSelected(slot); setError('');
+  };
+  const assignSelected = item && selected !== null && selected >= HOTBAR_SIZE && movingFrom === null;
+  const quickLabel = (index: number) => {
+    const target = slots[index];
+    if (assignSelected) return `Put ${def?.name ?? item.itemId} in quick slot ${index + 1}${target ? target.itemId === item.itemId ? ', stack items' : `, swap with ${getItemDef(target.itemId)?.name ?? target.itemId}` : ''}`;
+    return `Slot ${index + 1}: ${target ? `${getItemDef(target.itemId)?.name ?? target.itemId}, ${target.quantity}${wielded(index) ? ', wielded' : ''}` : 'empty'}${movingFrom !== null ? ', move here' : ''}`;
+  };
+  const selectQuick = (index: number) => {
+    if (assignSelected) move(selected!, index);
+    else if (movingFrom !== null) selectSlot(index);
+    else if (slots[index]) { setSelected(index); setAssignTo(null); }
+    else { setAssignTo(index); setSelected(null); }
   };
 
   return (
     <section className="game-panel inventory-panel" aria-label="Inventory">
       <header className="panel-heading">
         <div>
-          <span className="eyebrow">Your supplies</span>
           <h2>
-            Inventory{" "}
+            Bag{" "}
             <small>
               {occupied}/{INVENTORY_SIZE}
             </small>
           </h2>
         </div>
+        <div className="bag-heading-actions">
+        {onCraft && <button className="bag-craft-link" onClick={onCraft}>Craft ↗</button>}
         <button
           className="close-button"
           onClick={onClose}
@@ -73,24 +104,35 @@ const Inventory = memo(({ open, onClose }: Props) => {
         >
           ×
         </button>
+        </div>
       </header>
+      <div className={`bag-quick-slots ${assignSelected || movingFrom !== null ? 'is-assigning' : ''}`}>
+        <div className="bag-quick-heading"><strong>Quick slots</strong><span>{assignSelected ? `Place ${def?.name}` : assignTo !== null ? `Choose an item for slot ${assignTo + 1}` : 'Tap an empty slot to add an item'}</span></div>
+        <div className="bag-quick-row" aria-label="Assign quick slots">
+          {slots.slice(0, HOTBAR_SIZE).map((slot, index) => {
+            const definition = slot ? getItemDef(slot.itemId) : undefined;
+            const fullStack = assignSelected && slot?.itemId === item.itemId && slot.quantity >= (def?.maxStack ?? 1);
+            return <button key={index} type="button" className={`inventory-slot quick ${slot ? 'filled' : ''} ${wielded(index) ? 'wielded' : ''} ${selected === index || assignTo === index ? 'selected' : ''} ${assignSelected || movingFrom !== null ? 'move-target' : ''}`} disabled={pending || Boolean(fullStack)} onClick={() => selectQuick(index)} aria-label={quickLabel(index)} aria-pressed={selected === index || assignTo === index} title={quickLabel(index)}>
+              <span className="quick-slot-number" aria-hidden="true">{index + 1}</span>
+              {slot ? <><img src={definition?.icon ?? '/berry.svg'} alt="" draggable={false}/><span className="qty">{slot.quantity}</span></> : <span className="empty-slot-mark" aria-hidden="true">+</span>}
+              <span className="bag-quick-caption">{assignSelected ? fullStack ? 'Full' : !slot ? 'Put here' : slot.itemId === item.itemId ? 'Stack' : 'Swap' : slot ? definition?.name ?? slot.itemId : 'Add item'}</span>
+            </button>;
+          })}
+        </div>
+      </div>
       <div className="inventory-grid" aria-label="Inventory slots">
-        {slots.map((slot, index) => {
+        {slots.slice(HOTBAR_SIZE).map((slot, offset) => {
+          const index = offset + HOTBAR_SIZE;
           const definition = slot ? getItemDef(slot.itemId) : undefined;
           return (
             <button
               key={index}
-              className={`inventory-slot ${slot ? "filled" : ""} ${index < HOTBAR_SIZE ? "quick" : ""} ${wielded(index) ? "wielded" : ""} ${selected === index ? "selected" : ""} ${movingFrom !== null && movingFrom !== index ? "move-target" : ""}`}
+              className={`inventory-slot ${slot ? "filled" : ""} ${selected === index ? "selected" : ""} ${movingFrom !== null && movingFrom !== index ? "move-target" : ""}`}
               onClick={() => selectSlot(index)}
               disabled={pending}
               aria-pressed={selected === index}
               aria-label={`Slot ${index + 1}: ${slot ? `${definition?.name ?? slot.itemId}, ${slot.quantity}${wielded(index) ? ", wielded" : ""}` : "empty"}${movingFrom !== null ? ", move here" : ""}`}
             >
-              {index < HOTBAR_SIZE && (
-                <span className="quick-slot-number" aria-hidden="true">
-                  {index + 1}
-                </span>
-              )}
               {slot ? (
                 <>
                   <img
@@ -110,7 +152,8 @@ const Inventory = memo(({ open, onClose }: Props) => {
         })}
       </div>
       <div className="item-inspector" aria-live="polite">
-        {movingFrom !== null ? (
+        {error && <p className="bag-error" role="alert">{error}</p>}
+        {assignTo !== null ? <div className="bag-assignment-hint"><p>Tap an item in your bag to put it in quick slot {assignTo + 1}.</p><button onClick={() => setAssignTo(null)} disabled={pending}>Cancel</button></div> : movingFrom !== null ? (
           <>
             <strong>Choose a destination slot</strong>
             <p>
@@ -133,25 +176,25 @@ const Inventory = memo(({ open, onClose }: Props) => {
                 {selectedWielded ? " · wielded" : ""}
               </span>
             </div>
-            {(item.itemId === "stick" || item.itemId === "stone_club") && item.quantity === 1 && <p className="fine-print">Keep a spare: dropping or giving away your last {def?.name} can close its outward route until you find another.</p>}
-            {def?.description && <p className="fine-print">{def.description}</p>}
             <div className="item-actions">
               {weaponSelected ? (
                 <button
                   className="primary-button"
-                  disabled={pending || (!selectedWielded && !inQuickBar)}
+                  disabled={pending}
                   title={
                     !selectedWielded && !inQuickBar
                       ? "Move it to quick slot 1, 2 or 3 to wield it"
                       : undefined
                   }
-                  onClick={() =>
-                    void run(() =>
-                      selectedWielded ? unwield() : wieldItem(selected!),
-                    )
-                  }
+                  onClick={() => {
+                    if (!inQuickBar) {
+                      document.querySelector<HTMLButtonElement>('.bag-quick-row button:not(:disabled)')?.focus();
+                      return;
+                    }
+                    void run(() => selectedWielded ? unwield() : wieldItem(selected!));
+                  }}
                 >
-                  {selectedWielded ? "Unwield" : "Wield"}
+                  {selectedWielded ? "Unwield" : inQuickBar ? "Wield" : "Choose quick slot ↑"}
                 </button>
               ) : def?.healthRestore ? (
                 <button
@@ -176,52 +219,22 @@ const Inventory = memo(({ open, onClose }: Props) => {
                 Drop 1
               </button>
             </div>
-            <p className="fine-print">
-              {weaponSelected && !inQuickBar
-                ? "Move it to quick slot 1, 2 or 3 to wield it. "
-                : ""}
-              Anyone can pick up dropped items.
-            </p>
+            <details className="bag-item-details"><summary>Item details</summary>
+              {def?.description && <p>{def.description}</p>}
+              <p>Anyone can pick up dropped items.</p>
+              {(item.itemId === 'stick' || item.itemId === 'stone_club') && item.quantity === 1 && <p>Keep a spare: dropping your last {def?.name} can close its outward route.</p>}
+            </details>
           </>
         ) : (
           <>
             <p>
               {occupied
-                ? "Select an item to eat, wield, move, or drop it."
+                ? "Select an item, then tap a quick slot above to add it."
                 : "Your bag is empty. Tap a berry tree and choose Harvest to gather food — sometimes you'll find a stick too."}
-            </p>
-            <p className="fine-print">
-              Slots 1–3 are your quick bar — move a stick there to wield it.
             </p>
           </>
         )}
-        <div className="recipe-list" aria-label={`Recipes · Crafting level ${craftingLevel}`}>
-          <span className="eyebrow">Make · Crafting Lv {craftingLevel}</span>
-          {recipeStatus(slots, craftingLevel).map((r) => {
-            const owned = r.cosmetic !== null && hasCosmetic(cosmetics?.unlocked ?? 0, r.cosmetic);
-            const icon = r.output ? getItemDef(r.output.itemId)?.icon : `/items/${r.id}.png`;
-            return (
-              <div className={`recipe-row ${r.locked ? "locked" : ""}`} key={r.id} data-recipe-row={r.id}>
-                <button
-                  type="button"
-                  data-recipe={r.id}
-                  disabled={pending || !r.canCraft || owned}
-                  title={r.locked ? `Needs Crafting level ${r.level}` : undefined}
-                  onClick={() => void run(() => craft(r.id))}
-                >
-                  <img src={icon} alt="" /> {r.locked ? `Lv ${r.level}` : "Make"} {r.name}
-                </button>
-                <span className="fine-print">
-                  {r.inputs.map((i) => `${i.quantity} ${i.name}`).join(" + ")}
-                  {r.output && getItemDef(r.output.itemId)?.weaponDamage ? ` → ${getItemDef(r.output.itemId)!.weaponDamage} damage` : ""}
-                  {r.output && getItemDef(r.output.itemId)?.healthRestore ? ` → heals ${getItemDef(r.output.itemId)!.healthRestore}` : ""}
-                  {r.cosmetic !== null ? ` → ${getCosmetic(r.cosmetic)?.name} (keepsake)` : ""}
-                  {r.locked ? ` — needs Crafting level ${r.level}` : owned ? " — already yours" : r.canCraft ? ` · +${r.xp} Crafting XP` : ""}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+
       </div>
     </section>
   );

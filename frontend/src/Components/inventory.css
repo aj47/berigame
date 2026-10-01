@@ -1,0 +1,52 @@
+/* The quick-slot row stays in view while the bag grid scrolls. */
+.ui-group .inventory-panel { display:flex; flex-direction:column; overflow:hidden; width:360px; }
+.inventory-panel .panel-heading { margin-bottom:10px; }
+.bag-heading-actions { display:flex; align-items:center; gap:5px; }
+.bag-heading-actions .bag-craft-link { min-height:44px; padding:7px 10px; font-size:12px; background:transparent; border:1px solid #c9b58e; box-shadow:none; }
+.bag-quick-slots { flex-shrink:0; margin-bottom:12px; }
+.bag-quick-heading { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:7px; font-size:11px; }
+.bag-quick-heading span { font-size:10px; color:var(--ink-soft); text-align:right; }
+.bag-quick-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.bag-quick-row .inventory-slot { min-height:66px; height:66px; aspect-ratio:auto; padding:4px 4px 19px; }
+.bag-quick-row .inventory-slot img { width:34px; height:34px; }
+.bag-quick-row .quick-slot-number { font-size:12px; top:5px; left:7px; }
+.bag-quick-row .qty { top:4px; bottom:auto; right:5px; }
+.bag-quick-caption { position:absolute; bottom:5px; left:4px; right:4px; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bag-quick-slots.is-assigning .inventory-slot:not(:disabled) { border-color:var(--blue); background:#e1e9e9; }
+.bag-quick-slots.is-assigning .bag-quick-heading { color:var(--blue); }
+.bag-quick-slots.is-assigning .bag-quick-heading span { color:var(--blue); font-weight:bold; }
+.ui-group .inventory-panel .inventory-grid { flex:1 1 auto; min-height:58px; max-height:30dvh; }
+.ui-group .inventory-panel .item-inspector { flex:0 0 auto; min-height:0; max-height:45dvh; overflow:auto; margin-top:10px; padding-top:10px; scrollbar-width:thin; }
+.inventory-panel .item-inspector > p { margin:0; font-size:12px; }
+.inventory-panel .item-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+.inventory-panel .item-actions button { min-height:44px; padding:8px 11px; font-size:12px; }
+.bag-item-details { margin-top:8px; font-size:10px; color:var(--ink-soft); }
+.bag-item-details summary { cursor:pointer; padding:4px 0; }
+.bag-item-details p { margin:5px 0; line-height:1.45; }
+.bag-assignment-hint { display:flex; align-items:center; gap:10px; }
+.bag-assignment-hint p { margin:0; font-size:12px; flex:1; }
+.bag-assignment-hint button { min-height:44px; padding:8px; font-size:11px; }
+.bag-error { color:#973a30; font-size:12px; margin:0 0 8px; }
+.ui-group .crafting-panel .recipe-list { border:0; padding:0; margin:0; }
+.crafting-panel .recipe-row { padding:10px 0; border-bottom:1px solid #d4c3a1; }
+.crafting-panel .recipe-row:first-child { margin-top:0; padding-top:0; }
+.crafting-panel .recipe-row:last-child { border-bottom:0; }
+.crafting-panel .recipe-row button { min-height:44px; width:100%; justify-content:flex-start; }
+.crafting-panel .recipe-row .fine-print { font-size:11px; line-height:1.5; }
+@media (max-width:900px), (max-height:500px) {
+  .ui-group .game-panel.inventory-panel { width:min(420px,calc(100% - var(--hud-left) - var(--hud-right))); padding:12px; }
+  .ui-group .inventory-panel .panel-heading { margin-bottom:8px; }
+  .ui-group .inventory-panel .inventory-grid { max-height:28dvh; }
+  .ui-group .inventory-panel .item-inspector { max-height:28dvh; }
+}
+@media (min-width:540px) and (max-height:500px) {
+  .ui-group .game-panel.inventory-panel { width:calc(50% - var(--hud-left) - 12px); }
+  .bag-quick-slots { margin-bottom:6px; }
+  .bag-quick-row .inventory-slot { min-height:50px; height:50px; }
+  .bag-quick-row .inventory-slot img { width:27px; height:27px; }
+  .ui-group .inventory-panel .inventory-grid { min-height:50px; max-height:23dvh; }
+  .inventory-grid .inventory-slot { min-height:44px; height:44px; aspect-ratio:auto; }
+  .inventory-grid .inventory-slot img { width:32px; height:32px; }
+  .ui-group .inventory-panel .item-inspector { max-height:28dvh; }
+  .bag-quick-heading span { font-size:9px; }
+}

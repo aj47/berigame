@@ -25,15 +25,16 @@ import { PUNCH_ICON, isWieldedSlot, slotsFromRows } from "./itemUi";
 const QUICK_KEYS = Array.from({ length: HOTBAR_SIZE }, (_, i) => String(i + 1));
 
 interface Props {
-  /** False while a panel that should not trigger items (Appearance) is open. */
+  /** False while a panel is open, so its keyboard controls cannot consume items. */
   quickKeysEnabled?: boolean;
+  onOpenBag?: (slot: number) => void;
 }
 
 /**
  * Bottom combat strip: health, opponent timing, the three quick slots
  * (inventory slots 0..HOTBAR_SIZE-1, keys 1-3) and Stop.
  */
-const CombatHud = ({ quickKeysEnabled = true }: Props) => {
+const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
   const me = useMyPlayer();
   const players = usePlayersByHex();
   const tick = useTick();
@@ -192,7 +193,7 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
                 ? `Eat +${def!.healthRestore}`
                 : "—";
           const title = !slot
-            ? "Empty — move a berry or stick here from your bag"
+            ? "Choose an item from your bag for this quick slot"
             : weaponSlot
               ? inHand
                 ? `Put away ${name} and punch`
@@ -207,14 +208,14 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
               className={`hotbar-slot ${slot ? "filled" : "empty"} ${inHand ? "active" : ""} ${pending ? "busy" : ""} ${sparkle && slot?.itemId === STICK_ITEM_ID ? "sparkle" : ""}`}
               // Only unusable slots are disabled: disabling the focused button while a
               // request is in flight would drop keyboard focus. pendingRef blocks re-entry.
-              disabled={dead || !slot || (!weaponSlot && !food)}
+              disabled={dead || (!slot ? !onOpenBag : !weaponSlot && !food)}
               aria-busy={pending || undefined}
               // Only a weapon is an on/off toggle; eating is a one-shot action.
               aria-pressed={weaponSlot ? inHand : undefined}
               aria-label={`Quick slot ${index + 1}: ${slot ? `${name}${inHand ? ", wielded" : ""}` : "empty"}`}
               aria-describedby={slot ? `hotbar-hint-${index}` : undefined}
               title={title}
-              onClick={() => activate(index)}
+              onClick={() => !slot && onOpenBag ? onOpenBag(index) : activate(index)}
             >
               {slot ? (
                 <img
@@ -229,7 +230,7 @@ const CombatHud = ({ quickKeysEnabled = true }: Props) => {
                 </span>
               )}
               <span className="hotbar-copy">
-                <span className="hotbar-name">{slot ? name : `Slot ${index + 1}`}</span>
+                <span className="hotbar-name">{slot ? name : onOpenBag ? "Add item" : `Slot ${index + 1}`}</span>
                 <span className="hotbar-hint" id={`hotbar-hint-${index}`}>{hint}</span>
               </span>
               {slot && slot.quantity > 1 && (

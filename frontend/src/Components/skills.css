@@ -21,10 +21,10 @@
 .skill-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #5aa3c8, #8fd0ef); }
 .skill-perk { color: var(--blue); }
 .recipe-list { margin-top: 10px; border-top: 1px solid #c9b58e; padding-top: 6px; }
-.inventory-panel .recipe-row button { display: inline-flex; align-items: center; gap: 5px; }
-.inventory-panel .recipe-row button img { width: 20px; height: 20px; }
-.inventory-panel .recipe-row.locked button { opacity: 0.75; border-style: dashed; }
-.inventory-panel .recipe-row.locked .fine-print { color: #8a5a3a; }
+.crafting-panel .recipe-row button { display: inline-flex; align-items: center; gap: 5px; }
+.crafting-panel .recipe-row button img { width: 20px; height: 20px; }
+.crafting-panel .recipe-row.locked button { opacity: 0.75; border-style: dashed; }
+.crafting-panel .recipe-row.locked .fine-print { color: #8a5a3a; }
 .keepsakes .keepsake-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-bottom: 6px; }
 .keepsake-slot { flex: 0 0 38px; font-size: 11px; color: var(--ink-soft); }
 .keepsake { padding: 6px 8px; font-size: 11px; min-height: 32px; }

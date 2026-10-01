@@ -34,16 +34,16 @@ try{
  check('another player receives the saved advanced appearance',true);
  await observer.close();await page.reload();await page.waitForFunction(()=>window.__berigame?.me&&!document.querySelector('.loading-screen'),null,{timeout:40000});
  check('reload keeps the saved setup closed',await page.getByRole('dialog').count()===0);
- await page.getByRole('button',{name:'Character',exact:true}).click();
+ await page.getByRole('button',{name:/Menu/}).click();await page.getByRole('button',{name:'Character',exact:true}).click();
  await page.getByRole('tab',{name:'Details',exact:true}).click();
  check('saved accessory survives reload',await page.getByRole('button',{name:'Eye patch',exact:true}).getAttribute('aria-pressed')==='true');
  await page.getByRole('button',{name:'Round glasses',exact:true}).click();await page.getByRole('button',{name:'Cancel',exact:true}).click();
- await page.getByRole('button',{name:'Character',exact:true}).click();await page.getByRole('tab',{name:'Details',exact:true}).click();
+ await page.getByRole('button',{name:/Menu/}).click();await page.getByRole('button',{name:'Character',exact:true}).click();await page.getByRole('tab',{name:'Details',exact:true}).click();
  check('cancel restores saved accessory',await page.getByRole('button',{name:'Eye patch',exact:true}).getAttribute('aria-pressed')==='true');
  await page.getByRole('tab',{name:'Start',exact:true}).click();
  await page.getByLabel('What should we call you?').fill('Renamed'+Date.now().toString().slice(-6));await page.getByRole('button',{name:'Save character',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
  check('rename-only edit succeeds',true);
- await page.getByRole('button',{name:'Character',exact:true}).click();
+ await page.getByRole('button',{name:/Menu/}).click();await page.getByRole('button',{name:'Character',exact:true}).click();
  for(const [width,height] of [[320,568],[360,640],[390,844],[768,1024],[844,390],[1024,768],[1440,900]]){
   await page.setViewportSize({width,height});await page.waitForTimeout(250);
   for(const tab of ['Start','Face','Hair','Outfit','Details']){

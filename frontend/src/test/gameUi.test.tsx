@@ -10,6 +10,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayerState, PUNCH_DAMAGE, getItemDef } from "@sim";
 import Inventory from "../Components/Inventory";
+import CraftingPanel from "../Components/CraftingPanel";
 import CombatHud from "../Components/CombatHud";
 import { isWieldedSlot, slotsFromRows } from "../Components/itemUi";
 import { useToastStore } from "../spacetime/stores/toastStore";
@@ -20,6 +21,7 @@ import { BRAMBLE_MESSAGE } from "@sim";
 
 const mock = vi.hoisted(() => ({
   rows: [{ slot: 0, itemId: "berry_blueberry", quantity: 3 }] as any[],
+  craft: vi.fn().mockResolvedValue(true),
   eatBerry: vi.fn().mockResolvedValue(undefined),
   moveItem: vi.fn().mockResolvedValue(undefined),
   dropItem: vi.fn().mockResolvedValue(undefined),
@@ -155,14 +157,69 @@ describe("cross-platform inventory actions", () => {
     expect(mock.wieldItem).not.toHaveBeenCalled();
   });
 
-  it("only wields from the quick bar and explains slots 1-3", () => {
+  it("assigns a bag item to an empty quick slot in two taps without eating or wielding", async () => {
     mock.rows = [{ slot: 5, itemId: "stick", quantity: 1 }];
     render(<Inventory open onClose={() => {}} />);
-    expect(
-      screen.getByText(/Slots 1–3 are your quick bar — move a stick there to wield it/),
-    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Slot 6: Stick/ }));
-    expect(screen.getByRole("button", { name: "Wield" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Put Stick in quick slot 3" }));
+    await waitFor(() => expect(mock.moveItem).toHaveBeenCalledWith(5, 2));
+    expect(mock.eatBerry).not.toHaveBeenCalled();
+    expect(mock.wieldItem).not.toHaveBeenCalled();
+  });
+
+  it("labels occupied quick slots as swaps and preserves the source when an action fails", async () => {
+    mock.rows.push({ slot: 5, itemId: "stick", quantity: 1 });
+    mock.moveItem.mockResolvedValueOnce(false);
+    render(<Inventory open onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Slot 6: Stick/ }));
+    const target = screen.getByRole("button", { name: "Put Stick in quick slot 1, swap with Blueberry" });
+    fireEvent.click(target);
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Could not update your bag'));
+    expect(mock.moveItem).toHaveBeenCalledWith(5, 0);
+    expect(target).toBeEnabled();
+    fireEvent.click(target);
+    await waitFor(() => expect(mock.moveItem).toHaveBeenCalledTimes(2));
+  });
+
+  it("chooses a bag item directly for a quick slot opened from the HUD", async () => {
+    mock.rows.push({ slot: 5, itemId: "stick", quantity: 1 });
+    render(<Inventory open initialQuickSlot={2} onClose={() => {}} />);
+    expect(screen.getByText('Tap an item in your bag to put it in quick slot 3.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Slot 6: Stick/ }));
+    await waitFor(() => expect(mock.moveItem).toHaveBeenCalledWith(5, 2));
+  });
+
+  it("blocks duplicate assignments while a move is pending", async () => {
+    let resolve!: (value: boolean) => void;
+    mock.moveItem.mockImplementationOnce(() => new Promise<boolean>(done => { resolve = done; }));
+    mock.rows.push({ slot: 5, itemId: "stick", quantity: 1 });
+    render(<Inventory open onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Slot 6: Stick/ }));
+    const target = screen.getByRole("button", { name: "Put Stick in quick slot 3" });
+    fireEvent.click(target); fireEvent.click(target);
+    expect(mock.moveItem).toHaveBeenCalledOnce();
+    expect(target).toBeDisabled();
+    await act(async () => resolve(true));
+    expect(target).toBeEnabled();
+  });
+
+  it("cannot stack onto an already-full quick slot", () => {
+    mock.rows = [
+      { slot: 0, itemId: "berry_blueberry", quantity: getItemDef('berry_blueberry')!.maxStack },
+      { slot: 5, itemId: "berry_blueberry", quantity: 1 },
+    ];
+    render(<Inventory open onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Slot 6: Blueberry/ }));
+    expect(screen.getByRole("button", { name: "Put Blueberry in quick slot 1, stack items" })).toBeDisabled();
+    expect(mock.moveItem).not.toHaveBeenCalled();
+  });
+
+  it("keeps recipes out of the bag and opens them only through the Craft action", () => {
+    const onCraft = vi.fn();
+    render(<Inventory open onClose={() => {}} onCraft={onCraft} />);
+    expect(screen.queryByText(/Stone Club/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Craft/ }));
+    expect(onCraft).toHaveBeenCalledOnce();
   });
 
   it("cancels moving when the bag closes", () => {
@@ -218,6 +275,14 @@ describe("combat quick slots", () => {
     const empty = screen.getByRole("button", { name: "Quick slot 3: empty" });
     expect(empty).toBeDisabled();
     expect(empty).not.toHaveAttribute("aria-pressed");
+  });
+
+  it("opens item assignment from an empty HUD quick slot", () => {
+    const onOpenBag = vi.fn();
+    render(<CombatHud onOpenBag={onOpenBag} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Quick slot 3: empty' }));
+    expect(onOpenBag).toHaveBeenCalledWith(2);
+    expect(mock.eatBerry).not.toHaveBeenCalled();
   });
 
   it("key 1 eats the berry in slot 0, but not at full health", async () => {
@@ -533,5 +598,22 @@ describe("authoritative swing timing", () => {
     rerender(<CombatHud />);
     expect(screen.getByText("Moving into range")).toBeInTheDocument();
     expect(screen.queryByText("Swing ready")).not.toBeInTheDocument();
+  });
+});
+
+describe('separate crafting panel', () => {
+  it('preserves ingredient checks and sends the recipe through the game action', async () => {
+    mock.rows = [{ slot: 5, itemId: 'driftwood', quantity: 1 }, { slot: 6, itemId: 'flint', quantity: 2 }];
+    render(<CraftingPanel open onClose={() => {}} />);
+    const club = screen.getByRole('button', { name: 'Make Stone Club' });
+    expect(club).toBeEnabled();
+    fireEvent.click(club);
+    await waitFor(() => expect(mock.craft).toHaveBeenCalledWith('stone_club'));
+  });
+  it('requires ingredients and stays hidden when closed', () => {
+    const { rerender } = render(<CraftingPanel open onClose={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Make Stone Club' })).toBeDisabled();
+    rerender(<CraftingPanel open={false} onClose={() => {}} />);
+    expect(screen.queryByRole('region', { name: 'Crafting' })).not.toBeInTheDocument();
   });
 });

@@ -1,0 +1,337 @@
+{
+  "checks": [
+    {
+      "name": "test character has a bag item and empty quick slot",
+      "pass": true,
+      "detail": [
+        {
+          "slot": 0,
+          "itemId": "berry_goldberry",
+          "quantity": 1
+        },
+        {
+          "slot": 1,
+          "itemId": "berry_greenberry",
+          "quantity": 1
+        },
+        {
+          "slot": 4,
+          "itemId": "berry_blueberry",
+          "quantity": 1
+        },
+        {
+          "slot": 3,
+          "itemId": "berry_strawberry",
+          "quantity": 1
+        },
+        {
+          "slot": 5,
+          "itemId": "stick",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "name": "bag contains no recipe list",
+      "pass": true
+    },
+    {
+      "name": "two taps move the stick into quick slot 3",
+      "pass": true
+    },
+    {
+      "name": "empty HUD slot opens item picker",
+      "pass": true
+    },
+    {
+      "name": "occupied quick slot swaps without losing items",
+      "pass": true,
+      "detail": [
+        {
+          "slot": 0,
+          "itemId": "berry_goldberry",
+          "quantity": 1
+        },
+        {
+          "slot": 1,
+          "itemId": "berry_greenberry",
+          "quantity": 1
+        },
+        {
+          "slot": 4,
+          "itemId": "berry_blueberry",
+          "quantity": 1
+        },
+        {
+          "slot": 3,
+          "itemId": "stick",
+          "quantity": 1
+        },
+        {
+          "slot": 2,
+          "itemId": "berry_strawberry",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "name": "Craft opens separately",
+      "pass": true
+    },
+    {
+      "name": "quick assignment persists after reload",
+      "pass": true
+    },
+    {
+      "name": "320x568 menu stays compact and within screen",
+      "pass": true,
+      "detail": {
+        "x": 57,
+        "y": 349,
+        "width": 250,
+        "height": 154
+      }
+    },
+    {
+      "name": "320x568 bag and actions fit",
+      "pass": true,
+      "detail": {
+        "panel": {
+          "x": 12,
+          "y": 72,
+          "right": 308,
+          "bottom": 502,
+          "width": 296,
+          "height": 430
+        },
+        "quick": {
+          "x": 25,
+          "y": 156,
+          "right": 295,
+          "bottom": 222,
+          "width": 270,
+          "height": 66
+        },
+        "grid": {
+          "x": 25,
+          "y": 234,
+          "right": 295,
+          "bottom": 353,
+          "width": 270,
+          "height": 119
+        },
+        "actions": {
+          "x": 25,
+          "y": 418,
+          "right": 295,
+          "bottom": 462,
+          "width": 270,
+          "height": 44
+        },
+        "overflow": false
+      }
+    },
+    {
+      "name": "390x844 menu stays compact and within screen",
+      "pass": true,
+      "detail": {
+        "x": 127,
+        "y": 625,
+        "width": 250,
+        "height": 154
+      }
+    },
+    {
+      "name": "390x844 bag and actions fit",
+      "pass": true,
+      "detail": {
+        "panel": {
+          "x": 12,
+          "y": 230.6875,
+          "right": 378,
+          "bottom": 778,
+          "width": 366,
+          "height": 547.3125
+        },
+        "quick": {
+          "x": 25,
+          "y": 314.6875,
+          "right": 365,
+          "bottom": 380.6875,
+          "width": 340,
+          "height": 66
+        },
+        "grid": {
+          "x": 25,
+          "y": 392.6875,
+          "right": 365,
+          "bottom": 629,
+          "width": 340,
+          "height": 236.3125
+        },
+        "actions": {
+          "x": 25,
+          "y": 694,
+          "right": 365,
+          "bottom": 738,
+          "width": 340,
+          "height": 44
+        },
+        "overflow": false
+      }
+    },
+    {
+      "name": "768x1024 menu stays compact and within screen",
+      "pass": true,
+      "detail": {
+        "x": 343,
+        "y": 805,
+        "width": 250,
+        "height": 154
+      }
+    },
+    {
+      "name": "768x1024 bag and actions fit",
+      "pass": true,
+      "detail": {
+        "panel": {
+          "x": 174,
+          "y": 360.28125,
+          "right": 594,
+          "bottom": 958,
+          "width": 420,
+          "height": 597.71875
+        },
+        "quick": {
+          "x": 187,
+          "y": 444.28125,
+          "right": 581,
+          "bottom": 510.28125,
+          "width": 394,
+          "height": 66
+        },
+        "grid": {
+          "x": 187,
+          "y": 522.28125,
+          "right": 581,
+          "bottom": 809,
+          "width": 394,
+          "height": 286.71875
+        },
+        "actions": {
+          "x": 187,
+          "y": 874,
+          "right": 581,
+          "bottom": 918,
+          "width": 394,
+          "height": 44
+        },
+        "overflow": false
+      }
+    },
+    {
+      "name": "844x390 menu stays compact and within screen",
+      "pass": true,
+      "detail": {
+        "x": 581,
+        "y": 171,
+        "width": 250,
+        "height": 154
+      }
+    },
+    {
+      "name": "844x390 bag and actions fit",
+      "pass": true,
+      "detail": {
+        "panel": {
+          "x": 12,
+          "y": 68,
+          "right": 410,
+          "bottom": 380,
+          "width": 398,
+          "height": 312
+        },
+        "quick": {
+          "x": 25,
+          "y": 152,
+          "right": 397,
+          "bottom": 202,
+          "width": 372,
+          "height": 50
+        },
+        "grid": {
+          "x": 25,
+          "y": 208,
+          "right": 397,
+          "bottom": 258,
+          "width": 372,
+          "height": 50
+        },
+        "actions": {
+          "x": 25,
+          "y": 323,
+          "right": 397,
+          "bottom": 367,
+          "width": 372,
+          "height": 44
+        },
+        "overflow": false
+      }
+    },
+    {
+      "name": "1440x900 menu stays compact and within screen",
+      "pass": true,
+      "detail": {
+        "x": 1172,
+        "y": 68,
+        "width": 250,
+        "height": 154
+      }
+    },
+    {
+      "name": "1440x900 bag and actions fit",
+      "pass": true,
+      "detail": {
+        "panel": {
+          "x": 1062,
+          "y": 72,
+          "right": 1422,
+          "bottom": 665,
+          "width": 360,
+          "height": 593
+        },
+        "quick": {
+          "x": 1080,
+          "y": 163,
+          "right": 1404,
+          "bottom": 229,
+          "width": 324,
+          "height": 66
+        },
+        "grid": {
+          "x": 1080,
+          "y": 241,
+          "right": 1404,
+          "bottom": 511,
+          "width": 324,
+          "height": 270
+        },
+        "actions": {
+          "x": 1080,
+          "y": 576,
+          "right": 1404,
+          "bottom": 620,
+          "width": 324,
+          "height": 44
+        },
+        "overflow": false
+      }
+    },
+    {
+      "name": "no browser exceptions",
+      "pass": true,
+      "detail": []
+    }
+  ],
+  "errors": []
+}

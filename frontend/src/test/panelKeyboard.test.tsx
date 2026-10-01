@@ -7,7 +7,8 @@ vi.mock('../Components/AdventurePanel', () => ({ default: () => null, AdventureH
 vi.mock('../Components/SkillsPanel', () => ({ default: () => null }));
 vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => null, usePlayers: () => [], useMySkills: () => null, useMyCosmetics: () => null }));
 vi.mock('../Components/ChatBox', () => ({ default: ({ open }: any) => open ? <div>Opened chat</div> : null }));
-vi.mock('../Components/Inventory', () => ({ default: () => null }));
+vi.mock('../Components/Inventory', () => ({ default: ({ open, onCraft }: any) => open ? <section aria-label="Inventory"><button onClick={onCraft}>Craft from bag</button></section> : null }));
+vi.mock('../Components/CraftingPanel', () => ({ default: ({ open }: any) => open ? <section aria-label="Crafting">Recipes</section> : null }));
 vi.mock('../Components/AppearancePanel', () => ({ default: () => null }));
 vi.mock('../Components/CombatHud', () => ({ default: () => <button aria-label="Quick slot 1: Blueberry">Blueberry</button> }));
 vi.mock('../Components/keyboard', () => ({ isTyping: (target: any) => /INPUT|TEXTAREA|SELECT/.test(target?.tagName) }));
@@ -22,6 +23,7 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 describe('panel keyboard shortcuts respect native controls', () => {
   it.each([/^Bag/, /^Help/, /^Quick slot 1/])('does not consume Enter on a focused button', (name) => {
     render(<UIComponents />);
+    if (name.test('Help')) fireEvent.click(screen.getByRole('button', { name: /Menu/ }));
     const button = screen.getByRole('button', { name });
     button.focus();
     expect(fireEvent.keyDown(button, { key: 'Enter' })).toBe(true);
@@ -38,8 +40,9 @@ describe('panel keyboard shortcuts respect native controls', () => {
     expect(screen.getByRole('region', { name: 'Settings' })).toBeInTheDocument();
     fireEvent.keyDown(document.body, { key: 'Escape' });
     expect(screen.queryByRole('region', { name: 'Settings' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Menu/ }));
     fireEvent.click(screen.getByRole('button', { name: /Settings/ }));
-    expect(screen.getByRole('button', { name: /Settings/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('region', { name: 'Settings' })).toBeInTheDocument();
   });
   it('opens secondary panels from Menu and returns focus to the compact trigger', () => {
     render(<UIComponents />);
@@ -61,5 +64,31 @@ describe('panel keyboard shortcuts respect native controls', () => {
     fireEvent.keyDown(document.body, { key: 'Escape' });
     expect(menu).toHaveAttribute('aria-expanded', 'false');
     expect(menu).toHaveFocus();
+  });
+});
+
+describe('compact menu and independent crafting', () => {
+  it('keeps secondary controls hidden until Menu opens and dismisses on an outside press', () => {
+    render(<UIComponents />);
+    expect(screen.queryByRole('button', { name: 'Character' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Menu/ }));
+    expect(screen.getByRole('button', { name: 'Character' })).toBeVisible();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('button', { name: 'Character' })).not.toBeInTheDocument();
+  });
+  it('opens crafting separately with C, Menu, and the bag link', () => {
+    render(<UIComponents />);
+    fireEvent.click(screen.getByRole('button', { name: /^Bag/ }));
+    expect(screen.queryByRole('region', { name: 'Crafting' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Craft from bag' }));
+    expect(screen.getByRole('region', { name: 'Crafting' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Inventory' })).not.toBeInTheDocument();
+    fireEvent.keyDown(document.body, { key: 'c' });
+    expect(screen.queryByRole('region', { name: 'Crafting' })).not.toBeInTheDocument();
+    fireEvent.keyDown(document.body, { key: 'c' });
+    expect(screen.getByRole('region', { name: 'Crafting' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: /Menu/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Craft/ }));
+    expect(screen.getByRole('region', { name: 'Crafting' })).toBeVisible();
   });
 });

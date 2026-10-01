@@ -1,6 +1,7 @@
 import React, { memo, useEffect, useRef, useState } from "react";
 import ChatBox from "./ChatBox";
 import Inventory from "./Inventory";
+import CraftingPanel from "./CraftingPanel";
 import AppearancePanel from "./AppearancePanel";
 import CombatHud from "./CombatHud";
 import { PUNCH_ICON } from "./itemUi";
@@ -17,10 +18,11 @@ import SkillsPanel from "./SkillsPanel";
 import MilestoneBanner from "./MilestoneBanner";
 import "./skills.css";
 import "./responsiveHud.css";
+import "./inventory.css";
 import { PUNCH_DAMAGE, STICK_ITEM_ID, getItemDef } from "@sim";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 
-type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "menu" | null;
+type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | null;
 const stick = getItemDef(STICK_ITEM_ID);
 /** Name and online count: the only part of the HUD shell that follows player rows. */
 const WorldHeader = memo(() => {
@@ -42,15 +44,19 @@ const WorldHeader = memo(() => {
 
 const UIComponents = memo(() => {
   const [panel, setPanel] = useState<Panel>(null);
+  const [quickSlotTarget, setQuickSlotTarget] = useState<number | null>(null);
   const toolbar = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
-  const toggle = (next: Panel) =>
+  const toggle = (next: Panel) => {
+    if (next === 'inventory') setQuickSlotTarget(null);
     setPanel((current) => (current === next ? null : next));
+  };
+  const openBag = (slot?: number) => { setQuickSlotTarget(slot ?? null); setPanel('inventory'); };
   const close = () => {
-    const previous = panel === "appearance" ? "skills" : panel === "friends" ? "chat" : panel;
+    const previous = panel === "friends" ? "chat" : panel;
     setPanel(null);
     // Secondary controls disappear with the compact menu; return to its trigger.
-    const secondary = ["menu", "skills", "help", "settings"].includes(previous ?? "");
+    const secondary = ["menu", "skills", "appearance", "crafting", "help", "settings"].includes(previous ?? "");
     const target = secondary && menuButton.current?.getClientRects().length
       ? menuButton.current
       : toolbar.current?.querySelector<HTMLButtonElement>(`[data-panel="${previous}"]`);
@@ -59,13 +65,13 @@ const UIComponents = memo(() => {
   const closeRef = useRef(close);
   closeRef.current = close;
   useEffect(() => {
-    const compact = window.matchMedia?.("(max-width: 900px), (max-height: 500px)");
-    const onResize = () => {
-      if (!compact?.matches) setPanel((current) => current === "menu" ? null : current);
+    if (panel !== 'menu') return;
+    const dismiss = (event: PointerEvent) => {
+      if (event.target instanceof Node && !toolbar.current?.contains(event.target)) setPanel(null);
     };
-    compact?.addEventListener("change", onResize);
-    return () => compact?.removeEventListener("change", onResize);
-  }, []);
+    document.addEventListener('pointerdown', dismiss);
+    return () => document.removeEventListener('pointerdown', dismiss);
+  }, [panel]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (document.querySelector('[data-character-creator]')) return;
@@ -97,6 +103,7 @@ const UIComponents = memo(() => {
         toggle("help");
       else if (event.key.toLowerCase() === "o") toggle("settings");
       else if (event.key.toLowerCase() === "k") toggle("skills");
+      else if (event.key.toLowerCase() === "c") toggle("crafting");
       else if (event.key === "Escape") closeRef.current();
     };
     const openAdventure = () => setPanel("adventure");
@@ -129,16 +136,13 @@ const UIComponents = memo(() => {
           ref={menuButton}
           aria-expanded={panel === "menu"}
           aria-controls="game-menu"
-          data-active={["menu", "skills", "appearance", "help", "settings"].includes(panel ?? "")}
+          data-active={["menu", "skills", "appearance", "crafting", "help", "settings"].includes(panel ?? "")}
           onClick={() => toggle("menu")}
         >
           <span aria-hidden="true">☰</span> Menu
         </button>
-        <div id="game-menu" className={`toolbar-secondary ${panel === "menu" ? "is-open" : ""}`}>
-          <header className="compact-menu-heading panel-heading">
-            <div><span className="eyebrow">Make yourself at home</span><h2>Island menu</h2></div>
-            <button className="close-button" onClick={close} aria-label="Close menu">×</button>
-          </header>
+        <div id="game-menu" className={`toolbar-secondary ${panel === "menu" ? "is-open" : ""}`} hidden={panel !== 'menu'} role="group" aria-label="More game panels">
+          <button data-panel="crafting" onClick={() => toggle('crafting')}>Craft <kbd>C</kbd></button>
           <button
             data-panel="skills"
             aria-expanded={panel === "appearance" || panel === "skills"}
@@ -174,7 +178,8 @@ const UIComponents = memo(() => {
         <DuelHud />
         <AdventureHud visible={panel === null} />
       </div>
-      <Inventory open={panel === "inventory"} onClose={close} />
+      <Inventory open={panel === "inventory"} onClose={close} onCraft={() => setPanel('crafting')} initialQuickSlot={quickSlotTarget} />
+      <CraftingPanel open={panel === 'crafting'} onClose={close} />
       {/* Friends and invites live behind Chat (no new toolbar button). */}
       <ChatBox open={panel === "chat"} onClose={close} onOpenFriends={() => setPanel("friends")} />
       <FriendsPanel open={panel === "friends"} onClose={close} onOpenChat={() => setPanel("chat")} />
@@ -234,7 +239,7 @@ const UIComponents = memo(() => {
               <strong>Make a stone club.</strong> On the Coast, gather
               driftwood from the piles past each path and flint from the tide
               rocks in the corners. With 1 driftwood and 2 flint, tap the goal
-              (or Make in your inventory) for a stone club: it hits for 8.
+              (or open Craft from Menu) for a stone club: it hits for 8.
             </li>
             <li>
               <strong>Grow your skills.</strong> Picking berries trains
@@ -280,7 +285,7 @@ const UIComponents = memo(() => {
           <p className="fine-print">
             Keyboard shortcuts are optional: 1 / 2 / 3 use your quick slots
             (berries there are eaten, a stick is wielded or put away), Esc
-            stops, I opens your bag, K opens your skills, Enter opens chat, O opens settings. Every action also has an
+            stops, I opens your bag, K opens your skills, C opens crafting, Enter opens chat, O opens settings. Every action also has an
             on-screen control.
           </p>
           <a className="agent-help-link" href="/agent" target="_blank" rel="noreferrer">
@@ -288,7 +293,7 @@ const UIComponents = memo(() => {
           </a>
         </section>
       )}
-      <CombatHud quickKeysEnabled={panel !== "appearance"} />
+      <CombatHud quickKeysEnabled={panel === null} onOpenBag={openBag} />
       <TradeWindow />
       <InviteRedeemer />
       <FriendSync />
