@@ -68,6 +68,7 @@ type Tab = typeof TABS[number];
 
 export default function AppearancePanel({ open, onClose, firstVisit = false }: Props) {
   const identity = useMyIdentityHex(), me = useMyPlayer();
+  const cosmetics = useMyCosmetics();
   const rows = useAppearanceRows();
   const saved = normalizeAppearance(rows.find(row => identityHex(row.identity) === identity));
   const savedKey = JSON.stringify(saved);
@@ -132,7 +133,7 @@ export default function AppearancePanel({ open, onClose, firstVisit = false }: P
     <div className="character-creator" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="creator-title" onKeyDown={onKey}>
       <header className="creator-header"><div><span className="eyebrow">{firstVisit?'Welcome to BeriGame':'Make it yours'}</span><h1 id="creator-title">{firstVisit?'Your story starts here.':'Your character'}</h1><p>{firstVisit?'Choose a name. Find your look. Make the island your own.':'A fresh look for your next adventure.'}</p></div>{!firstVisit&&<button className="creator-close" disabled={pending} onClick={cancel} aria-label="Close character creator">×</button>}</header>
       <div className="creator-body">
-        <CharacterPreview appearance={value} name={name} focusFace={['Face','Hair','Details'].includes(tab)}/>
+        <CharacterPreview appearance={value} name={name} head={cosmetics?.head ?? 0} neck={cosmetics?.neck ?? 0} focusFace={['Face','Hair','Details'].includes(tab)}/>
         <div className="creator-editor">
           <div className="creator-tabs" role="tablist" aria-label="Character categories">{TABS.map((item,index)=><button key={item} id={`creator-tab-${item}`} role="tab" aria-selected={tab===item} aria-controls="creator-options" tabIndex={tab===item?0:-1} onClick={()=>setTab(item)} onKeyDown={e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();const next=TABS[(index+(e.key==='ArrowRight'?1:4))%5];setTab(next);document.getElementById(`creator-tab-${next}`)?.focus();}}}>{item}</button>)}</div>
           <div id="creator-options" className="creator-options-scroll" role="tabpanel" aria-labelledby={`creator-tab-${tab}`} tabIndex={0} key={tab}>

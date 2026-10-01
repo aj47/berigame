@@ -14,7 +14,7 @@ function PreviewCamera({ closeUp }: { closeUp: boolean }) {
   useEffect(() => { camera.position.set(0, closeUp ? 1.85 : 1.2, closeUp ? 2.1 : 4.9); }, [camera, closeUp]);
   return <OrbitControls key={String(closeUp)} target={[0,closeUp?1.82:1.1,0]} enablePan={false} enableZoom={false} minPolarAngle={Math.PI*.35} maxPolarAngle={Math.PI*.56}/>;
 }
-export default function CharacterPreview({ appearance, name, focusFace = false }: { appearance: Appearance; name: string; focusFace?: boolean }) {
+export default function CharacterPreview({ appearance, name, head = 0, neck = 0, focusFace = false }: { appearance: Appearance; name: string; head?: number; neck?: number; focusFace?: boolean }) {
   const motion = useRef({ moving: false }), transient = useRef(null);
   const [turn, setTurn] = useState(0), [closeUp, setCloseUp] = useState(focusFace);
   useEffect(() => setCloseUp(focusFace), [focusFace]);
@@ -25,7 +25,7 @@ export default function CharacterPreview({ appearance, name, focusFace = false }
         <ambientLight intensity={.7}/><directionalLight position={[3,5,4]} intensity={1.3}/><directionalLight position={[-3,2,-2]} intensity={.6} color="#b6d5ec"/>
         <Suspense fallback={<Html center><span className="creator-loading">Loading preview…</span></Html>}>
           <group rotation={[0,turn,0]}>
-            <AdventurerModel url={modelUrl(appearance.hairStyle)} appearance={appearance} identity="character-preview" isSelf={false} state={0} weapon="" motion={motion} transient={transient} preview />
+            <AdventurerModel url={modelUrl(appearance.hairStyle)} appearance={appearance} identity="character-preview" isSelf={false} state={0} weapon="" head={head} neck={neck} motion={motion} transient={transient} preview />
           </group>
           <mesh rotation={[-Math.PI/2,0,0]} position={[0,-.01,0]}><circleGeometry args={[.73,48]}/><meshStandardMaterial color="#b9bba4" roughness={1}/></mesh>
         </Suspense>

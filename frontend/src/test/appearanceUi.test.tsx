@@ -1,21 +1,51 @@
 import React from 'react';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_APPEARANCE } from '@sim';
+import { Cosmetic, CosmeticSlot, DEFAULT_APPEARANCE } from '@sim';
 import AppearancePanel from '../Components/AppearancePanel';
 import CharacterSetup from '../Components/CharacterSetup';
 import { useAppearancePreview } from '../appearance/store';
 import { useLoadingStore } from '../store';
 
-const mock = vi.hoisted(() => ({ rows: [] as any[], me: {name:'Explorer',identity:{toHexString:()=> 'self'}}, saveCharacter: vi.fn().mockResolvedValue(true) }));
-vi.mock('../spacetime/hooks', () => ({ useMyIdentityHex: () => 'self', useMyPlayer:()=>mock.me, useAppearanceRows: () => mock.rows, useMyCosmetics: () => null }));
-vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ saveCharacter: mock.saveCharacter }) }));
-vi.mock('../Components/CharacterPreview',()=>({default:()=> <div>3D preview</div>}));
-beforeEach(() => { mock.rows = []; mock.me.name='Explorer'; mock.saveCharacter.mockReset().mockResolvedValue(true); useAppearancePreview.setState({ draft: null });useLoadingStore.setState({gameDataLoaded:true,websocketConnected:true}); });
+const mock = vi.hoisted(() => ({ rows: [] as any[], cosmetics: null as any, me: {name:'Explorer',identity:{toHexString:()=> 'self'}}, saveCharacter: vi.fn().mockResolvedValue(true), wearCosmetic: vi.fn().mockResolvedValue(true) }));
+vi.mock('../spacetime/hooks', () => ({ useMyIdentityHex: () => 'self', useMyPlayer:()=>mock.me, useAppearanceRows: () => mock.rows, useMyCosmetics: () => mock.cosmetics }));
+vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ saveCharacter: mock.saveCharacter, wearCosmetic: mock.wearCosmetic }) }));
+vi.mock('../Components/CharacterPreview',()=>({default:({head,neck}:any)=> <div data-testid="character-preview" data-head={head} data-neck={neck}>3D preview</div>}));
+beforeEach(() => { mock.rows = []; mock.cosmetics = null; mock.me.name='Explorer'; mock.saveCharacter.mockReset().mockResolvedValue(true); mock.wearCosmetic.mockReset().mockResolvedValue(true); useAppearancePreview.setState({ draft: null });useLoadingStore.setState({gameDataLoaded:true,websocketConnected:true}); });
 afterEach(() => cleanup());
 const tab=(name:string)=>fireEvent.click(screen.getByRole('tab',{name,exact:true}));
 
 describe('character preview and persistence boundary', () => {
+  it('keeps hat and scarf preview in sync with equipment updates while preserving the style draft', async () => {
+    mock.cosmetics = { unlocked: (1 << Cosmetic.StrawHat) | (1 << Cosmetic.CoastScarf), head: Cosmetic.StrawHat + 1, neck: Cosmetic.CoastScarf + 1 };
+    const { rerender } = render(<AppearancePanel open onClose={()=>{}}/>);
+    const preview = screen.getByTestId('character-preview');
+    expect(preview).toHaveAttribute('data-head', String(Cosmetic.StrawHat + 1));
+    expect(preview).toHaveAttribute('data-neck', String(Cosmetic.CoastScarf + 1));
+    tab('Hair'); fireEvent.click(screen.getByRole('button',{name:'Twin braids',exact:true}));
+    tab('Details');
+    const head = within(screen.getByText('Head').parentElement!);
+    const neck = within(screen.getByText('Neck').parentElement!);
+    fireEvent.click(head.getByRole('button', { name: 'None', exact: true }));
+    await waitFor(()=>expect(mock.wearCosmetic).toHaveBeenCalledWith(CosmeticSlot.Head, 0));
+    mock.cosmetics = {...mock.cosmetics, head: 0}; rerender(<AppearancePanel open onClose={()=>{}}/>);
+    expect(preview).toHaveAttribute('data-head', '0');
+    expect(preview).toHaveAttribute('data-neck', String(Cosmetic.CoastScarf + 1));
+    await act(async()=>fireEvent.click(neck.getByRole('button', { name: 'None', exact: true })));
+    expect(mock.wearCosmetic).toHaveBeenCalledWith(CosmeticSlot.Neck, 0);
+    mock.cosmetics = {...mock.cosmetics, neck: 0}; rerender(<AppearancePanel open onClose={()=>{}}/>);
+    expect(preview).toHaveAttribute('data-neck', '0');
+    await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Straw Hat',exact:true})));
+    expect(mock.wearCosmetic).toHaveBeenCalledWith(CosmeticSlot.Head, Cosmetic.StrawHat + 1);
+    await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Coast Scarf',exact:true})));
+    expect(mock.wearCosmetic).toHaveBeenCalledWith(CosmeticSlot.Neck, Cosmetic.CoastScarf + 1);
+    mock.cosmetics = {...mock.cosmetics, head: Cosmetic.StrawHat + 1, neck: Cosmetic.CoastScarf + 1};
+    rerender(<AppearancePanel open onClose={()=>{}}/>);
+    expect(preview).toHaveAttribute('data-head', String(Cosmetic.StrawHat + 1));
+    expect(preview).toHaveAttribute('data-neck', String(Cosmetic.CoastScarf + 1));
+    expect(useAppearancePreview.getState().draft?.hairStyle).toBe(7);
+    expect(mock.saveCharacter).not.toHaveBeenCalled();
+  });
   it('previews extended choices locally and saves name and full appearance together', async () => {
     const close = vi.fn(); render(<AppearancePanel open onClose={close} />);
     fireEvent.change(screen.getByLabelText('What should we call you?'),{target:{value:'  Fern  '}});
