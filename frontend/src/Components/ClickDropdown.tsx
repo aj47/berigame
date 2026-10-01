@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useUserInputStore } from "../store";
 import HarvestDropdownAction from "./HarvestDropdownAction";
 import BerryGiantInteraction from "./BerryGiantInteraction";
+import PlayerInteraction from "./PlayerInteraction";
 
 const ClickDropdown = () => {
   const selected = useUserInputStore((state: any) => state.clickedOtherObject);
@@ -54,7 +55,7 @@ const ClickDropdown = () => {
       ref={ref}
       style={position}
       role="group"
-      aria-label={`Actions for ${selected.connectionId}`}
+      aria-label={selected.playerChoices && !selected.playerHex ? 'Choose player' : `Actions for ${selected.connectionId}`}
     >
       <div className="context-heading">
         <span>{selected.connectionId}</span>
@@ -66,7 +67,9 @@ const ClickDropdown = () => {
           ×
         </button>
       </div>
-      {selected.berryGiantExpeditionId !== undefined ? (
+      {selected.playerChoices ? (
+        <PlayerInteraction selected={selected} />
+      ) : selected.berryGiantExpeditionId !== undefined ? (
         <BerryGiantInteraction key={String(selected.berryGiantExpeditionId)} expeditionId={selected.berryGiantExpeditionId} onClose={() => setSelected(null)} />
       ) : selected.harvestNodeId !== undefined ? (
         <HarvestDropdownAction nodeId={selected.harvestNodeId} onClose={() => setSelected(null)} />

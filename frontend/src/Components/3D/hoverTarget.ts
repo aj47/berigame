@@ -8,6 +8,8 @@ export interface HoverHint {
   tone?: 'ready' | 'muted';
   radius?: number;
   tile?: Tile;
+  /** Stable identity for choosing between avatars under the same pointer. */
+  playerHex?: string;
   /** Panels do not change clickedOtherObject, but still consume a click. */
   click?: 'panel';
 }

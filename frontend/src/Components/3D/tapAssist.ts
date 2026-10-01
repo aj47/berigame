@@ -32,7 +32,7 @@ export function tapSamples(radius: number): [number, number][] {
 const raycaster = new Raycaster();
 const ndc = new Vector2();
 
-export interface TapHit { handler: ClickHandler; object: Object3D; hit: Intersection }
+export interface TapHit { handler: ClickHandler; object: Object3D; hit: Intersection; intersections: Intersection[] }
 
 /**
  * Find a clickable object (tree, node, item, adventurer) within `radius` px of
@@ -53,11 +53,12 @@ export function clickableNear(
   for (const [dx, dy] of tapSamples(radius)) {
     ndc.set(((clientX + dx - rect.left) / rect.width) * 2 - 1, -((clientY + dy - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
-    for (const hit of raycaster.intersectObjects(roots, true)) {
+    const intersections = raycaster.intersectObjects(roots, true);
+    for (const hit of intersections) {
       const found = clickHandlerOf(hit.object);
       if (!found || tried.has(found.object)) continue;
       tried.add(found.object);
-      if (!skip({ ...found, hit })) return { ...found, hit };
+      if (!skip({ ...found, hit, intersections })) return { ...found, hit, intersections };
     }
   }
   return null;
@@ -95,6 +96,7 @@ export function syntheticClick(target: TapHit, clientX: number, clientY: number,
     point: target.hit.point,
     object: target.hit.object,
     eventObject: target.object,
+    intersections: target.intersections,
     nativeEvent,
     stopPropagation: () => {},
   };

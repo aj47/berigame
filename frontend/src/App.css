@@ -874,6 +874,14 @@ canvas {
   color: var(--line);
   font-size: 22px;
 }
+.player-picker-hint {
+  margin: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.player-choice {
+  min-height: 44px;
+}
 .toast {
   position: absolute;
   top: calc(max(16px, env(safe-area-inset-top)) + 58px);
