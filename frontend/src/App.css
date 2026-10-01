@@ -874,6 +874,7 @@ canvas {
   color: var(--line);
   font-size: 22px;
 }
+.context-action.context-walk { border-top: 1px solid #d8c6a3; margin-top: 4px; }
 .player-picker-hint {
   margin: 8px;
   font-size: 12px;

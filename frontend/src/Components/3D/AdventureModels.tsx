@@ -5,6 +5,7 @@ import { AnimationMixer, Group, LoopRepeat, Vector3, type Object3D } from 'three
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
 import { tileToWorld } from '@sim';
 import { openAdventure } from '../AdventurePanel';
+import { openAdventureInteraction } from './adventureInteraction';
 import { buildEmoteClip, CARRY_KEYS } from '../../animation/emotes';
 const sin=Math.sin, cos=Math.cos;
 
@@ -81,7 +82,7 @@ export function AdventureActor({asset,x,z,label,mood='idle',height=2.7,registryK
   },[x,z]);
   useEffect(()=>{if(registryKey&&group.current)actors.set(registryKey,group.current);return()=>{if(registryKey)actors.delete(registryKey);};},[registryKey]);
   useFrame((_,dt)=>{const g=group.current;if(!g)return;const m=move.current;m.elapsed+=dt;const a=Math.min(1,m.elapsed/m.duration);g.position.lerpVectors(m.from,m.to,a);moving.current=a<1&&m.from.distanceToSquared(m.to)>.0001;const turn=Math.atan2(sin(m.yaw-g.rotation.y),cos(m.yaw-g.rotation.y));g.rotation.y+=turn*Math.min(1,dt*8);});
-  return <group ref={group} position={initial.current} onClick={e=>{if(e.delta>5)return;e.stopPropagation();if(onInteract)onInteract(e);else openAdventure();}} userData={{hoverTarget:{title:label.split(' · ')[0],action:hoverAction??'Click to open adventures',detail:label.split(' · ').slice(1).join(' · '),click:onInteract?undefined:'panel',radius:asset==='berry-giant'?1.8:.65}}}>
+  return <group ref={group} position={initial.current} onClick={e=>{if(e.delta>5)return;e.stopPropagation();if(onInteract)onInteract(e);else openAdventureInteraction(label.split(' · ')[0],e);}} userData={{hoverTarget:{title:label.split(' · ')[0],action:hoverAction??'Click for adventure options',detail:label.split(' · ').slice(1).join(' · '),radius:asset==='berry-giant'?1.8:.65}}}>
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,.017,0]} scale={asset==='berry-giant'?[1.8,1.25,1]:asset==='pip'?[.65,.9,1]:[.65,.45,1]} raycast={()=>null}>
       <circleGeometry args={[1,16]}/><meshBasicMaterial color="#233c2a" transparent opacity={.18} depthWrite={false}/>
     </mesh>

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { groundTileFromRay } from "./Components/3D/walkTarget";
 
 /**
  * Client-only UI state. Everything about the game world (positions, health,
@@ -13,7 +14,11 @@ export const useChatStore = create((set) => ({
 
 export const useUserInputStore = create((set) => ({
   clickedOtherObject: null,
-  setClickedOtherObject: (newObject) => set({ clickedOtherObject: newObject }),
+  setClickedOtherObject: (newObject) => set({ clickedOtherObject: newObject ? {
+    ...newObject,
+    // Freeze this now: R3F reuses its ray as the pointer and camera move.
+    walkTile: newObject.walkTile !== undefined ? newObject.walkTile : groundTileFromRay(newObject.e?.ray),
+  } : null }),
 }));
 
 // Recompute readiness from current state; no delayed callback can hide a disconnect.

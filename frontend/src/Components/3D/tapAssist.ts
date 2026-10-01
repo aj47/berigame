@@ -1,5 +1,5 @@
 import { useUserInputStore } from '../../store';
-import { Raycaster, Vector2, type Camera, type Object3D, type Intersection } from 'three';
+import { Raycaster, Vector2, type Camera, type Object3D, type Intersection, type Ray } from 'three';
 import { hoverTargetOf } from './hoverTarget';
 
 /** Screen-space tap radius (CSS px) for fingers; mice get a smaller one. */
@@ -75,11 +75,15 @@ export function openMenuNear(
 ): boolean {
   const store = useUserInputStore as any;
   let opened = false;
+  ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  // Assistance may sample beside the pointer; walking still uses the original click.
+  const originalRay = raycaster.ray.clone();
   clickableNear(scene, camera, rect, clientX, clientY, radius, (t) => {
     const target = hoverTargetOf(t.hit.object, t.hit.point);
     if (target === null) return true;
     const before = store.getState().clickedOtherObject;
-    t.handler(syntheticClick(t, clientX, clientY, nativeEvent));
+    t.handler(syntheticClick(t, clientX, clientY, nativeEvent, originalRay));
     const after = store.getState().clickedOtherObject;
     opened = (!!after && after !== before) || target?.hint.click === 'panel';
     return !opened;
@@ -88,11 +92,12 @@ export function openMenuNear(
 }
 
 /** An R3F-shaped click event for calling an object's handler directly. */
-export function syntheticClick(target: TapHit, clientX: number, clientY: number, nativeEvent?: Event) {
+export function syntheticClick(target: TapHit, clientX: number, clientY: number, nativeEvent?: Event, ray?: Ray) {
   return {
     clientX,
     clientY,
     delta: 0,
+    ray,
     point: target.hit.point,
     object: target.hit.object,
     eventObject: target.object,

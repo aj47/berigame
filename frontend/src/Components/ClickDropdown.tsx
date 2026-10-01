@@ -3,8 +3,10 @@ import { useUserInputStore } from "../store";
 import HarvestDropdownAction from "./HarvestDropdownAction";
 import BerryGiantInteraction from "./BerryGiantInteraction";
 import PlayerInteraction from "./PlayerInteraction";
+import { useGameActions } from "../spacetime/actions";
 
 const ClickDropdown = () => {
+  const { setTarget } = useGameActions();
   const selected = useUserInputStore((state: any) => state.clickedOtherObject);
   const setSelected = useUserInputStore(
     (state: any) => state.setClickedOtherObject,
@@ -84,6 +86,11 @@ const ClickDropdown = () => {
           <span aria-hidden="true">›</span>
         </button>
       ))}
+      {selected.walkTile && <button className="context-action context-walk" onClick={() => {
+        const { x, z } = selected.walkTile;
+        setSelected(null);
+        void setTarget(x, z);
+      }}>Walk here<span aria-hidden="true">›</span></button>}
     </div>
   );
 };

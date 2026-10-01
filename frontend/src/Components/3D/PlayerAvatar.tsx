@@ -109,7 +109,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
     if (!candidates.some(player => player.hex === hex)) candidates.unshift({ hex, name: row.name });
     setClickedOtherObject({
       connectionId: candidates.length > 1 ? 'Choose player' : row.name,
-      e: { clientX: e.clientX, clientY: e.clientY },
+      e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray },
       playerChoices: candidates.map(player => player.hex),
       playerHex: candidates.length === 1 ? hex : undefined,
     });
