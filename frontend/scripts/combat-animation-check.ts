@@ -13,7 +13,7 @@ import { DbConnection, tables } from '../src/module_bindings';
 import { NodeKind, chebyshev, EventKind, getItemDef, HOTBAR_SIZE, inGrace, PUNCH_DAMAGE, STICK_ITEM_ID, TICK_MS } from '../../shared/sim';
 import { STICK_SWING_CLIP, STICK_SWING_IMPACT_MS } from '../src/animation/stickSwing';
 const { chromium } = createRequire(path.join(__dirname, 'combat-animation-check.ts'))(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
-const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
+const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
 const DB = process.env.SPACETIME_DB ?? 'berigame-graphics-review';
 const URI = process.env.SPACETIME_URI ?? 'ws://127.0.0.1:3000';
 const OUT = path.resolve(process.env.COMBAT_REPORT_DIR ?? '../docs/art/game-review/combat-stick');

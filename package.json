@@ -12,6 +12,8 @@
     "beta:types": "node scripts/beta.mjs types",
     "beta:deploy": "node scripts/beta.mjs deploy",
     "beta:invite": "node scripts/beta.mjs invite",
-    "beta:revoke": "node scripts/beta.mjs revoke"
+    "beta:revoke": "node scripts/beta.mjs revoke",
+    "site:build": "node scripts/site.mjs build",
+    "site:deploy": "node scripts/site.mjs deploy"
   }
 }

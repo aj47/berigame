@@ -17,7 +17,7 @@ import { NodeKind, EventKind, HOTBAR_SIZE, RESPAWN_GRACE_TICKS, STICK_ITEM_ID, T
 import { STICK_SWING_MS } from '../src/animation/stickSwing';
 
 const { chromium } = createRequire(path.join(__dirname, 'stick-swing-capture.ts'))(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
-const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
+const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
 const DB = process.env.SPACETIME_DB ?? 'berigame';
 const URI = process.env.SPACETIME_URI ?? 'ws://127.0.0.1:3000';
 const OUT = path.resolve(process.env.SWING_CAPTURE_DIR ?? '../docs/art/game-review/stick-swing');

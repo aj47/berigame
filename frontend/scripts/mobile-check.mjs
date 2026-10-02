@@ -11,7 +11,7 @@ const page=await ctx.newPage();const errors=[],checks=[];
 page.on('pageerror',e=>errors.push(e.message));
 const check=(name,value)=>{checks.push({name,passed:Boolean(value)});if(!value)throw new Error(name);};
 try {
-  await page.goto(process.env.GAME_URL ?? 'http://127.0.0.1:5173');
+  await page.goto(process.env.GAME_URL ?? 'http://127.0.0.1:5173/play');
   await page.waitForFunction(()=>window.__berigame?.me && !document.querySelector('.loading-screen'));
   await page.waitForTimeout(1000);
   await page.screenshot({path:`${out}/phone-hud.png`});

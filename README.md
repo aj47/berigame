@@ -55,7 +55,7 @@ npm run play
 
 `npm run play` installs dependencies on first run, starts a local SpacetimeDB
 if none is listening on port 3000, publishes the module, regenerates the client
-bindings and starts the client at http://127.0.0.1:5173. Open it in two
+bindings and starts the client at http://127.0.0.1:5173/play. Open it in two
 windows (one incognito) to get two players. Ctrl-C stops everything it started.
 
 <details>
@@ -77,6 +77,40 @@ npm run dev                                        # http://localhost:5173
 The client connects to port 3000 on the page hostname (`ws`, or `wss` for an HTTPS page) and database `berigame` by default.
 Override with `VITE_SPACETIME_URI` and `VITE_SPACETIME_DB` (for example a
 Maincloud deployment: `VITE_SPACETIME_URI=wss://maincloud.spacetimedb.com`).
+
+### Landing page and player wiki
+
+The same frontend serves the public website and the game:
+
+Production uses **https://berigame.com** for the landing page,
+**https://wiki.berigame.com** for the wiki, and **https://beta.berigame.com**
+for the existing multiplayer game. Wiki articles use clean paths such as
+`https://wiki.berigame.com/crafting`. Existing `/docs` links redirect to the
+wiki domain, preserving searches and section anchors. The paths below remain
+available together when developing locally.
+
+- `/` — landing page with an interactive day/dusk 3D island, island-life chapters, a map of Bramblewild and a cinematic trailer.
+- `/docs` — searchable player wiki; `/docs/<article>` links directly to a guide. Search results can link to individual sections, and `/docs/crafting#recipe-planner` calculates ingredient quantities and Crafting XP.
+- `/play` — the multiplayer game. Existing `/?join=...` invitations still work.
+- `/agent` — the agent field guide and API onboarding.
+
+To work on the landing page or wiki without starting a game server, run
+`npm ci --prefix frontend` and `npm run dev --prefix frontend`. Open
+http://127.0.0.1:5173. Reading the website does not connect to the game server
+or create a character. Hosting must serve `index.html` for page routes (the
+existing Cloudflare and nginx configurations already do this).
+
+Website components live in `frontend/src/site/`. Wiki articles live in
+`wikiContent.ts` and `itemArticles.ts`; reference tables and the island atlas use
+the shared simulation definitions where possible. Update explanatory prose alongside rule changes, and verify the
+related article links. The landing island is an illustrative diorama; the
+trailer is a cinematic interpretation of the game. The crafting planner reads
+the shared recipe definitions, including one-time cosmetic unlocks. The shared
+berry favicon and Apple touch icon live in `frontend/public/` and apply to all routes.
+
+Run `npm run site:deploy` to deploy the public website and wiki separately from
+the game. See [public website deployment](docs/PUBLIC_SITE.md) for domain setup,
+validation and the separate beta update needed to publish game UI changes.
 
 ### Agent play
 

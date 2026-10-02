@@ -23,6 +23,8 @@ function agentGuide() {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react({ fastRefresh: !process.env.VITEST }), agentGuide()],
+  // Auxiliary art-preview HTML files are not application entry points.
+  optimizeDeps: { entries: ['index.html'] },
   resolve: {
     alias: {
       // Pure simulation code shared with the SpacetimeDB module.

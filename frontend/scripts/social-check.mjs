@@ -2,14 +2,14 @@
  * Two-browser check of the social features against a running Vite dev server
  * and a local SpacetimeDB: invite link join, friends list, trade, speech
  * bubbles, mute and the Nearby chat filter.
- *   PLAYWRIGHT_MODULE=$(npm root -g)/playwright GAME_URL=http://127.0.0.1:5173/ node scripts/social-check.mjs
+ *   PLAYWRIGHT_MODULE=$(npm root -g)/playwright GAME_URL=http://127.0.0.1:5173/play node scripts/social-check.mjs
  */
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
-const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
+const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
 const OUT = process.env.SHOT_DIR ?? '/tmp/social-shots';
 fs.mkdirSync(OUT, { recursive: true });
 

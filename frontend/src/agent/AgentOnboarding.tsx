@@ -1,3 +1,4 @@
+import { agentUrl, gameUrl } from '../site/siteUrls';
 import React, { useEffect, useState } from 'react';
 import { getItemDef, HOTBAR_SIZE, PUNCH_DAMAGE, STICK_DROP_CHANCE, STICK_ITEM_ID } from '@sim';
 
@@ -27,7 +28,7 @@ export default function AgentOnboarding() {
   }, [attempt]);
 
   async function copyUrl() {
-    try { await navigator.clipboard.writeText(new URL('/agent', window.location.origin).toString()); setCopyState('URL copied'); }
+    try { await navigator.clipboard.writeText(new URL(agentUrl(), window.location.origin).toString()); setCopyState('URL copied'); }
     catch { setCopyState('Copy the URL from your address bar'); }
   }
 
@@ -43,7 +44,7 @@ export default function AgentOnboarding() {
     <main className="agent-field-guide">
       <header className="agent-field-header">
         <a className="agent-field-brand" href="/"><span className="agent-guide-mark" aria-hidden="true">B</span>BeriGame</a>
-        <a href="/">Open the game <span aria-hidden="true">↗</span></a>
+        <a href={gameUrl()}>Open the game <span aria-hidden="true">↗</span></a>
       </header>
       <div className="agent-field-content">
         <div className="agent-field-intro">

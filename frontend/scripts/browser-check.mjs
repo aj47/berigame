@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 
-const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
+const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
 const OUT = process.env.SHOT_DIR ?? '/tmp/claude-0/stdb/shots';
 fs.mkdirSync(OUT, { recursive: true });
 

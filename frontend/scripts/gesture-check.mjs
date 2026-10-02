@@ -20,7 +20,7 @@ try {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
   page.on('pageerror', error => report.errors.push(error.message));
-  await page.goto(process.env.GAME_URL ?? 'http://127.0.0.1:5173');
+  await page.goto(process.env.GAME_URL ?? 'http://127.0.0.1:5173/play');
   await page.waitForFunction(() => window.__berigame?.me && window.__berigameRender && !document.querySelector('.loading-screen'));
   await delay(1600);
   const cdp = await ctx.newCDPSession(page);

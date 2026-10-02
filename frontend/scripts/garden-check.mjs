@@ -2,7 +2,7 @@
  * Live check of the personal garden against a Vite dev server and a local
  * SpacetimeDB the CLI identity owns (so it can call the owner-only
  * garden_dev_ripen test hook instead of waiting hours):
- *   PLAYWRIGHT_MODULE=$(npm root -g)/playwright GAME_URL=http://127.0.0.1:5173/ \
+ *   PLAYWRIGHT_MODULE=$(npm root -g)/playwright GAME_URL=http://127.0.0.1:5173/play \
  *   STDB_SERVER=http://127.0.0.1:3000 STDB_DB=berigame node scripts/garden-check.mjs
  * Picks berries, plants three plots from the tap menu, fast-forwards growth,
  * reloads (the returning-player toast), harvests, and saves screenshots.
@@ -13,7 +13,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
-const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
+const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
 const OUT = process.env.SHOT_DIR ?? '/tmp/garden-shots';
 const SPACETIME = process.env.SPACETIME_BIN ?? 'spacetime';
 const SERVER = process.env.STDB_SERVER ?? 'http://127.0.0.1:3000';

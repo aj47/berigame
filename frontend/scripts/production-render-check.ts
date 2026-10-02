@@ -1,5 +1,5 @@
 /** Optional production-build RAF qualification. Start an isolated Vite preview first.
- * GAME_URL=http://127.0.0.1:4175 PLAYWRIGHT_MODULE=/path/to/playwright \
+ * GAME_URL=http://127.0.0.1:4175/play PLAYWRIGHT_MODULE=/path/to/playwright \
  * SPACETIME_DB=berigame-graphics-review npx tsx scripts/production-render-check.ts
  * Uses <=32 online players, closes all fixtures, and reads no browser credentials.
  */
@@ -15,7 +15,7 @@ const OUT=process.env.RENDER_REPORT_PATH?path.resolve(process.env.RENDER_REPORT_
 const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const fixtures:DbConnection[]=[];
 const errors:string[]=[];
-const report:any={createdAt:new Date().toISOString(),url:process.env.GAME_URL??'http://127.0.0.1:4175',host:{cpu:os.cpus()[0]?.model,platform:os.platform(),arch:os.arch()},qualification:'Local production bundle in headless Chrome.390px touch viewport/DPR3 on host GPU;4x Chrome CPU throttle is only a CPU-throughput proxy, not physical phone hardware. No profiler attached. RAF intervals measure delivery cadence, not GPU execution time.',samples:[],errors};
+const report:any={createdAt:new Date().toISOString(),url:process.env.GAME_URL??'http://127.0.0.1:4175/play',host:{cpu:os.cpus()[0]?.model,platform:os.platform(),arch:os.arch()},qualification:'Local production bundle in headless Chrome.390px touch viewport/DPR3 on host GPU;4x Chrome CPU throttle is only a CPU-throughput proxy, not physical phone hardware. No profiler attached. RAF intervals measure delivery cadence, not GPU execution time.',samples:[],errors};
 function digest(dir:string){const hash=createHash('sha256');const walk=(dir:string):string[]=>fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name)):[path.join(dir,e.name)]);for(const file of walk(dir).sort())hash.update(path.relative(dir,file)).update(fs.readFileSync(file));return hash.digest('hex');}
 async function fixture(){return new Promise<DbConnection>((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('fixture timeout')),10000);const c=DbConnection.builder().withUri(process.env.SPACETIME_URI??'ws://127.0.0.1:3000').withDatabaseName(process.env.SPACETIME_DB??'berigame-graphics-review').onConnectError((_ctx,e)=>{clearTimeout(timeout);reject(e)}).onConnect(c=>c.subscriptionBuilder().onApplied(()=>{clearTimeout(timeout);resolve(c)}).onError((_ctx,e)=>{clearTimeout(timeout);reject(e)}).subscribe([tables.player,tables.appearance])).build();fixtures.push(c)})}
 async function until(label:string,predicate:()=>boolean,timeout=15000){const start=Date.now();while(Date.now()-start<timeout){if(predicate())return;await sleep(100)}throw new Error(label)}

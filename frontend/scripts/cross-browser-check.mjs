@@ -8,7 +8,7 @@ const modulePath = process.env.PLAYWRIGHT_MODULE ?? 'playwright';
 const playwright = require(modulePath);
 const output = process.env.SHOT_DIR ?? '../docs/art/game-review/cross-browser';
 fs.mkdirSync(output, { recursive: true });
-const report = { playwrightVersion: require(`${modulePath}/package.json`).version, at: new Date().toISOString(), qualification: 'Desktop browser engines with mobile viewport/touch emulation; not physical phones.', url: process.env.GAME_URL ?? 'http://127.0.0.1:5173', engines: [] };
+const report = { playwrightVersion: require(`${modulePath}/package.json`).version, at: new Date().toISOString(), qualification: 'Desktop browser engines with mobile viewport/touch emulation; not physical phones.', url: process.env.GAME_URL ?? 'http://127.0.0.1:5173/play', engines: [] };
 const engines = (process.env.ENGINES ?? 'webkit,firefox').split(',');
 for (const name of engines) {
   const result = { engine: name, version: null, status: 'running', checks: [], pageErrors: [], consoleErrors: [], consoleWarnings: [] };

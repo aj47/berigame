@@ -7,8 +7,8 @@ const check=(name,pass,detail)=>{report.checks.push({name,pass,detail});if(!pass
 const ctx=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:2}),page=await ctx.newPage();
 page.on('pageerror',e=>report.errors.push(e.message));
 try{
- await page.goto(process.env.GAME_URL??'http://127.0.0.1:5173');await page.waitForFunction(()=>window.__berigame?.me&&!document.querySelector('.loading-screen'));
- const others=[];for(let i=0;i<2;i++){const c=await browser.newContext();const p=await c.newPage();await p.goto(process.env.GAME_URL??'http://127.0.0.1:5173');await p.waitForFunction(()=>window.__berigame?.me&&!document.querySelector('.loading-screen'));others.push(p)}
+ await page.goto(process.env.GAME_URL??'http://127.0.0.1:5173/play');await page.waitForFunction(()=>window.__berigame?.me&&!document.querySelector('.loading-screen'));
+ const others=[];for(let i=0;i<2;i++){const c=await browser.newContext();const p=await c.newPage();await p.goto(process.env.GAME_URL??'http://127.0.0.1:5173/play');await p.waitForFunction(()=>window.__berigame?.me&&!document.querySelector('.loading-screen'));others.push(p)}
  await page.waitForTimeout(700);
  const labels=()=>page.evaluate(()=>[...document.querySelectorAll('[data-player-name]')].map(e=>({id:e.dataset.playerName,text:e.textContent,visibility:getComputedStyle(e).visibility,rect:e.getBoundingClientRect().toJSON()})));
  const spawn=await labels();check('shared spawn preserves You and hides overlapping ambient names',spawn.filter(e=>e.visibility==='visible').length===1&&spawn.find(e=>e.visibility==='visible').text==='You',spawn);

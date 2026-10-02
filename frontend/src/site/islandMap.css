@@ -1,0 +1,129 @@
+.island-map {
+  position: relative;
+  width: 100%;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgb(215 217 179 / 16%);
+  border-radius: 24px;
+  background: #1d5149;
+  box-shadow: 0 28px 65px rgb(4 24 20 / 19%), inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+
+.island-map__art {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 64 / 51;
+}
+
+.island-map__eyebrow,
+.island-map__edition {
+  fill: #c6caa7;
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 1.7px;
+}
+
+.island-map__edition {
+  font-size: 6.8px;
+  letter-spacing: 1.4px;
+  opacity: .7;
+}
+
+.island-map__landmark text {
+  fill: #f1e8ce;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10px;
+  paint-order: stroke;
+  stroke: #385847;
+  stroke-linejoin: round;
+  stroke-width: 3px;
+}
+
+.island-map__landmark--beacon text,
+.island-map__landmark--harbour text,
+.island-map__landmark--ruins text,
+.island-map__landmark--giant text {
+  stroke: #32544a;
+}
+
+.island-map__compass { color: #dbd3ac; }
+.island-map__compass text { fill: currentColor; font-family: Georgia, serif; font-size: 11px; }
+.island-map__legend text { fill: #bfccad; font-family: inherit; font-size: 9px; }
+.island-map__legend .island-map__sea-label { font-family: Georgia, serif; font-size: 15px; font-style: italic; fill: #c5cdb0; }
+.island-map__selection { pointer-events: none; transition: opacity .25s ease; }
+
+.island-map__region {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  width: auto;
+  min-width: 62px;
+  min-height: 58px;
+  padding: 3px 6px;
+  border: 0;
+  background: transparent;
+  color: #f9ebc8;
+  font: inherit;
+  cursor: pointer;
+  transform: translate(-50%, -22px);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.island-map__number {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border: 1px solid #e9d7ac;
+  border-radius: 50%;
+  background: #244d3f;
+  box-shadow: 0 3px 9px rgb(12 40 27 / 35%), 0 0 0 4px rgb(245 227 177 / 10%);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 14px;
+  font-variant-numeric: lining-nums;
+  transition: color .2s, background .2s, box-shadow .2s, transform .2s;
+}
+
+.island-map__region-name {
+  padding: 3px 8px;
+  border: 1px solid rgb(219 203 161 / 28%);
+  border-radius: 4px;
+  background: #21483c;
+  box-shadow: 0 2px 4px rgb(12 40 27 / 15%);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: .06em;
+  line-height: 1.15;
+}
+
+.island-map__region.is-selected .island-map__number {
+  color: #254838;
+  background: #ecdba8;
+  box-shadow: 0 3px 12px rgb(12 40 27 / 24%), 0 0 0 5px rgb(245 227 177 / 19%), 0 0 0 10px rgb(245 227 177 / 7%);
+}
+
+.island-map__region.is-selected .island-map__region-name { background: #e9d9ac; border-color: #e9d9ac; color: #284538; }
+.island-map__region:hover .island-map__number { transform: translateY(-2px); background: #e9d9ac; color: #284538; }
+.island-map__region:focus-visible { outline: 2px solid #fff1c4; outline-offset: 5px; border-radius: 8px; }
+
+@media (max-width: 600px) {
+  .island-map { border-radius: 17px; }
+  /* Keep location dots and the terrain; SVG captions become too small at this scale. */
+  .island-map__landmark text,
+  .island-map__eyebrow,
+  .island-map__edition,
+  .island-map__legend { display: none; }
+  .island-map__compass text { font-size: 24px; }
+  .island-map__region { gap: 3px; min-width: 62px; min-height: 60px; transform: translate(-50%, -21px); }
+  .island-map__number { width: 32px; height: 32px; font-size: 14px; }
+  .island-map__region-name { padding: 3px 6px; font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island-map__selection,
+  .island-map__number { transition: none; }
+}

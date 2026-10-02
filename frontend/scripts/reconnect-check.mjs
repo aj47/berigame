@@ -6,7 +6,7 @@
  *   4. CDP slow-3G throttling -> the game still loads, ticks advance, and a drop under throttling recovers
  *
  * Needs a local server with the module published and vite pointed at it:
- *   GAME_URL=http://127.0.0.1:5173 \
+ *   GAME_URL=http://127.0.0.1:5173/play \
  *   STDB_STOP_CMD="pkill -f 'listen-addr 127.0.0.1:3000'" \
  *   STDB_START_CMD="spacetime start --listen-addr 127.0.0.1:3000 --data-dir /tmp/stdb" \
  *   node scripts/reconnect-check.mjs
@@ -22,7 +22,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const OUT = path.resolve(process.env.SHOT_DIR ?? 'test-results/reconnect');
 fs.mkdirSync(OUT, { recursive: true });
-const BASE = process.env.GAME_URL ?? 'http://127.0.0.1:5173';
+const BASE = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
 const URL_ = `${BASE}${BASE.includes('?') ? '&' : '?'}reconnectAttempts=4&reconnectMaxMs=1500`;
 const report = { at: new Date().toISOString(), checks: [], errors: [] };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

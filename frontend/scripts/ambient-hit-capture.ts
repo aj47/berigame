@@ -4,7 +4,7 @@
  * per-frame CPU cost, then (page clock paused and stepped) renders a club blow
  * landing on the actor, and the actor walking into a flock of birds.
  *
- *   PLAYWRIGHT_MODULE=/opt/node22/lib/node_modules/playwright GAME_URL=http://127.0.0.1:4812/ \
+ *   PLAYWRIGHT_MODULE=/opt/node22/lib/node_modules/playwright GAME_URL=http://127.0.0.1:4812/play \
  *   SPACETIME_URI=ws://127.0.0.1:4637 npx tsx scripts/ambient-hit-capture.ts
  */
 import fs from 'node:fs';
@@ -13,7 +13,7 @@ import { createRequire } from 'node:module';
 import { DbConnection, tables } from '../src/module_bindings';
 
 const { chromium } = createRequire(path.join(__dirname, 'ambient-hit-capture.ts'))(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
-const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
+const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
 const URI = process.env.SPACETIME_URI ?? 'ws://127.0.0.1:3000';
 const OUT = path.resolve(process.env.CAPTURE_DIR ?? '../docs/art/game-review/hit-reactions-ambient');
 fs.mkdirSync(OUT, { recursive: true });

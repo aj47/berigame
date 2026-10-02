@@ -56,7 +56,7 @@ async function main() {
     page=await context.newPage();
     await page.addInitScript({content:'window.__name=function(value){return value}'});
     page.on('pageerror',(e:Error)=>errors.push(e.message));
-    await page.goto(process.env.GAME_URL??'http://127.0.0.1:5173');
+    await page.goto(process.env.GAME_URL??'http://127.0.0.1:5173/play');
     await page.waitForFunction(()=>!!(window as any).__berigame?.me&&!(document.querySelector('.loading-screen')),null,{timeout:25000});
     report.baselineOnline=await page.evaluate(()=>(window as any).__berigame.players.filter((p:any)=>p.online).length);
     const count=Math.max(0,32-report.baselineOnline);

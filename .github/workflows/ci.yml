@@ -151,7 +151,7 @@ jobs:
         timeout-minutes: 10
         working-directory: frontend
         env:
-          GAME_URL: http://127.0.0.1:${{ env.VITE_PORT }}
+          GAME_URL: http://127.0.0.1:${{ env.VITE_PORT }}/play
           SHOT_DIR: ${{ env.ARTIFACTS }}/reconnect
           # Bracketed dots keep the pattern from matching the shell that runs pkill.
           STDB_STOP_CMD: pkill -f 'listen-addr 127[.]0[.]0[.]1:${{ env.STDB_PORT }}'

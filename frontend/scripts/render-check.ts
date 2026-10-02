@@ -16,7 +16,7 @@ import { DEFAULT_APPEARANCE, HAIR_STYLES, SKIN_TONES, HAIR_COLORS, ROBE_COLORS, 
 
 const loadModule = createRequire(path.join(__dirname, 'render-check.ts'));
 const { chromium } = loadModule(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
-const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
+const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
 const DB = process.env.SPACETIME_DB ?? 'berigame';
 const URI = process.env.SPACETIME_URI ?? 'ws://127.0.0.1:3000';
 const APPEARANCE = process.env.RENDER_APPEARANCE === '1';

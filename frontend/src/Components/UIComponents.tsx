@@ -1,3 +1,4 @@
+import { agentUrl, wikiUrl } from '../site/siteUrls';
 import React, { memo, useEffect, useRef, useState } from "react";
 import ChatBox from "./ChatBox";
 import Inventory from "./Inventory";
@@ -167,7 +168,7 @@ const UIComponents = memo(() => {
             <span aria-hidden="true" className="toolbar-gear">⚙</span>
             <span className="toolbar-label">Settings</span> <kbd>O</kbd>
           </button>
-          <a className="agent-entry-link" href="/agent" target="_blank" rel="noreferrer" aria-label="Open BeriGame's agent onboarding page in a new tab">
+          <a className="agent-entry-link" href={agentUrl()} target="_blank" rel="noreferrer" aria-label="Open BeriGame's agent onboarding page in a new tab">
             Agent
           </a>
         </div>
@@ -287,7 +288,11 @@ const UIComponents = memo(() => {
             stops, I opens your bag, K opens your skills, C opens crafting, Enter opens chat, O opens settings. Every action also has an
             on-screen control.
           </p>
-          <a className="agent-help-link" href="/agent" target="_blank" rel="noreferrer">
+          <a className="agent-help-link" href={wikiUrl()} target="_blank" rel="noreferrer">
+            Read the complete BeriGame wiki ↗
+          </a>
+          <br />
+          <a className="agent-help-link" href={agentUrl()} target="_blank" rel="noreferrer">
             Open the agent-ready game page ↗
           </a>
         </section>

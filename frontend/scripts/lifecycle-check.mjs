@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL ?? 'chrome' });
-const url = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
+const url = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
 const report = { createdAt: new Date().toISOString(), checks: [], failures: [] };
 const check = (name, pass) => { report.checks.push({ name, pass }); console.log(`${pass ? 'PASS' : 'FAIL'} ${name}`); if (!pass) report.failures.push(name); };
 const ready = (page) => page.waitForFunction(() => window.__berigame?.me && !document.querySelector('.loading-screen'), null, { timeout: 20_000 });

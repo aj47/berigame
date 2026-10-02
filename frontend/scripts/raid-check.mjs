@@ -4,7 +4,7 @@
  * owner): the countdown while it sleeps, the T-1 announcement, an owner-woken
  * raid, a defeat with its reward, and the Friends panel's mentee count. Uses
  * owner SQL to place the player beside the Giant with a club (test setup only).
- *   PLAYWRIGHT_MODULE=... CHROMIUM_PATH=... GAME_URL=http://127.0.0.1:4293/ \
+ *   PLAYWRIGHT_MODULE=... CHROMIUM_PATH=... GAME_URL=http://127.0.0.1:4293/play \
  *   SPACETIME_BIN=spacetime STDB_SERVER=http://127.0.0.1:4291 STDB_DB=raids SHOT_DIR=... node scripts/raid-check.mjs
  */
 import fs from 'node:fs';
@@ -13,7 +13,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
-const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/';
+const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
 const OUT = process.env.SHOT_DIR ?? '/tmp/raid-shots';
 const BIN = process.env.SPACETIME_BIN ?? 'spacetime';
 const SERVER = process.env.STDB_SERVER ?? 'http://127.0.0.1:3000';

@@ -1,0 +1,54 @@
+.island-life { color: #203d30; background: #f7f4eb; position: relative; overflow: hidden; }
+.island-life-heading { margin-bottom: 38px; }
+.island-life-heading h2 { font-size: clamp(39px, 4vw, 58px); line-height: 1.08; letter-spacing: -1.9px; }
+.island-life-heading h2 em { color: #75815e; }
+.island-life-heading-break { display: none; }
+.island-life-heading > p { max-width: 370px; padding-bottom: 7px; }
+.island-life-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #cbd1bf; border-bottom: 1px solid #cbd1bf; margin-bottom: 41px; }
+.island-life-tabs button { display: flex; gap: 16px; align-items: center; padding: 21px 24px; min-height: 72px; color: #6b7568; background: transparent; border: 0; position: relative; text-align: left; font-size: 16px; transition: color .2s, background .2s; }
+.island-life-tabs button::after { content: ''; height: 3px; position: absolute; inset: auto 0 -1px; background: #36543b; transform: scaleX(0); transform-origin: left; transition: transform .25s ease; }
+.island-life-tabs button[aria-selected='true'] { background: #e9eddf; color: #254633; }
+.island-life-tabs button[aria-selected='true']::after { transform: scaleX(1); }
+.island-life-tabs button:hover { background: #e9eddf; color: #254633; }
+.life-tab-number { color: #7e8d71; font-size: 11px; letter-spacing: 1.5px; }
+.island-life-tabs .site-arrow { display: flex; margin-left: auto; opacity: .45; transition: opacity .2s; }
+.island-life-tabs [aria-selected='true'] .site-arrow { opacity: 1; }
+.island-life-panel { display: grid; grid-template-columns: 1.25fr 1fr; gap: clamp(42px, 5vw, 80px); align-items: center; min-height: 560px; }
+.island-life-panel[hidden] { display: none; }
+.island-life-figure { position: relative; min-width: 0; margin: 0; }
+.island-life-photo { position: relative; aspect-ratio: 1.13; background: #576d50; overflow: hidden; border-radius: 4px 76px 4px 4px; box-shadow: 0 17px 32px #42523b12; }
+.island-life-photo::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, #112d252b 0%, transparent 30%, transparent 55%, #102a20b3 100%); }
+.island-life-photo > img { width: 100%; height: 100%; object-fit: cover; display: block; animation: life-photo-reveal .5s ease both; }
+.life-figure-gather .island-life-photo > img { object-position: 52% 50%; }
+.life-figure-explore .island-life-photo > img { object-position: 52% 50%; }
+.life-figure-together .island-life-photo > img { object-position: 51% 50%; }
+.life-photo-label { position: absolute; top: 24px; left: 25px; z-index: 1; color: #fffcec; font-size: 8px; letter-spacing: 2px; font-weight: 600; }
+.life-photo-chapter { position: absolute; right: 26px; bottom: 29px; color: #fff9e7; z-index: 1; font: 34px/1 Georgia, serif; }
+.life-photo-chapter > span { font: 10px Arial, sans-serif; color: #e8ebd6; letter-spacing: 1px; }
+.island-life .life-photo-caption { position: absolute; z-index: 1; bottom: 27px; left: 27px; right: 99px; color: #fff9e7; max-width: 280px; font: italic 28px/1.2 Georgia, serif; letter-spacing: -.5px; }
+.island-life-figure figcaption { display: flex; justify-content: space-between; gap: 15px; margin-top: 17px; font-size: 8px; letter-spacing: 1.25px; color: #6b7966; }
+.life-item-stamp { display: grid; place-items: center; width: 112px; height: 112px; position: absolute; right: -29px; top: -24px; background: #f3f0e4; border: 1px solid #d8ddcc; border-radius: 50%; box-shadow: 0 7px 17px #273c2721, inset 0 0 0 6px #f7f4eb, inset 0 0 0 7px #d8ddcc; transform: rotate(12deg); }
+.life-item-stamp img { width: 85px; height: 85px; object-fit: contain; filter: drop-shadow(0 4px 4px #283c3920); }
+.island-life-copy { padding: 11px 0 22px; }
+.island-life-copy > .site-kicker { color: #738467; font-size: 10px; margin-bottom: 17px; letter-spacing: 1.7px; }
+.island-life-copy h3 { font-size: clamp(36px, 3.2vw, 48px); line-height: 1.13; letter-spacing: -1.6px; margin-bottom: 19px; }
+.island-life-copy h3 em { color: #74825e; }
+.island-life-copy .life-description { color: #67725f; font-size: 15px; line-height: 1.85; max-width: 420px; }
+.life-steps { list-style: none; padding: 0; margin: 25px 0 17px; }
+.life-steps li { display: flex; align-items: flex-start; gap: 13px; position: relative; padding: 0 0 18px; }
+.life-steps li:last-child { padding-bottom: 0; }
+.life-steps li:not(:last-child)::after { content: ''; position: absolute; top: 26px; bottom: 2px; left: 11px; width: 1px; background: #d5ddca; }
+.life-steps li > span { display: grid; place-items: center; min-width: 24px; height: 24px; border: 1px solid #cbd5bf; border-radius: 50%; font-size: 8px; color: #738467; margin-top: 1px; }
+.life-steps strong { display: block; font-size: 13px; font-weight: 600; line-height: 1.7; }
+.life-steps li p { color: #707b68; font-size: 12px; line-height: 1.75; margin-top: 1px; max-width: 360px; }
+.island-life-copy .site-text-link { font-size: 13px; font-weight: 600; gap: 25px; }
+.island-life-bottom { display: flex; gap: 13px; align-items: center; border-top: 1px solid #d4daca; padding-top: 20px; margin-top: 30px; color: #7c886f; font-size: 8px; letter-spacing: 1.5px; }
+.life-bottom-flourish { display: flex; }
+.life-bottom-flourish svg { width: 21px; height: 21px; }
+.island-life-bottom > span:last-child { margin-left: auto; }
+@keyframes life-photo-reveal { from { opacity: .7; transform: scale(1.025); } to { opacity: 1; transform: scale(1); } }
+@media (min-width: 1500px) { .island-life-panel { gap: 82px; }.island-life-photo { aspect-ratio: 1.2; } }
+@media (max-width: 1100px) { .island-life-panel { grid-template-columns: 1.1fr 1fr; gap: 38px; }.island-life-tabs button { font-size: 14px; padding: 19px 15px; gap: 12px; }.island-life-heading { gap: 25px; }.island-life-heading-break { display: block; }.island-life-photo { aspect-ratio: .85; }.life-item-stamp { width: 88px; height: 88px; right: -17px; top: -21px; }.life-item-stamp img { width: 65px; height: 65px; }.island-life-copy h3 { font-size: 39px; }.life-photo-label { font-size: 7px; letter-spacing: 1.4px; top: 22px; left: 20px; }.island-life .life-photo-caption { font-size: 26px; left: 22px; bottom: 25px; right: 62px; }.life-photo-chapter { right: 19px; font-size: 24px; bottom: 29px; }.life-photo-chapter > span { display: none; }.island-life-figure figcaption { font-size: 7px; letter-spacing: .8px; } }
+@media (max-width: 760px) { .island-life { padding-left: 32px; padding-right: 32px; }.island-life-panel { grid-template-columns: 1fr; gap: 27px; min-height: 0; }.island-life-heading { display: block; margin-bottom: 28px; }.island-life-heading h2 { font-size: 44px; }.island-life-heading-break { display: none; }.island-life-heading > p { margin-top: 18px; max-width: 450px; font-size: 14px; }.island-life-tabs { margin-bottom: 35px; }.island-life-tabs button { padding: 16px 12px; min-height: 76px; align-items: flex-start; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.45; }.life-tab-number { font-size: 8px; }.island-life-tabs .site-arrow { display: none; }.island-life-photo { aspect-ratio: 1.5; border-top-right-radius: 57px; }.island-life .life-photo-caption { max-width: 280px; font-size: 27px; right: 65px; }.life-photo-chapter { font-size: 29px; }.life-item-stamp { right: -12px; top: -16px; width: 79px; height: 79px; }.life-item-stamp img { width: 59px; height: 59px; }.island-life-copy { padding: 0; }.island-life-copy h3 { font-size: 42px; }.island-life-copy .life-description { max-width: 100%; }.life-steps { margin: 24px 0 18px; }.life-steps strong { font-size: 14px; }.life-steps li p { font-size: 13px; max-width: 100%; }.island-life-copy .site-text-link { font-size: 14px; }.island-life-bottom { margin-top: 29px; padding-top: 16px; font-size: 7px; letter-spacing: 1.1px; }.island-life-bottom > span:last-child { display: none; } }
+@media (max-width: 420px) { .island-life { padding-left: 24px; padding-right: 24px; }.island-life-heading h2 { font-size: 38px; line-height: 1.13; letter-spacing: -1.4px; }.island-life-heading .site-kicker { font-size: 8px; letter-spacing: 1.4px; }.island-life-heading > p { font-size: 13px; }.island-life-tabs button { padding: 14px 8px; font-size: 11px; gap: 7px; min-height: 72px; }.island-life-photo { aspect-ratio: 1.16; }.life-photo-label { top: 19px; left: 18px; max-width: 160px; font-size: 6px; letter-spacing: 1px; }.island-life .life-photo-caption { font-size: 25px; bottom: 20px; left: 18px; max-width: 215px; }.life-photo-chapter { right: 18px; bottom: 22px; font-size: 24px; }.island-life-figure figcaption { font-size: 6px; gap: 8px; letter-spacing: .55px; }.life-item-stamp { right: -10px; top: -14px; width: 72px; height: 72px; }.life-item-stamp img { width: 54px; height: 54px; }.island-life-copy h3 { font-size: 37px; letter-spacing: -1.1px; }.island-life-copy > .site-kicker { font-size: 8px; margin-bottom: 12px; }.island-life-copy .life-description { font-size: 14px; }.life-steps strong { font-size: 13px; }.life-steps li p { font-size: 12px; }.island-life-copy .site-text-link { font-size: 13px; gap: 14px; } }
+@media (prefers-reduced-motion: reduce) { .island-life-tabs button, .island-life-tabs button::after, .island-life-tabs .site-arrow { transition: none; }.island-life-photo > img { animation: none; } }

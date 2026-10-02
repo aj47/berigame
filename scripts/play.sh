@@ -88,7 +88,7 @@ stdb generate --lang typescript --out-dir frontend/src/module_bindings --module-
 cat <<TIP
 
   ============================================================
-   BeriGame is ready: http://127.0.0.1:$CLIENT_PORT
+   BeriGame is ready: http://127.0.0.1:$CLIENT_PORT/play
    Open it in two windows (one normal, one incognito) to
    get two players. Click the ground to walk, click a player
    -> Attack (you punch), click a tree -> Harvest (sometimes

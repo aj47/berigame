@@ -1,28 +1,21 @@
 import React, { Suspense, lazy } from 'react';
-import './App.css';
-import GameComponent from './Components/3D/GameComponent';
-import SpacetimeProvider from './spacetime/SpacetimeProvider';
-import GameWebMCPTools from './agent/GameWebMCPTools';
-// Only the /agent page needs it: kept out of the game's entry chunk.
-const AgentOnboarding = lazy(() => import('./agent/AgentOnboarding'));
-import BetaAdmission from './agent/BetaAdmission';
-import SocialHud from './Components/SocialHud';
-
-const isAgentEntry = window.location.pathname.replace(/\/+$/, '') === '/agent';
-const ignoreWebMCPStatus = () => {};
+import { resolveSiteRedirect, resolveSiteRoute } from './site/routeUtils';
+import { isGameHost } from './site/siteUrls';
+const Game = lazy(() => import('./Game'));
+const Site = lazy(() => import('./site/Site'));
+const AgentEntry = lazy(() => import('./site/AgentEntry'));
+const route = resolveSiteRoute(window.location.pathname, window.location.search, window.location.hostname);
+const redirect = resolveSiteRedirect(window.location.pathname, window.location.search, window.location.hash, window.location.hostname);
+if (redirect) window.location.replace(redirect);
+// Old friend invites must reach the game before its invite reader is imported.
+if (!redirect && !isGameHost(window.location.hostname) && route.kind === 'game' && window.location.pathname.replace(/\/+$/, '') === '') {
+  window.history.replaceState(null, '', `/play${window.location.search}${window.location.hash}`);
+}
 
 function App() {
-  if (isAgentEntry) return <Suspense fallback={null}><AgentOnboarding /></Suspense>;
-
-  return (
-    <BetaAdmission>
-      <SpacetimeProvider>
-        <GameWebMCPTools onStatusChange={ignoreWebMCPStatus} />
-        <GameComponent />
-        <SocialHud />
-      </SpacetimeProvider>
-    </BetaAdmission>
-  );
+  return <Suspense fallback={<div role="status" style={{ background: '#132c26', color: '#f7f4eb', minHeight: '100vh', display: 'grid', placeItems: 'center', fontFamily: 'Georgia, serif', fontSize: 24 }}>Opening BeriGame…</div>}>
+    {redirect ? <div role="status">Opening BeriGame…</div> : route.kind === 'game' ? <Game /> : route.kind === 'agent' ? <AgentEntry /> : <Site route={route} />}
+  </Suspense>;
 }
 
 export default App;

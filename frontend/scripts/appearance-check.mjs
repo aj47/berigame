@@ -6,7 +6,7 @@ const require=createRequire(import.meta.url);
 const playwright=require(process.env.PLAYWRIGHT_MODULE??'playwright');
 const engine=process.env.ENGINE??'chromium';
 const out=process.env.SHOT_DIR??fileURLToPath(new URL('../../docs/art/game-review/character-creator',import.meta.url));
-const gameUrl=process.env.GAME_URL??'http://127.0.0.1:5173';
+const gameUrl=process.env.GAME_URL??'http://127.0.0.1:5173/play';
 fs.mkdirSync(out,{recursive:true});
 (async()=>{
 const browser=await playwright[engine].launch(engine==='chromium'?{channel:'chrome',headless:true}:{headless:true});
