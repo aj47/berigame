@@ -235,3 +235,21 @@
   .wiki-item-filters button { padding:6px 7px; } .wiki-item-count { font-size:8px; } .wiki-article-aside { grid-template-columns:1fr; } .wiki-toc { padding:0 2px; } .wiki-toc ol { columns:2; } .wiki-toc li { break-inside:avoid; } .wiki-infobox dl { display:grid; grid-template-columns:1fr 1fr; gap:0 15px; } .wiki-infobox-illustration img { width:100px; height:100px; } .wiki-sidebar nav { gap:10px; } .wiki-article-meta>a { margin-left:0; }
 }
 @media(prefers-reduced-motion:reduce) { .wiki-page * { scroll-behavior:auto!important; transition:none!important; } }
+
+/* Release notes stay part of the searchable wiki, with a visible home entry. */
+.wiki-latest-update { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:5px 24px; align-items:center; margin:22px 0 28px; padding:20px 24px; border:1px solid #b7c9a3; border-radius:8px; background:#e8eedb; }
+.wiki-latest-update:hover { background:#e0e9d0; border-color:#819c65; }
+.wiki-update-label { display:flex; flex-wrap:wrap; gap:6px 14px; color:#4b6838; font-size:11px; font-weight:bold; }
+.wiki-update-label time { color:var(--wiki-muted); font-weight:normal; }
+.wiki-latest-update > strong { grid-column:1; font:23px Georgia,'Times New Roman',serif; line-height:1.3; }
+.wiki-update-link { grid-column:2; grid-row:1 / 3; display:flex; align-items:center; gap:10px; font-size:12px; }
+.wiki-changelog .wiki-content-section { border-left:2px solid #ccd8b8; padding-left:22px; }
+.wiki-changelog .wiki-content-section h2 { font-size:26px; line-height:1.35; }
+.wiki-changelog .wiki-content-section > p { border-radius:5px; padding:10px 13px; background:#eeead5; color:#665a29; font-size:13px; font-weight:600; line-height:1.6; }
+@media(max-width:640px) {
+  .wiki-latest-update { grid-template-columns:minmax(0,1fr); padding:17px; gap:9px; }
+  .wiki-update-link { grid-column:1; grid-row:auto; }
+  .wiki-latest-update > strong { font-size:22px; }
+  .wiki-changelog .wiki-content-section { padding-left:14px; }
+  .wiki-changelog .wiki-content-section h2 { font-size:23px; }
+}

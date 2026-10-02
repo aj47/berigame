@@ -63,3 +63,19 @@ needed for this website release.
 
 Local walkthrough recordings in `review-videos/` and `frontend/review-videos/`
 are review artifacts, not part of the deployed bundle.
+
+
+## Changelog
+
+The public changelog is `https://wiki.berigame.com/changelog`. It appears in wiki
+navigation, search, the home page’s latest-update card and the site footer.
+
+For each player-facing release, prepend a concise entry to
+`frontend/src/site/changelog.ts`. Use Pacific calendar dates, keep permanent
+section IDs so shared links keep working, and include source commit references.
+State when a feature is disabled or awaiting activation. Historical entries are
+grouped from repository history; do not turn their commit dates into unverified
+deployment claims. The wiki article and latest-update card use the same data.
+
+Publish wiki-only changes with the public site build/deploy commands above.
+They do not require a game database publish.

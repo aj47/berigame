@@ -2,6 +2,7 @@ import { homeUrl, wikiUrl } from './siteUrls';
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ITEM_DEFS } from '@sim'
 import { articles } from './wikiContent'
+import { latestUpdate } from './changelog'
 import type { WikiArticle } from './wikiContent'
 import { escapePattern, searchArticles } from './wikiSearch'
 import { useHashAnchor } from './useHashAnchor'
@@ -48,6 +49,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return <>{text.split(pattern).map((part, index) => index % 2 ? <mark key={index}>{part}</mark> : part)}</>
 }
 function LinkedText({ text, currentSlug, withIcon = false }: { text: string; currentSlug: string; withIcon?: boolean }) {
+  if (currentSlug === 'changelog') return <>{text}</>
   return <>{text.split(linkPattern).map((part, index) => {
     const target = index % 2 ? linkTargets.get(part.toLowerCase()) : undefined
     return target && target.slug !== currentSlug
@@ -158,6 +160,8 @@ export default function Wiki({ slug }: { slug?: string }) {
             <div className="wiki-welcome-art" aria-hidden="true"><span className="wiki-art-orbit" /><span className="wiki-art-orbit wiki-art-orbit-two" /><img className="wiki-hero-club" src="/items/stone_club.png" alt="" /><img className="wiki-hero-berry" src="/items/blueberry.png" alt="" /><img className="wiki-hero-gold" src="/items/goldberry.png" alt="" /><span className="wiki-art-star wiki-art-star-one">✦</span><span className="wiki-art-star wiki-art-star-two">✧</span><span className="wiki-art-caption">PACK A LITTLE KNOWLEDGE.</span></div>
           </section>
 
+          <a className="wiki-latest-update" href={`${articleHref('changelog')}#${latestUpdate.id}`}><span className="wiki-update-label">What’s new <time dateTime={latestUpdate.date}>{latestUpdate.period}</time></span><strong>{latestUpdate.title}</strong><span className="wiki-update-link">Read the changelog <ArrowIcon /></span></a>
+
           <nav className="wiki-quick-links" aria-label="Start exploring">{topicLinks.map(topic => <a href={articleHref(topic.slug)} key={topic.slug}><span className="wiki-topic-icon"><img src={topic.icon} alt="" width="50" height="50" /></span><span><strong>{topic.title}</strong><small>{topic.description}</small></span><ArrowIcon /></a>)}</nav>
 
           <section className="wiki-item-browser" aria-labelledby="wiki-items-title">
@@ -177,8 +181,8 @@ export default function Wiki({ slug }: { slug?: string }) {
             </section>)}</div>
           </section>
           <div className="wiki-bottom-note"><BookIcon size={23} /><p>Looking for something specific? Search item names, ingredients, skills or places with the <kbd>/</kbd> shortcut.</p><a href="#wiki-content">Back to top ↑</a></div>
-        </> : article ? <article className={`wiki-article${article.itemId ? ' wiki-item-article' : ''}`}>
-          <header className="wiki-article-header"><div className="wiki-eyebrow">{article.category} / {article.itemId ? 'ITEM REFERENCE' : 'FIELD GUIDE'}</div><h1>{article.title}</h1><p className="wiki-article-summary">{article.summary}</p><div className="wiki-article-meta"><span><BookIcon size={16} /> {readingMinutes} min read</span><span>{articleHeadings.length} sections</span><button className="wiki-copy-article" type="button" onClick={() => reading.copyLink()}><LinkIcon copied={reading.copiedId === 'article'} />{reading.copiedId === 'article' ? 'Copied!' : 'Copy link'}</button></div></header>
+        </> : article ? <article className={`wiki-article${article.itemId ? ' wiki-item-article' : ''}${article.slug === 'changelog' ? ' wiki-changelog' : ''}`}>
+          <header className="wiki-article-header"><div className="wiki-eyebrow">{article.category} / {article.itemId ? 'ITEM REFERENCE' : article.slug === 'changelog' ? 'ISLAND HISTORY' : 'FIELD GUIDE'}</div><h1>{article.title}</h1><p className="wiki-article-summary">{article.summary}</p><div className="wiki-article-meta"><span><BookIcon size={16} /> {readingMinutes} min read</span><span>{articleHeadings.length} sections</span><button className="wiki-copy-article" type="button" onClick={() => reading.copyLink()}><LinkIcon copied={reading.copiedId === 'article'} />{reading.copiedId === 'article' ? 'Copied!' : 'Copy link'}</button></div></header>
           <span className="wiki-copy-status" role="status">{reading.copyMessage}</span>
           <div className="wiki-reading-bar"><label htmlFor="wiki-section-jump"><span>On this page</span><select id="wiki-section-jump" aria-label="Jump to article section" value={reading.activeId} onChange={event => reading.jumpTo(event.target.value)}><option value="">Introduction</option>{articleHeadings.map(section => <option key={section.id} value={section.id}>{section.title}</option>)}</select></label><span className="wiki-reading-percent" aria-hidden="true">{reading.progress}%</span><div className="wiki-reading-track" aria-hidden="true"><span style={{ width: `${reading.progress}%` }} /></div></div>
           <div className="wiki-article-layout">

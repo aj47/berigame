@@ -3,6 +3,7 @@ import {
   TECHNIQUES, TREE_SEEDS, NODE_SEEDS, harvestXp, getItemDef, xpForLevel,
 } from '@sim';
 import { itemArticles } from './itemArticles';
+import { changelogArticle } from './changelog';
 
 export interface WikiSection {
   id: string;
@@ -616,6 +617,6 @@ export const guideArticles: WikiArticle[] = [
   },
 ];
 
-export const articles: WikiArticle[] = [...guideArticles, ...itemArticles];
+export const articles: WikiArticle[] = [changelogArticle, ...guideArticles, ...itemArticles];
 export const wikiCategories = Array.from(new Set(articles.map(article => article.category)));
 export const articleBySlug = (slug: string) => articles.find(article => article.slug === slug);
