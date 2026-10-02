@@ -50,8 +50,8 @@ export const guideArticles: WikiArticle[] = [
         'Choose your character and enter the island. Click or tap clear ground to walk. The sandy area around your starting point is the safe ring.',
         'Select a berry tree and choose Harvest. Your character approaches it automatically. A completed harvest gives one berry and 8 Foraging XP.',
         'Eat a berry from your quick bar or bag. You arrive with 20 of your 30 HP, so your first meal can restore real health.',
-        'Finish four berry harvests to reach 32 XP, passing the 25 XP requirement for Foraging level 2. That harvest awards your first stick.',
-        'Keep the stick in your bag to pass through the brambles. Put it in quick slot 1, 2 or 3 and use that slot to wield it.',
+        'Finish four berry harvests to reach 32 XP, passing the 25 XP requirement for Foraging level 2. Your first stick goes into your bag.',
+        'Keep the stick in your bag to pass through the brambles. Drag it to quick slot 1, 2 or 3 and use that slot to wield it.',
         'On the Coast, gather one driftwood and two flint shards. Open Craft with C and make a Stone Club. This deals 8 damage and opens the Boulders route.',
       ] },
       { id: 'choose-your-adventure', title: 'Choose your next adventure', paragraphs: [
@@ -78,7 +78,7 @@ export const guideArticles: WikiArticle[] = [
       { id: 'movement-camera', title: 'Movement and camera', paragraphs: [
         'Click or tap a destination on the ground. Your character follows a route around trees, rocks and other blocked terrain. On touch screens, holding the ground keeps walking towards your finger. Drag to look around, and pinch or scroll to zoom.',
         'Selecting an interaction such as harvesting or trading can walk you into range automatically. Clicking another destination or pressing Stop cancels the current action. Water, brambles and boulders still obey the world’s access rules; a route cannot carry you through a barrier you have not unlocked.',
-        'If the camera gets awkward, open Help and choose Reset view. Camera sensitivity, graphics quality and reduced motion are available in Settings.',
+        'If the camera gets awkward, open Help → Keyboard & camera → Reset view. Camera sensitivity, graphics quality and reduced motion are available in Settings.',
       ] },
       { id: 'interacting', title: 'Interacting with the island', bullets: [
         'Select an object or player to see its actions. Press and hold an object on touch screens to open its interaction menu.',
@@ -95,6 +95,7 @@ export const guideArticles: WikiArticle[] = [
       ] } },
       { id: 'quick-bar', title: 'Using the quick bar', paragraphs: [
         'The first three inventory slots are also your quick bar. They are part of the same 28-slot bag, not extra storage. A weapon must remain in one of these slots to stay wielded. Moving its last quick-slot copy into the rest of the bag puts it away.',
+        'New weapons go into the bag without filling your quick slots. Drag one into a quick slot when you want it ready.',
         'When the emote palette is open, its number choices take priority over quick-slot keys. Shortcuts also stay out of the way while you are typing. You can always use the visible buttons instead.',
       ] },
       { id: 'performance', title: 'Comfort and performance', paragraphs: [
@@ -127,7 +128,7 @@ export const guideArticles: WikiArticle[] = [
         ['Personal garden', '(21–22, 20–21)', 'Plant berries and harvest ripe crops'],
         ['Training dummy', '(28, 28)', 'Practice weapon swings'],
         ['Expedition berry patch', '(34, 17)', 'Collect your enormous fruit'],
-        ['Berry market', '(35, 37)', 'Finish market deliveries'],
+        ['Berry drop-off', '(35, 37)', 'Finish berry deliveries'],
         ['Feast clearing', '(12, 36)', 'Feed the expedition Giant'],
         ['Boulders route target', '(51, 51)', 'Approach the south-east headlands'],
         ['Raid Giant', '(57, 57)', 'Scheduled cooperative boss encounter'],
@@ -263,8 +264,9 @@ export const guideArticles: WikiArticle[] = [
         ['Obsidian', 'Boulders outcrops or Giant raid rewards', 'Shared workshop donation'],
       ] } },
       { id: 'moving-dropping', title: 'Moving, dropping and picking up', paragraphs: [
-        'Move items between slots to organise your bag or set up quick access. Matching stackable items merge up to their stack limit; different items can swap places. Dropping removes the chosen quantity and creates a visible ground pile.',
+        'Drag items between bag and quick slots; on touch screens, hold an item before dragging. Matching stacks merge up to their limit, and different items swap places. You can also select an item and choose Move. Dropping creates a visible ground pile.',
         'Ground items last 500 server ticks, or five minutes. Pick-up works from an adjacent tile and can walk you towards the pile. If only part of a pile fits, the remainder stays on the ground. Items on the ground are not reserved for the player who dropped them.',
+        'If a player covers a pile, select the player and choose the item under On the ground. Each stack has its own pickup action.',
         'Ordinary death drops your whole bag, including your wielded weapon. Skill progress and unlocked keepsakes persist. Friendly duels use separate practice health and do not drop your items.',
       ] },
     ],
@@ -394,9 +396,9 @@ export const guideArticles: WikiArticle[] = [
     facts: [{ label: 'Start', value: 'Camp · (22, 18)' }, { label: 'Duration', value: 'Up to 6 minutes' }, { label: 'Base growth', value: '18 seconds' }, { label: 'Starting cargo value', value: '4 reward berries' }, { label: 'Simultaneous expeditions', value: 'Up to 4' }],
     sections: [
       { id: 'start-join', title: 'Start or join an expedition', paragraphs: [
-        'Within four tiles of camp, open Adventure and plant a strange seed. Choose market or feast as the destination. Your fruit grows at (34, 17), so begin walking there while it ripens. Seed sense shortens its base 18-second growth to 6 seconds.',
+        'Within four tiles of camp, open Adventure and grow a giant berry. Choose Berry drop-off or Giant’s feast as the destination. Your fruit grows at (34, 17), so begin walking there while it ripens. Seed sense shortens its base 18-second growth to 6 seconds.',
         'You can join an active expedition from camp or within four tiles of its fruit. A player can belong to only one active expedition at a time. Join while it is growing or being hauled, then help with an action to earn contribution credit.',
-        'The market is at (35, 37); the feast clearing is at (12, 36). Bring the cargo within two tiles and finish the delivery. The whole expedition, including growth, has a six-minute limit.',
+        'The Berry drop-off is at (35, 37); the feast clearing is at (12, 36). Bring the cargo within two tiles and finish the delivery. The whole expedition, including growth, has a six-minute limit.',
       ] },
       { id: 'moving-cargo', title: 'Moving and managing cargo', table: { headers: ['Action', 'What it does', 'Important detail'], rows: [
         ['Carry', 'Pick up grounded fruit from within 2 tiles', 'Uses both hands; movement is 1 step per tick'],
@@ -413,8 +415,9 @@ export const guideArticles: WikiArticle[] = [
         'For a player’s first delivery, Pip and the Giant wait 30 extra seconds before beginning their pursuit. The expedition Giant is a separate encounter from the scheduled combat raid in the Boulders.',
       ] },
       { id: 'rewards', title: 'Completion and rewards', paragraphs: [
-        'On a successful delivery, current expedition members who have contributed receive Goldberries equal to the remaining cargo value, bounded from one to eight. The fruit starts at value four, with two extra from Giant fruit and one extra from a completed workshop. Bites, splitting without Berry basket and Moss’s initial fee can reduce that value.',
-        'Market delivery awards 35 Exploring XP to qualifying members. Feeding at the feast awards 35 Befriending XP and records Giant trust. Contribution actions can award path XP and milestones along the way; simply joining without contributing does not earn the completion reward.',
+        'Current members who helped receive Goldberries equal to the remaining cargo value, from one to eight. A feast adds two bonus Goldberries, so an untouched fruit normally pays four at the drop-off or six at the feast. Giant fruit adds two starting cargo value and a completed workshop adds one; bites, splitting and Moss’s fee can reduce it.',
+        'The drop-off awards 35 Exploring XP; a feast awards 35 Befriending XP. Your first rewarded feast unlocks the Berry Heart keepsake. Simply joining without contributing does not earn completion rewards.',
+        'After one, three and five rewarded feasts, the Giant gives you a 12-, 24- or 36-second head start on expeditions you start. Equipping Giant trust after your first feast adds another 30 seconds.',
         'An expedition ends unsuccessfully if its value reaches zero, its six-minute timer expires, or everyone abandons it. Skills and bag contents remain safe. A disconnected carrier leaves the fruit on the ground for the group.',
       ] },
       { id: 'workshop', title: 'Build the shared workshop', paragraphs: [
@@ -535,13 +538,14 @@ export const guideArticles: WikiArticle[] = [
         'When both confirm, the game checks the live bags and performs one complete exchange. If an item is missing or a bag cannot fit the incoming items, nothing moves.',
       ] },
       { id: 'trade-rules', title: 'Trade rules', paragraphs: [
-        'Offered items stay in your bag until the final exchange. You must unwield a weapon before offering that item type. Moving more than six tiles apart, dying or leaving cancels the trade.',
+        'Offered items stay in your bag until the final exchange. You can offer a wielded weapon; it is put away only if the completed trade removes its last quick-slot copy. Moving more than six tiles apart, dying or leaving cancels the trade.',
         'One-sided gifts award the giver Befriending progress. When gifting a Stick or Stone Club, remember that you may need your own copy for future outward region crossings.',
       ] },
       { id: 'friends-invites', title: 'Friends and invite links', paragraphs: [
-        'Open Friends through Chat to manage your list and create a join-me invite. A normal friend addition is one-way. Redeeming a join-me code makes both players friends and, when allowed, places the newcomer near the inviter.',
+        'Open Chat → Friends → Add friend to find someone, or select a sender’s name in chat. Search by name to find offline players too. A normal friend addition is one-way.',
+        'Expand Invite a friend to create a join-me link. Redeeming it makes both players friends and, when allowed, places the newcomer near the inviter.',
         'Join-me codes last one hour; creating a new one replaces the old code. These shareable links contain a join code, not your sign-in token. If the inviter is beyond a barrier the newcomer cannot cross, the arrival point stays in a region that newcomer can enter.',
-        'Friend entries show online status and location. Follow lets you walk beside someone without attacking them. The friends list holds up to fifty entries.',
+        'Friend entries show online status and location, with Go to, Mute and Remove controls. Go to walks towards an online friend in your current region. Muting hides their messages and chat bubbles on this device. The list holds up to fifty friends.',
       ] },
       { id: 'chat-emotes', title: 'Chat and emotes', paragraphs: [
         'Press Enter to open chat. Messages can contain up to 200 characters, with at least three seconds between messages. The Nearby filter identifies messages spoken within twelve tiles, while public chat still belongs to the shared world. Chat availability depends on the current character’s access.',

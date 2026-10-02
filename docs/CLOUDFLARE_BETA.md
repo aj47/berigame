@@ -23,8 +23,9 @@ npm run beta:deploy
 
 `beta:deploy` builds the website with Maincloud settings and browser admission
 enabled, then deploys the Worker, static assets, bindings and custom domain. Worker
-secrets are retained on updates. The two secrets are `GATEWAY_CREDENTIAL` (the
-JSON credential of the limited gateway identity) and `ADMIN_TOKEN` (operator API).
+secrets are retained on updates. The secrets are `GATEWAY_CREDENTIAL` (the
+JSON credential of the limited gateway identity), `ADMIN_TOKEN` (operator API),
+and `RECOVERY_ENCRYPTION_KEY` (stable encryption key for character recovery).
 Neither belongs in frontend build variables or Git.
 
 Database changes are a separate publish, using the beta owner's CLI identity:
@@ -202,8 +203,8 @@ across renewals, so `npm run beta:revoke -- SESSION_ID` works at any time.
 - *Multiple tabs* serialize renewal through a Web Lock and re-read storage; other
   tabs adopt the result through `storage` events. Up to four tabs may connect as
   one character.
-- *Lost storage* just means a new guest on the next invite. There is no account
-  recovery by design.
+- *Lost storage* creates a new guest unless the player previously exported a
+  character recovery file from the settlements menu; see [Settlements](SETTLEMENTS.md).
 - *Privacy.* No names, emails or other personal data are collected. The renewal
   record holds the token digest, SpacetimeDB identity, sessionId, invite scopes
   and expiry. Browser session rows no longer store the browser's SpacetimeDB
@@ -272,3 +273,22 @@ immediately deploy the Worker and frontend. This disconnects existing clients;
 reload to load the new bindings. A local rehearsal from the previous main
 module preserved the player's name, HP, position and all five existing choices,
 with defaults applied to the appended fields.
+
+
+### Settlements schema and recovery
+
+The settlements release appends `player.region` (default `bramblewild`) and
+`trade.a_coins` / `trade.b_coins` (default `0`). It adds the Frontier tables and
+reducers. Existing player data is preserved. Save a private database export,
+then publish with `--delete-data=never --yes=remote,skip-login,break-clients` and
+immediately deploy the matching beta Worker and client. Existing players reload.
+
+Set a stable `RECOVERY_ENCRYPTION_KEY` before the first recovery export. Preserve
+it on later deployments: rotating the key without migrating existing recovery
+records makes those files unusable. The Worker adds its recovery SQL table and
+index without resetting its Durable Object. Never use the local-only
+`frontier-gateway-setup.ts` against production.
+
+The expansion remains disabled until the owner calls `configure_expansion`.
+Publishing alone does not enable it. Follow the checks and rollout controls in
+[Settlements](SETTLEMENTS.md) before activating it.

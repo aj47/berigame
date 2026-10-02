@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ITEM_DEFS } from '@sim'
 import { articles } from '../site/wikiContent'
 import type { WikiArticle } from '../site/wikiContent'
 import { escapePattern, searchArticles } from '../site/wikiSearch'
@@ -10,7 +11,7 @@ const article = (slug: string, title: string, sections: WikiArticle['sections'] 
 describe('wiki search', () => {
   it('ranks every real item page ahead of guide references to that item', () => {
     const items = articles.filter(entry => entry.itemId)
-    expect(items).toHaveLength(11)
+    expect(items).toHaveLength(Object.keys(ITEM_DEFS).length)
     for (const item of items) {
       const results = searchArticles(articles, `  ${item.title.toUpperCase()}  `)
       expect(results[0].article.slug).toBe(item.slug)

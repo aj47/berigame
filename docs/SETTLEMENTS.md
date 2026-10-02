@@ -1,6 +1,6 @@
 # Settlements and sailing
 
-The expansion is implemented behind the world owner's `configure_expansion` flag. It defaults to disabled. The hosted beta has not been changed by this work.
+The expansion is implemented behind the world owner's `configure_expansion` flag. It defaults to disabled. Publishing the module and client preserves that setting; enabling the expansion is a separate owner action.
 
 ## Play loop
 

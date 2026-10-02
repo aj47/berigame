@@ -4,6 +4,7 @@ import {
   SWING_INTERVAL_TICKS, TICK_MS, TREE_SEEDS, harvestXp,
 } from '@sim';
 import type { ItemDef, Recipe } from '@sim';
+import { DISCIPLINES, FRONTIER_RECIPES, MATERIALS, PIECES, REGIONS, RESOURCE_PATCHES } from '../../../shared/sim/frontier/catalog';
 import type { WikiArticle, WikiSection } from './wikiContent';
 
 export const itemArticleSlug = (itemId: string) => `item-${itemId.replaceAll('_', '-')}`;
@@ -58,7 +59,7 @@ const notes: Record<string, ItemNotes> = {
     lead: 'Goldberries restore 10 HP per bite, more than any other current food. There is one wild Goldberry tree in the Grove. Garden harvests and successful giant berry expeditions provide additional ways to obtain them.',
     source: 'Grove tree · garden · expeditions',
     sections: [{ id: 'expedition-rewards', title: 'Expedition rewards and hidden cache', paragraphs: [
-      'A successful delivery or feast normally awards four goldberries per qualifying member. Giant fruit starts cargo at six, and a completed workshop adds one more. Splitting cargo and first hiring Moss each reduce the reward by one unless Berry basket or Porter pact prevents that cost.',
+      'A delivery normally awards four Goldberries per qualifying member; a feast adds two bonus Goldberries. Giant fruit starts cargo at six, and a completed workshop adds one more. Splitting cargo and first hiring Moss each reduce cargo value by one unless Berry basket or Porter pact prevents that cost.',
       'Remain in the expedition until completion and earn contribution credit by an action such as carrying, hiding or delivering cargo. Simply joining or tracking the hidden cache does not earn completion credit.',
       'Read tracks unlocks a hidden seed cache at (14, 15). With the technique equipped, stand within two tiles of the cache and track it during hauling to receive one goldberry and 25 Exploring XP. Each character can claim that cache once per expedition.',
     ] }, { id: 'practical-uses', title: 'Use the full heal', paragraphs: [
@@ -108,7 +109,7 @@ const notes: Record<string, ItemNotes> = {
     sourceFiles: ['shared/sim/areas.ts', 'spacetimedb/src/reducers/adventure.ts'],
   },
   stone_club: {
-    summary: 'The strongest current weapon and your entry key to the Boulders.',
+    summary: 'An eight-damage weapon and your entry key to the Boulders.',
     lead: 'The Stone Club deals 8 damage per melee swing and opens outward crossings into the Boulders. It is made from one driftwood and two Flint Shards, with no workbench or Crafting level beyond the starting level required.',
     source: 'Crafting · level 1',
     sections: [{ id: 'obtaining', title: 'Making your first club', paragraphs: [
@@ -165,6 +166,62 @@ const notes: Record<string, ItemNotes> = {
   },
 };
 
+const frontierUses: Record<string, string> = {
+  axe: 'Keep an Axe in your bag to gather two Timber per action from settlement resource patches.',
+  pick: 'With Might active at level 10, carrying a Pick doubles Stone and Iron ore gathered from resource patches.',
+  hammer: 'Craft a Hammer to complete the steward’s Tools of the trade quest and progress towards a land deed.',
+  watering_can: 'Carry a Watering can when planting carrots to shorten growth from two hours to ninety minutes.',
+  taming_feed: 'Observe a tameable creature, then offer Taming feed nearby. Befriending normally takes two feedings; active Beastcraft level 5 reduces this to one.',
+  travel_rations: 'Travel rations restore 8 HP per portion. Eat from the settlement bag or store them as boat provisions.',
+  skiff_hull: 'Combine one Skiff hull and one Sail at a harbour to launch your own skiff.',
+  sail: 'Combine one Sail and one Skiff hull at a harbour to launch your own skiff.',
+  harness: 'With Beastcraft active at level 2, spend a Creature harness to train a companion. A trained Reedhorn gains six cargo slots.',
+  carrot: 'Carrots restore 3 HP and make Travel rations. A planter yields three carrots, or four with Cultivation active at level 2.',
+  carrot_seed: 'Plant a Carrot seed in an empty planter on a plot you can build on. Growth takes two hours, or ninety minutes with a Watering can in your bag. A trained Burrowbun can also find seeds.',
+  iron_club: 'The Iron club deals 9 base damage per swing. Choose Equip in the settlement bag to use it; it does not replace the Stick or Stone Club as a route key.',
+  padded_vest: 'Choose Equip in the settlement bag to gain 3 maximum HP while you carry the Padded vest. Total maximum health is capped at 36.',
+  reeds: 'Reeds are gathered in Reedwake. Gathering them awards Cultivation XP; they have no current crafting or building recipe.',
+  resin: 'Resin is gathered in Reedwake. Gathering it awards Exploration XP; it has no current crafting or building recipe.',
+};
+
+function frontierNotes(item: ItemDef): ItemNotes {
+  const patches = RESOURCE_PATCHES.filter(patch => patch.item === item.id);
+  const recipes = FRONTIER_RECIPES.filter(recipe => recipe.output === item.id || item.id in recipe.inputs);
+  const making = recipes.find(recipe => recipe.output === item.id);
+  const pieces = Object.values(PIECES).filter(piece => item.id in piece.cost);
+  const uses = recipes.filter(recipe => recipe.output !== item.id).map(recipe => itemName(recipe.output));
+  const summary = frontierUses[item.id] ?? (uses.length
+    ? `${item.name} is used to craft ${uses.join(', ')}.`
+    : `${item.name} is a settlement building material.`);
+  const sections: WikiSection[] = [{ id: 'settlement-use', title: 'Settlement use', paragraphs: [summary] }];
+  if (patches.length) sections.push({
+    id: 'resource-patches', title: 'Resource patches',
+    table: { headers: ['Region', 'Tile'], rows: patches.map(patch => [REGIONS[patch.region].name, `(${patch.x}, ${patch.z})`]) },
+  });
+  if (recipes.length) sections.push({
+    id: 'settlement-recipes', title: 'Settlement recipes',
+    paragraphs: ['These are base quantities. Active Building perks can increase batch output or reduce ingredients. Workbench, kiln and cooking recipes also work at the public Meadows workshop.'],
+    table: {
+      headers: ['Result', 'Ingredients', 'Station', 'Active discipline'],
+      rows: recipes.map(recipe => [
+        `${recipe.quantity} × ${itemName(recipe.output)}`,
+        Object.entries(recipe.inputs).map(([id, quantity]) => `${quantity} × ${itemName(id)}`).join(' + '),
+        recipe.station === 'kitchen' ? 'Cooking station' : recipe.station ?? 'None',
+        recipe.discipline === undefined ? 'None' : `${DISCIPLINES[recipe.discipline]} level ${recipe.level ?? 1}`,
+      ]),
+    },
+  });
+  if (pieces.length) sections.push({ id: 'building', title: 'Building uses', paragraphs: [`Used for: ${pieces.map(piece => piece.name).join(', ')}.`] });
+  return {
+    summary,
+    lead: `${item.name} belongs to the settlement expansion, available when settlements are enabled in your world. ${item.healthRestore ? `Each portion restores ${item.healthRestore} base HP.` : item.weaponDamage ? `Its base weapon damage is ${item.weaponDamage}.` : `Each bag slot holds up to ${item.maxStack}.`}`,
+    source: making ? 'Settlement crafting' : patches.length ? [...new Set(patches.map(patch => REGIONS[patch.region].name))].join(' · ') : item.id === 'carrot' ? 'Settlement planters' : 'Settlement expansion',
+    sections,
+    related: [...new Set(['inventory-items', ...recipes.flatMap(recipe => [recipe.output, ...Object.keys(recipe.inputs)]).filter(id => id !== item.id).map(itemArticleSlug)])].slice(0, 6),
+    sourceFiles: ['shared/sim/frontier/catalog.ts', 'shared/sim/frontier/engine.ts', 'frontend/src/frontier/FrontierPanel.tsx'],
+  };
+}
+
 function gatheringSection(item: ItemDef): WikiSection | undefined {
   const trees = TREE_SEEDS.filter(tree => tree.itemId === item.id);
   const nodes = NODE_SEEDS.filter(node => node.itemId === item.id);
@@ -218,7 +275,7 @@ function useSection(item: ItemDef): WikiSection | undefined {
   };
   if (item.weaponDamage > 0) return {
     id: 'wielding', title: 'Wielding and combat',
-    paragraphs: [`Place the ${item.name} in quick slot 1, 2 or 3, then use that slot to wield it. It deals ${item.weaponDamage} damage per swing at the normal ${seconds(SWING_INTERVAL_TICKS)} attack interval. Carrying it elsewhere in your bag does not change damage. Moving the last quick-slot copy out of the quick bar puts it away; taking giant berry cargo also frees both hands.`],
+    paragraphs: [`New weapons go into your bag. Drag the ${item.name} to quick slot 1, 2 or 3, then use that slot to wield it. It deals ${item.weaponDamage} damage per swing at the normal ${seconds(SWING_INTERVAL_TICKS)} attack interval. Carrying it elsewhere in your bag does not change damage. Moving the last quick-slot copy out of the quick bar puts it away; taking giant berry cargo also frees both hands.`],
   };
   return undefined;
 }
@@ -226,11 +283,11 @@ function useSection(item: ItemDef): WikiSection | undefined {
 /** Facts and reference tables follow the same definitions as the live game.
  * Server-only behaviours are documented above with their reducer sources. */
 export const itemArticles: WikiArticle[] = Object.values(ITEM_DEFS).map(item => {
-  const detail = notes[item.id];
+  const detail = notes[item.id] ?? frontierNotes(item);
   const gathering = gatheringSection(item);
   const garden = gardenSection(item);
   const recipe = recipeSection(item);
-  const use = useSection(item);
+  const use = MATERIALS[item.id] ? undefined : useSection(item);
   const sources = new Set([
     'shared/sim/items.ts', 'shared/sim/constants.ts',
     ...(gathering ? ['shared/sim/nodes.ts', 'shared/sim/skills.ts', 'spacetimedb/src/reducers/tick.ts'] : []),
@@ -245,7 +302,7 @@ export const itemArticles: WikiArticle[] = Object.values(ITEM_DEFS).map(item => 
     slug: itemArticleSlug(item.id), title: item.name, category: 'Items',
     itemId: item.id, icon: item.icon, summary: detail.summary, lead: detail.lead,
     facts: [
-      { label: 'Type', value: item.weaponDamage ? 'Melee weapon' : item.healthRestore ? 'Food' : 'Material' },
+      { label: 'Type', value: item.weaponDamage ? 'Melee weapon' : item.healthRestore ? 'Food' : item.maxStack === 1 ? 'Equipment' : 'Material' },
       { label: 'Source', value: detail.source },
       { label: 'Max stack', value: `${item.maxStack} per slot` },
       ...(item.healthRestore ? [{ label: 'Healing', value: `${item.healthRestore} HP` }] : []),
