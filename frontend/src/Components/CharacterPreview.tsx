@@ -19,7 +19,7 @@ export default function CharacterPreview({ appearance, name, head = 0, neck = 0,
   const [turn, setTurn] = useState(0), [closeUp, setCloseUp] = useState(focusFace);
   useEffect(() => setCloseUp(focusFace), [focusFace]);
   return <div className="creator-preview" aria-label="Live character preview">
-    <div className="creator-preview-heading"><span className="eyebrow">Your adventurer</span><strong>{name.trim() || 'A new story'}</strong></div>
+    <div className="creator-preview-heading"><strong title={name.trim()}>{name.trim() || 'A new story'}</strong></div>
     <PreviewBoundary>
       <Canvas dpr={[1,1.5]} camera={{ position:[0,1.2,4.9], fov:32 }} gl={{alpha:true,antialias:true}}>
         <ambientLight intensity={.7}/><directionalLight position={[3,5,4]} intensity={1.3}/><directionalLight position={[-3,2,-2]} intensity={.6} color="#b6d5ec"/>

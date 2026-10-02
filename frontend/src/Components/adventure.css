@@ -1,16 +1,18 @@
 .adventure-panel { display: flex; flex-direction: column; max-height: min(700px, calc(100dvh - 250px)); width: min(420px, calc(100vw - 24px)); }
 .adventure-scroll { overflow-y: auto; min-height: 0; padding-right: 4px; }
-.adventure-card { padding: 12px; margin: 12px 0; border: 1px solid #ba9d71; border-radius: 10px; background: #fff9e6cc; }
+.skills-scroll > p { font-size: 13px; margin: 0 0 8px; }
+.skills-scroll > button { font-size: 13px; }
+.adventure-card { padding: 8px; margin: 8px 0; border: 1px solid #ba9d71; border-radius: 10px; background: var(--card-surface); }
 .adventure-card h3 { margin: 0 0 6px; font-size: 16px; color: #344e39; }
-.adventure-card p { font-size: 13px; line-height: 1.5; margin: 8px 0; }
-.adventure-card label { display: block; font-size: 13px; margin: 10px 0; }
+.adventure-card p { font-size: 13px; line-height: 1.4; margin: 6px 0; }
+.adventure-card label { display: block; font-size: 13px; margin: 6px 0; }
 .adventure-card select { max-width: 100%; padding: 8px; background: #fffaf0; border: 1px solid #ba9d71; border-radius: 6px; }
 .adventure-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-.adventure-panel button { min-height: 36px; }
-.adventure-hud { position: absolute; bottom: 130px; left: 16px; width: min(340px, calc(100vw - 32px)); pointer-events: auto; z-index: 10; background: #f8efd9ed; padding: 10px 12px; border: 2px solid #699151; border-radius: 10px; text-align: left; }
+.adventure-panel button { min-height: var(--control-size); }
+.adventure-hud { position: absolute; bottom: 130px; left: 16px; width: min(340px, calc(100vw - 32px)); pointer-events: auto; z-index: 10; background: var(--panel-surface); padding: 10px 12px; border: 2px solid #699151; border-radius: 10px; text-align: left; }
 .adventure-hud span { display: block; margin-top: 4px; font-size: 12px; }
-.duel-hud { position: absolute; top: 155px; right: 16px; width: min(340px, calc(100vw - 32px)); z-index: 30; background: #f8efd9f5; border: 2px solid #997544; border-radius: 10px; padding: 12px; pointer-events: auto; }
+.duel-hud { position: absolute; top: 155px; right: 16px; width: min(340px, calc(100vw - 32px)); z-index: 30; background: var(--panel-surface); border: 2px solid #997544; border-radius: 10px; padding: 8px; pointer-events: auto; }
 .duel-hud button { margin: 8px 6px 0 0; }.duel-hud small { display:block; margin-top: 6px; }
-.technique-grid { display: grid; gap: 8px; }.technique { text-align:left; padding:10px; min-height:68px; }.technique span,.technique small { display:block; margin-top:4px; }.technique[aria-pressed=true] { background: #d8edc9; border: 2px solid #648844; }.technique:disabled { opacity:.65; }.skills-scroll { overflow-y:auto; min-height:0; }.skills-scroll .skill-list { overflow:visible; }.path-heading { margin:18px 0 6px; }
+.technique-grid { display: grid; gap: 5px; }.technique { text-align:left; padding:7px 8px; min-height:var(--control-size); font-size:13px; }.technique span,.technique small { display:block; margin-top:4px; }.technique[aria-pressed=true] { background: #d8edc9; border: 2px solid #648844; }.technique:disabled { opacity:.65; }.skills-scroll { overflow-y:auto; min-height:0; }.skills-scroll .skill-list { overflow:visible; }.path-heading { margin:12px 0 4px; }
 .adventure-world-label { background:#263828e8; color:#fff5d8; border:1px solid #a9bd78; padding:4px 8px; border-radius:8px; white-space:nowrap; font-size:11px; pointer-events:none; }
 @media (max-width: 600px) { .adventure-scroll > p { font-size: 14px; line-height: 1.5; } }

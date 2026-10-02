@@ -42,7 +42,6 @@ const SkillsPanel = memo(({ open, onClose, onStyle }: Props) => {
     <section className="game-panel skills-panel" aria-label="Skills">
       <header className="panel-heading">
         <div>
-          <span className="eyebrow">Your island know-how</span>
           <h2>Skills</h2>
         </div>
         <button className="close-button" onClick={onClose} aria-label="Close skills">×</button>

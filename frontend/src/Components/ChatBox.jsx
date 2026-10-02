@@ -65,7 +65,6 @@ const ChatBox = memo(({ open, onClose, onOpenFriends }) => {
     <section className="game-panel chat-panel" aria-label="Chat">
       <header className="panel-heading">
         <div>
-          <span className="eyebrow">Around the island</span>
           <h2>Chat</h2>
         </div>
         {onOpenFriends && (
@@ -152,10 +151,7 @@ const ChatBox = memo(({ open, onClose, onOpenFriends }) => {
           Send
         </button>
       </form>
-      <p className="fine-print">
-        Make a name for yourself: /name YourName
-        {muted.size > 0 && ` · ${muted.size} muted (unmute in Friends)`}
-      </p>
+      {muted.size > 0 && <p className="fine-print">{muted.size} muted · unmute in Friends</p>}
     </section>
   );
 });

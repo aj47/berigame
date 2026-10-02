@@ -61,8 +61,7 @@ const SettingsPanel = ({ open, onClose }: Props) => {
     <section className="game-panel settings-panel" aria-label="Settings">
       <header className="panel-heading">
         <div>
-          <span className="eyebrow">Saved on this device</span>
-          <h2>Settings</h2>
+          <h2 title="Saved on this device">Settings</h2>
         </div>
         <button className="close-button" onClick={onClose} aria-label="Close settings">
           ×

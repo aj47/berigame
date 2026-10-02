@@ -21,7 +21,7 @@ const ClickDropdown = () => {
       setPosition({
         left: Math.max(
           12,
-          Math.min(x, window.innerWidth - (rect?.width ?? 240) - 12),
+          Math.min(x, window.innerWidth - (rect?.width ?? 220) - 12),
         ),
         top: Math.max(
           12,

@@ -41,14 +41,13 @@ export default function BerryGiantInteraction({ expeditionId, onClose }: { exped
   return <div className="giant-interaction">
     <p className="giant-speech">“{mood.speech}”</p>
     <span className="giant-mood">{mood.label}{seconds > 0 ? ` · ${seconds}s` : ''}</span>
-    <p className="giant-interaction-note">He eats giant berries and leaves players unharmed. Lure him away to protect the delivery.</p>
     {blocked ? <p className="giant-interaction-note">{me.state !== PlayerState.Alive ? 'Return after respawning to help.' : 'Finish combat before helping with this delivery.'}</p> : joined ? <>
       {carrying ? <>
         <p className="giant-interaction-note">Put your cargo down, then drop bait away from it.</p>
         <button className="context-action" disabled={busy || cooldown > 0} onClick={() => void act('put_down')}>Put the berry down</button>
       </> : <>
         <button className="context-action" disabled={busy || cooldown > 0 || !hasBait} onClick={() => void act('bait')}>Drop bait here · 1 {decoy ? 'driftwood' : 'greenberry'}</button>
-        <p className="giant-interaction-note">{hasBait ? `Place it away from the cargo. The scent lasts ${decoy ? 30 : 15} seconds.` : `You need 1 ${decoy ? 'driftwood' : 'greenberry'} for bait.`}</p>
+        <p className="giant-interaction-note">{hasBait ? `Lure him away from cargo for ${decoy ? 30 : 15}s.` : `You need 1 ${decoy ? 'driftwood' : 'greenberry'} for bait.`}</p>
         {hasTechnique(profile, 11) && chebyshev(me, { x: e.giantX, z: e.giantZ }) <= 3 && <button className="context-action" disabled={busy || cooldown > 0} onClick={() => void act('interrupt')}>Interrupt · stun for 9s</button>}
       </>}
       {cooldown > 0 && <p className="giant-interaction-note">Catch your breath · {cooldown}s</p>}
@@ -56,7 +55,7 @@ export default function BerryGiantInteraction({ expeditionId, onClose }: { exped
       <button className="context-action" disabled={busy} onClick={() => void act('join')}>Help with this delivery</button>
     ) : <>
       <button className="context-action" disabled={busy} onClick={() => void run(() => actions.setTarget(berry.x, berry.z), true)}>Go to the giant berry</button>
-      <p className="giant-interaction-note">Join this delivery from beside its berry or at the gardener’s camp.</p>
+      <p className="giant-interaction-note">Join beside the berry or at camp.</p>
     </>}
   </div>;
 }

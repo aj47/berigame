@@ -140,7 +140,6 @@ const FriendsPanelBody = ({ onClose, onOpenChat }: PanelProps) => {
     <section className="game-panel friends-panel" aria-label="Friends">
       <header className="panel-heading">
         <div>
-          <span className="eyebrow">Your people</span>
           <h2>Friends</h2>
         </div>
         {onOpenChat && <button className="panel-switch" onClick={onOpenChat}>Chat</button>}

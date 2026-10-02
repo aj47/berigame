@@ -1,5 +1,4 @@
-.giant-interaction { padding: 0 6px 5px; }
-.giant-speech { margin: 8px 0; color: #344e39; font-size: 16px; font-weight: 700; line-height: 1.35; }
-.giant-mood { display: inline-block; color: #47613b; font-size: 12px; text-transform: capitalize; }
-.giant-interaction-note { margin: 8px 0; font-size: 12px; line-height: 1.4; }
-.giant-interaction .context-action { min-height: 44px; }
+.giant-interaction { padding: 0; }
+.giant-speech { margin: 3px 8px; color: #344e39; font-size: 13px; font-weight: 700; line-height: 1.35; }
+.giant-mood { display: block; margin: 3px 8px 5px; color: #47613b; font-size: 12px; text-transform: capitalize; }
+.giant-interaction-note { margin: 5px 8px; font-size: 12px; line-height: 1.4; }

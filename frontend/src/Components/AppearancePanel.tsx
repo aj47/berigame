@@ -131,7 +131,7 @@ export default function AppearancePanel({ open, onClose, firstVisit = false }: P
   };
   return createPortal(<div className="creator-backdrop" data-character-creator>
     <div className="character-creator" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="creator-title" onKeyDown={onKey}>
-      <header className="creator-header"><div><span className="eyebrow">{firstVisit?'Welcome to BeriGame':'Make it yours'}</span><h1 id="creator-title">{firstVisit?'Your story starts here.':'Your character'}</h1><p>{firstVisit?'Choose a name. Find your look. Make the island your own.':'A fresh look for your next adventure.'}</p></div>{!firstVisit&&<button className="creator-close" disabled={pending} onClick={cancel} aria-label="Close character creator">×</button>}</header>
+      <header className="creator-header"><div><h1 id="creator-title">{firstVisit?'Your story starts here.':'Your character'}</h1>{firstVisit&&<p>Choose your name and look.</p>}</div>{!firstVisit&&<button className="creator-close" disabled={pending} onClick={cancel} aria-label="Close character creator">×</button>}</header>
       <div className="creator-body">
         <CharacterPreview appearance={value} name={name} head={cosmetics?.head ?? 0} neck={cosmetics?.neck ?? 0} focusFace={['Face','Hair','Details'].includes(tab)}/>
         <div className="creator-editor">
@@ -142,7 +142,7 @@ export default function AppearancePanel({ open, onClose, firstVisit = false }: P
               <div className="creator-name-input"><input ref={nameInput} id="character-name" value={name} maxLength={NAME_MAX_LEN} placeholder="Your adventurer’s name" autoComplete="off" spellCheck={false} disabled={pending} aria-describedby="character-name-hint" aria-invalid={Boolean(name&&nameError)} onChange={e=>{setName(e.target.value);setError('');}}/><span>{name.length}/{NAME_MAX_LEN}</span></div>
               <p id="character-name-hint" className="creator-hint">{name&&nameError?nameError:'Other players will see this name. You can change it later.'}</p>
               <div className="creator-section-heading"><h2>A starting point</h2><span>Make any look your own</span></div>
-              <div className="creator-presets">{CHARACTER_PRESETS.map(preset=><button type="button" key={preset.name} disabled={pending} onClick={()=>{setDraft(normalizeAppearance(preset.choices));setError('');}}><span className="creator-preset-colors" aria-hidden="true">{[ROBE_COLORS[normalizeAppearance(preset.choices).robeColor].color,HAIR_COLORS[normalizeAppearance(preset.choices).hairColor].color,SKIN_TONES[normalizeAppearance(preset.choices).skinTone].color].map((color,i)=><i key={i} style={{background:color}}/>)}</span><strong>{preset.name}</strong><small>{preset.description}</small></button>)}</div>
+              <div className="creator-presets">{CHARACTER_PRESETS.map(preset=><button type="button" key={preset.name} title={preset.description} disabled={pending} onClick={()=>{setDraft(normalizeAppearance(preset.choices));setError('');}}><span className="creator-preset-colors" aria-hidden="true">{[ROBE_COLORS[normalizeAppearance(preset.choices).robeColor].color,HAIR_COLORS[normalizeAppearance(preset.choices).hairColor].color,SKIN_TONES[normalizeAppearance(preset.choices).skinTone].color].map((color,i)=><i key={i} style={{background:color}}/>)}</span><strong>{preset.name}</strong></button>)}</div>
               <div className="creator-start-actions"><button type="button" disabled={pending} onClick={()=>setDraft(Object.fromEntries(APPEARANCE_KEYS.map(key=>[key,Math.floor(Math.random()*APPEARANCE_LIMITS[key])])) as CharacterAppearance)}>Surprise me ↻</button><button type="button" onClick={()=>setTab('Face')}>Customize every detail →</button></div>
             </>}
             {tab==='Face'&&<>{choices('Build','bodyType',BODY_TYPES)}{choices('Face shape','faceShape',FACE_SHAPES)}{swatches('Skin tone','skinTone',SKIN_TONES)}{swatches('Eyes','eyeColor',EYE_COLORS)}</>}
@@ -153,7 +153,7 @@ export default function AppearancePanel({ open, onClose, firstVisit = false }: P
         </div>
       </div>
       <footer className="creator-footer">
-        <div>{error?<p className="creator-error" role="alert">{error}</p>:<p>{nameError?'Choose your name in Start to continue.':'Your look is yours. Everyone starts with the same abilities.'}</p>}</div>
+        <div>{error?<p className="creator-error" role="alert">{error}</p>:nameError?<p>Choose your name in Start to continue.</p>:null}</div>
         <div className="creator-footer-actions">{!firstVisit&&<button disabled={pending} onClick={cancel}>Cancel</button>}<button className="creator-save" disabled={pending||Boolean(nameError)||(!firstVisit&&!changed)} onClick={()=>void save()}>{pending?'Saving…':firstVisit?'Enter the island →':'Save character'}</button></div>
       </footer>
     </div>

@@ -121,8 +121,7 @@ const TradeWindowBody = ({ trades }: { trades: readonly Trade[] }) => {
     <section className="trade-window trade-sheet" role="dialog" aria-label={`Trading with ${otherName}`} data-testid="trade-sheet">
       <header className="panel-heading">
         <div>
-          <span className="eyebrow">Hand-off</span>
-          <h2>Trade with {otherName}</h2>
+          <h2>Trade <small>{otherName}</small></h2>
         </div>
         <button className="close-button" disabled={busy} onClick={() => run(() => actions.cancelTrade(trade.id))} aria-label="Cancel trade">×</button>
       </header>

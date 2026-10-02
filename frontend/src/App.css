@@ -4,12 +4,24 @@
   --ink: #2b211a;
   --ink-soft: #584635;
   --parchment: #f7f1e3;
+  --panel-surface: #f7f1e3e6;
+  --hud-surface: #302a23e0;
+  --card-surface: #fffaf080;
+  --control-size: 36px;
+  --close-size: 32px;
+  --menu-row-height: 34px;
   --wood: #e8d5b0;
   --line: #8a6a45;
   --gold: #f4cb63;
   --blue: #365b7c;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+@media (pointer: coarse) {
+  :root { --control-size: 44px; --close-size: 44px; --menu-row-height: 44px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root { --panel-surface: #f7f1e3; --hud-surface: #302a23; --card-surface: #fffaf0; }
 }
 * {
   box-sizing: border-box;
@@ -31,10 +43,10 @@ textarea {
   font: inherit;
 }
 button {
-  min-height: 44px;
+  min-height: var(--control-size);
   border: 1px solid var(--line);
   border-radius: 7px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   color: var(--ink);
   background: var(--wood);
   box-shadow: inset 0 -3px 0 #00000012;
@@ -42,6 +54,7 @@ button {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
+.game-toolbar > button { background: #e8d5b0e6; }
 button:hover:enabled {
   background-color: #f3e5c9;
 }
@@ -346,14 +359,13 @@ canvas {
   max-height: calc(100dvh - 250px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px;
-  background: var(--parchment);
+  padding: 10px 12px;
+  background: var(--panel-surface);
   color: var(--ink);
   border: 2px solid var(--line);
   border-radius: 10px;
   box-shadow:
-    0 6px 24px #211a1540,
-    inset 0 0 0 3px #e8d5b0;
+    0 6px 24px #211a1540;
   scrollbar-width: thin;
 }
 .panel-heading {
@@ -361,13 +373,14 @@ canvas {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 6px;
 }
 .close-button {
   font-size: 25px;
   line-height: 1;
-  min-width: 44px;
-  flex: 0 0 44px;
+  min-height: var(--close-size);
+  min-width: var(--close-size);
+  flex: 0 0 var(--close-size);
   padding: 4px;
   background: transparent;
   border: 0;
@@ -384,14 +397,14 @@ canvas {
   max-width: min(270px, calc(100vw - 24px));
   padding: 8px 12px;
   text-align: left;
-  background: #f7f1e3f2;
+  background: var(--panel-surface);
   box-shadow: 0 2px 8px #211a1526;
 }
 .goal-chip img { width: 30px; height: 30px; object-fit: contain; }
 .goal-chip strong { display: block; font-size: 12px; }
 .goal-chip small { display: block; font-size: 10px; color: var(--ink-soft); margin-top: 3px; }
 .goal-chip:disabled { opacity: .85; }
-.reset-view-button { width: 100%; margin-bottom: 14px; font-size: 12px; }
+.reset-view-button { width: 100%; margin-bottom: 8px; font-size: 12px; }
 .hud-opponent { min-width: 0; flex: 1; height: 21px; text-align: right; line-height: 1; }
 .hud-opponent strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: #fff1cc; }
 .hud-opponent span { display: block; font-size: 9px; color: #e6d0ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
@@ -421,7 +434,7 @@ canvas {
 
 /* Inventory operations share one tap, mouse, and keyboard flow. */
 .inventory-panel { display: block; }
-.crafting-panel .recipe-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.crafting-panel .recipe-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 0; }
 .crafting-panel .recipe-row button { flex: 0 0 auto; font-size: 0.9rem; padding: 6px 12px; }
 .crafting-panel .recipe-row .fine-print { flex: 1 1 140px; margin: 0; }
 .inventory-panel .panel-heading, .inventory-panel .item-inspector { flex: 0 0 auto; }
@@ -543,7 +556,7 @@ canvas {
   font-size: 10px;
 }
 .chat-log {
-  min-height: 120px;
+  min-height: 72px;
   max-height: 210px;
   overflow-y: auto;
   padding: 0 3px 8px;
@@ -552,7 +565,7 @@ canvas {
 .chat-log p {
   font-size: 13px;
   overflow-wrap: anywhere;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 .chat-log p strong {
   display: block;
@@ -579,9 +592,9 @@ canvas {
 }
 .help-steps li {
   padding-left: 4px;
-  margin-bottom: 13px;
+  margin-bottom: 8px;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 .help-steps li::marker {
   color: var(--line);
@@ -598,8 +611,8 @@ canvas {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  margin: 14px 0;
-  padding: 12px 0;
+  margin: 8px 0;
+  padding: 8px 0;
   border-block: 1px solid #c9b58e;
 }
 .weapon-guide div {
@@ -630,8 +643,8 @@ canvas {
   transform: translateX(-50%);
   width: 420px;
   max-width: calc(100vw - 24px);
-  padding: 11px 12px 8px;
-  background: #302a23f5;
+  padding: 8px 10px 6px;
+  background: var(--hud-surface);
   border: 2px solid #ad9165;
   border-radius: 11px;
   box-shadow:
@@ -644,7 +657,7 @@ canvas {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 9px;
+  margin-bottom: 6px;
 }
 .hud-health {
   height: 21px;
@@ -835,15 +848,15 @@ canvas {
 .click-dropdown {
   position: fixed;
   z-index: 20;
-  width: 240px;
+  width: 220px;
   max-width: calc(100vw - 24px);
   max-height: calc(100dvh - 24px);
   overflow-y: auto;
-  background: var(--parchment);
+  background: var(--panel-surface);
   color: var(--ink);
   border: 2px solid var(--line);
   border-radius: 8px;
-  padding: 5px;
+  padding: 3px;
   box-shadow: 0 8px 24px #211a1550;
 }
 .context-heading {
@@ -851,7 +864,7 @@ canvas {
   align-items: center;
   gap: 4px;
   padding-left: 8px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: bold;
 }
 .context-heading > span {
@@ -867,21 +880,28 @@ canvas {
   width: 100%;
   text-align: left;
   font-size: 13px;
-  margin-top: 4px;
+  min-height: var(--menu-row-height);
+  padding: 5px 8px;
+  margin: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  box-shadow: none;
   overflow-wrap: anywhere;
 }
 .context-action > span {
   color: var(--line);
-  font-size: 22px;
+  font-size: 18px;
 }
-.context-action.context-walk { border-top: 1px solid #d8c6a3; margin-top: 4px; }
+.context-action.context-walk { border-top: 1px solid #bca58080; margin-top: 2px; border-radius: 0 0 4px 4px; }
 .player-picker-hint {
   margin: 8px;
   font-size: 12px;
   line-height: 1.4;
 }
-.player-choice {
-  min-height: 44px;
+.game-panel, .click-dropdown, .combat-hud, .toolbar-secondary, .trade-window, .minimap-card {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 .toast {
   position: absolute;
@@ -892,7 +912,7 @@ canvas {
   padding: 11px 16px;
   border: 1px solid #b79b6a;
   border-radius: 7px;
-  background: #302a23f5;
+  background: var(--hud-surface);
   color: #fff0cb;
   font-size: 13px;
   box-shadow: 0 4px 15px #0003;
@@ -1176,7 +1196,7 @@ canvas {
   transform: translate(-50%, -50%);
   width: min(400px, calc(100vw - 32px));
   padding: 20px;
-  background: var(--parchment);
+  background: var(--panel-surface);
   color: var(--ink);
   border: 2px solid var(--line);
   border-radius: 10px;
@@ -1465,15 +1485,15 @@ canvas {
 /* UI pass: toolbar settings button, settings panel, minimap, onboarding tips, celebration. */
 .game-toolbar .toolbar-gear { margin-right: 5px; }
 .avatar-labels.hide-names .adventurer-name { display: none; }
-.settings-group { border: 0; margin: 0 0 14px; padding: 0; }
+.settings-group { border: 0; margin: 0 0 10px; padding: 0; }
 .settings-group legend { padding: 0; margin-bottom: 6px; font-size: 12px; font-weight: bold; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
-.settings-row { display: grid; grid-template-columns: 78px 1fr 44px; align-items: center; gap: 8px; min-height: 44px; }
+.settings-row { display: grid; grid-template-columns: 78px 1fr 44px; align-items: center; gap: 8px; min-height: var(--control-size); }
 .settings-row label { font-size: 13px; }
 .settings-row output { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
-.settings-row input[type=range] { width: 100%; height: 44px; margin: 0; accent-color: var(--blue); cursor: pointer; }
+.settings-row input[type=range] { width: 100%; height: var(--control-size); min-height: var(--control-size); margin: 0; accent-color: var(--blue); cursor: pointer; }
 .settings-row input[type=range]:disabled { opacity: .45; cursor: default; }
-.settings-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; cursor: pointer; }
-.settings-toggle input { width: 22px; height: 22px; margin: 0; accent-color: var(--blue); }
+.settings-toggle { display: flex; align-items: center; gap: 8px; min-height: var(--control-size); font-size: 13px; cursor: pointer; }
+.settings-toggle input { width: 22px; height: 22px; min-height: 22px; margin: 0; accent-color: var(--blue); }
 .settings-segment { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .settings-segment button { font-size: 13px; }
 .settings-segment button[aria-checked=true] { background: var(--blue); color: #fff; border-color: #243e56; }
@@ -1504,7 +1524,7 @@ canvas {
 }
 .minimap-card {
   width: min(340px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto;
-  padding: 12px 14px; color: var(--ink); background: var(--parchment);
+  padding: 12px 14px; color: var(--ink); background: var(--panel-surface);
   border: 2px solid var(--line); border-radius: 10px; box-shadow: 0 8px 30px #211a1560;
 }
 .minimap-card .panel-heading { margin-bottom: 6px; }
@@ -1611,7 +1631,7 @@ canvas {
   padding: 9px 14px;
   border: 1px solid #b79b6a;
   border-radius: 7px;
-  background: #302a23f5;
+  background: var(--hud-surface);
   color: #fff0cb;
   font-size: 13px;
   box-shadow: 0 4px 15px #0003;
@@ -1703,7 +1723,7 @@ canvas {
 .minimap-card { max-height: calc(100dvh - 32px); overflow-y: auto; }
 .map-caption { font-size: 12px; line-height: 1.4; margin: 8px 0; color: #776846; }
 .map-places { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.map-places button { display:flex; align-items:center; gap:6px; text-align:left; padding:7px 5px; min-height:44px; background:#f6edd5; color:#3e4f36; border:1px solid #c8bd9a; border-radius:7px; font-size:11px; cursor:pointer; }
+.map-places button { display:flex; align-items:center; gap:6px; text-align:left; padding:7px 5px; min-height:var(--control-size); background:var(--card-surface); color:#3e4f36; border:1px solid #c8bd9a; border-radius:7px; font-size:11px; cursor:pointer; }
 .map-places button:hover { background:#e8dfbf; }
 .map-places button:focus-visible { outline:2px solid #4e7250; outline-offset:2px; }
 .map-place-number { display:grid; place-items:center; flex-shrink:0; width:19px; height:19px; border-radius:50%; background:#426046; color:#fff5dc; font-weight:bold; }

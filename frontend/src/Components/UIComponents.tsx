@@ -191,8 +191,7 @@ const UIComponents = memo(() => {
         <section className="game-panel help-panel" aria-label="How to play">
           <header className="panel-heading">
             <div>
-              <span className="eyebrow">An adventurer’s field guide</span>
-              <h2>Gather. Arm up. Hold your ground.</h2>
+              <h2>How to play</h2>
             </div>
             <button
               className="close-button"

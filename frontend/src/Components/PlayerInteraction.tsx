@@ -29,7 +29,6 @@ export default function PlayerInteraction({ selected }: { selected: Selection })
     if (row) setSelected({ ...selected, playerHex: hex, connectionId: row.name });
   };
   if (!selected.playerHex) return <>
-    <p className="player-picker-hint">Players overlap here. Who did you mean?</p>
     {choices.map(hex => <button className="context-action player-choice" key={hex} onClick={() => choose(hex)}>
       {players.get(hex)!.name}<span aria-hidden="true">›</span>
     </button>)}

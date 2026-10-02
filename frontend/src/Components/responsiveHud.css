@@ -8,11 +8,11 @@
   max-width: calc(100vw - 24px);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  padding: 6px;
+  gap: 2px;
+  padding: 4px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--parchment);
+  background: var(--panel-surface);
   box-shadow: 0 6px 20px #211a1530;
   pointer-events: auto;
 }
@@ -22,9 +22,9 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-height: 44px;
+  min-height: var(--control-size);
   margin: 0;
-  padding: 8px 6px;
+  padding: 5px 6px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -76,7 +76,7 @@
     padding: 2px;
     border: 1px solid #ad9165;
     border-radius: 10px;
-    background: #f7f1e3f5;
+    background: var(--panel-surface);
     box-shadow: 0 3px 12px #211a1530;
   }
   .ui-group .game-toolbar > button {
@@ -114,7 +114,7 @@
     padding: 6px;
     border-width: 1px;
     border-radius: 8px;
-    background: #f7f1e3ed;
+    background: var(--panel-surface);
   }
   .ui-group .minimap > canvas,
   .ui-group .minimap > .minimap-north { display: none; }
@@ -142,7 +142,7 @@
     max-width: none;
     min-width: 0;
     margin: 0;
-    padding: 9px 10px;
+    padding: 6px 8px;
     border-width: 1px;
     border-radius: 8px;
     color: var(--ink);
@@ -181,6 +181,15 @@
   .ui-group .stop-button kbd { display: none; }
   .ui-group .stop-button { gap: 3px; }
   .ui-group[data-panel-open="true"] .combat-hud { display: none; }
+  .ui-group:has(.trade-sheet) .combat-hud { display: none; }
+  .ui-group .trade-sheet {
+    top: auto;
+    bottom: calc(var(--hud-bottom) + var(--dock-height) + var(--dock-gap));
+    width: min(460px, calc(100% - var(--hud-left) - var(--hud-right)));
+    max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom) - 116px);
+    padding: 10px;
+  }
+  .ui-group .trade-sheet h2 { font-size: 20px; }
 
   .ui-group .game-panel {
     left: 50%;
@@ -191,14 +200,14 @@
     width: min(480px, calc(100% - var(--hud-left) - var(--hud-right)));
     max-width: none;
     max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom) - 116px);
-    padding: 16px;
+    padding: 10px;
     border-width: 1px;
     border-radius: 14px;
     box-shadow: 0 8px 28px #211a1540;
   }
   .ui-group .game-panel.appearance-panel { max-height: min(max(360px, 54dvh), calc(100dvh - var(--hud-top) - var(--hud-bottom) - 116px)); }
-  .ui-group .game-panel .panel-heading { flex-shrink: 0; margin-bottom: 12px; }
-  .ui-group .game-panel h2 { font-size: 22px; }
+  .ui-group .game-panel .panel-heading { flex-shrink: 0; margin-bottom: 6px; }
+  .ui-group .game-panel h2 { font-size: 20px; }
   .ui-group .adventure-panel button { min-height: 44px; }
   .ui-group .inventory-grid { max-height: 32dvh; }
   .ui-group .chat-log { max-height: 42dvh; }
@@ -237,8 +246,9 @@
   .ui-group .weapon-chip-label { display: none; }
   .ui-group .weapon-chip { padding: 0 2px; }
   .ui-group .world-objectives { width: min(280px, calc(50% - 24px)); max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom) - 68px); }
-  .ui-group .game-panel { left: var(--hud-left); right: auto; transform: none; bottom: var(--hud-bottom); max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom) - 56px); width: calc(50% - var(--hud-left) - 12px); padding: 12px; }
+  .ui-group .game-panel { left: var(--hud-left); right: auto; transform: none; bottom: var(--hud-bottom); max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom) - 56px); width: calc(50% - var(--hud-left) - 12px); padding: 10px; }
   .ui-group .game-panel.appearance-panel { max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom) - 56px); }
+  .ui-group .trade-sheet { left: var(--hud-left); transform: none; bottom: var(--hud-bottom); width: calc(50% - var(--hud-left) - 12px); max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom) - 56px); }
   .ui-group .game-panel h2 { font-size: 19px; }
   .ui-group .toolbar-secondary.is-open { max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom) - 68px); padding: 6px; }
   .ui-group .toolbar-secondary > button,

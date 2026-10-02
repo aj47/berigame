@@ -10,7 +10,7 @@
 .panel-tabs button[aria-selected=true] { background: var(--blue); color: white; border-color: #243e56; }
 .skills-panel { display: flex; flex-direction: column; overflow: hidden; }
 .skill-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; }
-.skill-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 4px; border-bottom: 1px solid #c9b58e; border-radius: 5px; }
+.skill-row { display: flex; gap: 8px; align-items: flex-start; padding: 6px 2px; border-bottom: 1px solid #c9b58e; border-radius: 5px; }
 .skill-row img { width: 34px; height: 34px; flex: 0 0 34px; }
 .skill-row.just-leveled { background: #fff3c4; box-shadow: inset 0 0 0 2px var(--gold); }
 .skill-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -19,6 +19,7 @@
 .skill-level small { font-weight: normal; color: var(--ink-soft); }
 .skill-bar { height: 8px; border: 1px solid #8a6a45; border-radius: 4px; background: #e6d7b8; overflow: hidden; }
 .skill-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #5aa3c8, #8fd0ef); }
+.skill-body .fine-print { margin: 0; }
 .skill-perk { color: var(--blue); }
 .recipe-list { margin-top: 10px; border-top: 1px solid #c9b58e; padding-top: 6px; }
 .crafting-panel .recipe-row button { display: inline-flex; align-items: center; gap: 5px; }

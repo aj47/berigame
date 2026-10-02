@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useRef, useState } from 'react';
-import { getCosmetic, getItemDef, hasCosmetic, levelForXp, recipeStatus } from '@sim';
+import { getItemDef, hasCosmetic, levelForXp, recipeStatus } from '@sim';
 import { useGameActions } from '../spacetime/actions';
 import { useInventoryRows, useMyCosmetics, useMySkills } from '../spacetime/hooks';
 import { slotsFromRows } from './itemUi';
@@ -27,7 +27,7 @@ const CraftingPanel = memo(({ open, onClose }: { open: boolean; onClose: () => v
   if (!open) return null;
   return <section className="game-panel crafting-panel" aria-label="Crafting">
     <header className="panel-heading">
-      <div><span className="eyebrow">Crafting level {craftingLevel}</span><h2>Craft</h2></div>
+      <h2>Craft <small>Level {craftingLevel}</small></h2>
       <button className="close-button" onClick={onClose} aria-label="Close crafting">×</button>
     </header>
     <div className="recipe-list" aria-label={`Recipes · Crafting level ${craftingLevel}`}>
@@ -49,8 +49,8 @@ const CraftingPanel = memo(({ open, onClose }: { open: boolean; onClose: () => v
               {r.inputs.map((i) => `${i.quantity} ${i.name}`).join(" + ")}
               {r.output && getItemDef(r.output.itemId)?.weaponDamage ? ` → ${getItemDef(r.output.itemId)!.weaponDamage} damage` : ""}
               {r.output && getItemDef(r.output.itemId)?.healthRestore ? ` → heals ${getItemDef(r.output.itemId)!.healthRestore}` : ""}
-              {r.cosmetic !== null ? ` → ${getCosmetic(r.cosmetic)?.name} (keepsake)` : ""}
-              {r.locked ? ` — needs Crafting level ${r.level}` : owned ? " — already yours" : r.canCraft ? ` · +${r.xp} Crafting XP` : ""}
+              {r.cosmetic !== null ? " · Keepsake" : ""}
+              {r.locked ? "" : owned ? " — already yours" : r.canCraft ? ` · +${r.xp} Crafting XP` : ""}
             </span>
           </div>
         );
