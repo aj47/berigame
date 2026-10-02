@@ -60,6 +60,30 @@ describe('First Day goal chip', () => {
     expect(r.goal).toMatchObject({ id: 'reach-boulders', text: 'Take your club to the Boulders', action: { kind: 'move', x: 51, z: 51 } });
   });
 
+  it.each([
+    { itemId: 'stick', goalId: 'wield-stick', name: 'stick', done: ['pick-berry', 'eat-berry'] },
+    { itemId: 'stone_club', goalId: 'wield-club', name: 'stone club', done: ['pick-berry', 'eat-berry', 'find-stick', 'wield-stick', 'reach-coast', 'first-day'] },
+  ])('asks to assign a bagged $itemId before offering to wield it', ({ itemId, goalId, name, done }) => {
+    const slots = emptySlots();
+    slots[4] = { itemId, quantity: 1 };
+    if (itemId === 'stone_club') slots[5] = { itemId: 'stick', quantity: 1 };
+    const before = firstDayGoal(input({ slots, done }));
+    expect(before.goal).toMatchObject({
+      id: goalId,
+      text: `Add your ${name} to a quick slot`,
+      hint: 'Open your bag, then drag it to slots 1–3',
+      action: null,
+    });
+    slots[2] = slots[4];
+    slots[4] = null;
+    const after = firstDayGoal(input({ slots, done: before.done }));
+    expect(after.goal).toMatchObject({
+      id: goalId,
+      text: `Wield your ${name}: tap it`,
+      action: { kind: 'wield', slot: 2 },
+    });
+  });
+
   it('M3/F3: in the Boulders, face the Giant; while it rests, chip obsidian; offers an adventure once you hold obsidian', () => {
     const all = ['pick-berry', 'eat-berry', 'find-stick', 'wield-stick', 'reach-coast', 'first-day'];
     const nodes: GoalTree[] = [...trees(), ...NODE_SEEDS.map((n) => ({ ...n, cooldownUntilTick: 0 }))];

@@ -50,7 +50,7 @@ export const emote = spacetimedb.reducer(
   { emote: t.u8() },
   (ctx, { emote }) => {
     if (!isEmote(emote)) throw new SenderError('unknown emote');
-    const p = requireAlivePlayer(ctx);
+    const p = requireAlivePlayer(ctx, true);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const T = currentTick(ctx);
     touchInput(p, T);

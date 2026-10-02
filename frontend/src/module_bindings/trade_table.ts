@@ -20,4 +20,6 @@ export default __t.row({
   aConfirmed: __t.bool().name("a_confirmed"),
   bConfirmed: __t.bool().name("b_confirmed"),
   createdTick: __t.u32().name("created_tick"),
+  aCoins: __t.u32().name("a_coins"),
+  bCoins: __t.u32().name("b_coins"),
 });

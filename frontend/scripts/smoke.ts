@@ -229,6 +229,7 @@ async function main() {
   // --- stick: found by harvesting, wielded from a quick slot, seen by everyone ---
   const stickHarvests = await findStick(A);
   check('harvesting eventually finds a stick', rowsOf(A, STICK_ITEM_ID).length > 0, `${stickHarvests} extra harvest(s)`);
+  check('harvested sticks stay in the bag until assigned', rowsOf(A, STICK_ITEM_ID).every((row) => row.slot >= HOTBAR_SIZE));
   const find = A.events.find((e) => e.kind === EventKind.ItemFound && e.attacker.toHexString() === A.identity && e.itemId === STICK_ITEM_ID);
   check('the stick find is announced as ItemFound', !!find);
   check('a stick ends first-spawn grace after 10 more ticks', !!find && me(A).respawnTick <= find.tick, `respawnTick=${me(A).respawnTick} find=${find?.tick}`);
@@ -409,8 +410,9 @@ async function main() {
   check('crafting consumes 1 driftwood + 2 flint and makes one stone club',
     countOf(A, STONE_CLUB_ITEM_ID) === 1 && countOf(A, DRIFTWOOD_ITEM_ID) === 0 && countOf(A, FLINT_ITEM_ID) === 0);
   let clubSlot = rowsOf(A, STONE_CLUB_ITEM_ID)[0].slot;
+  check('a crafted club starts in the bag', clubSlot >= HOTBAR_SIZE);
   if (clubSlot >= HOTBAR_SIZE) {
-    const free = [...Array(HOTBAR_SIZE).keys()].find((slot) => !inv(A).some((row) => row.slot === slot))!;
+    const free = [...Array(HOTBAR_SIZE).keys()].find((slot) => !inv(A).some((row) => row.slot === slot)) ?? 0;
     await A.conn.reducers.moveItem({ from: clubSlot, to: free });
     await waitFor('club in a quick slot', () => rowsOf(A, STONE_CLUB_ITEM_ID).some((row) => row.slot === free), 3_000);
     clubSlot = free;

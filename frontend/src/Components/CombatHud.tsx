@@ -21,6 +21,7 @@ import {
 import { useToastStore } from "../spacetime/stores/toastStore";
 import { isTyping } from "./keyboard";
 import { PUNCH_ICON, isWieldedSlot, slotsFromRows } from "./itemUi";
+import { useInventoryDrag } from "./useInventoryDrag";
 
 const QUICK_KEYS = Array.from({ length: HOTBAR_SIZE }, (_, i) => String(i + 1));
 
@@ -39,12 +40,12 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
   const players = usePlayersByHex();
   const tick = useTick();
   const rows = useInventoryRows();
-  const { eatBerry, wieldItem, unwield, cancel } = useGameActions();
+  const { eatBerry, wieldItem, unwield, cancel, moveItem } = useGameActions();
   const showToast = useToastStore((s) => s.show);
   const sparkle = useFirstDayStore((s) => s.stickFoundAt !== null);
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
-  const slots = useMemo(() => slotsFromRows(rows, HOTBAR_SIZE), [rows]);
+  const slots = useMemo(() => slotsFromRows(rows), [rows]);
 
   const dead = !!me && me.state === PlayerState.Dead;
   const weapon: string = me?.weapon ?? "";
@@ -62,9 +63,15 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
     }
   };
 
+  const drag = useInventoryDrag({
+    slots, enabled: !dead && !pending && !!me,
+    onMove: async (from, to) => run(() => moveItem(from, to)),
+    onError: () => showToast('Could not move that item. Try again.'),
+  });
+
   const activate = (index: number) => {
     const slot = slots[index];
-    if (!me || !slot || dead || pendingRef.current) return;
+    if (!me || !slot || dead || pendingRef.current || drag.isDragging || drag.isMoving) return;
     if (isWeapon(slot.itemId)) {
       void run(() => (wielded(index) ? unwield() : wieldItem(index)));
       return;
@@ -177,7 +184,7 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
         )}
       </div>
       <div className="hotbar">
-        {slots.map((slot, index) => {
+        {slots.slice(0, HOTBAR_SIZE).map((slot, index) => {
           const def = slot ? getItemDef(slot.itemId) : undefined;
           const weaponSlot = !!slot && isWeapon(slot.itemId);
           const food = !!def?.healthRestore;
@@ -191,7 +198,7 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
                 : "Wield"
               : food
                 ? `Eat +${def!.healthRestore}`
-                : "—";
+                : "Move";
           const title = !slot
             ? "Choose an item from your bag for this quick slot"
             : weaponSlot
@@ -200,22 +207,23 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
                 : `Wield ${name} (${def?.weaponDamage} damage)`
               : food
                 ? `Eat ${name} (+${def!.healthRestore} HP)`
-                : name;
+                : `Arrange ${name} in your bag`;
           return (
             <button
+              {...drag.slotProps(index)}
               key={index}
               data-slot={index}
               className={`hotbar-slot ${slot ? "filled" : "empty"} ${inHand ? "active" : ""} ${pending ? "busy" : ""} ${sparkle && slot?.itemId === STICK_ITEM_ID ? "sparkle" : ""}`}
               // Only unusable slots are disabled: disabling the focused button while a
               // request is in flight would drop keyboard focus. pendingRef blocks re-entry.
-              disabled={dead || (!slot ? !onOpenBag : !weaponSlot && !food)}
+              disabled={dead || (!slot && !onOpenBag)}
               aria-busy={pending || undefined}
               // Only a weapon is an on/off toggle; eating is a one-shot action.
               aria-pressed={weaponSlot ? inHand : undefined}
               aria-label={`Quick slot ${index + 1}: ${slot ? `${name}${inHand ? ", wielded" : ""}` : "empty"}`}
               aria-describedby={slot ? `hotbar-hint-${index}` : undefined}
               title={title}
-              onClick={() => !slot && onOpenBag ? onOpenBag(index) : activate(index)}
+              onClick={() => (!slot || (!weaponSlot && !food)) && onOpenBag ? onOpenBag(index) : activate(index)}
             >
               {slot ? (
                 <img
@@ -257,6 +265,7 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
             ? `${weaponName} wielded. Press its key again to punch instead.`
             : "Punching. Harvest berry trees to find a sturdy stick."}
       </p>
+      {drag.preview}
     </section>
   );
 };

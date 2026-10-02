@@ -9,6 +9,46 @@
 .panel-tabs button { flex: 1 1 0; padding: 6px 8px; font-size: 12px; }
 .panel-tabs button[aria-selected=true] { background: var(--blue); color: white; border-color: #243e56; }
 .skills-panel { display: flex; flex-direction: column; overflow: hidden; }
+.skills-panel .skills-scroll { overflow-y: auto; min-height: 0; padding-right: 2px; }
+.skills-loadout { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.skills-loadout > div { display: flex; flex-direction: column; gap: 3px; }
+.skills-loadout strong { font-size: 14px; }
+.skills-loadout span { color: var(--blue); font-size: 13px; }
+.skills-loadout button { font-size: 13px; padding: 7px 9px; }
+.skills-panel .skills-loadout-hint { margin: 7px 0 10px; color: var(--ink-soft); font-size: 13px; line-height: 1.4; }
+.skills-paths { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.skills-paths .skills-path { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 5px 3px; padding: 8px 7px; min-width: 0; text-align: left; background: var(--card-surface); border: 1px solid #c9b58e; box-shadow: none; }
+.skills-paths .skills-path[aria-pressed=true] { border-color: #56733e; background: #e3edce; box-shadow: inset 0 0 0 1px #56733e; }
+.skills-path-icon { font-size: 19px; line-height: 1; }
+.skills-paths strong { grid-column: 1 / -1; grid-row: 2; font-size: 13px; overflow-wrap: anywhere; }
+.skills-path-level { grid-column: 2; grid-row: 1; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+.skills-path-bar { grid-column: 1 / -1; height: 4px; background: #cec5a6; border-radius: 2px; overflow: hidden; }
+.skills-path-bar > span { display: block; height: 100%; background: #648844; }
+.skills-section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 7px; margin: 13px 0 7px; }
+.skills-section-heading h3 { margin: 0; font-size: 15px; }
+.skills-section-heading > span { font-size: 13px; color: var(--ink-soft); text-align: right; }
+.skills-techniques { display: grid; gap: 6px; }
+.skills-technique { border: 1px solid #c9b58e; border-radius: 7px; background: var(--card-surface); }
+.skills-technique.is-equipped { border-color: #648844; background: #e3edce; }
+.skills-technique > summary { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px; list-style: none; cursor: pointer; font-size: 13px; }
+.skills-technique > summary::-webkit-details-marker { display: none; }
+.skills-technique > summary::after { content: "+"; flex: 0 0 auto; font-size: 18px; color: var(--ink-soft); }
+.skills-technique[open] > summary::after { content: "−"; }
+.skills-technique-state { margin-left: auto; color: var(--ink-soft); font-size: 13px; white-space: nowrap; }
+.skills-technique.is-equipped .skills-technique-state { color: #355624; }
+.skills-technique-detail { padding: 0 9px 9px; font-size: 13px; line-height: 1.45; }
+.skills-technique-detail p { margin: 0 0 8px; }
+.skills-technique-detail button { min-height: max(40px, var(--control-size)); padding: 6px 12px; font-size: 13px; }
+.skills-requirements { list-style: none; display: grid; gap: 5px; padding: 0; margin: 0; }
+.skills-requirements li { display: flex; align-items: baseline; gap: 5px; color: var(--ink-soft); }
+.skills-requirements li[data-met=true] { color: #355624; }
+.skills-gathering { margin-top: 12px; border-top: 1px solid #c9b58e; }
+.skills-gathering > summary, .skills-about > summary { display: list-item; min-height: 44px; padding: 12px 0; cursor: pointer; font-size: 13px; line-height: 1.5; }
+.skills-gathering > summary { font-weight: bold; }
+.skills-gathering .skill-list { overflow: visible; }
+.skill-perks > summary { min-height: var(--control-size); padding: 7px 0; cursor: pointer; font-size: 13px; }
+.skill-perks p, .skills-about p { font-size: 13px; line-height: 1.45; margin: 0 0 8px; }
+.skills-about { border-top: 1px solid #c9b58e; color: var(--ink-soft); }
 .skill-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; }
 .skill-row { display: flex; gap: 8px; align-items: flex-start; padding: 6px 2px; border-bottom: 1px solid #c9b58e; border-radius: 5px; }
 .skill-row img { width: 34px; height: 34px; flex: 0 0 34px; }

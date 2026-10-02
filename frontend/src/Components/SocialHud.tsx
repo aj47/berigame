@@ -22,7 +22,8 @@ export const DeathPanel = () => {
   const [dismissed, setDismissed] = useState<number | null>(null);
   if (!me) return null;
   const dead = me.state === PlayerState.Dead;
-  if (!dead && (!bag || dismissed === bag.droppedTick)) return null;
+  const frontier = !!me.region && me.region !== 'bramblewild';
+  if (!dead && (frontier || !bag || dismissed === bag.droppedTick)) return null;
   const left = bag ? bag.expiresTick - tick : 0;
   const life = bag ? bagLifeLeft(bag, tick) : 0;
   const distance = bag ? chebyshev(me, bag) : 0;
@@ -30,7 +31,7 @@ export const DeathPanel = () => {
   return (
     <section className={`death-panel ${dead ? 'down' : 'compact'}`} role="status" aria-live="polite" data-testid="death-panel">
       {dead && <strong className="death-title">You were defeated</strong>}
-      {bag ? (
+      {bag && !frontier ? (
         <div className="death-bag-line">
           {!dead && (
             <span className="bag-compass" aria-hidden="true" style={{ transform: `rotate(${angle}rad)` }} data-angle={angle.toFixed(2)}><svg viewBox="0 0 20 20"><path d="M10 1 L17 9 L12.5 9 L12.5 19 L7.5 19 L7.5 9 L3 9 Z" /></svg></span>
@@ -44,7 +45,7 @@ export const DeathPanel = () => {
           </span>
           {!dead && <button className="death-dismiss" aria-label="Hide the bag compass" onClick={() => setDismissed(bag.droppedTick)}>×</button>}
         </div>
-      ) : dead ? <span className="death-bag-line">You carried nothing, so nothing was dropped.</span> : null}
+      ) : dead ? <span className="death-bag-line">{frontier ? 'Supplies stay where you fell for five minutes. Find them in Settlements → Bag.' : 'You carried nothing, so nothing was dropped.'}</span> : null}
       {dead && <span className="death-respawn">Back on your feet in {formatTicks(Math.max(0, me.respawnTick - tick))}</span>}
       {bag && <div className="bag-life" aria-hidden="true"><div style={{ width: `${life * 100}%` }} /></div>}
     </section>

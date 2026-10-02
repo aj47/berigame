@@ -44,7 +44,7 @@ describe('failed connection recovery preserves identity', () => {
     buildConnection();
     const subscription: any = { onApplied: () => subscription, onError: () => subscription, subscribe: test.subscribe };
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    test.callbacks.onConnect({ subscriptionBuilder: () => subscription }, { toHexString: () => 'testidentity' }, 'new-token');
+    test.callbacks.onConnect({ db: { player: { onInsert: vi.fn(), onUpdate: vi.fn(), iter: () => [] } }, subscriptionBuilder: () => subscription }, { toHexString: () => 'testidentity' }, 'new-token');
     expect(saved.get(TOKEN_KEY)).toBe('new-token');
     expect(test.loading.setConnectionIssue).toHaveBeenCalledWith(null, false);
     expect(test.subscribe).toHaveBeenCalledWith(expect.arrayContaining(['appearance']));

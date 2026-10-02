@@ -1,4 +1,5 @@
 import React, { useId } from "react";
+import "./menuGuide.css";
 import { useSettingsStore, type Settings } from "../spacetime/stores/settingsStore";
 
 interface Props {
@@ -48,9 +49,9 @@ function Slider({
 }
 
 const GRAPHICS: { value: Settings["graphics"]; label: string; hint: string }[] = [
-  { value: "auto", label: "Auto", hint: "Lowers resolution while frames are slow" },
-  { value: "high", label: "High", hint: "Sharpest, uses your screen's full density" },
-  { value: "low", label: "Low", hint: "Fewer pixels for older phones" },
+  { value: "auto", label: "Auto", hint: "Adjusts for smoother play" },
+  { value: "high", label: "High", hint: "Sharpest picture" },
+  { value: "low", label: "Low", hint: "Fewer pixels · lighter on your device" },
 ];
 
 /** Player preferences, bound to settingsStore (saved in this browser only). */

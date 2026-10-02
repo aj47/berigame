@@ -1,3 +1,4 @@
+import { MATERIALS } from './frontier/catalog';
 import { HOTBAR_SIZE, MAX_STACK, PUNCH_DAMAGE } from './constants';
 import type { Slot, Tile } from './types';
 
@@ -27,6 +28,7 @@ export const FLINT_KNIFE_ITEM_ID = 'flint_knife';
  * file used by the retired Lambda backend); the stick exists only here.
  */
 export const ITEM_DEFS: Record<string, ItemDef> = {
+  ...Object.fromEntries(Object.entries(MATERIALS).map(([id, m]) => [id, { id, name: m.name, icon: `/items/frontier/${id}.svg`, healthRestore: id === 'travel_rations' ? 8 : id === 'carrot' ? 3 : 0, weaponDamage: id === 'iron_club' ? 9 : 0, maxStack: m.stack ?? MAX_STACK, color: m.color }])),
   berry_blueberry: { id: 'berry_blueberry', name: 'Blueberry', icon: '/items/blueberry.png', healthRestore: 5, weaponDamage: 0, maxStack: MAX_STACK, color: '#4F46E5' },
   berry_strawberry: { id: 'berry_strawberry', name: 'Strawberry', icon: '/items/strawberry.png', healthRestore: 3, weaponDamage: 0, maxStack: MAX_STACK, color: '#EF4444' },
   berry_greenberry: { id: 'berry_greenberry', name: 'Greenberry', icon: '/items/greenberry.png', healthRestore: 2, weaponDamage: 0, maxStack: MAX_STACK, color: '#22C55E' },

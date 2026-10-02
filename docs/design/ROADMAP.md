@@ -1,7 +1,7 @@
 # BeriGame roadmap: the Grove, a lucky stick, and the way out (M1 to M3)
 
 Status: design only. Owner decisions recorded in §4.
-Baseline (live): every swing hits, punch 3, stick 6, a swing every 4 ticks (600 ms tick), `MAX_HP` 30, melee range 1, 2 tiles of movement a tick on a 50×50 grid, spawn at (25,25). A finished berry harvest finds a stick 25% of the time (`STICK_DROP_CHANCE`, `ctx.random`). Found weapons go to the quick bar (slots 1–3, keys 1–3).
+Baseline at design time: every swing hits, punch 3, stick 6, a swing every 4 ticks (600 ms tick), `MAX_HP` 30, melee range 1, 2 tiles of movement a tick on a 50×50 grid, spawn at (25,25). A finished berry harvest finds a stick 25% of the time (`STICK_DROP_CHANCE`, `ctx.random`). Current source puts found and crafted weapons in the bag; players choose a quick slot (slots 1–3, keys 1–3) before wielding them.
 Trees (id): strawberry 1 (40,30) +3, greenberry 2 (30,35) +2, goldberry 3 (20,30) +10, blueberry 4 (30,25) +5, strawberry 5 (15,20) +3, greenberry 6 (25,15) +2. Harvest 5 ticks, regrow 50, one harvester per tree. Eat cooldown 3 ticks. Death drops the whole bag. Beta characters last at most 1 hour.
 
 ---

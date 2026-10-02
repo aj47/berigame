@@ -38,10 +38,13 @@ import AddFriendReducer from "./add_friend_reducer";
 import AttackReducer from "./attack_reducer";
 import AttackDummyReducer from "./attack_dummy_reducer";
 import AttackGiantReducer from "./attack_giant_reducer";
+import AttestRecoveryReducer from "./attest_recovery_reducer";
 import CancelReducer from "./cancel_reducer";
 import CancelTradeRequestReducer from "./cancel_trade_request_reducer";
 import ConfigureAccessReducer from "./configure_access_reducer";
+import ConfigureExpansionReducer from "./configure_expansion_reducer";
 import ConfirmTradeReducer from "./confirm_trade_reducer";
+import ConfirmTradeCoinsReducer from "./confirm_trade_coins_reducer";
 import ContributeProjectReducer from "./contribute_project_reducer";
 import CraftReducer from "./craft_reducer";
 import CreateInviteReducer from "./create_invite_reducer";
@@ -53,6 +56,7 @@ import EndVisitReducer from "./end_visit_reducer";
 import EquipTechniqueReducer from "./equip_technique_reducer";
 import ExpeditionActionReducer from "./expedition_action_reducer";
 import FollowReducer from "./follow_reducer";
+import FrontierActionReducer from "./frontier_action_reducer";
 import GardenDevRipenReducer from "./garden_dev_ripen_reducer";
 import GrantAgentReducer from "./grant_agent_reducer";
 import GrantPlayerReducer from "./grant_player_reducer";
@@ -71,6 +75,7 @@ import SendChatReducer from "./send_chat_reducer";
 import SetAppearanceReducer from "./set_appearance_reducer";
 import SetNameReducer from "./set_name_reducer";
 import SetTargetReducer from "./set_target_reducer";
+import SetTradeCoinsReducer from "./set_trade_coins_reducer";
 import SetTradeOfferReducer from "./set_trade_offer_reducer";
 import ShareGardenReducer from "./share_garden_reducer";
 import StartHarvestReducer from "./start_harvest_reducer";
@@ -93,6 +98,8 @@ import ExpeditionRow from "./expedition_table";
 import ExpeditionMemberRow from "./expedition_member_table";
 import FriendRow from "./friend_table";
 import FriendlyDuelRow from "./friendly_duel_table";
+import FrontierObjectRow from "./frontier_object_table";
+import FrontierViewRow from "./frontier_view_table";
 import GardenPlotRow from "./garden_plot_table";
 import GardenShowcaseRow from "./garden_showcase_table";
 import GiantRow from "./giant_table";
@@ -234,6 +241,40 @@ const tablesSchema = __schema({
       { name: 'friendly_duel_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, FriendlyDuelRow),
+  frontierObject: __table({
+    name: 'frontier_object',
+    indexes: [
+      { accessor: 'key', name: 'frontier_object_key_idx_btree', algorithm: 'btree', columns: [
+        'key',
+      ] },
+      { accessor: 'kind', name: 'frontier_object_kind_idx_btree', algorithm: 'btree', columns: [
+        'kind',
+      ] },
+      { accessor: 'region', name: 'frontier_object_region_idx_btree', algorithm: 'btree', columns: [
+        'region',
+      ] },
+    ],
+    constraints: [
+      { name: 'frontier_object_key_key', constraint: 'unique', columns: ['key'] },
+    ],
+  }, FrontierObjectRow),
+  frontierView: __table({
+    name: 'frontier_view',
+    indexes: [
+      { accessor: 'key', name: 'frontier_view_key_idx_btree', algorithm: 'btree', columns: [
+        'key',
+      ] },
+      { accessor: 'owner', name: 'frontier_view_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+      { accessor: 'source', name: 'frontier_view_source_idx_btree', algorithm: 'btree', columns: [
+        'source',
+      ] },
+    ],
+    constraints: [
+      { name: 'frontier_view_key_key', constraint: 'unique', columns: ['key'] },
+    ],
+  }, FrontierViewRow),
   gardenPlot: __table({
     name: 'garden_plot',
     indexes: [
@@ -454,10 +495,13 @@ const reducersSchema = __reducers(
   __reducerSchema("attack", AttackReducer),
   __reducerSchema("attack_dummy", AttackDummyReducer),
   __reducerSchema("attack_giant", AttackGiantReducer),
+  __reducerSchema("attest_recovery", AttestRecoveryReducer),
   __reducerSchema("cancel", CancelReducer),
   __reducerSchema("cancel_trade_request", CancelTradeRequestReducer),
   __reducerSchema("configure_access", ConfigureAccessReducer),
+  __reducerSchema("configure_expansion", ConfigureExpansionReducer),
   __reducerSchema("confirm_trade", ConfirmTradeReducer),
+  __reducerSchema("confirm_trade_coins", ConfirmTradeCoinsReducer),
   __reducerSchema("contribute_project", ContributeProjectReducer),
   __reducerSchema("craft", CraftReducer),
   __reducerSchema("create_invite", CreateInviteReducer),
@@ -469,6 +513,7 @@ const reducersSchema = __reducers(
   __reducerSchema("equip_technique", EquipTechniqueReducer),
   __reducerSchema("expedition_action", ExpeditionActionReducer),
   __reducerSchema("follow", FollowReducer),
+  __reducerSchema("frontier_action", FrontierActionReducer),
   __reducerSchema("garden_dev_ripen", GardenDevRipenReducer),
   __reducerSchema("grant_agent", GrantAgentReducer),
   __reducerSchema("grant_player", GrantPlayerReducer),
@@ -487,6 +532,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_appearance", SetAppearanceReducer),
   __reducerSchema("set_name", SetNameReducer),
   __reducerSchema("set_target", SetTargetReducer),
+  __reducerSchema("set_trade_coins", SetTradeCoinsReducer),
   __reducerSchema("set_trade_offer", SetTradeOfferReducer),
   __reducerSchema("share_garden", ShareGardenReducer),
   __reducerSchema("start_harvest", StartHarvestReducer),

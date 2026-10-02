@@ -175,6 +175,30 @@ export const FriendlyDuel = __t.object("FriendlyDuel", {
 });
 export type FriendlyDuel = __Infer<typeof FriendlyDuel>;
 
+export const FrontierObject = __t.object("FrontierObject", {
+  key: __t.string(),
+  kind: __t.string(),
+  region: __t.string(),
+  data: __t.string(),
+});
+export type FrontierObject = __Infer<typeof FrontierObject>;
+
+export const FrontierPrivate = __t.object("FrontierPrivate", {
+  key: __t.string(),
+  kind: __t.string(),
+  data: __t.string(),
+});
+export type FrontierPrivate = __Infer<typeof FrontierPrivate>;
+
+export const FrontierView = __t.object("FrontierView", {
+  key: __t.string(),
+  owner: __t.identity(),
+  kind: __t.string(),
+  data: __t.string(),
+  source: __t.string(),
+});
+export type FrontierView = __Infer<typeof FrontierView>;
+
 export const GardenPlot = __t.object("GardenPlot", {
   id: __t.u64(),
   owner: __t.identity(),
@@ -340,6 +364,7 @@ export const Player = __t.object("Player", {
   lastInputTick: __t.u32(),
   inputsThisTick: __t.u8(),
   weapon: __t.string(),
+  region: __t.string(),
 });
 export type Player = __Infer<typeof Player>;
 
@@ -402,6 +427,8 @@ export const Trade = __t.object("Trade", {
   aConfirmed: __t.bool(),
   bConfirmed: __t.bool(),
   createdTick: __t.u32(),
+  aCoins: __t.u32(),
+  bCoins: __t.u32(),
 });
 export type Trade = __Infer<typeof Trade>;
 

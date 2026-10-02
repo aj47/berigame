@@ -23,7 +23,7 @@ export function tipFor(goal: Goal): TipSpec {
     case "find-stick":
       return { text: "Four berry harvests earn Foraging level 2 and your first stick", targets: [".goal-chip"] };
     case "wield-stick":
-      return { text: "Tap your stick to wield it: it hits twice as hard", targets: [...slotTarget, ".goal-chip"] };
+      return { text: slot >= 0 ? "Tap your stick to wield it: it hits twice as hard" : "Open your bag and drag your stick to a quick slot", targets: [...slotTarget, ".goal-chip"] };
     case "reach-coast":
       return { text: "The dark ring on your map is the bramble hedge. Push through to the Coast", targets: [".minimap", ".goal-chip"] };
     case "gather-coast":
@@ -31,7 +31,7 @@ export function tipFor(goal: Goal): TipSpec {
     case "make-club":
       return { text: "You have everything: tap to make a stone club", targets: [".goal-chip"] };
     case "wield-club":
-      return { text: "Tap your stone club to wield it", targets: [...slotTarget, ".goal-chip"] };
+      return { text: slot >= 0 ? "Tap your stone club to wield it" : "Open your bag and drag your stone club to a quick slot", targets: [...slotTarget, ".goal-chip"] };
     case "reach-boulders":
       return { text: "The grey L past the Coast's south-east corner is the Boulders. Your club gets you over", targets: [".minimap", ".goal-chip"] };
     case "face-giant":
@@ -55,7 +55,7 @@ function findTarget(targets: string[]): DOMRect | null {
 
 /** A short pulse ring and pointer bubble on the HUD element a new step is about. */
 export const OnboardingTip = ({ goal, onDone }: { goal: Goal; onDone: () => void }) => {
-  const spec = useMemo(() => tipFor(goal), [goal.id]);
+  const spec = useMemo(() => tipFor(goal), [goal]);
   const [rect, setRect] = useState<DOMRect | null>(null);
   useLayoutEffect(() => {
     const place = () => setRect(findTarget(spec.targets));

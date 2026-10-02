@@ -28,7 +28,7 @@ try {
   await page.locator('.goal-chip').tap();
   await page.getByRole('button',{name:/^Bag/}).tap();
   await page.locator('.inventory-slot.filled').first().waitFor({timeout:16000});
-  // A harvest may add a stick next to the berry in the same update, so pick rows by name.
+  // A harvest may add a stick to the bag in the same update, so pick rows by name.
   check('Goal chip harvests a real berry',/^Slot 1: \w+berry, 1\b/.test(await page.locator('.inventory-slot').first().getAttribute('aria-label')));
   const stickFound=await page.locator('.inventory-slot[aria-label*=": Stick"]').count()>0;
   await page.locator('.inventory-slot.filled').first().tap();
@@ -37,9 +37,18 @@ try {
   await page.locator('.inventory-slot').nth(3).tap();
   await page.waitForFunction(()=>document.querySelectorAll('.inventory-slot')[3]?.classList.contains('filled'));
   check('touch item selection and Move persist',true);
+  if(stickFound) {
+    // A stick starts in the bag. Choose its quick slot explicitly before wielding it.
+    await page.locator('.inventory-grid .inventory-slot:not(.filled)').first().tap();
+    const stick=page.locator('.inventory-slot[aria-label*=": Stick"]').first();
+    if(!await stick.evaluate(el=>el.classList.contains('quick'))) {
+      await stick.tap();
+      await page.locator('.bag-quick-row .inventory-slot').first().tap();
+      await page.waitForFunction(()=>document.querySelector('.bag-quick-row .inventory-slot')?.getAttribute('aria-label')?.includes(': Stick'));
+    }
+  }
   await page.getByRole('button',{name:'Close inventory'}).tap();
   if(stickFound) {
-    // The bonus stick landed in a quick slot: tapping it wields it, tapping again puts it away.
     const slot=page.locator('.combat-hud .hotbar-slot[aria-label^="Quick slot"][aria-label*="Stick"]').first();
     await slot.tap();
     await page.waitForFunction(()=>window.__berigame.me.weapon==='stick');
@@ -59,7 +68,9 @@ try {
   if(!bubble)throw new Error('chat bubble never measurable: '+JSON.stringify(await page.locator('.player-chat-bubble').evaluateAll(els=>els.map(e=>({text:e.textContent,style:e.getAttribute('style'),cls:e.className,parent:getComputedStyle(e.parentElement).display})))));
   check('chat bubble wraps across a readable width',bubble.width>100 && bubble.height<150);
   await page.screenshot({path:`${out}/phone-chat.png`});
+  await page.getByRole('button',{name:/Menu/}).tap();
   await page.getByRole('button',{name:/^Help/}).tap();
+  await page.locator('.help-panel summary').filter({hasText:'Keyboard & camera'}).tap();
   await page.getByRole('button',{name:/Reset view/}).tap();
   await page.screenshot({path:`${out}/phone-help.png`});
   await page.getByRole('button',{name:'Close help'}).tap();

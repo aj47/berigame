@@ -312,3 +312,6 @@ export function useExpeditionMembers() { return useRows<any>(tables.expeditionMe
 export function useIslandProjects() { return useRows<any>(tables.islandProject) as readonly import('../module_bindings/types').IslandProject[]; }
 export function useGardenShowcases() { return useRows<any>(tables.gardenShowcase) as readonly import('../module_bindings/types').GardenShowcase[]; }
 export function useFriendlyDuels() { return useRows<any>(tables.friendlyDuel) as readonly import('../module_bindings/types').FriendlyDuel[]; }
+
+export function useFrontierObjects() { return useRows<import('../module_bindings/types').FrontierObject>(tables.frontierObject); }
+export function useFrontierViews() { return useRows<import('../module_bindings/types').FrontierView>(tables.frontierView); }

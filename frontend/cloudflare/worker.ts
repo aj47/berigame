@@ -1,3 +1,4 @@
+import { sealRecovery, openRecovery } from '../agent-api/recovery';
 import './codecs';
 import { DurableObject } from 'cloudflare:workers';
 import { timingSafeEqual } from 'node:crypto';
@@ -15,6 +16,7 @@ interface Env {
   SPACETIME_URI: string;
   SPACETIME_DB: string;
   GATEWAY_CREDENTIAL: string;
+  RECOVERY_ENCRYPTION_KEY?: string;
   ADMIN_TOKEN: string;
 }
 type Kind = 'agent' | 'human';
@@ -42,7 +44,7 @@ function send(status: number, body?: unknown, retryAfter?: number) {
 }
 function bearer(request: Request) {
   const value = request.headers.get('Authorization');
-  if (!value || !/^Bearer bg[ishar]_[A-Za-z0-9_-]{43}$/.test(value)) throw unauthorized();
+  if (!value || !/^Bearer bg[ishark]_[A-Za-z0-9_-]{43}$/.test(value)) throw unauthorized();
   return value.slice(7);
 }
 function isAdmin(request: Request, env: Env) {
@@ -89,7 +91,7 @@ export default {
         throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       }
       if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/sessions`, `${PREFIX}/renewals`, `${PREFIX}/session`, `${PREFIX}/state`,
-        '/api/play/v1/sessions', '/api/play/v1/renewals', '/api/admin/invites', '/api/admin/revoke'].includes(url.pathname)
+        '/api/play/v1/sessions', '/api/play/v1/renewals', '/api/play/v1/recovery', '/api/play/v1/recover', `${PREFIX}/recovery`, `${PREFIX}/recover`, '/api/admin/invites', '/api/admin/revoke'].includes(url.pathname)
         && !Object.keys(ACTIONS).some(name => url.pathname === `${PREFIX}/actions/${name}`)) {
         throw new ApiError(404, 'not_found', 'Unknown endpoint. See /api/agent/v1/openapi.json.');
       }
@@ -121,6 +123,9 @@ export class AgentGateway extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     const sql = ctx.storage.sql;
+    sql.exec('CREATE TABLE IF NOT EXISTS recoveries (identity TEXT PRIMARY KEY, key TEXT NOT NULL UNIQUE, payload TEXT NOT NULL, expires_at INTEGER NOT NULL, session_id TEXT)');
+    if (!sql.exec<{name:string}>('PRAGMA table_info(recoveries)').toArray().some(column => column.name === 'session_id')) sql.exec('ALTER TABLE recoveries ADD COLUMN session_id TEXT');
+    sql.exec('CREATE INDEX IF NOT EXISTS recovery_session ON recoveries(session_id)');
     sql.exec('CREATE TABLE IF NOT EXISTS invites (key TEXT PRIMARY KEY, kind TEXT NOT NULL, expires_at INTEGER NOT NULL, config TEXT NOT NULL)');
     sql.exec("CREATE TABLE IF NOT EXISTS sessions (key TEXT PRIMARY KEY, id TEXT NOT NULL, ip TEXT NOT NULL, kind TEXT NOT NULL, expires_at INTEGER NOT NULL, last_seen INTEGER NOT NULL, config TEXT NOT NULL, credential TEXT, state TEXT NOT NULL, actions_count INTEGER NOT NULL DEFAULT 0)");
     sql.exec('CREATE TABLE IF NOT EXISTS receipts (session_key TEXT NOT NULL, key TEXT NOT NULL, fingerprint TEXT NOT NULL, status INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY (session_key, key))');
@@ -220,6 +225,7 @@ export class AgentGateway extends DurableObject<Env> {
       for (const row of rows) { try { await this.remove(row); } catch { /* Retry; the permit also expires in SpacetimeDB. */ } }
       this.ctx.storage.sql.exec('DELETE FROM invites WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM renewals WHERE expires_at <= ?', now);
+      this.ctx.storage.sql.exec('DELETE FROM recoveries WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM buckets WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM daily WHERE day < ?', new Date(now - 7 * 86400_000).toISOString().slice(0, 10));
     })();
@@ -257,9 +263,12 @@ export class AgentGateway extends DurableObject<Env> {
           if (row) await this.remove(row);
           // A returning browser keeps its sessionId across renewals; revoking it ends renewal for good.
           const renewal = this.one<RenewalRow>('SELECT * FROM renewals WHERE session_id = ?', value.sessionId);
-          if (renewal) {
-            await (await this.game()).revoke(renewal.identity);
-            this.renewals().removeIdentity(renewal.identity);
+          const recovery = this.one<{identity:string}>('SELECT identity FROM recoveries WHERE session_id = ?',value.sessionId);
+          const identity = renewal?.identity ?? recovery?.identity;
+          if (identity) {
+            await (await this.game()).revoke(identity);
+            this.renewals().removeIdentity(identity);
+            this.ctx.storage.sql.exec('DELETE FROM recoveries WHERE identity = ?', identity);
           }
           return send(204);
         }
@@ -328,6 +337,39 @@ export class AgentGateway extends DurableObject<Env> {
           try { await this.remove(row); } catch { /* Alarm retries revocation. */ }
           throw error;
         }
+      }
+      if ([`${PREFIX}/recovery`, '/api/play/v1/recovery'].includes(path) && request.method === 'POST') {
+        this.take(`recovery:${ip}`, 3, 1 / 60, now);
+        const input = validateObject(await readJson(request), { token: {type:'string',minLength:1,maxLength:3000} }, []);
+        const presented = bearer(request);
+        let found: RenewalRow | undefined;
+        if (presented.startsWith('bgr_')) found = lookupRenewal(this.renewals(), presented, now);
+        else { const session = this.one<SessionRow>("SELECT * FROM sessions WHERE key = ? AND state = 'active'", digest(presented));
+          if (session && session.expires_at > now && session.last_seen > now-IDLE_MS) found = this.one<RenewalRow>('SELECT * FROM renewals WHERE session_id = ?', session.id); }
+        if (!found || found.expires_at <= now) throw unauthorized();
+        const config = JSON.parse(found.config) as Invite & {kind?:string;credential?:Credential};
+        const credential = config.credential ?? {uri:this.env.SPACETIME_URI,database:this.env.SPACETIME_DB,identity:found.identity,token:input.token};
+        if (!credential.token) throw unauthorized();
+        const service = await this.game(); await service.verifyCredential(credential);
+        const recoveryToken = secret('bgk_');
+        const payload = sealRecovery({config:found.config,credential,sessionId:found.session_id}, this.env.RECOVERY_ENCRYPTION_KEY ?? this.env.GATEWAY_CREDENTIAL);
+        await service.attestRecovery(found.identity);
+        this.ctx.storage.sql.exec('INSERT OR REPLACE INTO recoveries (identity,key,payload,expires_at,session_id) VALUES (?,?,?,?,?)',found.identity,digest(recoveryToken),payload,now+180*86400_000,found.session_id);
+        return send(200,{recoveryToken,playerId:found.identity,expiresAt:new Date(now+180*86400_000).toISOString()});
+      }
+      if ([`${PREFIX}/recover`, '/api/play/v1/recover'].includes(path) && request.method === 'POST') {
+        this.take(`recovery:${ip}`, 3, 1 / 60, now); validateObject(await readJson(request),{},[]);
+        const key = digest(bearer(request));
+        const row = this.one<{identity:string;key:string;payload:string;expires_at:number}>('SELECT * FROM recoveries WHERE key = ?',key);
+        if (!row || row.expires_at<=now) throw unauthorized();
+        const saved = openRecovery<{config:string;credential:Credential;sessionId:string}>(row.payload,this.env.RECOVERY_ENCRYPTION_KEY ?? this.env.GATEWAY_CREDENTIAL);
+        const recoveryToken=secret('bgk_'),renewToken=secret('bgr_');
+        // No awaits: one-time consumption and renewal replacement commit together.
+        this.ctx.storage.transactionSync(()=>{
+          this.ctx.storage.sql.exec('UPDATE recoveries SET key = ?, expires_at = ? WHERE key = ?',digest(recoveryToken),now+180*86400_000,key);
+          this.renewals().put({key:digest(renewToken),prev_key:null,prev_until:0,identity:row.identity,session_id:saved.sessionId,config:saved.config,expires_at:now+30*86400_000});
+        });
+        return send(200,{recoveryToken,renewToken,playerId:row.identity,...saved.credential,expiresAt:new Date(now+180*86400_000).toISOString(),next:'Use the ordinary renewal endpoint to obtain a bounded play permit.'});
       }
       if (path === `${PREFIX}/renewals` && request.method === 'POST') {
         this.take(`join:${ip}`, 5, 1 / 60, now);

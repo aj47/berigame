@@ -3,6 +3,7 @@ import { useUserInputStore } from "../store";
 import HarvestDropdownAction from "./HarvestDropdownAction";
 import BerryGiantInteraction from "./BerryGiantInteraction";
 import PlayerInteraction from "./PlayerInteraction";
+import GroundPickupActions from "./GroundPickupActions";
 import { useGameActions } from "../spacetime/actions";
 
 const ClickDropdown = () => {
@@ -53,7 +54,7 @@ const ClickDropdown = () => {
   if (!selected) return null;
   return (
     <div
-      className="click-dropdown"
+      className={`click-dropdown${selected.berryGiantExpeditionId !== undefined ? ' berry-giant-dropdown' : ''}`}
       ref={ref}
       style={position}
       role="group"
@@ -75,7 +76,7 @@ const ClickDropdown = () => {
         <BerryGiantInteraction key={String(selected.berryGiantExpeditionId)} expeditionId={selected.berryGiantExpeditionId} onClose={() => setSelected(null)} />
       ) : selected.harvestNodeId !== undefined ? (
         <HarvestDropdownAction nodeId={selected.harvestNodeId} onClose={() => setSelected(null)} />
-      ) : selected.dropdownOptions.map((option: any, index: number) => (
+      ) : selected.dropdownOptions?.map((option: any, index: number) => (
         <button
           className="context-action"
           key={index}
@@ -86,6 +87,10 @@ const ClickDropdown = () => {
           <span aria-hidden="true">›</span>
         </button>
       ))}
+      {selected.groundTiles?.length > 0 && <GroundPickupActions tiles={selected.groundTiles} selectedId={selected.groundItemId} onClose={() => {
+        // A slow pickup response must not dismiss a different menu opened meanwhile.
+        if (useUserInputStore.getState().clickedOtherObject === selected) setSelected(null);
+      }} />}
       {selected.walkTile && <button className="context-action context-walk" onClick={() => {
         const { x, z } = selected.walkTile;
         setSelected(null);

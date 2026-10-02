@@ -26,7 +26,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('player picker and actions', () => {
-  it.each([['front', 'Follow', 'follow'], ['back', 'Trade', 'requestTrade'], ['back', 'Attack', 'attack'], ['back', 'Add friend', 'addFriend']] as const)('chooses %s and sends %s only to that identity', (hex, label, action) => {
+  it.each([['front', 'Follow', 'follow'], ['back', 'Trade', 'requestTrade'], ['back', 'Attack', 'attack']] as const)('chooses %s and sends %s only to that identity', (hex, label, action) => {
     open();
     expect(screen.getByRole('group', { name: 'Choose player' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Attack' })).not.toBeInTheDocument();
@@ -45,9 +45,10 @@ describe('player picker and actions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mute chat' }));
     expect(useChatPrefsStore.getState().muted).toEqual(new Set(['back']));
   });
-  it('keeps a single-player click one step and uses live friend/mute preferences', () => {
+  it('keeps Add friend out of the world menu and uses live mute preferences', () => {
     open('back', ['back']);
     expect(screen.queryByRole('button', { name: '← Choose another player' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add friend' })).not.toBeInTheDocument();
     act(() => useChatPrefsStore.setState({ friends: new Set(['back']), muted: new Set(['back']) }));
     expect(screen.queryByRole('button', { name: 'Add friend' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Unmute chat' }));

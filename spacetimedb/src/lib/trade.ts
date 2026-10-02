@@ -5,7 +5,7 @@ import type { Ctx, PlayerRow } from './types';
 
 /** Rechecked on approach and arrival; a failed queued action must not throw from the tick. */
 export function tradePartnerProblem(ctx: Ctx, me: PlayerRow, other: PlayerRow | undefined): string | null {
-  if (!other || !other.online || other.state !== PlayerState.Alive) return 'They are not available to trade';
+  if (!other || (other.region || 'bramblewild') !== (me.region || 'bramblewild') || !other.online || other.state !== PlayerState.Alive) return 'They are not available to trade';
   const theirs = tradesOf(ctx, other.identity);
   if (theirs.some(r => r.accepted && !sameId(r.a, me.identity) && !sameId(r.b, me.identity))) return `${other.name} is busy trading`;
   return null;
@@ -26,6 +26,6 @@ export function requestTradeInRange(ctx: Ctx, p: PlayerRow, other: PlayerRow, ti
   }
   if (mine.some(r => sameId(r.b, target))) return;
   for (const r of mine) withdrawTrade(ctx, r, p.identity, 'Trade cancelled');
-  ctx.db.trade.insert({ id: 0n, a: p.identity, b: target, accepted: false, aOffer: '', bOffer: '', aConfirmed: false, bConfirmed: false, createdTick: tick });
+  ctx.db.trade.insert({ id: 0n, a: p.identity, b: target, accepted: false, aOffer: '', bOffer: '', aCoins: 0, bCoins: 0, aConfirmed: false, bConfirmed: false, createdTick: tick });
   notifyThrottled(ctx, target, p.identity, SocialNotice.TradeRequest, `${p.name} wants to trade`);
 }

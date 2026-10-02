@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { areaOf, coastPastCrossing, enterRule, HEDGE_CROSSINGS, ringOf } from '../areas';
-import { GRID_SIZE, HEDGE_RING, MAX_STACK, SPAWN_TILE } from '../constants';
+import { GRID_SIZE, HEDGE_RING, HOTBAR_SIZE, MAX_STACK, SPAWN_TILE } from '../constants';
 import { blockedSetFromTiles, chebyshev } from '../grid';
 import { emptySlots } from '../inventory';
 import { getItemDef, swingDamage, TREE_SEEDS } from '../items';
@@ -80,15 +80,15 @@ describe('the stone club recipe', () => {
     expect(recipeStatus(bag(['driftwood', 3], ['flint', 2]))[0]).toMatchObject({ id: 'stone_club', canCraft: true, missing: [] });
   });
 
-  it('consumes exactly the inputs and puts the club in a free slot', () => {
+  it('consumes exactly the inputs and puts the club in a free bag slot', () => {
     const r = craft(bag(['stick', 1], ['driftwood', 2], ['flint', 5]), club)!;
     expect(r.overflow).toBe(0);
-    // Weapons go to the quick bar; the flint stack moves to the bag.
-    expect(r.slots.slice(0, 3)).toEqual([{ itemId: 'stick', quantity: 1 }, { itemId: 'driftwood', quantity: 1 }, { itemId: 'stone_club', quantity: 1 }]);
-    expect(r.slots[3]).toEqual({ itemId: 'flint', quantity: 3 });
+    expect(r.slots.slice(0, HOTBAR_SIZE)).toEqual([{ itemId: 'stick', quantity: 1 }, { itemId: 'driftwood', quantity: 1 }, { itemId: 'flint', quantity: 3 }]);
+    expect(r.slots[HOTBAR_SIZE]).toEqual({ itemId: 'stone_club', quantity: 1 });
     expect(r.slots.filter((s) => s?.itemId === 'stone_club')).toHaveLength(1);
     const exact = craft(bag(['stick', 1], ['driftwood', 1], ['flint', 2]), club)!;
-    expect(exact.slots[1]).toEqual({ itemId: 'stone_club', quantity: 1 });
+    expect(exact.slots[1]).toBeNull();
+    expect(exact.slots[HOTBAR_SIZE]).toEqual({ itemId: 'stone_club', quantity: 1 });
   });
 
   it('overflows when the bag stays full', () => {

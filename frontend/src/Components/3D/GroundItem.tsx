@@ -3,7 +3,6 @@ import { sRGBEncoding } from 'three';
 import { Html, useTexture } from '@react-three/drei';
 import { ITEM_DEFS, getItemDef, tileToWorld } from '@sim';
 import type { GroundItem as GroundItemRow } from '../../module_bindings/types';
-import { useGameActions } from '../../spacetime/actions';
 import { useUserInputStore } from '../../store';
 
 // Fetch every item icon up front: the first stick anyone drops must not
@@ -12,7 +11,6 @@ for (const def of Object.values(ITEM_DEFS)) useTexture.preload(def.icon);
 
 const GroundItem = ({ groundItem }: { groundItem: GroundItemRow }) => {
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
-  const { pickupItem } = useGameActions();
   const def = getItemDef(groundItem.itemId);
   const texture = useTexture(def?.icon ?? '/items/blueberry.png');
   useEffect(() => { texture.encoding = sRGBEncoding; texture.needsUpdate = true; }, [texture]);
@@ -20,10 +18,9 @@ const GroundItem = ({ groundItem }: { groundItem: GroundItemRow }) => {
   const onClick = (e: any) => {
     if (e.delta > 5) return;
     e.stopPropagation();
-    setClickedOtherObject({ connectionId:def?.name ?? groundItem.itemId, e, dropdownOptions:[{
-      label:`Pick up ${groundItem.quantity}x ${def?.name ?? groundItem.itemId}`,
-      onClick:() => { pickupItem(groundItem.id); setClickedOtherObject(null); },
-    }] });
+    setClickedOtherObject({ connectionId: def?.name ?? groundItem.itemId, e,
+      groundItemId: groundItem.id, groundTiles: [{ x: groundItem.x, z: groundItem.z }],
+    });
   };
   return <group position={[x,y,z]} onClick={onClick} userData={{ hoverTarget: {
     title: `${groundItem.quantity}× ${def?.name ?? groundItem.itemId}`, action: 'Click for pickup options', detail: groundItem.droppedOnDeath ? 'Dropped on defeat' : 'On the ground', radius: .48,

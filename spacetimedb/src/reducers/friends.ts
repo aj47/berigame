@@ -84,7 +84,9 @@ export const redeemInvite = spacetimedb.reducer(
 
     let text: string;
     const attacked = [...ctx.db.player.iter()].some((o) => o.online && o.hostile && sameId(o.combatTarget, p.identity));
-    if (!inviter.online || inviter.state !== PlayerState.Alive) {
+    if ((p.region || 'bramblewild') !== 'bramblewild' || (inviter.region || 'bramblewild') !== 'bramblewild') {
+      text = `${lead} Meet them by travelling to their region.`;
+    } else if (!inviter.online || inviter.state !== PlayerState.Alive) {
       text = `${lead} They are not around right now.`;
     } else if (p.state !== PlayerState.Alive) {
       text = joinerHas ? `${lead} Use Go to once you are back on your feet.` : `${lead} You cannot join them while you are down.`;

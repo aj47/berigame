@@ -34,7 +34,7 @@ Chat has a three-second cooldown.
 Combat: you swing automatically while attacking. Bare fists punch for 3 damage. Inventory slots
 0..2 are quick slots (`hotbar: true` in state); a stick wielded from one hits for 6 and is visible
 in your hand to everyone. `player.weapon` is `null` while punching. Moving the stick out of the
-quick slots, dropping it, or dying puts it away. There are no stances.
+quick slots, dropping or trading away its last quick-slot copy, or dying puts it away. There are no stances.
 Skills: harvesting berries trains Foraging, gathering driftwood and flint trains Beachcombing,
 and making things (`/actions/craft`) trains Crafting. `state.skills` has your levels (1..30); they
 persist for your identity. Levels unlock recipes (`state.recipes[].locked` / `level`), keepsakes and
@@ -56,7 +56,7 @@ Social: `invite_create` gives a one-hour code (`state.invite`); another player r
 `invite_redeem` to become your friend and land beside you (never past the brambles without a stick, nor the boulder line without a stone club).
 `state.friends` shows friends' online status, area and tile; `follow` walks to one.
 Trade with a player within 3 tiles: `trade_request`, they `trade_respond`, both `trade_offer`
-(`itemId:qty,...`, not your wielded weapon), both `trade_confirm`. Any change clears confirmations;
+(`itemId:qty,...`, including wielded weapons), both `trade_confirm`. A completed trade puts your weapon away if no copy remains in your quick slots. Any change clears confirmations;
 the swap is all or nothing; walking apart, dying or leaving cancels. See `state.trade` and `state.notices`.
 Chat rows carry `nearby` (said within 12 tiles of you).
 The Boulders: the grid is 64x64; the island has a natural coastline, a lake and a winding brook. See `world.map.rows`, `world.map.obstacles` and `world.map.landmarks` for navigation. Past the Coast's south-east corner a
@@ -96,8 +96,17 @@ Open `state.adventure` for live giant berry expeditions and positions. Walk to c
 The cargo needs both hands and slows walking. `put_down`, `pass` (playerId), `roll` (x,z), `hide`,
 `split`, `bait`, `bribe`, and `porter` give different ways to handle it. Every action returns a
 receipt; inspect the expedition's `message` and `stage` to see the result. Walk it to market
-(35,37) and `deliver`, or to the feast clearing (12,36) and `feed`. Helped participants earn
-berries and lasting progress. NPCs only threaten cargo. A disconnect puts cargo down for others.
+(35,37) and `deliver`, or to the feast clearing (12,36) and `feed`. Participants who contributed
+and remain in the expedition receive the surviving cargo value (1–8 goldberries) once, plus
+35 completion XP: Exploring for delivery or Befriending for feeding. A feast adds 2 goldberries
+per helper, so cargo worth 4 pays 6. NPCs only threaten cargo. A disconnect puts cargo down for others.
+
+Your first rewarded feast unlocks the Berry Heart neck keepsake; it equips automatically only
+if the neck slot is empty. At 1, 3 and 5 feasts, friendship gives your next planted berry an
+extra 12, 24 or 36 seconds before the Giant follows. The expedition leader's friendship determines
+this passive delay. An equipped Giant trust technique adds another 30 seconds after a feast.
+The Berry Giant's browser conversation previews these rewards and shows earned rewards on completion.
+Use the existing `expedition` actions and read the returned state and notices for confirmed rewards.
 
 Pip likes greenberries and steals unattended food. Moss carries for a share, but drops the berry
 near the pursuing Giant. Greenberry bait distracts the Giant at your current position. With four

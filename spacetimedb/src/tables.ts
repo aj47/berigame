@@ -97,6 +97,7 @@ export const player = table(
     // Appended columns: new columns must go last and carry a default.
     /** Item id of the wielded weapon, e.g. 'stick'; '' = bare fists (punch). Public so everyone can draw it. */
     weapon: t.string().default(''),
+    region: t.string().default('bramblewild'),
   }
 );
 
@@ -321,6 +322,7 @@ export const trade = table(
     aConfirmed: t.bool(),
     bConfirmed: t.bool(),
     createdTick: t.u32(),
+    aCoins: t.u32().default(0), bCoins: t.u32().default(0),
   }
 );
 
@@ -538,4 +540,16 @@ export const friendlyDuel = table({ name: 'friendly_duel', public: true }, {
 /** Keeps contribution credit across leave/rejoin; retired with the expedition. */
 export const expeditionCredit = table({ name: 'expedition_credit' }, {
   key: t.string().primaryKey(), expeditionId: t.u64().index('btree'), identity: t.identity(), contributions: t.u32(), rewarded: t.bool(), tracked: t.bool(),
+});
+
+/** Public region objects never contain wallets, inventory or credentials. */
+export const frontierObject = table({ name: 'frontier_object', public: true }, {
+  key: t.string().primaryKey(), kind: t.string().index('btree'), region: t.string().index('btree'), data: t.string(),
+});
+export const frontierPrivate = table({ name: 'frontier_private' }, {
+  key: t.string().primaryKey(), kind: t.string().index('btree'), data: t.string(),
+});
+/** Authorized read projections; revoked permissions delete projections transactionally. */
+export const frontierView = table({ name: 'frontier_view', public: true }, {
+  key: t.string().primaryKey(), owner: t.identity().index('btree'), kind: t.string(), data: t.string(), source: t.string().index('btree').default(''),
 });

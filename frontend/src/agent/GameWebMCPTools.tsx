@@ -1,3 +1,7 @@
+import { exportRecovery } from '../frontier/recovery';
+import { frontierSnapshot } from '../../../shared/sim/frontier/snapshot';
+import { validateCommand } from '../../../shared/sim/frontier/engine';
+import { useFrontierObjects, useFrontierViews, useTradeRows } from '../spacetime/hooks';
 import { useToastStore } from "../spacetime/stores/toastStore";
 import { Identity } from "spacetimedb";
 import { EXPEDITION_ACTIONS, ADVENTURE_CAMP, BERRY_MARKET, GIANT_FEAST, TECHNIQUES, techniqueUnlocked, hasTechnique } from "@sim";
@@ -77,6 +81,8 @@ const describeWeapon = (weapon: string) => ({
 /** Registers game actions in the current page and reuses the live game client. */
 export default function GameWebMCPTools({ onStatusChange }: Props) {
   const profiles = useAdventureProfiles(), expeditions = useExpeditions(), members = useExpeditionMembers(), duels = useFriendlyDuels(), projects = useIslandProjects(), gardens = useGardenShowcases();
+  const frontierObjects = useFrontierObjects(), frontierViews = useFrontierViews();
+  const trades = useTradeRows();
   const me = useMyPlayer();
   const players = usePlayers();
   const trees = useTrees();
@@ -92,7 +98,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
   const live = useRef<any>({});
 
   live.current = {
-    me, profiles, expeditions, members, duels, projects, gardens,
+    trades, frontierObjects, frontierViews, me, profiles, expeditions, members, duels, projects, gardens,
     skills,
     players,
     trees,
@@ -154,6 +160,23 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
       result ? success : useToastStore.getState().message ?? "The action was not accepted. Inspect state before retrying.";
 
     const tools = [
+      tool('export_character_recovery', 'Download a private recovery backup for this character. Required before owning land. Replaces the prior recovery backup.', {}, [], async () => { await exportRecovery(); return 'Recovery backup downloaded. Keep the file privately.'; }),
+      tool('inspect_trades', 'Read the exact item and coin offers before confirming. Only your own trades are visible.', {}, [], () => live.current.trades.map((t: any) => ({...t,id:t.id.toString(),a:t.a.toHexString(),b:t.b.toHexString()})), {readOnlyHint:true}),
+      tool('trade_action', 'Request, accept, decline, offer items, confirm or cancel a trade. Confirm requires the exact aOffer, bOffer, aCoins and bCoins returned by inspect_trades.',
+        { action:{type:'string',enum:['request','accept','decline','offer','confirm','cancel']}, playerId:{type:'string',pattern:'^[0-9a-fA-F]{64}$'}, tradeId:{type:'string',pattern:'^[0-9]{1,20}$'}, offer:{type:'string',maxLength:2048}, aOffer:{type:'string'},bOffer:{type:'string'},aCoins:{type:'integer',minimum:0},bCoins:{type:'integer',minimum:0} }, ['action'], async (input:any) => {
+          const a=live.current.actions;
+          if(input.action==='request')return reportAction(await a.requestTrade(Identity.fromString(input.playerId)),'Trade requested.');
+          if(!/^[0-9]{1,20}$/.test(input.tradeId??''))return 'Inspect trades and provide its tradeId.';
+          const id=BigInt(input.tradeId);
+          if(input.action==='accept'||input.action==='decline')return reportAction(await a.respondTrade(id,input.action==='accept'),'Trade response saved.');
+          if(input.action==='offer')return reportAction(await a.setTradeOffer(id,input.offer),'Item offer saved.');
+          if(input.action==='cancel')return reportAction(await a.cancelTrade(id),'Trade cancelled.');
+          if(input.action==='confirm'){if(typeof input.aOffer!=='string'||typeof input.bOffer!=='string'||!Number.isInteger(input.aCoins)||!Number.isInteger(input.bCoins))return 'Include both exact item and coin offers from inspect_trades.';return reportAction(await a.confirmTrade(id,input.aOffer,input.bOffer,input.aCoins,input.bCoins),'Confirmation saved. Inspect the trade again.');}
+          return 'Choose a listed trade action.';
+        }),
+      tool('offer_trade_coins', 'Set the coin amount of an accepted trade; changes reset confirmations.', { trade_id: {type:'string'}, coins: {type:'integer',minimum:0,maximum:1000000} }, ['trade_id','coins'], async ({trade_id,coins}) => reportAction(await live.current.actions.setTradeCoins(BigInt(trade_id),coins), 'Coin offer updated.')),
+      tool('inspect_settlements', 'Inspect plots, taxes, quests, inventory access, building recipes, wildlife and boats.', {}, [], () => frontierSnapshot(live.current.frontierObjects, live.current.frontierViews, live.current.me?.identity.toHexString() ?? '', Date.now()), { readOnlyHint: true }),
+      tool('settlement_action', 'Perform a frontier action. command is JSON containing action and the IDs/coordinates from inspect_settlements. Server enforces ownership, costs, distance and deadlines.', { command: { type: 'string', maxLength: 2048 } }, ['command'], async ({command}) => { const c = validateCommand(JSON.parse(command)); return reportAction(await live.current.actions.frontier(c), 'Action accepted; inspect settlements again.'); }),
       tool('expedition', 'Start a giant berry expedition at camp (22,18), or join one. Inspect adventure.expeditions for the id, stage, positions and message. Carry with both hands, pass to a teammate, roll toward x,z, put down, hide, split, bait, bribe Pip, ask the porter, deliver at market (35,37), or feed at (12,36).',
         { action: { type:'string', enum:[...EXPEDITION_ACTIONS] }, expeditionId: { type:'string', pattern:'^[0-9]+$' }, playerId:{type:'string'}, x:{type:'integer',minimum:9,maximum:41}, z:{type:'integer',minimum:9,maximum:41}, destination:{type:'string',enum:['market','feast']} }, ['action'],
         async (input: any) => { const {error}=requirePlayer() as any; if(error)return error; if(!EXPEDITION_ACTIONS.includes(input.action))return 'Choose a listed adventure action.'; if(input.expeditionId && !/^[0-9]{1,20}$/.test(input.expeditionId))return 'Use a listed expedition ID.'; return reportAction(await live.current.actions.expeditionAction(input.action, BigInt(input.expeditionId??0), { target:input.playerId?Identity.fromString(input.playerId):undefined, x:input.x, z:input.z, destination:input.destination }), 'Action accepted. Inspect the expedition message and stage.'); }),
@@ -232,7 +255,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                   maxHealth: player.maxHp,
                   ...describeWeapon(player.weapon ?? ""),
                   alive: player.state === PlayerState.Alive,
-                  area: areaOf(player),
+                  region: player.region || "bramblewild",
+                  area: player.region && player.region !== "bramblewild" ? player.region : areaOf(player),
                   safe: isSafe(player, state.tick),
                   hostile: player.hostile,
                   target: targetId ? byIdentity.get(targetId)?.name ?? targetId : null,

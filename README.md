@@ -2,6 +2,10 @@
 
 A multiplayer 3D web game built with React Three Fiber on top of a SpacetimeDB game server with a 600ms authoritative tick.
 
+## Settlements expansion
+
+Land claims, modular building, quests, five disciplines, companions, coin trading and sailing are available behind the expansion flag. See [Settlements](docs/SETTLEMENTS.md) for play instructions, recovery, enabling/disabling and verification.
+
 ## Overview
 
 BeriGame is a real-time multiplayer game built around an authoritative

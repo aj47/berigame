@@ -1,10 +1,12 @@
+import { frontierRepository, projectFrontier } from './frontier';
 import type { Identity } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
-import { addXp, Cosmetic, hasCosmetic, PATH_FIELDS, type Tile, PlayerState, chebyshev, Feat, hasTechnique, BERRY_MARKET, GIANT_FEAST, ADVENTURE_CAMP, expeditionReward, rollDestination, worldBlockedSet, inSafeRing, swingDamage, duelHit, tileKey, bfsPath, goalIsTile } from '../../../shared/sim';
+import { addXp, Cosmetic, hasCosmetic, PATH_FIELDS, type Tile, PlayerState, chebyshev, Feat, hasTechnique, BERRY_MARKET, GIANT_FEAST, ADVENTURE_CAMP, expeditionPayout, EXPEDITION_COMPLETION_XP, giantFriendship, rollDestination, worldBlockedSet, inSafeRing, swingDamage, duelHit, tileKey, bfsPath, goalIsTile } from '../../../shared/sim';
 import type { Ctx } from './types';
 import { sameId, clearInteractions } from './players';
 import { giveItem, readSlots, writeSlots } from './inventory';
 import { notify } from './social';
+import { unlockCosmetic } from './progress';
 export type ExpeditionRow = NonNullable<ReturnType<Ctx['db']['expedition']['id']['find']>>;
 export function profile(ctx: Ctx, id: Identity) {
   const existing = ctx.db.adventureProfile.identity.find(id);
@@ -16,6 +18,8 @@ export function saveProfile(ctx: Ctx, p: ReturnType<typeof profile>) { if (ctx.d
 export function progress(ctx: Ctx, id: Identity, path: number, xp: number, feat = 0) {
   const p = profile(ctx, id), field = PATH_FIELDS[path];
   saveProfile(ctx, { ...p, [field]: addXp(p[field], xp), feats: p.feats | feat });
+  const repo = frontierRepository(ctx), frontier = repo.get('profile', id.toHexString());
+  if (frontier) { const discipline = [1,2,4,0,3][path]; frontier.xp[discipline] = addXp(frontier.xp[discipline], xp); repo.put('profile',frontier); projectFrontier(ctx,repo); }
 }
 export function carrying(ctx: Ctx, id: Identity): boolean {
   const m = ctx.db.expeditionMember.identity.find(id);
@@ -45,17 +49,26 @@ export function contribute(ctx: Ctx, id: Identity, path: number, feat: number, x
 export function finishExpedition(ctx: Ctx, e: ExpeditionRow, T: number, delivered: boolean, fed = false) {
   if (!['growing', 'hauling'].includes(e.stage)) return;
   e.stage = delivered ? 'complete' : 'lost'; e.carrier = undefined; e.mossCarrying = false; e.untilTick = T + 100;
-  e.message = delivered ? (fed ? 'A feast to remember. The Giant will remember your kindness.' : 'Market delivery! Everyone who helped earned berries and progress.') : 'The cargo is gone. Your skills and bag are safe. Try another seed at camp.';
+  const reward = expeditionPayout(e.value, fed);
+  if (delivered) e.destination = fed ? 'feast' : 'market';
+  if (delivered && fed) { e.giantX = GIANT_FEAST.x; e.giantZ = GIANT_FEAST.z; e.giantUntil = e.untilTick; }
+  e.message = delivered ? (fed ? `Feast shared! Each helper earns ${reward} goldberries and the Giant’s friendship.` : `Berry delivered! Each helper earns ${reward} goldberries.`) : 'The cargo is gone. Your skills and bag are safe. Try another seed at camp.';
   for (const m of ctx.db.expeditionMember.expeditionId.filter(e.id)) {
     const credit = creditFor(ctx, e.id, m.identity);
     if (!delivered || !credit.contributions || credit.rewarded) continue;
     ctx.db.expeditionCredit.key.update({ ...credit, rewarded: true });
     const p = ctx.db.player.identity.find(m.identity); if (!p) continue;
-    giveItem(ctx, p.identity, 'berry_goldberry', expeditionReward(e.value, true), p, T);
-    progress(ctx, p.identity, fed ? 4 : 2, 35, fed ? Feat.Feed : Feat.Deliver);
+    const inBag = giveItem(ctx, p.identity, 'berry_goldberry', reward, p, T);
+    progress(ctx, p.identity, fed ? 4 : 2, EXPEDITION_COMPLETION_XP, fed ? Feat.Feed : Feat.Deliver);
     const pp = profile(ctx, p.identity);
-    saveProfile(ctx, { ...pp, completions: pp.completions + 1, giantTrust: pp.giantTrust + (fed ? 1 : 0) });
-    notify(ctx, p.identity, e.leader, 0, e.message);
+    const giantTrust = pp.giantTrust + (fed ? 1 : 0);
+    saveProfile(ctx, { ...pp, completions: pp.completions + 1, giantTrust });
+    const keepsake = fed && unlockCosmetic(ctx, p.identity, Cosmetic.BerryHeart);
+    const friendship = giantFriendship(giantTrust);
+    const rewardNotice = `+${reward} goldberries · +${EXPEDITION_COMPLETION_XP} ${fed ? 'Befriending' : 'Exploring'} completion XP`;
+    const friendshipNotice = fed ? ` · ${friendship.label}: +${friendship.pauseSeconds}s head start` : '';
+    const overflowNotice = inBag < reward ? ` · ${reward - inBag} goldberries on the ground beside you` : '';
+    notify(ctx, p.identity, e.leader, 0, `${rewardNotice}${friendshipNotice}${keepsake ? ' · Berry Heart unlocked' : ''}${overflowNotice}`);
   }
   if (delivered) {
     const project = ctx.db.islandProject.id.find(0) ?? { id: 0, wood: 0, obsidian: 0, meals: 0 };

@@ -72,7 +72,7 @@ const RenderOnlineUsers = () => {
       {giants.map((g) => <Giant key={g.id} giant={g} tick={g.state === GiantState.Defeated ? Math.min(tick, g.respawnTick) : Math.min(tick, g.lastHitTick + GIANT_REGEN_IDLE_TICKS)} />)}
       {MARKERS}
       {players.map((p) => {
-        if (!p.online) return null;
+        if (!p.online || (p.region && p.region !== 'bramblewild')) return null;
         const hex = identityHex(p.identity);
         if (hex === me) return null;
         return (

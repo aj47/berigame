@@ -1,3 +1,4 @@
+import { subscribeFrontier } from './frontierSubscription';
 import { DbConnection, tables } from '../module_bindings';
 import { useLoadingStore } from '../store';
 
@@ -108,6 +109,7 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
       useLoadingStore.getState().setConnectionIssue(null, false);
       console.log('SpacetimeDB connected as', identity.toHexString().slice(0, 8));
       useLoadingStore.getState().setWebsocketConnected(true);
+      subscribeFrontier(conn, identity.toHexString(), () => useLoadingStore.getState().setGameDataLoaded(false));
       conn
         .subscriptionBuilder()
         .onApplied(() => useLoadingStore.getState().setGameDataLoaded(true))
@@ -117,7 +119,7 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
           useLoadingStore.getState().setLoadingMessage('The world could not be loaded. Rejoin to try again.');
         })
         .subscribe([
-          tables.world,
+          tables.world, tables.frontierView,
           tables.player,
           tables.appearance,
           tables.tree,

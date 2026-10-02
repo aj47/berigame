@@ -1,3 +1,7 @@
+import { useFrontier } from "../../frontier/useFrontier";
+import { type BuildDraft } from '../../frontier/FrontierPanel';
+import FrontierWorld from '../../frontier/FrontierWorld';
+import { useMyPlayer } from '../../spacetime/hooks';
 import { Canvas } from '@react-three/fiber';
 import { PerformanceMonitor } from '@react-three/drei';
 import React, { Suspense, useState } from 'react';
@@ -61,6 +65,10 @@ const WorldObjects = () => {
 };
 
 const GameComponent = () => {
+  const me = useMyPlayer();
+  const frontier = useFrontier();
+  const [draft, setDraft] = useState<BuildDraft | null>(null);
+  const inFrontier = !!me?.region && me.region !== 'bramblewild';
   const [playerRef, setPlayerRef] = useState<any>();
   const clickedOtherObject = useUserInputStore((state: any) => state.clickedOtherObject);
   // Adaptive resolution: pixel ratio capped at 1.5, dropped to 1.0 (2.25x fewer pixels) while frames are slow.
@@ -73,18 +81,18 @@ const GameComponent = () => {
   return (
     <div style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
       <LoadingScreen />
-      <UIComponents />
-      <CharacterSetup />
-      <WorldHoverTooltip />
-      {clickedOtherObject && <ClickDropdown />}
+      <UIComponents frontierEnabled={frontier.enabled} frontierCoins={frontier.profile.coins} draft={draft} onDraft={setDraft} />
+      {!inFrontier && <CharacterSetup />}
+      {!inFrontier && <WorldHoverTooltip />}
+      {!inFrontier && clickedOtherObject && <ClickDropdown />}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       <WorldBoundary>
-      <Canvas id="three-canvas" dpr={dpr} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
+      {inFrontier ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" dpr={dpr} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
         {graphics === 'auto' && <PerformanceMonitor onDecline={() => setDprCap(1)} onIncline={() => setDprCap(1.5)} flipflops={3} onFallback={() => setDprCap(1)} />}
         <Suspense fallback={null}>
           <AlphaIsland />
           <WorldObjects />
-          <Garden /><AdventureWorld />
+          <Garden /><AdventureWorld frontierEnabled={frontier.enabled} />
           <RenderOnlineUsers />
           <PlayerController setPlayerRef={setPlayerRef} />
           <CameraController playerRef={playerRef} />
@@ -93,7 +101,7 @@ const GameComponent = () => {
           <DebugBridge />
           <FxLayer />
         </Suspense>
-      </Canvas>
+      </Canvas>}
       </WorldBoundary>
       </div>
     </div>

@@ -386,10 +386,12 @@ describe('stick drops from harvesting after level 2', () => {
   }
   const sticks = () => [...h.inventory.values()].filter((row) => row.itemId === STICK_ITEM_ID);
 
-  it('a roll below the drop chance adds a stick after the berry and announces it', () => {
+  it('a roll below the drop chance adds a stick to the bag without filling a quick slot and announces it', () => {
     finishHarvest(STICK_DROP_CHANCE / 2);
     expect(h.ctx.random).toHaveBeenCalledTimes(1);
-    expect(sticks()).toEqual([expect.objectContaining({ owner: A, slot: 2, quantity: 1 })]);
+    expect(sticks()).toEqual([expect.objectContaining({ owner: A, slot: HOTBAR_SIZE, quantity: 1 })]);
+    expect([...h.inventory.values()].find((row) => row.slot === 2)).toBeUndefined();
+    expect(h.me().weapon).toBe('');
     expect(events().map((e: any) => [e.kind, e.itemId])).toEqual([
       [EventKind.HarvestDone, 'berry_goldberry'],
       [EventKind.ItemFound, STICK_ITEM_ID],
@@ -414,6 +416,18 @@ describe('stick drops from harvesting after level 2', () => {
     for (let slot = 0; slot < INVENTORY_SIZE; slot++) h.inventory.set(BigInt(slot + 1), { id: BigInt(slot + 1), owner: A, slot, itemId: 'berry_goldberry', quantity: slot === 0 ? MAX_STACK - 1 : MAX_STACK });
     finishHarvest(0);
     expect(sticks()).toEqual([]);
+    expect([...h.ground.values()]).toEqual([expect.objectContaining({ itemId: STICK_ITEM_ID, quantity: 1, droppedOnDeath: false })]);
+  });
+
+  it('a full bag drops the harvested stick even when quick slots are empty', () => {
+    h.inventory.clear();
+    for (let slot = HOTBAR_SIZE; slot < INVENTORY_SIZE; slot++) {
+      const id = BigInt(slot + 1);
+      h.inventory.set(id, { id, owner: A, slot, itemId: 'berry_goldberry', quantity: slot === HOTBAR_SIZE ? MAX_STACK - 1 : MAX_STACK });
+    }
+    finishHarvest(0);
+    expect(sticks()).toEqual([]);
+    expect([...h.inventory.values()].every((row) => row.slot >= HOTBAR_SIZE)).toBe(true);
     expect([...h.ground.values()]).toEqual([expect.objectContaining({ itemId: STICK_ITEM_ID, quantity: 1, droppedOnDeath: false })]);
   });
 });
@@ -460,6 +474,26 @@ describe('ground-pile inventory conservation', () => {
     pickup(h.ctx, { id: 1n });
     expect(h.ground.size).toBe(0);
     expect(quantity(h.inventory.values())).toBe(10);
+  });
+
+  it('picking up a stick preserves quick slots and leaves overflow in the original pile', () => {
+    h.inventory.clear();
+    h.inventory.set(1n, { id: 1n, owner: A, slot: 0, itemId: 'berry_blueberry', quantity: 2 });
+    for (let slot = HOTBAR_SIZE; slot < INVENTORY_SIZE; slot++) {
+      const id = BigInt(slot + 1);
+      h.inventory.set(id, { id, owner: A, slot, itemId: 'berry_blueberry', quantity: MAX_STACK });
+    }
+    h.ground.set(1n, { id: 1n, x: 25, z: 25, itemId: STICK_ITEM_ID, quantity: 1, expiresTick: 500, droppedOnDeath: true });
+    const before = [...h.inventory.values()];
+    pickup(h.ctx, { id: 1n });
+    expect([...h.inventory.values()]).toEqual(before);
+    expect(h.ground.get(1n)).toMatchObject({ itemId: STICK_ITEM_ID, quantity: 1, expiresTick: 500, droppedOnDeath: true });
+    h.inventory.delete(BigInt(HOTBAR_SIZE + 1));
+    pickup(h.ctx, { id: 1n });
+    expect(h.ground.size).toBe(0);
+    expect([...h.inventory.values()].find((row) => row.itemId === STICK_ITEM_ID)).toMatchObject({ slot: HOTBAR_SIZE, quantity: 1 });
+    expect([...h.inventory.values()].filter((row) => row.slot < HOTBAR_SIZE)).toEqual([before[0]]);
+    expect(h.me().weapon).toBe('');
   });
 
   it('still drops newly harvested rewards when inventory is full', () => {
@@ -1029,7 +1063,8 @@ describe('M2: craft (the verb "make")', () => {
     stock([['stick', 1, 0], ['driftwood', 1, 1], ['flint', 3, 2]]);
     craftReducer(h.ctx, { recipe: 'stone_club' });
     const s = slotsOf(A);
-    expect(s.slice(0, 3)).toEqual([{ itemId: 'stick', quantity: 1 }, { itemId: 'stone_club', quantity: 1 }, { itemId: 'flint', quantity: 1 }]);
+    expect(s.slice(0, HOTBAR_SIZE + 1)).toEqual([{ itemId: 'stick', quantity: 1 }, null, { itemId: 'flint', quantity: 1 }, { itemId: 'stone_club', quantity: 1 }]);
+    moveSlot(h.ctx, { from: HOTBAR_SIZE, to: 1 });
     wield(h.ctx, { slot: 1 });
     expect(h.me().weapon).toBe('stone_club');
     outsideSafeRing();

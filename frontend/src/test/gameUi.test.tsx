@@ -520,9 +520,13 @@ describe("First Day goal chip", () => {
 
   it("celebrates a stick find, then asks to wield it and push through the brambles", async () => {
     useFirstDayStore.setState({ owner: "me", done: ["pick-berry", "eat-berry"], seen: { harvested: true, ate: true }, stickFoundAt: performance.now() });
-    mock.rows = [{ slot: 1, itemId: "stick", quantity: 1 }];
+    mock.rows = [{ slot: 4, itemId: "stick", quantity: 1 }];
     const { rerender } = render(<GoalChip visible />);
-    expect(screen.getByText(/You found a sturdy stick! Tap it to wield/)).toBeInTheDocument();
+    expect(screen.getByText(/You found a sturdy stick! Open your bag and drag it to a quick slot/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Add your stick to a quick slot/ })).toBeDisabled();
+    expect(mock.wieldItem).not.toHaveBeenCalled();
+    mock.rows = [{ slot: 1, itemId: "stick", quantity: 1 }];
+    rerender(<GoalChip visible />);
     fireEvent.click(screen.getByRole("button", { name: /Wield your stick: tap it \(key 2\)/ }));
     await waitFor(() => expect(mock.wieldItem).toHaveBeenCalledWith(1));
     mock.player = { ...mock.player, weapon: "stick", x: 30, z: 20 };
@@ -615,5 +619,17 @@ describe('separate crafting panel', () => {
     expect(screen.getByRole('button', { name: 'Make Stone Club' })).toBeDisabled();
     rerender(<CraftingPanel open={false} onClose={() => {}} />);
     expect(screen.queryByRole('region', { name: 'Crafting' })).not.toBeInTheDocument();
+  });
+  it('keeps a rejected craft available for retry with an inline error', async () => {
+    mock.rows = [{ slot: 5, itemId: 'driftwood', quantity: 1 }, { slot: 6, itemId: 'flint', quantity: 2 }];
+    mock.craft.mockResolvedValueOnce(false);
+    render(<CraftingPanel open onClose={() => {}} />);
+    const club = screen.getByRole('button', { name: 'Make Stone Club' });
+    fireEvent.click(club);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not craft');
+    expect(club).toBeEnabled();
+    fireEvent.click(club);
+    await waitFor(() => expect(mock.craft).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

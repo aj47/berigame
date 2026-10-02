@@ -47,7 +47,7 @@ export const attack = spacetimedb.reducer(
     if (duelFor(ctx, p.identity) || duelFor(ctx, target)) throw new SenderError('Finish the friendly duel before starting ordinary combat');
     if (sameId(target, p.identity)) throw new SenderError('cannot attack yourself');
     const tgt = findPlayer(ctx, target);
-    if (!tgt || !tgt.online || tgt.state !== PlayerState.Alive) throw new SenderError('target unavailable');
+    if (!tgt || (tgt.region && tgt.region !== (p.region || 'bramblewild')) || !tgt.online || tgt.state !== PlayerState.Alive) throw new SenderError('target unavailable');
     const T = currentTick(ctx);
     if (inSafeRing(p) || inSafeRing(tgt)) throw new SenderError('No fighting in the safe ring');
     if (inGrace(tgt, T)) throw new SenderError(`They are protected for ${Math.max(1, Math.ceil((tgt.respawnTick + 10 - T) * .6))} more seconds. Invite them to a friendly duel instead.`);
@@ -85,7 +85,7 @@ export const follow = spacetimedb.reducer(
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     if (sameId(target, p.identity)) throw new SenderError('cannot follow yourself');
     const tgt = findPlayer(ctx, target);
-    if (!tgt || !tgt.online) throw new SenderError('target unavailable');
+    if (!tgt || (tgt.region && tgt.region !== (p.region || 'bramblewild')) || !tgt.online) throw new SenderError('target unavailable');
     touchInput(p, currentTick(ctx));
     clearInteractions(ctx, p);
     p.combatTarget = target;

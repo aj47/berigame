@@ -29,9 +29,10 @@ export function requirePlayer(ctx: Ctx): PlayerRow {
   return { ...p };
 }
 
-export function requireAlivePlayer(ctx: Ctx): PlayerRow {
+export function requireAlivePlayer(ctx: Ctx, allowFrontier = false): PlayerRow {
   const p = requirePlayer(ctx);
   if (p.state !== PlayerState.Alive) throw new SenderError('you are dead');
+  if (!allowFrontier && p.region && p.region !== 'bramblewild') throw new SenderError('Use the region actions here; this action belongs to Bramblewild');
   return p;
 }
 

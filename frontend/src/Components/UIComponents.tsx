@@ -1,11 +1,11 @@
-import { agentUrl, wikiUrl } from '../site/siteUrls';
+import { agentUrl } from '../site/siteUrls';
 import React, { memo, useEffect, useRef, useState } from "react";
 import ChatBox from "./ChatBox";
 import Inventory from "./Inventory";
 import CraftingPanel from "./CraftingPanel";
 import AppearancePanel from "./AppearancePanel";
 import CombatHud from "./CombatHud";
-import { PUNCH_ICON } from "./itemUi";
+import HelpPanel from "./HelpPanel";
 import { isTyping } from "./keyboard";
 import Toast from "./Toast";
 import GoalChip from "./GoalChip";
@@ -15,18 +15,20 @@ import TickDebug from "./TickDebug";
 import FriendsPanel, { FriendSync, InviteRedeemer } from "./FriendsPanel";
 import TradeWindow from "./TradeWindow";
 import AdventurePanel, { AdventureHud, DuelHud } from "./AdventurePanel";
+import { ADVENTURE_EVENT, ADVENTURE_VIEWS, type AdventureView } from "./adventureNavigation";
 import SkillsPanel from "./SkillsPanel";
 import MilestoneBanner from "./MilestoneBanner";
 import "./skills.css";
 import "./responsiveHud.css";
 import "./inventory.css";
-import { PUNCH_DAMAGE, STICK_ITEM_ID, getItemDef } from "@sim";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 
-type Panel = "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | null;
-const stick = getItemDef(STICK_ITEM_ID);
+import FrontierPanel, { type BuildDraft } from "../frontier/FrontierPanel";
+import { FRONTIER_EVENT, type FrontierRequest } from "../frontier/navigation";
+
+type Panel = "settlement" | "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | null;
 /** Name and online count: the only part of the HUD shell that follows player rows. */
-const WorldHeader = memo(() => {
+const WorldHeader = memo(({ coins }: { coins?: number }) => {
   const me = useMyPlayer();
   const players = usePlayers();
   return (
@@ -35,26 +37,54 @@ const WorldHeader = memo(() => {
         <div>
           <strong>BeriGame</strong>
           <span>
-            {me?.name ?? "The first island"} ·{" "}
+            {me?.name ?? "The first island"}{me?.region === "settlement" ? " · Meadows" : ""} ·{" "}
             {players.filter((player) => player.online).length} online
           </span>
+          {coins !== undefined && <span>{coins} coins · {me?.hp} HP</span>}
         </div>
       </div>
   );
 });
 
-const UIComponents = memo(() => {
+const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft = null, onDraft = () => {} }: {
+  frontierEnabled?: boolean; frontierCoins?: number; draft?: BuildDraft | null; onDraft?: (draft: BuildDraft | null) => void;
+}) => {
+  const me = useMyPlayer();
+  const inFrontier = !!me?.region && me.region !== 'bramblewild';
+  const regionRef = useRef(inFrontier);
+  regionRef.current = inFrontier;
+  const [frontierRequest, setFrontierRequest] = useState<FrontierRequest & { id: number }>({ tab: 'Journal', id: 0 });
+  const openFrontier = (request: FrontierRequest = { tab: 'Journal' }) => {
+    setFrontierRequest(current => ({ ...request, id: current.id + 1 }));
+    setPanel('settlement');
+  };
   const [panel, setPanel] = useState<Panel>(null);
+  const frontierPanelRef = useRef({ panel, tab: frontierRequest.tab });
+  frontierPanelRef.current = { panel, tab: frontierRequest.tab };
+  const [adventureRequest, setAdventureRequest] = useState({ view: 'hub' as AdventureView, id: 0 });
+  useEffect(() => { if (panel !== null) onDraft(null); }, [panel]);
   const [quickSlotTarget, setQuickSlotTarget] = useState<number | null>(null);
+  const [friendsRequest, setFriendsRequest] = useState({ id: 0, adding: false, search: '', playerHex: '' });
+  const openFriends = (adding = false, search = '', playerHex = '') => {
+    setFriendsRequest(previous => ({ id: previous.id + 1, adding, search, playerHex }));
+    setPanel('friends');
+  };
   const toolbar = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const toggle = (next: Panel) => {
+    if (regionRef.current && ['adventure', 'inventory', 'crafting', 'skills'].includes(next ?? '')) {
+      const tab = next === 'inventory' ? 'Bag' : next === 'crafting' ? 'Craft' : next === 'skills' ? 'Skills' : 'Journal';
+      if (frontierPanelRef.current.panel === "settlement" && frontierPanelRef.current.tab === tab) setPanel(null);
+      else openFrontier({ tab });
+      return;
+    }
     if (next === 'inventory') setQuickSlotTarget(null);
+    if (next === 'adventure') setAdventureRequest(current => ({ view: 'hub', id: current.id + 1 }));
     setPanel((current) => (current === next ? null : next));
   };
   const openBag = (slot?: number) => { setQuickSlotTarget(slot ?? null); setPanel('inventory'); };
   const close = () => {
-    const previous = panel === "friends" ? "chat" : panel;
+    const previous = panel === "friends" ? "chat" : panel === "settlement" ? "adventure" : panel;
     setPanel(null);
     // Secondary controls disappear with the compact menu; return to its trigger.
     const secondary = ["menu", "skills", "appearance", "crafting", "help", "settings"].includes(previous ?? "");
@@ -107,19 +137,26 @@ const UIComponents = memo(() => {
       else if (event.key.toLowerCase() === "c") toggle("crafting");
       else if (event.key === "Escape") closeRef.current();
     };
-    const openAdventure = () => setPanel("adventure");
-    window.addEventListener("berigame-adventure", openAdventure);
+    const openAdventure = (event: Event) => {
+      const requested = (event as CustomEvent<{ view?: AdventureView }>).detail?.view;
+      const view = requested && ADVENTURE_VIEWS.includes(requested) ? requested : 'hub';
+      setAdventureRequest(current => ({ view, id: current.id + 1 }));
+      setPanel("adventure");
+    };
+    const openSettlements = (event: Event) => openFrontier((event as CustomEvent<FrontierRequest>).detail);
+    window.addEventListener(FRONTIER_EVENT, openSettlements);
+    window.addEventListener(ADVENTURE_EVENT, openAdventure);
     window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("berigame-adventure", openAdventure); };
+    return () => { window.removeEventListener(FRONTIER_EVENT, openSettlements); window.removeEventListener("keydown", onKey); window.removeEventListener(ADVENTURE_EVENT, openAdventure); };
   }, []);
   return (
     <div className="ui-group" data-panel-open={panel !== null}>
-      <WorldHeader />
+      <WorldHeader coins={inFrontier ? frontierCoins : undefined} />
       <nav className="game-toolbar" aria-label="Game panels" ref={toolbar}>
-        <button data-panel="adventure" aria-expanded={panel === "adventure"} onClick={() => toggle("adventure")}>Adventure</button>
+        <button data-panel="adventure" aria-expanded={panel === "adventure" || (panel === "settlement" && frontierRequest.tab !== "Bag")} onClick={() => toggle("adventure")}>{inFrontier ? "Meadows" : "Adventure"}</button>
         <button
           data-panel="inventory"
-          aria-expanded={panel === "inventory"}
+          aria-expanded={panel === "inventory" || (panel === "settlement" && frontierRequest.tab === "Bag")}
           onClick={() => toggle("inventory")}
         >
           Bag <kbd>I</kbd>
@@ -143,11 +180,12 @@ const UIComponents = memo(() => {
           <span aria-hidden="true">☰</span> Menu
         </button>
         <div id="game-menu" className={`toolbar-secondary ${panel === "menu" ? "is-open" : ""}`} hidden={panel !== 'menu'} role="group" aria-label="More game panels">
+          {frontierEnabled && <button onClick={() => openFrontier()}>Settlements</button>}
           <button data-panel="crafting" onClick={() => toggle('crafting')}>Craft <kbd>C</kbd></button>
           <button
             data-panel="skills"
             aria-expanded={panel === "appearance" || panel === "skills"}
-            onClick={() => setPanel((current) => (current === "appearance" || current === "skills" ? null : "skills"))}
+            onClick={() => toggle("skills")}
           >
             Skills
           </button>
@@ -173,136 +211,29 @@ const UIComponents = memo(() => {
           </a>
         </div>
       </nav>
-      <AdventurePanel open={panel === "adventure"} onClose={close} />
-      <div className="world-objectives">
+      {frontierEnabled && <FrontierPanel draft={draft} onDraft={onDraft} open={panel === "settlement"} setOpen={open => setPanel(open ? "settlement" : null)} request={frontierRequest} onTab={tab => setFrontierRequest(current => ({ ...current, tab }))} showGoal={panel === null} />}
+      <AdventurePanel onSettlements={frontierEnabled ? () => openFrontier() : undefined} key={adventureRequest.id} open={panel === "adventure"} initialView={adventureRequest.view} onClose={close} />
+      {!inFrontier && <div className="world-objectives">
         <GoalChip visible={panel === null} />
         <DuelHud />
         <AdventureHud visible={panel === null} />
-      </div>
+      </div>}
       <Inventory open={panel === "inventory"} onClose={close} onCraft={() => setPanel('crafting')} initialQuickSlot={quickSlotTarget} />
       <CraftingPanel open={panel === 'crafting'} onClose={close} />
       {/* Friends and invites live behind Chat (no new toolbar button). */}
-      <ChatBox open={panel === "chat"} onClose={close} onOpenFriends={() => setPanel("friends")} />
-      <FriendsPanel open={panel === "friends"} onClose={close} onOpenChat={() => setPanel("chat")} />
+      <ChatBox open={panel === "chat"} onClose={close} onOpenFriends={openFriends} />
+      <FriendsPanel key={`friends-${friendsRequest.id}`} open={panel === "friends"} initialAdding={friendsRequest.adding} initialSearch={friendsRequest.search} initialPlayerHex={friendsRequest.playerHex} onClose={close} onOpenChat={() => setPanel("chat")} />
       <AppearancePanel open={panel === "appearance"} onClose={close} onSkills={() => setPanel("skills")} />
       <SkillsPanel open={panel === "skills"} onClose={close} onStyle={() => setPanel("appearance")} />
       <SettingsPanel open={panel === "settings"} onClose={close} />
-      <Minimap hidden={panel !== null} />
-      {panel === "help" && (
-        <section className="game-panel help-panel" aria-label="How to play">
-          <header className="panel-heading">
-            <div>
-              <h2>How to play</h2>
-            </div>
-            <button
-              className="close-button"
-              onClick={close}
-              aria-label="Close help"
-            >
-              ×
-            </button>
-          </header>
-          <button
-            className="reset-view-button"
-            onClick={() =>
-              window.dispatchEvent(new Event("berigame-camera-reset"))
-            }
-          >
-            Reset view
-          </button>
-          <ol className="help-steps">
-            <li>
-              <strong>Find your footing.</strong> Tap or click the ground to
-              move, or hold your finger down to keep walking toward it. Drag to
-              look around; pinch or scroll to zoom. Press and hold anything to
-              see what you can do with it.
-            </li>
-            <li>
-              <strong>Gather supplies.</strong> Select a berry tree and choose
-              Harvest, or tap the goal at the top left. If a tree is regrowing
-              or taken, you wait beside it and pick it when it ripens. Tap a
-              berry in your quick bar to eat it and heal.
-            </li>
-            <li>
-              <strong>Find a sturdy stick.</strong> Reach Foraging level 2 (four berry harvests) to receive
-              your first stick. Later harvests have a 25% chance to find extras. A stick lets you push through the
-              brambles. Keep it in quick slot 1, 2 or 3 and press its key to
-              wield it: it hits twice as hard as a punch.
-            </li>
-            <li>
-              <strong>Push through the brambles.</strong> A thorny hedge rings
-              the Grove. You need a stick to push out to the Coast, but you can
-              always walk back in without one. Dying drops your bag, stick
-              included.
-            </li>
-            <li>
-              <strong>Make a stone club.</strong> On the Coast, gather
-              driftwood from the piles past each path and flint from the tide
-              rocks in the corners. With 1 driftwood and 2 flint, tap the goal
-              (or open Craft from Menu) for a stone club: it hits for 8.
-            </li>
-            <li>
-              <strong>Grow your skills.</strong> Picking berries trains
-              Foraging, gathering on the Coast trains Beachcombing and making
-              things trains Crafting (Skills, or K). Levels unlock
-              recipes, keepsakes to wear and slightly faster harvests — never
-              damage or health.
-            </li>
-            <li>
-              <strong>Tend your garden.</strong> Tap a soil plot on the garden
-              terrace just north-west of the safe ring and plant a berry. It
-              grows while you are away (greenberry 2 h, goldberry 8 h) and gives
-              back more; ripe berries wait for you.
-            </li>
-            <li>
-              <strong>Pick your fights.</strong> Select another adventurer and
-              choose Attack. You approach and swing automatically in range.
-              Nobody can fight in the sandy safe ring at the centre, and you
-              are safe for a moment after respawning, and as a newcomer until
-              you find a stick, attack, or 3 minutes pass.
-            </li>
-          </ol>
-          <div
-            className="weapon-guide"
-            aria-label={`Punch deals ${PUNCH_DAMAGE} damage. A wielded stick deals ${stick?.weaponDamage ?? 0} damage.`}
-          >
-            <div>
-              <img src={PUNCH_ICON} alt="" />
-              <strong>Punch</strong>
-              <span>{PUNCH_DAMAGE} damage · always ready</span>
-            </div>
-            <div>
-              <img src={stick?.icon} alt="" />
-              <strong>{stick?.name ?? "Stick"}</strong>
-              <span>{stick?.weaponDamage ?? 0} damage · found while harvesting</span>
-            </div>
-          </div>
-          <p>
-            <strong>Need space?</strong> Choose a new ground tile to move, or
-            use Stop to cancel your current action. Everyone starts with the
-            same abilities.
-          </p>
-          <p className="fine-print">
-            Keyboard shortcuts are optional: 1 / 2 / 3 use your quick slots
-            (berries there are eaten, a stick is wielded or put away), Esc
-            stops, I opens your bag, K opens your skills, C opens crafting, Enter opens chat, O opens settings. Every action also has an
-            on-screen control.
-          </p>
-          <a className="agent-help-link" href={wikiUrl()} target="_blank" rel="noreferrer">
-            Read the complete BeriGame wiki ↗
-          </a>
-          <br />
-          <a className="agent-help-link" href={agentUrl()} target="_blank" rel="noreferrer">
-            Open the agent-ready game page ↗
-          </a>
-        </section>
-      )}
-      <CombatHud quickKeysEnabled={panel === null} onOpenBag={openBag} />
+      {!inFrontier && <Minimap hidden={panel !== null} />}
+      {panel === "help" && <HelpPanel onClose={close} />}
+      {!inFrontier && <CombatHud quickKeysEnabled={panel === null} onOpenBag={openBag} />}
       <TradeWindow />
       <InviteRedeemer />
       <FriendSync />
       <Toast />
-      <MilestoneBanner />
+      {!inFrontier && <MilestoneBanner />}
       {import.meta.env.DEV && <TickDebug />}
     </div>
   );

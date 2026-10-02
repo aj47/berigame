@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import { COSMETICS, RECIPES, SKILLS, Skill, levelProgress, harvestTickBonus, SKILL_MAX_LEVEL, hasCosmetic } from "@sim";
 import { ADVENTURE_CAMP, PATHS, PATH_FIELDS, TECHNIQUES, techniqueUnlocked, hasTechnique, loadoutCount, chebyshev } from "@sim";
 import { useGameActions } from "../spacetime/actions";
@@ -14,6 +14,16 @@ interface Props {
 
 const FIELDS = ["foragingXp", "beachcombingXp", "craftingXp"] as const;
 const ICONS = ["/items/strawberry.png", "/items/driftwood.png", "/items/stone_club.png"];
+const PATH_ICONS = ["🌱", "🪵", "🧭", "🛡️", "💛"];
+const FEATS: Record<number, string> = {
+  1: "Harvest a berry or grow an expedition seed",
+  2: "Craft, split cargo, or help build camp",
+  4: "Explore the Coast or carry a giant berry",
+  8: "Reset the training dummy or complete a friendly duel",
+  16: "Help Moss, bribe Pip, or give a gift",
+  32: "Complete a berry delivery",
+  64: "Feed the Giant",
+};
 
 /** One line of what a skill's levels bring. */
 function perks(skill: Skill, level: number): string {
@@ -29,6 +39,7 @@ function perks(skill: Skill, level: number): string {
 
 /** F2 skills: levels, progress bars and what the next level brings. */
 const SkillsPanel = memo(({ open, onClose, onStyle }: Props) => {
+  const [selectedPath, setSelectedPath] = useState(0);
   const skills = useMySkills();
   const cosmetics = useMyCosmetics();
   const me = useMyPlayer(), profiles = useAdventureProfiles(), actions = useGameActions();
@@ -38,6 +49,8 @@ const SkillsPanel = memo(({ open, onClose, onStyle }: Props) => {
   const banner = useProgressStore((s) => s.banner);
   if (!open) return null;
   const earned = COSMETICS.filter((c) => hasCosmetic(cosmetics?.unlocked ?? 0, c.id)).length;
+  const equippedCount = loadoutCount(profile.loadout);
+  const pathProgress = levelProgress(profile[PATH_FIELDS[selectedPath]]);
   return (
     <section className="game-panel skills-panel" aria-label="Skills">
       <header className="panel-heading">
@@ -46,22 +59,56 @@ const SkillsPanel = memo(({ open, onClose, onStyle }: Props) => {
         </div>
         <button className="close-button" onClick={onClose} aria-label="Close skills">×</button>
       </header>
-      <div className="panel-tabs" role="tablist">
+      <div className="panel-tabs" role="tablist" aria-label="Character panels">
         <button role="tab" aria-selected="true">Skills</button>
         <button role="tab" aria-selected="false" onClick={onStyle}>Style</button>
       </div>
       <div className="skills-scroll">
-      <p><strong>{loadoutCount(profile.loadout)}/3 techniques equipped</strong> · Change freely at camp.</p>
-      {!atCamp && <button onClick={() => actions.setTarget(ADVENTURE_CAMP.x, ADVENTURE_CAMP.z)}>Walk to camp to change techniques</button>}
-      {PATHS.map((path, i) => { const p = levelProgress(profile[PATH_FIELDS[i]]); return <div key={path}>
-        <h3 className="path-heading">{path} · level {p.level}</h3><p className="fine-print">{p.toNext} XP to next level</p>
-        <div className="technique-grid">{TECHNIQUES.filter(t => t.path === i).map(t => {
+      <div className="skills-loadout">
+        <div><strong>Techniques</strong><span>{equippedCount}/3 equipped</span></div>
+        {!atCamp && <button onClick={() => actions.setTarget(ADVENTURE_CAMP.x, ADVENTURE_CAMP.z)}>Walk to camp</button>}
+      </div>
+      <p className="skills-loadout-hint" id="skills-loadout-status">
+        {equippedCount >= 3 ? "Unequip one to make room." : "Choose up to 3. Change them at camp."}
+      </p>
+      <div className="skills-paths" role="group" aria-label="Adventure paths">
+        {PATHS.map((path, i) => {
+          const p = levelProgress(profile[PATH_FIELDS[i]]);
+          const pct = p.max ? 100 : Math.floor((p.into / p.span) * 100);
+          return <button key={path} className="skills-path" aria-pressed={selectedPath === i}
+            aria-label={`${path}, level ${p.level}, ${p.max ? "max level" : `${p.toNext} XP to level ${p.level + 1}`}`}
+            onClick={() => setSelectedPath(i)}>
+            <span className="skills-path-icon" aria-hidden="true">{PATH_ICONS[i]}</span>
+            <strong>{path}</strong><span className="skills-path-level">Lv {p.level}</span>
+            <span className="skills-path-bar" aria-hidden="true"><span style={{ width: `${pct}%` }} /></span>
+          </button>;
+        })}
+      </div>
+      <section className="skills-path-detail" aria-label={`${PATHS[selectedPath]} techniques`}>
+        <div className="skills-section-heading">
+          <h3>{PATHS[selectedPath]}</h3>
+          <span>{pathProgress.max ? "Max level" : `${pathProgress.toNext} XP to level ${pathProgress.level + 1}`}</span>
+        </div>
+        <div className="skills-techniques">{TECHNIQUES.filter(t => t.path === selectedPath).map(t => {
           const unlocked = techniqueUnlocked(profile, t.id), equipped = hasTechnique(profile, t.id);
-          const feat = ({1:'Harvest a berry or grow an expedition seed',2:'Craft, split cargo, or help build camp',4:'Explore the Coast or carry a giant berry',8:'Reset the training dummy or complete a friendly duel',16:'Help Moss, bribe Pip, or give a gift',32:'Complete a market delivery',64:'Feed the Giant'} as Record<number,string>)[t.feat];
-          return <button key={t.id} className="technique" aria-pressed={equipped} disabled={!unlocked || !atCamp || (!equipped && loadoutCount(profile.loadout) >= 3)} onClick={() => actions.equipTechnique(t.id)}><strong>{t.name}{equipped ? ' · equipped' : ''}</strong><span>{t.description}</span><small>{unlocked ? equipped ? 'Tap to unequip' : 'Tap to equip' : `Level ${t.level} + ${feat}`}</small></button>;
+          const levelMet = pathProgress.level >= t.level, featMet = (profile.feats & t.feat) !== 0;
+          return <details key={t.id} className={`skills-technique${equipped ? " is-equipped" : ""}`}>
+            <summary><strong>{t.name}</strong><span className="skills-technique-state">{equipped ? "✓ Equipped" : unlocked ? "Unlocked" : "Locked"}</span></summary>
+            <div className="skills-technique-detail">
+              <p>{t.description}</p>
+              {!unlocked && <ul className="skills-requirements" aria-label={`${t.name} requirements`}>
+                <li data-met={levelMet}><span aria-hidden="true">{levelMet ? "✓" : "○"}</span>{PATHS[t.path]} level {t.level}<span className="sr-only">{levelMet ? ", complete" : ", needed"}</span></li>
+                <li data-met={featMet}><span aria-hidden="true">{featMet ? "✓" : "○"}</span>{FEATS[t.feat]}<span className="sr-only">{featMet ? ", complete" : ", needed"}</span></li>
+              </ul>}
+              {unlocked && <button aria-label={`${equipped ? "Unequip" : "Equip"} ${t.name}`} aria-pressed={equipped}
+                aria-describedby="skills-loadout-status" disabled={!atCamp || (!equipped && equippedCount >= 3)}
+                onClick={() => actions.equipTechnique(t.id)}>{equipped ? "Unequip" : "Equip"}</button>}
+            </div>
+          </details>;
         })}</div>
-      </div>; })}
-      <h3 className="path-heading">Gathering & recipes</h3>
+      </section>
+      <details className="skills-gathering">
+      <summary>Gathering & recipes</summary>
       <ul className="skill-list">
         {SKILLS.map((def) => {
           const xp = skills?.[FIELDS[def.id]] ?? 0;
@@ -79,18 +126,21 @@ const SkillsPanel = memo(({ open, onClose, onStyle }: Props) => {
                   <span style={{ width: `${pct}%` }} />
                 </div>
                 <span className="fine-print">
-                  {p.max ? `${xp} XP · max level` : `${xp} XP · ${p.toNext} to level ${p.level + 1}`} · {def.verb}
+                  {p.max ? "Max level" : `${p.toNext} XP to level ${p.level + 1}`}
                 </span>
-                <span className="fine-print skill-perk">{perks(def.id, p.level)}</span>
+                <details className="skill-perks"><summary>Unlocks & tips</summary>
+                  <p>{def.verb}.</p><p className="skill-perk">{perks(def.id, p.level)}</p>
+                </details>
               </div>
             </li>
           );
         })}
       </ul>
-      <p className="fine-print">
-        Skills stay with you. They unlock techniques, recipes, keepsakes ({earned}/{COSMETICS.length} earned) and slightly faster
-        harvests. Techniques never increase PvP damage or health.
-      </p>
+      </details>
+      <details className="skills-about"><summary>About skills · {earned}/{COSMETICS.length} keepsakes</summary>
+        <p>Progress is permanent. Unlock recipes, keepsakes and faster harvests as you play.</p>
+        <p>Techniques never increase PvP damage or health.</p>
+      </details>
       </div>
     </section>
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HOTBAR_SIZE, INVENTORY_SIZE, MAX_STACK } from '../constants';
-import { STICK_ITEM_ID } from '../items';
+import { FLINT_KNIFE_ITEM_ID, STICK_ITEM_ID, STONE_CLUB_ITEM_ID } from '../items';
 import { addItem, countItem, emptySlots, isEmpty, moveItem, removeFromSlot } from '../inventory';
 
 describe('inventory', () => {
@@ -56,49 +56,46 @@ describe('inventory', () => {
     expect(moveItem(slots, 0, 0)).toEqual(slots);
   });
 
-  describe('found weapons land in the quick bar', () => {
-    const berries = (...ids: string[]) => {
-      const slots = emptySlots();
-      ids.forEach((id, i) => { slots[i] = { itemId: id, quantity: 2 }; });
-      return slots;
-    };
-
-    it('take the first empty quick slot', () => {
-      const { slots, remaining } = addItem(berries('berry_blueberry'), STICK_ITEM_ID, 1);
+  describe('new weapons stay in the bag', () => {
+    it.each([STICK_ITEM_ID, STONE_CLUB_ITEM_ID, FLINT_KNIFE_ITEM_ID])('puts %s in the bag even with empty quick slots', (itemId) => {
+      const { slots, remaining } = addItem(emptySlots(), itemId, 1);
       expect(remaining).toBe(0);
-      expect(slots[1]).toEqual({ itemId: STICK_ITEM_ID, quantity: 1 });
+      expect(slots.slice(0, HOTBAR_SIZE)).toEqual(Array(HOTBAR_SIZE).fill(null));
+      expect(slots[HOTBAR_SIZE]).toEqual({ itemId, quantity: 1 });
     });
 
-    it('with the quick bar full, take its last slot and move that stack into the bag', () => {
-      const before = berries('berry_goldberry', 'berry_greenberry', 'berry_blueberry', 'berry_strawberry');
+    it('preserves occupied quick slots and uses the first empty bag slot', () => {
+      const before = emptySlots();
+      before[0] = { itemId: 'berry_goldberry', quantity: 2 };
+      before[1] = { itemId: STICK_ITEM_ID, quantity: 1 };
+      before[2] = { itemId: 'berry_blueberry', quantity: 5 };
+      before[HOTBAR_SIZE] = { itemId: 'berry_strawberry', quantity: 2 };
       const { slots, remaining } = addItem(before, STICK_ITEM_ID, 1);
       expect(remaining).toBe(0);
-      expect(slots[HOTBAR_SIZE - 1]).toEqual({ itemId: STICK_ITEM_ID, quantity: 1 });
-      expect(slots[4]).toEqual({ itemId: 'berry_blueberry', quantity: 2 });
-      expect(slots.slice(0, 2).map((s) => s?.itemId)).toEqual(['berry_goldberry', 'berry_greenberry']);
-      expect(slots[3]).toEqual(before[3]);
+      expect(slots.slice(0, HOTBAR_SIZE + 1)).toEqual(before.slice(0, HOTBAR_SIZE + 1));
+      expect(slots[HOTBAR_SIZE + 1]).toEqual({ itemId: STICK_ITEM_ID, quantity: 1 });
+      expect(before[HOTBAR_SIZE + 1]).toBeNull();
     });
 
-    it('never displace another weapon; with only weapons in the bar, use the first free bag slot', () => {
+    it('uses one bag slot per stick and reports the remainder without filling the quick bar', () => {
       const before = emptySlots();
-      for (let i = 0; i < HOTBAR_SIZE; i++) before[i] = { itemId: STICK_ITEM_ID, quantity: 1 };
-      const { slots } = addItem(before, STICK_ITEM_ID, 1);
-      expect(slots.slice(0, HOTBAR_SIZE + 1).every((s) => s?.itemId === STICK_ITEM_ID)).toBe(true);
-    });
-
-    it('prefer displacing a berry over a weapon when the bar is full', () => {
-      const before = berries('berry_goldberry', 'berry_greenberry');
-      before[2] = { itemId: STICK_ITEM_ID, quantity: 1 };
-      const { slots } = addItem(before, STICK_ITEM_ID, 1);
-      expect(slots.slice(0, 3).map((s) => s?.itemId)).toEqual(['berry_goldberry', STICK_ITEM_ID, STICK_ITEM_ID]);
-      expect(slots[3]).toEqual({ itemId: 'berry_greenberry', quantity: 2 });
-    });
-
-    it('report a weapon that does not fit in a full bag', () => {
-      const full = emptySlots().map(() => ({ itemId: 'berry_blueberry', quantity: MAX_STACK }));
-      const { slots, remaining } = addItem(full, STICK_ITEM_ID, 1);
+      for (let i = HOTBAR_SIZE; i < INVENTORY_SIZE - 2; i++) {
+        before[i] = { itemId: 'berry_blueberry', quantity: MAX_STACK };
+      }
+      const { slots, remaining } = addItem(before, STICK_ITEM_ID, 3);
       expect(remaining).toBe(1);
-      expect(slots).toEqual(full);
+      expect(slots.slice(0, HOTBAR_SIZE)).toEqual(before.slice(0, HOTBAR_SIZE));
+      expect(slots.slice(-2)).toEqual(Array(2).fill({ itemId: STICK_ITEM_ID, quantity: 1 }));
+    });
+
+    it('leaves empty quick slots alone when the bag is full', () => {
+      const before = emptySlots();
+      for (let i = HOTBAR_SIZE; i < INVENTORY_SIZE; i++) {
+        before[i] = { itemId: 'berry_blueberry', quantity: MAX_STACK };
+      }
+      const { slots, remaining } = addItem(before, STICK_ITEM_ID, 1);
+      expect(remaining).toBe(1);
+      expect(slots).toEqual(before);
     });
   });
 });

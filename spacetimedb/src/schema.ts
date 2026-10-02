@@ -1,3 +1,4 @@
+import { frontierObject, frontierPrivate, frontierView } from './tables';
 import { schema } from 'spacetimedb/server';
 import {
   accessPolicy, playerGrant, appearance, chatMessage, combatEvent, dummyEvent, emoteCooldown, emoteEvent,
@@ -11,6 +12,7 @@ import { giantRaid, mentee, mentorStat } from './tables';
 import { adventureProfile, expeditionCredit, expedition, expeditionMember, islandProject, gardenShowcase, friendlyDuel, gardenPlot } from './tables';
 
 export const spacetimedb = schema({
+  frontierObject, frontierPrivate, frontierView,
   accessPolicy,
   playerGrant,
   world,

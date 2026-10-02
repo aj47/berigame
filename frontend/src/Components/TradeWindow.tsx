@@ -50,6 +50,7 @@ const TradeWindowBody = ({ trades }: { trades: readonly Trade[] }) => {
   const inventory = useInventoryRows();
   const actions = useGameActions();
   const [busy, setBusy] = useState(false);
+  const [coinOffer, setCoinOffer] = useState(0);
 
   // Prefer the open trade; else the newest request.
   const trade = useMemo(() => {
@@ -98,6 +99,8 @@ const TradeWindowBody = ({ trades }: { trades: readonly Trade[] }) => {
   const theirs = parseOffer(theirsRaw) ?? [];
   const myConfirmed = iAmA ? trade.aConfirmed : trade.bConfirmed;
   const theirConfirmed = iAmA ? trade.bConfirmed : trade.aConfirmed;
+  const myCoins = (iAmA ? trade.aCoins : trade.bCoins) ?? 0;
+  const theirCoins = (iAmA ? trade.bCoins : trade.aCoins) ?? 0;
   const offered = new Map(mine.map((it) => [it.itemId, it.quantity]));
   const weapon = me?.weapon ?? "";
 
@@ -115,7 +118,7 @@ const TradeWindowBody = ({ trades }: { trades: readonly Trade[] }) => {
   };
   const bagItems = [...bag].map(([itemId, quantity]) => ({ itemId, quantity: quantity - (offered.get(itemId) ?? 0) }))
     .filter((it) => it.quantity > 0);
-  const nothing = mine.length === 0 && theirs.length === 0;
+  const nothing = mine.length === 0 && theirs.length === 0 && !(trade.aCoins || trade.bCoins);
 
   return (
     <section className="trade-window trade-sheet" role="dialog" aria-label={`Trading with ${otherName}`} data-testid="trade-sheet">
@@ -125,53 +128,64 @@ const TradeWindowBody = ({ trades }: { trades: readonly Trade[] }) => {
         </div>
         <button className="close-button" disabled={busy} onClick={() => run(() => actions.cancelTrade(trade.id))} aria-label="Cancel trade">×</button>
       </header>
+      <div className="trade-content">
       <div className="trade-columns">
         <div className={`trade-side ${myConfirmed ? "confirmed" : ""}`}>
-          <h3>You give {myConfirmed && <span className="trade-ok">✓ ready</span>}</h3>
+          <h3><span><span aria-hidden="true">↗</span> You give</span> {myConfirmed && <span className="trade-ok">✓ ready</span>}</h3>
           <div className="trade-offer" data-testid="my-offer">
-            {mine.length === 0 && <span className="fine-print">Tap items below to offer them</span>}
+            <span className="trade-coin-total"><span aria-hidden="true">◉</span> <b>{myCoins}</b> coins</span>
+            {mine.length === 0 && <span className="fine-print">No items added</span>}
             {mine.map((it) => (
               <ItemChip key={it.itemId} item={it} label={`Take back one ${getItemDef(it.itemId)?.name ?? it.itemId}`} onClick={() => remove(it.itemId)} disabled={busy} />
             ))}
           </div>
         </div>
         <div className={`trade-side ${theirConfirmed ? "confirmed" : ""}`}>
-          <h3>You get {theirConfirmed && <span className="trade-ok">✓ ready</span>}</h3>
+          <h3><span><span aria-hidden="true">↙</span> You get</span> {theirConfirmed && <span className="trade-ok">✓ ready</span>}</h3>
           <div className="trade-offer" data-testid="their-offer">
-            {theirs.length === 0 && <span className="fine-print">{otherName} has not offered anything yet</span>}
+            <span className="trade-coin-total"><span aria-hidden="true">◉</span> <b>{theirCoins}</b> coins</span>
+            {theirs.length === 0 && <span className="fine-print">No items added</span>}
             {theirs.map((it) => <ItemChip key={it.itemId} item={it} label={`${it.quantity} ${getItemDef(it.itemId)?.name ?? it.itemId}`} />)}
           </div>
         </div>
       </div>
+      <div className="trade-coin-editor">
+        <label htmlFor="trade-coins">Offer coins</label>
+        <input id="trade-coins" aria-label="Coins to offer" type="number" min="0" max="1000000" value={coinOffer} onChange={e=>setCoinOffer(Math.max(0,Math.floor(Number(e.target.value)||0)))}/>
+        <button aria-label="Set coin offer" disabled={busy} onClick={()=>run(()=>actions.setTradeCoins(trade.id,coinOffer))}>Set</button>
+      </div>
       <div className="trade-bag" aria-label="Your bag">
-        <span className="eyebrow">Your bag · tap to offer one</span>
+        <div className="trade-bag-heading"><strong>Your bag</strong><span className="fine-print">Tap to add 1 · tap offer to remove 1</span></div>
         <div className="trade-bag-items">
           {bagItems.length === 0 && <span className="fine-print">Nothing left to offer</span>}
           {bagItems.map((it) => {
             const wielded = it.itemId === weapon;
             const full = !offered.has(it.itemId) && offered.size >= MAX_TRADE_STACKS;
             return (
-              <ItemChip key={it.itemId} item={it} disabled={busy || wielded || full}
-                note={wielded ? "wielded: unwield to trade" : undefined}
-                label={wielded ? `${getItemDef(it.itemId)?.name}: unwield it to trade` : `Offer one ${getItemDef(it.itemId)?.name ?? it.itemId}`}
+              <ItemChip key={it.itemId} item={it} disabled={busy || full}
+                note={wielded ? "Equipped" : undefined}
+                label={`Offer one ${getItemDef(it.itemId)?.name ?? it.itemId}`}
                 onClick={() => add(it.itemId, 1)} />
             );
           })}
         </div>
       </div>
+      </div>
+      <footer className="trade-footer">
       <p className="fine-print trade-status" aria-live="polite">
         {myConfirmed && !theirConfirmed ? `Waiting for ${otherName} to confirm…` :
-          theirConfirmed && !myConfirmed ? `${otherName} is ready. Check what you get, then confirm.` :
-          "Any change clears both confirmations. Stay close: walking away cancels."}
+          theirConfirmed && !myConfirmed ? `${otherName} is ready. Review, then confirm.` :
+          "Changes reset confirmations. Walking away cancels."}
       </p>
-      {mine.some(item => ['stick', 'stone_club'].includes(item.itemId) && item.quantity >= (bag.get(item.itemId) ?? 0) && !theirs.some(other => other.itemId === item.itemId)) && <p className="fine-print" role="status">You are giving away a route key. Keep a spare if you want to cross the brambles or Boulders again.</p>}
+      {mine.some(item => ['stick', 'stone_club'].includes(item.itemId) && item.quantity >= (bag.get(item.itemId) ?? 0) && !theirs.some(other => other.itemId === item.itemId)) && <p className="fine-print trade-warning" role="status">Last route tool! Keep a spare to cross brambles or Boulders again.</p>}
       <div className="trade-actions">
         <button disabled={busy} onClick={() => run(() => actions.cancelTrade(trade.id))}>Cancel</button>
         <button className="primary-button" data-testid="trade-confirm" disabled={busy || myConfirmed || nothing}
-          onClick={() => run(() => actions.confirmTrade(trade.id, trade.aOffer, trade.bOffer))}>
+          onClick={() => run(() => actions.confirmTrade(trade.id, trade.aOffer, trade.bOffer, trade.aCoins ?? 0, trade.bCoins ?? 0))}>
           {myConfirmed ? "Confirmed" : "Confirm trade"}
         </button>
       </div>
+      </footer>
     </section>
   );
 };

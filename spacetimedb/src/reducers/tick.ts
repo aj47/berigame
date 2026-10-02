@@ -1,3 +1,5 @@
+import { tickFrontier, frontierRepository, projectFrontier } from '../lib/frontier';
+import { damage as frontierDamage } from '../../../shared/sim/frontier/engine';
 import { reconcileTerrain } from '../lib/terrain';
 import { carrying, profile, saveProfile, progress, tickExpeditions, tickDuels, duelFor } from '../lib/adventure';
 import { canFindStick, Feat, cargoMovementSteps } from '../../../shared/sim';
@@ -320,6 +322,13 @@ function phaseHarvest(s: TickState): void {
   }
 }
 
+function combatDamage(s: TickState, a: PlayerRow): number {
+  const repo = frontierRepository(s.ctx), p = repo.get('profile', hex(a.identity));
+  if (!p || !repo.get('config', 'world')?.enabled) return swingDamage(a.weapon);
+  const result = frontierDamage(p, { weapon: a.weapon } as any);
+  repo.put('profile', p); projectFrontier(s.ctx, repo);
+  return result;
+}
 function phaseSwings(s: TickState): void {
   for (const h of s.order) {
     const a = s.players.get(h)!;
@@ -341,7 +350,7 @@ function phaseSwings(s: TickState): void {
     d.facing = facingFromDelta(a.x - d.x, a.z - d.z);
     // Reducers keep a wielded weapon in the hotbar; re-check so a stale row can only ever punch.
     if (a.weapon !== '' && !inHotbar(readSlots(s.ctx, a.identity).slots, a.weapon)) a.weapon = '';
-    const damage = swingDamage(a.weapon);
+    const damage = combatDamage(s, a);
     d.hp = Math.max(0, d.hp - damage);
     a.nextSwingTick = s.T + SWING_INTERVAL_TICKS;
     interrupt(s, d);
@@ -380,7 +389,7 @@ function phaseDummySwings(s: TickState): void {
     if (a.facing !== face) { a.facing = face; mark(s, a); }
     if (s.T < a.nextSwingTick) continue;
     if (a.weapon !== '' && !inHotbar(readSlots(s.ctx, a.identity).slots, a.weapon)) a.weapon = '';
-    const damage = swingDamage(a.weapon);
+    const damage = combatDamage(s, a);
     const { hp, reset } = dummyAfterHit(dummy, damage, s.T);
     if (reset) progress(s.ctx, a.identity, 3, 12, Feat.Protect);
     dummy.hp = hp;
@@ -481,7 +490,7 @@ function phaseGiant(s: TickState): void {
     if (a.weapon !== '' && !inHotbar(readSlots(s.ctx, a.identity).slots, a.weapon)) a.weapon = '';
     // It regenerated since the last blow: old contributions no longer count.
     if (giantForgot(g, s.T)) clearContributions(s);
-    const damage = swingDamage(a.weapon);
+    const damage = combatDamage(s, a);
     const { hp, defeated } = giantAfterHit(g, damage, s.T);
     g = { ...g, hp, lastHitTick: s.T };
     dirty = true;
@@ -574,12 +583,12 @@ function phaseTrades(s: TickState): void {
   const table = s.ctx.db.trade;
   if (!table || table.count() === 0n) return;
   for (const row of [...table.iter()]) {
-    const a = s.players.get(hex(row.a));
-    const b = s.players.get(hex(row.b));
+    const a = s.players.get(hex(row.a)) ?? s.ctx.db.player.identity.find(row.a);
+    const b = s.players.get(hex(row.b)) ?? s.ctx.db.player.identity.find(row.b);
     let reason: string | null = null;
     if (!a || !b || !a.online || !b.online) reason = 'Trade cancelled: they left';
     else if (a.state !== PlayerState.Alive || b.state !== PlayerState.Alive) reason = 'Trade cancelled';
-    else if (chebyshev(a, b) > TRADE_BREAK_RANGE) reason = 'Trade cancelled: you walked too far apart';
+    else if ((a.region || 'bramblewild') !== (b.region || 'bramblewild') || chebyshev(a, b) > TRADE_BREAK_RANGE) reason = 'Trade cancelled: you walked too far apart';
     else if (!row.accepted && s.T - row.createdTick > TRADE_REQUEST_TICKS) reason = 'Trade request expired';
     if (reason) cancelTrade(s.ctx, row, reason);
   }
@@ -622,6 +631,7 @@ export const tick = spacetimedb.reducer(
         ctx.db.player.identity.update(p);
         player = p;
       }
+      if (player.region && player.region !== 'bramblewild') continue;
       if (!player.online && player.state !== PlayerState.Dead && player.combatTarget === undefined) continue;
       const h = hex(player.identity);
       original.set(h, player);
@@ -673,5 +683,6 @@ export const tick = spacetimedb.reducer(
     }
     tickExpeditions(ctx, T);
     tickDuels(ctx, T);
+    tickFrontier(ctx);
   }
 );

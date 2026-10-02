@@ -14,6 +14,7 @@
     "beta:invite": "node scripts/beta.mjs invite",
     "beta:revoke": "node scripts/beta.mjs revoke",
     "site:build": "node scripts/site.mjs build",
-    "site:deploy": "node scripts/site.mjs deploy"
+    "site:deploy": "node scripts/site.mjs deploy",
+    "test:frontier-load": "FRONTIER_LOAD_CHECK=1 npm test --prefix shared -- --run sim/__tests__/frontier-server.test.ts"
   }
 }

@@ -12,7 +12,7 @@ vi.mock('../spacetime/actions', () => ({ useGameActions:()=>({setTarget:mock.wal
 vi.mock('../spacetime/hooks', () => ({usePlayersByHex:()=>new Map(),useMyIdentityHex:()=> 'self'}));
 vi.mock('../Components/HarvestDropdownAction', () => ({default:()=> <button onClick={mock.action}>Harvest</button>}));
 vi.mock('../Components/BerryGiantInteraction', () => ({default:()=> <button onClick={mock.action}>Drop bait</button>}));
-vi.mock('../Components/AdventurePanel', () => ({openAdventure:mock.adventure}));
+vi.mock('../Components/adventureNavigation', () => ({openAdventure:mock.adventure}));
 const event = () => ({clientX:120,clientY:120,ray:new Ray(new Vector3(...tileToWorld(SPAWN_TILE)).add(new Vector3(0,5,0)),new Vector3(0,-1,0))});
 beforeEach(()=>{vi.clearAllMocks();useUserInputStore.getState().setClickedOtherObject(null);});
 afterEach(cleanup);
@@ -32,13 +32,28 @@ describe('Walk here menu action', () => {
     expect(screen.queryByRole('group')).not.toBeInTheDocument();
   });
   it('lets adventure props offer walking before opening their panel', () => {
-    openAdventureInteraction('Berry market',event());render(<ClickDropdown/>);
+    openAdventureInteraction('Berry drop-off',event(),'market');render(<ClickDropdown/>);
     expect(mock.adventure).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button',{name:'Walk here',exact:true}));
     expect(mock.walk).toHaveBeenCalledOnce();expect(mock.adventure).not.toHaveBeenCalled();
-    act(() => openAdventureInteraction('Berry market',event()));
-    fireEvent.click(screen.getByRole('button',{name:'Open Adventure',exact:true}));
-    expect(mock.adventure).toHaveBeenCalledOnce();
+    act(() => openAdventureInteraction('Berry drop-off',event(),'market'));
+    fireEvent.click(screen.getByRole('button',{name:'View berry delivery',exact:true}));
+    expect(mock.adventure).toHaveBeenCalledExactlyOnceWith('market');
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
+  });
+  it.each([
+    ['Giant’s feast', 'feast', 'Visit the Giant’s feast'],
+    ['Camp workshop', 'workshop', 'Help build the workshop'],
+    ['The gardener', 'expedition', 'View giant berry adventure'],
+  ] as const)('routes %s to its own activity', (name, view, label) => {
+    openAdventureInteraction(name,event(),view);render(<ClickDropdown/>);
+    fireEvent.click(screen.getByRole('button',{name:label,exact:true}));
+    expect(mock.adventure).toHaveBeenCalledExactlyOnceWith(view);
+  });
+  it('opens the giant berry activity for cargo and helpers by default', () => {
+    openAdventureInteraction('Moss',event());render(<ClickDropdown/>);
+    fireEvent.click(screen.getByRole('button',{name:'View giant berry adventure',exact:true}));
+    expect(mock.adventure).toHaveBeenCalledExactlyOnceWith('expedition');
   });
   it('does not offer a movement action without a valid ground destination', () => {
     useUserInputStore.getState().setClickedOtherObject({connectionId:'Tree',harvestNodeId:1,e:{clientX:120,clientY:120}});

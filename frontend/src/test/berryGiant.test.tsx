@@ -16,7 +16,7 @@ vi.mock('../spacetime/hooks', () => ({
   useFriendlyDuels: () => [], useIslandProjects: () => [], useTick: () => mock.tick,
 }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ expeditionAction: mock.action, setTarget: mock.walk }) }));
-vi.mock('../Components/AdventurePanel', () => ({ openAdventure: mock.openAdventure }));
+vi.mock('../Components/adventureNavigation', () => ({ openAdventure: mock.openAdventure }));
 vi.mock('@react-three/fiber', () => ({ useFrame: () => {} }));
 vi.mock('@react-three/drei', () => ({ Html: () => null }));
 vi.mock('../Components/3D/AdventureModels', () => ({
@@ -124,5 +124,56 @@ describe('Berry Giant interaction', () => {
     expect(mock.action).toHaveBeenCalledOnce();
     await act(async () => finish(false));
     expect(button).toBeEnabled();
+  });
+
+  it('explains the idle Giant’s gifts and opens feast planning without spending anything', () => {
+    mock.expeditions = []; mock.members = [];
+    select(0n);
+    expect(screen.getByText('Berry Heart keepsake')).toBeVisible();
+    expect(screen.getByText('+2 bonus goldberries')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: /Plan a feast/ }));
+    expect(mock.openAdventure).toHaveBeenCalledWith('feast');
+    expect(mock.action).not.toHaveBeenCalled();
+  });
+
+  it('keeps a growing adventure active when visiting the idle Giant', () => {
+    mock.expeditions[0].stage = 'growing';
+    select(0n);
+    expect(screen.getByText(/Your berry is growing/)).toBeVisible();
+    expect(screen.queryByText(/adventure has ended/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Continue my berry adventure/ }));
+    expect(mock.openAdventure).toHaveBeenCalledWith('expedition');
+    expect(mock.action).not.toHaveBeenCalled();
+  });
+
+  it('feeds the selected Giant only when the player and cargo reach the clearing', async () => {
+    Object.assign(mock.me, { x: 12, z: 36 });
+    Object.assign(mock.expeditions[0], { x: 12, z: 36, carrier: mock.me.identity, value: 4 });
+    select();
+    expect(screen.getByText('6 goldberries')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: /Share the feast/ }));
+    await waitFor(() => expect(mock.action).toHaveBeenCalledExactlyOnceWith('feed', 7n));
+  });
+
+  it('offers a route to the clearing while carrying, without feeding early', async () => {
+    mock.expeditions[0].carrier = mock.me.identity;
+    select();
+    expect(screen.queryByRole('button', { name: /Share the feast/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Bring berry to feast/ }));
+    await waitFor(() => expect(mock.walk).toHaveBeenCalledExactlyOnceWith(12, 36));
+    expect(mock.action).not.toHaveBeenCalled();
+  });
+
+  it('shows earned rewards and friendship after feeding, but does not award spectators', () => {
+    Object.assign(mock.expeditions[0], { stage: 'complete', destination: 'feast', value: 4 });
+    mock.members[0].contributions = 1;
+    mock.profiles = [{ identity: mock.me.identity, giantTrust: 1 }];
+    const { rerender } = select();
+    expect(screen.getByLabelText('Feast rewards earned')).toHaveTextContent('+6 goldberries');
+    expect(screen.getByText(/\+12s before he chases/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: /Share the feast/ })).not.toBeInTheDocument();
+    mock.members = []; rerender(<ClickDropdown />);
+    expect(screen.queryByLabelText('Feast rewards earned')).not.toBeInTheDocument();
+    expect(screen.getByText(/Grow one to earn your own gifts/)).toBeVisible();
   });
 });

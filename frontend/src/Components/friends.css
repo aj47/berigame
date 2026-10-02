@@ -7,13 +7,14 @@
 }
 .panel-heading .panel-switch { margin-left: auto; margin-right: 6px; }
 .chat-mode {
-  display: inline-flex;
+  display: flex;
   border: 1px solid var(--line);
   border-radius: 999px;
   overflow: hidden;
-  margin-right: 6px;
+  margin: 0 0 10px;
 }
 .chat-mode button {
+  flex: 1;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -44,6 +45,9 @@
   border-radius: 8px;
 }
 .invite-card p { margin: 0; }
+.invite-heading { display: flex; align-items: center; gap: 10px; }
+.social-card-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: #eadbc1; color: #79552f; font-size: 23px; flex: none; }
+.invite-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; }
 .invite-link-row { display: flex; gap: 6px; }
 .invite-link-row input {
   flex: 1;
@@ -56,10 +60,41 @@
   color: var(--ink);
 }
 .invite-make { min-height: 40px; }
+.friends-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.friends-count { font-size: 11px; font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
+.social-empty-state { display: grid; justify-items: center; gap: 8px; padding: 20px 10px; text-align: center; font-size: 12px; }
+.social-empty-state strong { color: var(--ink); font-size: 14px; }
+.social-details { margin-top: 10px; padding-top: 8px; border-top: 1px solid #dbc9a8; font-size: 12px; }
+.social-details summary { cursor: pointer; padding: 4px 0; }
+.social-details .mentor-summary { margin: 6px 0 0; }
+.chat-panel .chat-input-bar input { min-width: 0; }
+.chat-panel { display: flex; flex-direction: column; overflow: hidden; }
+.chat-panel > .panel-heading, .chat-panel > .social-tabs, .chat-panel > .chat-mode, .chat-panel > .chat-input-bar, .chat-panel > .fine-print { flex: none; }
+.chat-panel .chat-log { flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; }
+.social-tabs { display: flex; gap: 5px; margin: 0 0 10px; flex: none; }
+.social-tabs button { flex: 1; min-width: 0; min-height: var(--control-size); font-size: 13px; padding: 6px 8px; }
+.social-tabs button[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fffaf0; }
+.chat-log .chat-sender { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; min-height: var(--control-size); padding: 2px 0; border: 0; border-radius: 3px; box-shadow: none; background: transparent; color: inherit; font: inherit; font-weight: bold; text-align: left; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.chat-log .chat-sender:hover { color: var(--blue); background: #e6d4ad; }
+
+.friends-panel { display: flex; flex-direction: column; overflow: hidden; }
+.friends-panel > .panel-heading { flex: none; }
+.friends-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex: none; }
+.friends-section-heading > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.friends-section-heading h3 { font-size: 14px; margin: 0; }
+.friends-section-heading button { min-height: var(--control-size); padding: 5px 10px; font-size: 12px; }
+.friends-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.friend-search > input { width: 100%; min-width: 0; margin: 0 0 8px; }
+.friend-candidate { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; padding: 8px; border: 1px solid #e0cfae; border-radius: 8px; background: var(--card-surface); }
+.friend-candidate button { min-height: var(--control-size); padding: 5px 10px; font-size: 12px; }
+.friends-alert { grid-column: 1 / -1; margin: 4px 0; color: #883d2e; font-size: 12px; line-height: 1.4; }
+.friends-panel .social-details summary, .friends-panel .muted-list summary { min-height: var(--control-size); align-content: center; cursor: pointer; }
+.friends-invite .invite-card { margin: 6px 0 0; }
 
 .friend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .friend-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
@@ -67,7 +102,7 @@
   border-radius: 8px;
   background: var(--card-surface);
 }
-.friend-row.offline { opacity: 0.65; }
+.friend-row.offline .friend-info { opacity: 0.65; }
 .presence-dot {
   flex: none;
   width: 10px;
@@ -79,8 +114,10 @@
 .friend-row.online .presence-dot { background: #4caf50; }
 .friend-info { flex: 1; min-width: 0; display: grid; }
 .friend-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.friend-go { min-height: 34px; padding: 4px 12px; }
-.friend-remove { flex: none; }
+.friend-info .fine-print { margin: 2px 0 0; }
+.friend-controls { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.friend-controls button { min-width: 0; min-height: var(--control-size); padding: 4px 6px; font-size: 12px; }
+.friend-remove { color: #883d2e; }
 .muted-list { margin-top: 10px; font-size: 13px; }
 .muted-list ul { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; }
 .muted-list li { display: flex; justify-content: space-between; gap: 8px; }
@@ -109,15 +146,20 @@
 .trade-request-actions { display: flex; gap: 6px; }
 .trade-request-actions button { min-height: var(--control-size); padding: 4px 14px; }
 .trade-sheet {
+  display: flex;
+  flex-direction: column;
   top: calc(max(16px, env(safe-area-inset-top)) + 64px);
   width: 460px;
   max-width: calc(100vw - 24px);
   max-height: calc(100dvh - 240px);
-  overflow-y: auto;
+  overflow: hidden;
   padding: 10px;
 }
+.trade-content { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 4px; }
+.trade-sheet .panel-heading, .trade-footer { flex: none; }
 .trade-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .trade-side {
+  min-width: 0;
   border: 1px solid #d9c49c;
   border-radius: 8px;
   padding: 8px;
@@ -125,12 +167,22 @@
   min-height: 64px;
 }
 .trade-side.confirmed { border-color: #4caf50; box-shadow: inset 0 0 0 1px #4caf50; }
-.trade-side h3 { margin: 0 0 6px; font-size: 13px; display: flex; justify-content: space-between; }
+.trade-sheet .panel-heading > div { min-width: 0; }
+.trade-sheet h2 { overflow-wrap: anywhere; }
+.trade-side h3 { margin: 0 0 6px; font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
 .trade-side .fine-print { margin: 0; }
 .trade-ok { color: #2e7d32; font-size: 12px; }
-.trade-offer, .trade-bag-items { display: flex; flex-wrap: wrap; gap: 5px; }
+.trade-offer { display: grid; gap: 5px; }
+.trade-bag-items { display: flex; flex-wrap: wrap; gap: 5px; }
+.trade-coin-total { display: flex; align-items: center; gap: 4px; padding: 3px 0 7px; font-size: 13px; }
+.trade-coin-total > span { color: #a57728; font-size: 18px; }
+.trade-coin-editor { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; }
+.trade-coin-editor label { flex: 1; }
+.trade-coin-editor input { width: 90px; min-width: 0; min-height: var(--control-size); padding: 4px 8px; font-size: 13px; }
+.trade-coin-editor button { min-height: var(--control-size); padding: 4px 12px; }
 .trade-bag { margin-top: 10px; }
-.trade-bag .eyebrow { display: block; margin-bottom: 5px; }
+.trade-bag-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px; margin-bottom: 6px; font-size: 12px; }
+.trade-bag-heading .fine-print { margin: 0; }
 .trade-chip {
   display: inline-flex;
   align-items: center;
@@ -142,13 +194,17 @@
   background: #fff;
   color: var(--ink);
   font-size: 12px;
+  max-width: 100%;
+  text-align: left;
 }
-.trade-chip img { width: 24px; height: 24px; object-fit: contain; }
-.trade-chip-qty { font-weight: bold; }
+.trade-chip img { width: 24px; height: 24px; object-fit: contain; flex: none; }
+.trade-chip-name { overflow-wrap: anywhere; }
+.trade-chip-qty { font-weight: bold; white-space: nowrap; }
 .trade-chip-note { color: #9a3b2c; font-size: 11px; }
 button.trade-chip:disabled { opacity: 0.55; }
-.trade-status { margin: 10px 0 6px; }
-.trade-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.trade-status { margin: 6px 0; }
+.trade-warning { padding: 7px 8px; border-radius: 6px; background: #f3dfb4; color: #7c4629; }
+.trade-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
 .trade-actions button { min-height: var(--control-size); padding: 6px 12px; font-size: 13px; }
 
 @media (max-width: 600px) {

@@ -32,3 +32,5 @@ export const socialEventVisibility = spacetimedb.clientVisibilityFilter.sql(
 export const gardenPlotVisibility = spacetimedb.clientVisibilityFilter.sql(
   'SELECT * FROM garden_plot WHERE owner = :sender'
 );
+
+export const frontierVisibility = spacetimedb.clientVisibilityFilter.sql('SELECT * FROM frontier_view WHERE owner = :sender');

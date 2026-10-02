@@ -894,6 +894,11 @@ canvas {
   font-size: 18px;
 }
 .context-action.context-walk { border-top: 1px solid #bca58080; margin-top: 2px; border-radius: 0 0 4px 4px; }
+.context-ground { border-top: 1px solid #bca58080; margin-top: 2px; }
+.context-ground-heading { padding: 8px 8px 3px; color: var(--ink-soft); font-size: 11px; }
+.context-pickup img { width: 23px; height: 23px; object-fit: contain; flex: none; }
+.context-pickup > .context-pickup-label { flex: 1; color: inherit; font-size: 13px; }
+.context-pickup-error { margin: 3px 8px 8px; color: #883d2e; font-size: 12px; }
 .player-picker-hint {
   margin: 8px;
   font-size: 12px;
@@ -908,6 +913,7 @@ canvas {
   top: calc(max(16px, env(safe-area-inset-top)) + 58px);
   left: 50%;
   transform: translateX(-50%);
+  width: max-content;
   max-width: min(460px, calc(100vw - 32px));
   padding: 11px 16px;
   border: 1px solid #b79b6a;

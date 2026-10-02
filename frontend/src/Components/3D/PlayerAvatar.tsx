@@ -17,7 +17,7 @@ import type { AnimationCue } from '../../animation/combatPresentation';
 import { identityHex } from '../../spacetime/identity';
 import { useSocialStore } from '../../spacetime/stores/socialStore';
 import { emoteCue } from '../../animation/emotes';
-import { playersInHits } from './playerSelection';
+import { avatarSelection } from './playerSelection';
 import { holdState } from './tapAssist';
 
 class HairBoundary extends React.Component<{ children:React.ReactNode; fallback:React.ReactNode }, { failed:boolean }> {
@@ -27,6 +27,7 @@ class HairBoundary extends React.Component<{ children:React.ReactNode; fallback:
   render(){return this.state.failed?this.props.fallback:this.props.children;}
 }
 interface Props {
+  frontierBlocked?: Set<string>;
   row: Player;
   isSelf: boolean;
   /** This player's saved appearance row (looked up once by the parent), if any. */
@@ -54,7 +55,7 @@ function useHealthShown(hp: number, maxHp: number): boolean {
  * One shared rig and mechanically identical silhouette for every adventurer.
  * Memoized: a server tick re-renders only the avatars whose row (or labels) changed.
  */
-const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = false, chatText, setPlayerRef }: Props) => {
+const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = false, chatText, setPlayerRef, frontierBlocked }: Props) => {
   const groupRef = useRef<any>(null);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const hex = identityHex(row.identity);
@@ -66,7 +67,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const appearanceKey = APPEARANCE_KEYS.map(key => chosen[key] ?? 0).join(':');
   const appearance = useMemo(() => normalizeAppearance(chosen), [appearanceKey]);
   const url = modelUrl(appearance.hairStyle);
-  const motion = useTileMotion(row.x, row.z, row.facing, groupRef);
+  const motion = useTileMotion(row.x, row.z, row.facing, groupRef, (row.region || 'bramblewild') as any, frontierBlocked);
   const cue = useCombatFxStore((s) => s.cues[hex]);
   const floating = useCombatFxStore((s) => s.numbers[hex]);
   const found = useCombatFxStore((s) => s.finds[hex]);
@@ -76,6 +77,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   // XP floaters are yours alone (other players' XP is not broadcast as events).
   const xpFloat = useProgressStore((s) => (isSelf ? s.xpFloat : null));
   const dead = row.state === PlayerState.Dead;
+  const selfGroundActions = isSelf && (!row.region || row.region === 'bramblewild');
   // Moving, fighting, harvesting or dying ends an emote (a Sit holds until then).
   const activity = `${row.x},${row.z},${row.hostile},${row.pending},${row.harvestTreeId},${row.state}`;
   const lastActivity = useRef(activity);
@@ -102,23 +104,23 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   });
 
   const onClick = (e: any) => {
-    if (isSelf || dead || e.delta > 5) return;
+    if (dead || e.delta > 5 || (isSelf && !selfGroundActions)) return;
     e.stopPropagation();
     if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
-    const candidates = playersInHits(e.intersections ?? []);
-    if (!candidates.some(player => player.hex === hex)) candidates.unshift({ hex, name: row.name });
     setClickedOtherObject({
-      connectionId: candidates.length > 1 ? 'Choose player' : row.name,
+      ...avatarSelection({ hex, name: row.name, x: row.x, z: row.z, isSelf }, e.intersections ?? []),
       e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray },
-      playerChoices: candidates.map(player => player.hex),
-      playerHex: candidates.length === 1 ? hex : undefined,
     });
   };
   const origin = { x: 0, y: 0, z: 0 };
   // Blob shadow and ring: <AvatarDecals />. Name, health bar and chat bubble: <AvatarOverlay />.
   return (
-    <group ref={groupRef} onClick={onClick} userData={{ hoverTarget: isSelf || dead ? null : {
-      title: row.name, action: 'Click for player actions', detail: 'Follow · trade · friend · attack', radius: .65, playerHex: hex,
+    <group ref={groupRef} onClick={onClick} userData={{ hoverTarget: dead || (isSelf && !selfGroundActions) ? null : {
+      title: isSelf ? 'You' : row.name,
+      action: isSelf ? 'Click for ground actions' : 'Click for player actions',
+      detail: isSelf ? 'Pick up items · walk here' : 'Follow · trade · attack',
+      radius: .65, tile: { x: row.x, z: row.z },
+      ...(isSelf ? {} : { playerHex: hex }),
     } }}>
       <mesh position={[0, 1.05, 0]} visible={false}><boxGeometry args={[0.9, 2.1, 0.8]} /><meshBasicMaterial /></mesh>
       {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} itemId={floating.itemId} appearAt={floating.at + floating.delayMs} />}

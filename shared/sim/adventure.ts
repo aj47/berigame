@@ -8,6 +8,20 @@ export const BERRY_PATCH = { x: 34, z: 17 };
 export const BERRY_MARKET = { x: 35, z: 37 };
 export const GIANT_FEAST = { x: 12, z: 36 };
 export const ADVENTURE_TICKS = 600; // Six minutes; no real-time garden wait.
+export const GIANT_FEAST_BONUS = 2;
+export const EXPEDITION_COMPLETION_XP = 35;
+export const GIANT_FRIENDSHIP_MILESTONES = [1, 3, 5] as const;
+/** Feeding is useful from the first feast, without occupying a technique slot. */
+export function giantFriendship(feasts: number) {
+  const tier = GIANT_FRIENDSHIP_MILESTONES.filter(milestone => feasts >= milestone).length;
+  return {
+    tier,
+    label: ['Stranger', 'New friend', 'Good friend', 'Best friend'][tier],
+    pauseTicks: tier * 20,
+    pauseSeconds: tier * 12,
+    nextFeasts: GIANT_FRIENDSHIP_MILESTONES.find(milestone => feasts < milestone) ?? null,
+  };
+}
 export const PATHS = ['Growing', 'Building', 'Exploring', 'Fighting', 'Befriending'] as const;
 export const PATH_FIELDS = ['growingXp', 'buildingXp', 'exploringXp', 'fightingXp', 'befriendingXp'] as const;
 export const Feat = { Grow: 1, Build: 2, Explore: 4, Protect: 8, Befriend: 16, Deliver: 32, Feed: 64 } as const;
@@ -26,7 +40,7 @@ export const TECHNIQUES = [
   { id: 11, key: 'interrupt', name: 'Interrupt', path: 3, level: 4, feat: 32, description: 'Stun the pursuing Giant for 9 seconds from within three tiles.' },
   { id: 12, key: 'snack_friend', name: 'Favourite snack', path: 4, level: 2, feat: 16, description: 'Bribing Pip keeps him friendly for 90 seconds instead of 30.' },
   { id: 13, key: 'porter', name: 'Porter pact', path: 4, level: 3, feat: 16, description: 'Moss carries for free and follows you instead of heading straight to market.' },
-  { id: 14, key: 'giant_trust', name: 'Giant trust', path: 4, level: 4, feat: 64, description: 'A Giant you have fed waits 30 extra seconds before following your next berry.' },
+  { id: 14, key: 'giant_trust', name: 'Giant trust', path: 4, level: 4, feat: 64, description: 'After a feast, add 30 seconds to the Giant’s friendship head start on your next berry.' },
 ] as const;
 export type ProgressProfile = { growingXp: number; buildingXp: number; exploringXp: number; fightingXp: number; befriendingXp: number; feats: number; loadout: number };
 export function hasTechnique(profile: { loadout: number } | null | undefined, id: number): boolean { return !!((profile?.loadout ?? 0) & (1 << id)); }
@@ -49,4 +63,6 @@ export function rollDestination(from: Tile, toward: Tile, distance: number, bloc
   return at;
 }
 export function expeditionReward(value: number, delivered: boolean): number { return delivered ? Math.max(1, Math.min(8, value)) : 0; }
+/** Successful delivery payout per helper; feast friendship is awarded separately. */
+export function expeditionPayout(value: number, fed = false): number { return expeditionReward(value, true) + (fed ? GIANT_FEAST_BONUS : 0); }
 export function duelHit(hp: number, damage: number): { hp: number; finished: boolean } { return { hp: Math.max(1, hp - damage), finished: hp - damage <= 1 }; }

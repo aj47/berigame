@@ -140,7 +140,7 @@ async function main() {
   await step('walk home', () => waitFor('at home', async () => { const m = await me(); return m.x === HOME.x && m.z === HOME.z; }, 20_000));
   await sleep(2500); // let the follow camera settle
 
-  // 2. The browser player picks it up through the UI and wields it with key 1.
+  // 2. The browser player picks it up, assigns quick slot 1, and wields it with key 1.
   await waitFor('dummy walked off', () => row(dummy)?.x === DUMMY.x && row(dummy)?.z === DUMMY.z, 30_000);
   await sleep(1000);
   try {
@@ -165,7 +165,12 @@ async function main() {
     }, null, 1));
     throw e;
   }
-  await waitFor('stick picked up', async () => (await quickLabel(0)).includes('Stick'));
+  await page.evaluate(() => document.querySelector<HTMLButtonElement>('[data-panel="inventory"]')?.click());
+  await waitFor('stick picked up', () => page.evaluate(() => !!document.querySelector('.inventory-slot[aria-label*=": Stick"]')));
+  await page.evaluate(() => document.querySelector<HTMLButtonElement>('.inventory-slot[aria-label*=": Stick"]')?.click());
+  await page.evaluate(() => document.querySelector<HTMLButtonElement>('.bag-quick-row .inventory-slot')?.click());
+  await waitFor('stick assigned to quick slot 1', async () => (await quickLabel(0)).includes('Stick'));
+  await page.evaluate(() => document.querySelector<HTMLButtonElement>('[aria-label="Close inventory"]')?.click());
   await page.keyboard.press('1');
   await waitFor('stick wielded', async () => (await me())?.weapon === STICK_ITEM_ID);
   const now = await me();

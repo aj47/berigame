@@ -1,8 +1,8 @@
 import { adventureTables } from './adventureHarness';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Pending, PlayerState } from '../types';
-import { STICK_ITEM_ID } from '../items';
-import { INVENTORY_SIZE } from '../constants';
+import { STICK_ITEM_ID, STONE_CLUB_ITEM_ID } from '../items';
+import { HOTBAR_SIZE, INVENTORY_SIZE } from '../constants';
 import { TRADE_BREAK_RANGE, TRADE_RANGE, TRADE_REQUEST_TICKS, executeTrade, formatOffer, parseOffer, removeItemCount } from '../trade';
 import {
   CHAT_BUBBLE_MAX_CHARS, CHAT_NEARBY_RADIUS, INVITE_CODE_LEN, INVITE_TTL_MICROS, bubbleText, chatVisible, generateInviteCode,
@@ -251,19 +251,23 @@ describe('trading: request, offers, two-sided confirmation, atomic swap', () => 
     expect(current().bConfirmed).toBe(false);
   });
 
-  it('you cannot offer what you do not have, or your wielded weapon', () => {
+  it('allows offering a wielded weapon without changing equipment, but rejects missing items', () => {
     h.give(A, 0, STICK_ITEM_ID, 1);
     h.give(A, 3, 'berry_blueberry', 1);
     h.p(A).weapon = STICK_ITEM_ID;
     const row = openTrade();
-    expect(() => setTradeOffer(h.as(A), { tradeId: row.id, offer: `${STICK_ITEM_ID}:1` })).toThrow('Unwield');
+    const before = h.slotsOf(A);
+    setTradeOffer(h.as(A), { tradeId: row.id, offer: `${STICK_ITEM_ID}:1` });
+    expect(current().aOffer).toBe(`${STICK_ITEM_ID}:1`);
+    expect(h.p(A).weapon).toBe(STICK_ITEM_ID);
+    expect(h.slotsOf(A)).toEqual(before);
     h.advance();
     expect(() => setTradeOffer(h.as(A), { tradeId: row.id, offer: 'berry_blueberry:2' })).toThrow('do not have');
     h.advance();
     expect(() => setTradeOffer(h.as(A), { tradeId: row.id, offer: 'nonsense' })).toThrow('bad offer');
   });
 
-  it('wielding an offered weapon before the swap fails the swap: nothing moves, confirmations clear', () => {
+  it('completes the trade when an offered weapon is wielded before confirmation', () => {
     h.give(A, 0, STICK_ITEM_ID, 1);
     h.give(B, 3, 'berry_blueberry', 4);
     const row = openTrade();
@@ -273,11 +277,90 @@ describe('trading: request, offers, two-sided confirmation, atomic swap', () => 
     h.advance();
     h.p(A).weapon = STICK_ITEM_ID; // wielded after offering
     bothConfirm();
-    expect(h.trades.size).toBe(1);
-    expect(current().aConfirmed || current().bConfirmed).toBe(false);
-    expect(h.count(A, STICK_ITEM_ID)).toBe(1);
-    expect(h.count(B, 'berry_blueberry')).toBe(4);
-    expect(h.notices.some((n) => n.kind === 6 && /unwield/.test(n.text))).toBe(true);
+    expect(h.trades.size).toBe(0);
+    expect(h.count(A, STICK_ITEM_ID)).toBe(0);
+    expect(h.count(A, 'berry_blueberry')).toBe(4);
+    expect(h.slotsOf(B)[HOTBAR_SIZE]).toEqual({ itemId: STICK_ITEM_ID, quantity: 1 });
+    expect(h.p(A).weapon).toBe('');
+    expect(h.p(B).weapon).toBe('');
+    expect(h.notices.filter(n => n.kind === 5)).toHaveLength(2);
+  });
+
+  it('puts away both players’ traded weapons and does not equip the received weapons', () => {
+    h.give(A, 0, STICK_ITEM_ID, 1);
+    h.give(B, 2, STONE_CLUB_ITEM_ID, 1);
+    h.p(A).weapon = STICK_ITEM_ID;
+    h.p(B).weapon = STONE_CLUB_ITEM_ID;
+    const row = openTrade();
+    setTradeOffer(h.as(A), { tradeId: row.id, offer: `${STICK_ITEM_ID}:1` });
+    h.advance();
+    setTradeOffer(h.as(B), { tradeId: row.id, offer: `${STONE_CLUB_ITEM_ID}:1` });
+    bothConfirm();
+    expect(h.trades.size).toBe(0);
+    expect(h.slotsOf(A)[0]).toBeNull();
+    expect(h.slotsOf(B)[2]).toBeNull();
+    expect(h.slotsOf(A)[HOTBAR_SIZE]).toEqual({ itemId: STONE_CLUB_ITEM_ID, quantity: 1 });
+    expect(h.slotsOf(B)[HOTBAR_SIZE]).toEqual({ itemId: STICK_ITEM_ID, quantity: 1 });
+    expect(h.p(A).weapon).toBe('');
+    expect(h.p(B).weapon).toBe('');
+  });
+
+  it.each([1, 2])('trades %i spare sticks from the bag first and keeps any remaining quick-slot copy wielded', quantity => {
+    h.give(A, 0, STICK_ITEM_ID, 1);
+    h.give(A, 2, STICK_ITEM_ID, 1);
+    h.give(A, 8, STICK_ITEM_ID, 1);
+    h.give(B, 1, STICK_ITEM_ID, 1);
+    h.p(A).weapon = STICK_ITEM_ID;
+    h.p(B).weapon = STICK_ITEM_ID;
+    const row = openTrade();
+    setTradeOffer(h.as(A), { tradeId: row.id, offer: `${STICK_ITEM_ID}:${quantity}` });
+    bothConfirm();
+    expect(h.slotsOf(A)[8]).toBeNull();
+    expect(h.slotsOf(A)[2]).toEqual(quantity === 1 ? { itemId: STICK_ITEM_ID, quantity: 1 } : null);
+    expect(h.slotsOf(A)[0]).toEqual({ itemId: STICK_ITEM_ID, quantity: 1 });
+    expect(h.count(B, STICK_ITEM_ID)).toBe(quantity + 1);
+    expect(h.p(A).weapon).toBe(STICK_ITEM_ID);
+    expect(h.p(B).weapon).toBe(STICK_ITEM_ID);
+  });
+
+  it('does not keep a weapon wielded when the same weapon is received back into the bag', () => {
+    h.give(A, 0, STICK_ITEM_ID, 1);
+    h.give(B, 1, STICK_ITEM_ID, 1);
+    h.p(A).weapon = STICK_ITEM_ID;
+    h.p(B).weapon = STICK_ITEM_ID;
+    const row = openTrade();
+    setTradeOffer(h.as(A), { tradeId: row.id, offer: `${STICK_ITEM_ID}:1` });
+    h.advance();
+    setTradeOffer(h.as(B), { tradeId: row.id, offer: `${STICK_ITEM_ID}:1` });
+    bothConfirm();
+    for (const owner of [A, B]) {
+      expect(h.slotsOf(owner).slice(0, HOTBAR_SIZE)).toEqual([null, null, null]);
+      expect(h.slotsOf(owner)[HOTBAR_SIZE]).toEqual({ itemId: STICK_ITEM_ID, quantity: 1 });
+      expect(h.p(owner).weapon).toBe('');
+    }
+  });
+
+  it('keeps equipment and both inventories unchanged after one confirmation and cancellation', () => {
+    h.give(A, 0, STICK_ITEM_ID, 1);
+    h.give(B, 1, STONE_CLUB_ITEM_ID, 1);
+    h.p(A).weapon = STICK_ITEM_ID;
+    h.p(B).weapon = STONE_CLUB_ITEM_ID;
+    const row = openTrade();
+    setTradeOffer(h.as(A), { tradeId: row.id, offer: `${STICK_ITEM_ID}:1` });
+    const beforeA = h.slotsOf(A), beforeB = h.slotsOf(B);
+    confirmTrade(h.as(A), { tradeId: row.id, aOffer: current().aOffer, bOffer: current().bOffer });
+    expect(current().aConfirmed).toBe(true);
+    expect(h.slotsOf(A)).toEqual(beforeA);
+    expect(h.slotsOf(B)).toEqual(beforeB);
+    expect(h.p(A).weapon).toBe(STICK_ITEM_ID);
+    expect(h.p(B).weapon).toBe(STONE_CLUB_ITEM_ID);
+    h.advance();
+    cancelTrade(h.as(B), { tradeId: row.id });
+    expect(h.trades.size).toBe(0);
+    expect(h.slotsOf(A)).toEqual(beforeA);
+    expect(h.slotsOf(B)).toEqual(beforeB);
+    expect(h.p(A).weapon).toBe(STICK_ITEM_ID);
+    expect(h.p(B).weapon).toBe(STONE_CLUB_ITEM_ID);
   });
 
   it('an offered item eaten or dropped before the swap fails it atomically', () => {
@@ -297,14 +380,22 @@ describe('trading: request, offers, two-sided confirmation, atomic swap', () => 
     expect(h.count(B, 'berry_blueberry')).toBe(0);
   });
 
-  it('respects bag capacity: a full bag fails the swap and nothing moves', () => {
-    for (let i = 0; i < INVENTORY_SIZE; i++) h.give(B, i, 'berry_greenberry', 99);
-    h.give(A, 3, 'berry_blueberry', 1);
+  it('preserves both inventories and wielded weapons when the receiving bag is full', () => {
+    h.give(A, 0, STICK_ITEM_ID, 1);
+    h.give(B, 0, STONE_CLUB_ITEM_ID, 1);
+    for (let i = 1; i < INVENTORY_SIZE; i++) h.give(B, i, 'berry_greenberry', 99);
+    h.p(A).weapon = STICK_ITEM_ID;
+    h.p(B).weapon = STONE_CLUB_ITEM_ID;
     const row = openTrade();
-    setTradeOffer(h.as(A), { tradeId: row.id, offer: 'berry_blueberry:1' });
+    const beforeA = h.slotsOf(A), beforeB = h.slotsOf(B);
+    setTradeOffer(h.as(A), { tradeId: row.id, offer: `${STICK_ITEM_ID}:1` });
     bothConfirm();
-    expect(h.count(A, 'berry_blueberry')).toBe(1);
-    expect(h.count(B, 'berry_blueberry')).toBe(0);
+    expect(h.trades.size).toBe(1);
+    expect(current().aConfirmed || current().bConfirmed).toBe(false);
+    expect(h.slotsOf(A)).toEqual(beforeA);
+    expect(h.slotsOf(B)).toEqual(beforeB);
+    expect(h.p(A).weapon).toBe(STICK_ITEM_ID);
+    expect(h.p(B).weapon).toBe(STONE_CLUB_ITEM_ID);
     expect(h.notices.some((n) => /too full/.test(n.text))).toBe(true);
   });
 
@@ -737,7 +828,7 @@ describe('pure social rules', () => {
   it('executeTrade never half-applies', () => {
     const a = emptySlots(); a[3] = { itemId: 'berry_blueberry', quantity: 1 };
     const b = emptySlots();
-    const r = executeTrade({ slots: a, weapon: '', offer: [{ itemId: 'berry_blueberry', quantity: 2 }], name: 'A' }, { slots: b, weapon: '', offer: [], name: 'B' });
+    const r = executeTrade({ slots: a, offer: [{ itemId: 'berry_blueberry', quantity: 2 }], name: 'A' }, { slots: b, offer: [], name: 'B' });
     expect(r.ok).toBe(false);
     expect(a[3]).toEqual({ itemId: 'berry_blueberry', quantity: 1 });
   });

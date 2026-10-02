@@ -1,3 +1,5 @@
+import { regionalPath } from '../../../shared/sim/frontier/regions';
+import type { RegionId } from '../../../shared/sim/frontier/catalog';
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Vector3 } from 'three';
@@ -34,7 +36,7 @@ const stepLength = (a: Vector3, b: Vector3) => Math.max(Math.abs(b.x-a.x), Math.
  * within a tick. Never predict movement through obstacles. The same movement
  * budget drives short-step duration and the diagonal/teleport distinction.
  */
-export function useTileMotion(tileX: number, tileZ: number, facing: number, groupRef: React.MutableRefObject<any>): React.MutableRefObject<Motion> {
+export function useTileMotion(tileX: number, tileZ: number, facing: number, groupRef: React.MutableRefObject<any>, region: RegionId = 'bramblewild', frontierBlocked?: Set<string>): React.MutableRefObject<Motion> {
   // Shared and stable while no node moves: tree cooldowns do not re-render avatars.
   const blocked = useWorldBlocked();
   const motion = useRef<Motion>({
@@ -59,7 +61,7 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
     // further than one tick of travel (e.g. a respawn) snaps.
     const maximum = MOVEMENT_STEPS_PER_TICK;
     if (chebyshev(previous, tile) > maximum) { snap(); return; }
-    const route = bfsPath(previous, goalIsTile(tile), blocked);
+    const route = region === 'bramblewild' ? bfsPath(previous, goalIsTile(tile), blocked) : regionalPath(region, previous, tile, p => frontierBlocked?.has(`${p.x},${p.z}`) ?? false);
     if (!route || route.length > maximum) { snap(); return; }
     // Finish any unrendered corner of the previous update before following
     // this update. Early network delivery must not make us cut across a tree.

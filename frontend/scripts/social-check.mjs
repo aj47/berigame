@@ -83,6 +83,7 @@ try {
   check('A picks a berry', await pickBerry(A));
   await tap(A, '[data-panel="chat"]');
   await tap(A, '[data-testid="open-friends"]');
+  await tap(A, '.friends-invite > summary');
   await tap(A, '[data-testid="make-invite"]');
   const link = await A.locator('[data-testid="invite-link"]').inputValue({ timeout: 20_000 });
   check('invite link carries only ?join=CODE', /\?join=[2-9A-HJ-NP-Z]{8}$/.test(link) && !/token|identity/i.test(link), link);
@@ -120,7 +121,7 @@ try {
   // Trade: A opens B's menu and asks; B accepts on the phone.
   await openMenuOn(A, bHex);
   const menu = await A.locator('.click-dropdown').textContent();
-  check('player menu has Trade, Add friend or Mute', /Trade/.test(menu) && /Mute chat/.test(menu), menu);
+  check('player menu has Trade and Mute, with friend actions in Chat', /Trade/.test(menu) && /Mute chat/.test(menu) && !/Add friend/.test(menu), menu);
   await tap(A, '.click-dropdown button:has-text("Trade")');
   await B.waitForSelector('[data-testid="trade-request"]', { timeout: 20_000 });
   await shot(B, '04-trade-request-mobile.png');

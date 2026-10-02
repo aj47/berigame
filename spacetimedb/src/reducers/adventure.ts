@@ -1,6 +1,6 @@
 import { SenderError, t } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { ADVENTURE_CAMP, ADVENTURE_TICKS, BERRY_PATCH, BERRY_MARKET, GIANT_FEAST, EXPEDITION_ACTIONS, PlayerState, chebyshev, hasTechnique, techniqueUnlocked, loadoutCount, Feat, rollDestination, worldBlockedSet, tileKey, inSafeRing, SWING_INTERVAL_TICKS } from '../../../shared/sim';
+import { ADVENTURE_CAMP, ADVENTURE_TICKS, BERRY_PATCH, BERRY_MARKET, GIANT_FEAST, EXPEDITION_ACTIONS, PlayerState, chebyshev, hasTechnique, giantFriendship, techniqueUnlocked, loadoutCount, Feat, rollDestination, worldBlockedSet, tileKey, inSafeRing, SWING_INTERVAL_TICKS } from '../../../shared/sim';
 import { requireAlivePlayer, currentTick, touchInput, savePlayer, clearInteractions, sameId } from '../lib/players';
 import { profile, saveProfile, progress, contribute, creditFor, carrying, spend, finishExpedition, syncShowcase, duelFor } from '../lib/adventure';
 import { giveItem } from '../lib/inventory';
@@ -36,7 +36,7 @@ export const expeditionAction = spacetimedb.reducer({ action: t.string(), expedi
       const e = ctx.db.expedition.insert({ id: 0n, leader: p.identity, stage: 'growing', startedTick: T, untilTick: T + ADVENTURE_TICKS, ripeTick: T + (hasTechnique(pp, 0) ? 10 : 30),
         x: BERRY_PATCH.x, z: BERRY_PATCH.z, carrier: undefined, mossCarrying: false, mossPaid: false, porter: undefined, lastActiveTick: T, value: (hasTechnique(pp, 2) ? 6 : 4) + bonus, split: false,
         mossX: BERRY_PATCH.x + 1, mossZ: BERRY_PATCH.z, pipX: 36, pipZ: 20, giantX: 36, giantZ: 29,
-        hiddenUntil: 0, pipUntil: T + 35 + firstDeliveryGrace, giantUntil: T + (hasTechnique(pp, 2) ? 30 : 40) + firstDeliveryGrace + (hasTechnique(pp, 14) && pp.giantTrust ? 50 : 0), baitX: 0, baitZ: 0, baitUntil: 0, guardUntil: 0,
+        hiddenUntil: 0, pipUntil: T + 35 + firstDeliveryGrace, giantUntil: T + (hasTechnique(pp, 2) ? 30 : 40) + firstDeliveryGrace + giantFriendship(pp.giantTrust).pauseTicks + (hasTechnique(pp, 14) && pp.giantTrust ? 50 : 0), baitX: 0, baitZ: 0, baitUntil: 0, guardUntil: 0,
         message: `The gardener planted your seed at (34,17). Walk there while it grows.${firstDeliveryGrace ? ' First delivery: Pip and the Giant wait 30 extra seconds before chasing.' : ''}`, destination });
       id = e.id;
     } else {

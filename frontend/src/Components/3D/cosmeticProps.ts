@@ -123,6 +123,27 @@ function giantsTooth(): BufferGeometry {
   return b.build();
 }
 
+/** Berry Heart: the Giant's thank-you, a berry-red heart with a little leaf. */
+function berryHeart(): BufferGeometry {
+  const b = new LowPolyBuilder();
+  b.log(new Vector3(0, 0, 0), new Vector3(0, .015, 0), .175, .175, { sides: 10, rings: 2, bark: [linear(CORD)], cap: linear(CORD), capStart: false, capEnd: false });
+  b.log(new Vector3(0, 0, .175), new Vector3(0, -.07, .2), .012, .012, { sides: 5, rings: 2, bark: [linear(CORD)], cap: linear(CORD) });
+  const outline = [[0, -.072], [-.05, -.042], [-.09, -.07], [-.085, -.12], [0, -.21], [.085, -.12], [.09, -.07], [.05, -.042]];
+  const front = outline.map(([x, y]) => new Vector3(x, y, .224));
+  const back = outline.map(([x, y]) => new Vector3(x, y, .19));
+  const centre = new Vector3(0, -.12, .242), rear = new Vector3(0, -.12, .19);
+  const berry = [linear(0xd85478), linear(0xe97892), linear(0xc33d66)];
+  for (let i = 0; i < front.length; i++) {
+    const next = (i + 1) % front.length;
+    b.triangle(centre, front[i], front[next], berry[i % berry.length]);
+    b.triangle(rear, back[next], back[i], berry[2]);
+    b.triangle(front[i], back[i], back[next], berry[2]);
+    b.triangle(front[i], back[next], front[next], berry[0]);
+  }
+  b.rock(new Vector3(.035, -.048, .222), .029, new Vector3(1.3, .55, .35), { segments: 5, seed: 91, colors: [linear(LEAF), linear(0x8aba61)] });
+  return b.build();
+}
+
 const BUILDERS: Record<number, () => BufferGeometry> = {
   [Cosmetic.StrawHat]: strawHat,
   [Cosmetic.CoastScarf]: coastScarf,
@@ -135,6 +156,7 @@ const BUILDERS: Record<number, () => BufferGeometry> = {
   [Cosmetic.MentorPinSilver]: mentorPin(0xa9b1bb, 0xe4e8ee),
   [Cosmetic.MentorPinGold]: mentorPin(0xd4a526, 0xf6d86b),
   [Cosmetic.GiantsTooth]: giantsTooth,
+  [Cosmetic.BerryHeart]: berryHeart,
 };
 const geometries = new Map<number, BufferGeometry>();
 

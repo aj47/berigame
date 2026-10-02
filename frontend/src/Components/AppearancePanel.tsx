@@ -35,7 +35,7 @@ const Keepsakes = () => {
   };
   return (
     <fieldset className="appearance-field keepsakes">
-      <legend>Keepsakes <span>earned on your travels · looks only</span></legend>
+      <legend>Keepsakes <span>looks only</span></legend>
       {[CosmeticSlot.Head, CosmeticSlot.Neck].map((slot) => (
         <div className="keepsake-row" key={slot}>
           <span className="keepsake-slot">{SLOT_NAMES[slot]}</span>
@@ -53,12 +53,16 @@ const Keepsakes = () => {
                 title={have ? c.name : `Locked: ${c.how}`}
                 onClick={() => void wear(slot, c.id + 1)}
               >
-                {have ? c.name : <><small>Locked</small> {c.how}</>}
+                {have ? c.name : <><span aria-hidden="true">◇ </span>{c.name}<span className="sr-only"> · Locked</span></>}
               </button>
             );
           })}
         </div>
       ))}
+      <details className="keepsake-guide"><summary>How to earn keepsakes</summary>
+        <dl>{COSMETICS.filter(c => !hasCosmetic(unlocked, c.id)).map(c => <div key={c.key}><dt>{c.name}</dt><dd>{c.how}</dd></div>)}</dl>
+        {COSMETICS.every(c => hasCosmetic(unlocked, c.id)) && <p>You’ve collected them all!</p>}
+      </details>
     </fieldset>
   );
 };
@@ -123,7 +127,7 @@ export default function AppearancePanel({ open, onClose, firstVisit = false }: P
   const onKey = (e:React.KeyboardEvent) => {
     if(e.key==='Escape'){e.stopPropagation();cancel();}
     if(e.key==='Tab') {
-      const items=Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"]')??[]).filter(el=>el.getClientRects().length);
+      const items=Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), summary, [tabindex="0"]')??[]).filter(el=>el.getClientRects().length);
       const first=items[0],last=items[items.length-1];
       if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
       else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
@@ -140,15 +144,15 @@ export default function AppearancePanel({ open, onClose, firstVisit = false }: P
             {tab==='Start'&&<>
               <label className="creator-name" htmlFor="character-name">What should we call you?</label>
               <div className="creator-name-input"><input ref={nameInput} id="character-name" value={name} maxLength={NAME_MAX_LEN} placeholder="Your adventurer’s name" autoComplete="off" spellCheck={false} disabled={pending} aria-describedby="character-name-hint" aria-invalid={Boolean(name&&nameError)} onChange={e=>{setName(e.target.value);setError('');}}/><span>{name.length}/{NAME_MAX_LEN}</span></div>
-              <p id="character-name-hint" className="creator-hint">{name&&nameError?nameError:'Other players will see this name. You can change it later.'}</p>
-              <div className="creator-section-heading"><h2>A starting point</h2><span>Make any look your own</span></div>
+              <p id="character-name-hint" className="creator-hint">{name&&nameError?nameError:'Visible to everyone · Change it anytime'}</p>
+              <div className="creator-section-heading"><h2>Starter looks</h2></div>
               <div className="creator-presets">{CHARACTER_PRESETS.map(preset=><button type="button" key={preset.name} title={preset.description} disabled={pending} onClick={()=>{setDraft(normalizeAppearance(preset.choices));setError('');}}><span className="creator-preset-colors" aria-hidden="true">{[ROBE_COLORS[normalizeAppearance(preset.choices).robeColor].color,HAIR_COLORS[normalizeAppearance(preset.choices).hairColor].color,SKIN_TONES[normalizeAppearance(preset.choices).skinTone].color].map((color,i)=><i key={i} style={{background:color}}/>)}</span><strong>{preset.name}</strong></button>)}</div>
               <div className="creator-start-actions"><button type="button" disabled={pending} onClick={()=>setDraft(Object.fromEntries(APPEARANCE_KEYS.map(key=>[key,Math.floor(Math.random()*APPEARANCE_LIMITS[key])])) as CharacterAppearance)}>Surprise me ↻</button><button type="button" onClick={()=>setTab('Face')}>Customize every detail →</button></div>
             </>}
             {tab==='Face'&&<>{choices('Build','bodyType',BODY_TYPES)}{choices('Face shape','faceShape',FACE_SHAPES)}{swatches('Skin tone','skinTone',SKIN_TONES)}{swatches('Eyes','eyeColor',EYE_COLORS)}</>}
             {tab==='Hair'&&<>{choices('Hair style','hairStyle',HAIR_STYLES)}{swatches('Hair color','hairColor',HAIR_COLORS)}{choices('Facial hair','facialHair',FACIAL_HAIR)}</>}
             {tab==='Outfit'&&<>{choices('Outfit','outfitStyle',OUTFIT_STYLES)}{swatches('Robe','robeColor',ROBE_COLORS)}{swatches('Wraps','wrapColor',WRAP_COLORS)}{swatches('Trousers','trouserColor',TROUSER_COLORS)}{swatches('Boots','bootColor',BOOT_COLORS)}</>}
-            {tab==='Details'&&<>{choices('Accessory','accessory',ACCESSORIES)}{swatches('Accessory color','accessoryColor',ACCESSORY_COLORS)}{!firstVisit&&<Keepsakes/>}<p className="creator-hint">Earn more keepsakes as you explore the island.</p></>}
+            {tab==='Details'&&<>{choices('Accessory','accessory',ACCESSORIES)}{swatches('Accessory color','accessoryColor',ACCESSORY_COLORS)}{!firstVisit&&<Keepsakes/>}</>}
           </div>
         </div>
       </div>

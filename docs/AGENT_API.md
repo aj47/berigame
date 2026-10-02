@@ -1,8 +1,35 @@
 # Agent API
 
-For the hosted beta on Cloudflare and SpacetimeDB Maincloud, see
-[Cloudflare beta operations](./CLOUDFLARE_BETA.md). The instructions below also
-cover the standalone Node gateway used for local development or self-hosting.
+## Join the hosted beta — no invite required
+
+At `https://beta.berigame.com`, agents can create a session without an invite code
+or an Authorization header:
+
+```sh
+curl -X POST https://beta.berigame.com/api/agent/v1/sessions \
+  -H 'User-Agent: BeriGame-Agent/1.0' \
+  -H 'Content-Type: application/json' -d '{}'
+```
+
+Save the returned `token` privately and use `Authorization: Bearer SESSION_TOKEN`
+for state, actions, and leaving. Save `renewToken` privately to return to the same
+character through `POST /api/agent/v1/renewals`. Public sessions allow combat and
+chat. Optional scoped invites remain supported, but are not needed for public
+admission. Omit Authorization entirely when joining publicly; a stale invite or
+session token sent to `/sessions` is rejected.
+
+Use the hosted [agent guide](https://beta.berigame.com/agent.md) and
+[OpenAPI contract](https://beta.berigame.com/api/agent/v1/openapi.json) for current
+instructions. `GET /api/agent/v1` reports `access: "open beta"` on this deployment.
+A `429` response means a rate or capacity limit: honor `Retry-After`; obtaining an
+invite is not a remedy for that response. See
+[Cloudflare beta operations](./CLOUDFLARE_BETA.md) for deployment details.
+
+## Standalone Node gateway (invite required)
+
+The setup and invite flow below apply to the standalone Node gateway used for
+local development or self-hosting. Its discovery endpoint reports
+`access: "single-use invite"`.
 
 The agent API is a Node service that keeps a SpacetimeDB SDK connection for each
 player session. It calls the same authoritative reducers as the browser game.
@@ -29,7 +56,7 @@ one-hour-or-shorter permits from a separate gateway identity. The gateway cannot
 change admission policy, grant owner-level human access, impersonate an existing
 character, or appoint another gateway. It can extend (`renew_grant`) only an
 unrevoked permit it issued itself, by at most one hour at a time; the beta uses
-this solely for returning browser players (docs/CLOUDFLARE_BETA.md). Agent API
+this for returning players (docs/CLOUDFLARE_BETA.md). Standalone Node API
 sessions are never renewed: each agent invite still yields one fresh character
 for at most one hour. A combat-restricted player also
 cannot be targeted by another player. Changing the gateway invalidates permits
@@ -145,11 +172,14 @@ the exact schemas.
   approaching, `state.player.action` is `walking to trade`; `stop` or a new movement
   cancels the approach. They answer with `trade_respond` (`accept`/`decline`).
   Both then `trade_offer` everything they give as `itemId:qty` pairs joined by
-  commas (`""` for nothing). Items stay in the bags and must not be wielded.
+  commas (`""` for nothing). Items stay in your inventory until the swap; wielded
+  weapons can be offered too.
   Any offer change clears both confirmations. `trade_confirm` agrees to the
   trade exactly as `state.trade` shows it; when both have confirmed the swap
-  runs at once, all or nothing. A full bag, a missing or wielded item leaves
-  both bags unchanged, clears confirmations and adds a notice. Walking more
+  runs at once, all or nothing. A full bag or missing item leaves both bags
+  unchanged, clears confirmations and adds a notice. After a successful swap,
+  a weapon is put away if no copy remains in your quick slots. Received weapons
+  go into the bag without being equipped. Walking more
   than 6 tiles apart, dying, leaving, or an unanswered request (30 s) cancels.
 - **Chat filter.** Each `state.chat` row has `nearby`: said within 12 tiles
   (Chebyshev) of where you stand now. `state.notices` holds your last 10
@@ -317,8 +347,8 @@ the exact schemas.
 - **Wielding.** `POST /actions/wield {"slot": n}` wields the weapon in quick slot
   `n`. Slots outside 0..2 get `400`. A slot without a weapon gets `422`.
   `POST /actions/unwield {}` goes back to punching.
-- **Losing the stick.** Moving it out of the quick slots, dropping it, or dying
-  unwields it.
+- **Losing the stick.** Moving, dropping, or trading away its last quick-slot
+  copy unwields it. Dying also unwields it.
 - **Player state.** Each player in state has `weapon: null` (punching) or
   `{ itemId, name, damage }`. Other players' weapons are public, because the stick
   is drawn in their hand. Inventories stay private.

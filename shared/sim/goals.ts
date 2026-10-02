@@ -256,8 +256,8 @@ export function firstDayGoal(input: GoalInput): GoalResult {
       const slot = slots.findIndex((s, i) => i < HOTBAR_SIZE && s?.itemId === STICK_ITEM_ID);
       return result({
         id: step,
-        text: 'Wield your stick: tap it',
-        hint: slot !== -1 ? `Or press ${slot + 1}. Hits twice as hard` : 'Move it to your quick bar first',
+        text: slot !== -1 ? 'Wield your stick: tap it' : 'Add your stick to a quick slot',
+        hint: slot !== -1 ? `Or press ${slot + 1}. Hits twice as hard` : 'Open your bag, then drag it to slots 1–3',
         action: slot !== -1 ? { kind: 'wield', slot } : null,
       });
     }
@@ -288,8 +288,8 @@ function coastGoal(input: GoalInput, hasStick: boolean): Goal | null {
     const slot = slots.findIndex((s, i) => i < HOTBAR_SIZE && s?.itemId === STONE_CLUB_ITEM_ID);
     return {
       id: 'wield-club',
-      text: 'Wield your stone club: tap it',
-      hint: slot !== -1 ? `Or press ${slot + 1}. Hits for 8` : 'Move it to your quick bar first',
+      text: slot !== -1 ? 'Wield your stone club: tap it' : 'Add your stone club to a quick slot',
+      hint: slot !== -1 ? `Or press ${slot + 1}. Hits for 8` : 'Open your bag, then drag it to slots 1–3',
       action: slot !== -1 ? { kind: 'wield', slot } : null,
     };
   }

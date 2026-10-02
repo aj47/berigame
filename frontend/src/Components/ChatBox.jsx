@@ -1,10 +1,12 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useGameActions } from "../spacetime/actions";
-import { useChatMessages, useMyPlayer, usePlayersByHex } from "../spacetime/hooks";
+import { useChatMessages, useFriendRows, useMyIdentityHex, useMyPlayer, usePlayersByHex } from "../spacetime/hooks";
 import { useChatStore } from "../store";
 import { useChatPrefsStore } from "../spacetime/stores/chatPrefsStore";
 import { useGiantStore } from "../spacetime/stores/giantStore";
 import { CHAT_NEARBY_RADIUS, chatVisible } from "@sim";
+import "./friends.css";
+import SocialTabs from "./SocialTabs";
 
 /** Your tile, only when it changes (not on every other row update). */
 const useMyTile = () => {
@@ -17,6 +19,8 @@ const ChatBox = memo(({ open, onClose, onOpenFriends }) => {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const allMessages = useChatMessages();
+  const friendRows = useFriendRows();
+  const myId = useMyIdentityHex();
   const players = usePlayersByHex();
   const mode = useChatPrefsStore((s) => s.mode);
   const setMode = useChatPrefsStore((s) => s.setMode);
@@ -68,12 +72,21 @@ const ChatBox = memo(({ open, onClose, onOpenFriends }) => {
           <h2>Chat</h2>
         </div>
         {onOpenFriends && (
-          <button className="panel-switch" onClick={onOpenFriends} data-testid="open-friends">
-            Friends
+          <button className="panel-switch" onClick={() => onOpenFriends(true)}>
+            Add friend
           </button>
         )}
-        <div className="chat-mode" role="radiogroup" aria-label="Show messages from">
-          {[["all", "All"], ["nearby", "Nearby"]].map(([value, label]) => (
+        <button
+          className="close-button"
+          onClick={onClose}
+          aria-label="Close chat"
+        >
+          ×
+        </button>
+      </header>
+      {onOpenFriends && <SocialTabs active="messages" onFriends={() => onOpenFriends(false)} friendCount={friendRows.length} />}
+      <div className="chat-mode" role="radiogroup" aria-label="Show messages from">
+          {[["all", "Island"], ["nearby", "Nearby"]].map(([value, label]) => (
             <button
               key={value}
               role="radio"
@@ -86,14 +99,6 @@ const ChatBox = memo(({ open, onClose, onOpenFriends }) => {
             </button>
           ))}
         </div>
-        <button
-          className="close-button"
-          onClick={onClose}
-          aria-label="Close chat"
-        >
-          ×
-        </button>
-      </header>
       <div
         id="chat-log"
         className="chat-log"
@@ -111,21 +116,24 @@ const ChatBox = memo(({ open, onClose, onOpenFriends }) => {
               </p>
             );
             const hex = message.sender.toHexString();
+            const sender = players.get(hex);
+            const name = sender?.name ?? `Player-${hex.slice(4, 8)}`;
+            const canAdd = onOpenFriends && sender && hex !== myId && !friendRows.some(row => row.friend.toHexString() === hex);
             return (
               <p key={message.id.toString()}>
                 <strong>
-                  {players.get(hex)?.name ?? `Player-${hex.slice(4, 8)}`}
+                  {canAdd ? <button type="button" className="chat-sender" title={`Add ${name} as a friend`} onClick={() => onOpenFriends(true, name, hex)}>{name}<span aria-hidden="true"> +</span></button> : name}
                 </strong>
                 <span>{message.text}</span>
               </p>
             );
           })
         ) : (
-          <p className="empty-state">
-            {mode === "nearby"
-              ? `Nothing said within ${CHAT_NEARBY_RADIUS} tiles yet. Switch to All to see the whole island.`
-              : "A quiet island. Say hello to the other adventurers."}
-          </p>
+          <div className="empty-state social-empty-state">
+            <span className="social-card-icon" aria-hidden="true">💬</span>
+            <strong>{mode === "nearby" ? "Quiet nearby" : "Say the first hello!"}</strong>
+            {mode === "nearby" && <button className="link-button" onClick={() => setMode("all")}>Hear the whole island</button>}
+          </div>
         )}
       </div>
       <form className="chat-input-bar" onSubmit={submit}>
@@ -137,7 +145,7 @@ const ChatBox = memo(({ open, onClose, onOpenFriends }) => {
           autoFocus
           value={input}
           maxLength={200}
-          placeholder="Say something…"
+          placeholder="Say hello…"
           onChange={(event) => setInput(event.target.value)}
           onFocus={() => setFocusedChat(true)}
           onBlur={() => setFocusedChat(false)}
@@ -151,7 +159,7 @@ const ChatBox = memo(({ open, onClose, onOpenFriends }) => {
           Send
         </button>
       </form>
-      {muted.size > 0 && <p className="fine-print">{muted.size} muted · unmute in Friends</p>}
+      {muted.size > 0 && <p className="fine-print">{muted.size} muted{onOpenFriends && <> · <button className="link-button" onClick={() => onOpenFriends(false)}>Manage in Friends</button></>}</p>}
     </section>
   );
 });

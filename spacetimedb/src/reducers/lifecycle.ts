@@ -81,7 +81,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     eatCooldownUntilTick: 0,
     lastInputTick: 0,
     inputsThisTick: 0,
-    weapon: '',
+    weapon: '', region: 'bramblewild',
   });
 });
 

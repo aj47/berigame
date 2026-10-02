@@ -34,7 +34,7 @@ export const FIND_BANNER_MS = 6000;
 export const COAST_ARRIVAL_MESSAGE = "You pushed through to the Coast";
 export const BOULDERS_ARRIVAL_MESSAGE = "You climbed into the Boulders. Something huge stirs…";
 export const STICK_FOUND_MESSAGE =
-  "You found a sturdy stick! Tap it to wield — hits twice as hard";
+  "You found a sturdy stick! Open your bag and drag it to a quick slot.";
 
 function goalIcon(goal: Goal, trees: ReturnType<typeof useTrees>): string {
   if (goal.id === "make-club" || goal.id === "wield-club")

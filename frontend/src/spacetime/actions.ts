@@ -45,6 +45,7 @@ export function useGameActions() {
   );
 
   return {
+    frontier: (command: import("../../../shared/sim/frontier/engine").Command) => run("frontier", c => c.reducers.frontierAction({ command: JSON.stringify(command) })),
     equipTechnique: (technique: number) => run('technique', c => c.reducers.equipTechnique({ technique })),
     expeditionAction: (action: string, expeditionId = 0n, extra: { target?: Identity; x?: number; z?: number; destination?: string } = {}) => run('expedition', c => c.reducers.expeditionAction({ action, expeditionId, target: extra.target, x: extra.x ?? 35, z: extra.z ?? 37, destination: extra.destination ?? 'market' })),
     contributeProject: (itemId: string) => run('project', c => c.reducers.contributeProject({ itemId })),
@@ -81,7 +82,8 @@ export function useGameActions() {
     requestTrade: (target: Identity) => run('requestTrade', (c) => c.reducers.requestTrade({ target })),
     respondTrade: (tradeId: bigint, accept: boolean) => run('respondTrade', (c) => c.reducers.respondTrade({ tradeId, accept })),
     setTradeOffer: (tradeId: bigint, offer: string) => run('setTradeOffer', (c) => c.reducers.setTradeOffer({ tradeId, offer })),
-    confirmTrade: (tradeId: bigint, aOffer: string, bOffer: string) => run('confirmTrade', (c) => c.reducers.confirmTrade({ tradeId, aOffer, bOffer })),
+    setTradeCoins: (tradeId: bigint, coins: number) => run('setTradeCoins', c => c.reducers.setTradeCoins({ tradeId, coins })),
+    confirmTrade: (tradeId: bigint, aOffer: string, bOffer: string, aCoins = 0, bCoins = 0) => run('confirmTrade', (c) => aCoins || bCoins ? c.reducers.confirmTradeCoins({ tradeId, aOffer, bOffer, aCoins, bCoins }) : c.reducers.confirmTrade({ tradeId, aOffer, bOffer })),
     cancelTrade: (tradeId: bigint) => run('cancelTrade', (c) => c.reducers.cancelTradeRequest({ tradeId })),
     /** Walk up to the Giant and keep swinging at it (open to everyone; needs the stone club to reach the Boulders). */
     attackGiant: (giantId: number) => run('attackGiant', (c) => c.reducers.attackGiant({ giantId })),

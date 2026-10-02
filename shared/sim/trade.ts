@@ -47,9 +47,8 @@ export function parseOffer(raw: string): ItemStack[] | null {
 }
 
 /** Why `offer` cannot come out of this bag right now, or null when it can. */
-export function offerProblem(offer: readonly ItemStack[], slots: readonly Slot[], weapon: string): string | null {
+export function offerProblem(offer: readonly ItemStack[], slots: readonly Slot[]): string | null {
   for (const it of offer) {
-    if (weapon !== '' && it.itemId === weapon) return `Unwield your ${itemName(it.itemId)} before trading it`;
     if (countItem(slots, it.itemId) < it.quantity) return `You do not have ${it.quantity} ${itemName(it.itemId)}`;
   }
   return null;
@@ -74,20 +73,18 @@ export function removeItemCount(slots: readonly Slot[], itemId: string, quantity
   return out;
 }
 
-export interface TradeSide { slots: readonly Slot[]; weapon: string; offer: readonly ItemStack[]; name: string }
+export interface TradeSide { slots: readonly Slot[]; offer: readonly ItemStack[]; name: string }
 export type TradeResult = { ok: true; a: Slot[]; b: Slot[] } | { ok: false; reason: string };
 
 /**
- * The swap, all or nothing: both offers must still be in the bags (and not
- * wielded), and each bag must fit what it receives after giving its own.
+ * The swap, all or nothing: both offers must still be in the inventories,
+ * and each bag must fit what it receives after giving its own.
  */
 export function executeTrade(a: TradeSide, b: TradeSide): TradeResult {
   for (const side of [a, b]) {
-    const problem = offerProblem(side.offer, side.slots, side.weapon);
+    const problem = offerProblem(side.offer, side.slots);
     if (problem) {
-      return { ok: false, reason: side.weapon && side.offer.some((it) => it.itemId === side.weapon)
-        ? `${side.name} must unwield their ${itemName(side.weapon)} first`
-        : `${side.name} no longer has what they offered` };
+      return { ok: false, reason: `${side.name} no longer has what they offered` };
     }
   }
   let sa = a.slots.slice();

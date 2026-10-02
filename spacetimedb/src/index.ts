@@ -21,3 +21,5 @@ export * from './reducers/giant';
 export * from './reducers/garden';
 
 export * from './reducers/adventure';
+
+export * from './reducers/frontier';

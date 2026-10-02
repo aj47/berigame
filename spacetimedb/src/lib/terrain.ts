@@ -11,6 +11,7 @@ export function reconcileTerrain(ctx: Ctx): void {
     return nearestDryTile(t, blocked);
   };
   for (const row of ctx.db.player.iter()) {
+    if (row.region && row.region !== 'bramblewild') continue;
     if (isLandTile(row) && !scenery.has(tileKey(row))) continue;
     const p = { ...row, ...landing(row) };
     clearInteractions(ctx, p);

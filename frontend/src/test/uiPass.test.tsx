@@ -5,7 +5,7 @@ import { Object3D } from "three";
 import SettingsPanel from "../Components/SettingsPanel";
 import { DEFAULT_SETTINGS, useSettingsStore } from "../spacetime/stores/settingsStore";
 import { drawMinimap, minimapModel } from "../Components/minimapModel";
-import { tipFor, TIP_MS } from "../Components/OnboardingTip";
+import { OnboardingTip, tipFor, TIP_MS } from "../Components/OnboardingTip";
 import { clickHandlerOf, tapSamples } from "../Components/3D/tapAssist";
 import GoalChip from "../Components/GoalChip";
 import { useFirstDayStore } from "../spacetime/stores/firstDayStore";
@@ -160,6 +160,20 @@ describe("onboarding tips and the First Day celebration", () => {
   it("points eat and wield tips at the quick-bar slot", () => {
     expect(tipFor({ id: "eat-berry", text: "", hint: "", action: { kind: "eat", slot: 1 } }).targets[0]).toBe('.hotbar-slot[data-slot="1"]');
     expect(tipFor({ id: "reach-coast", text: "", hint: "", action: null }).targets[0]).toBe(".minimap");
+  });
+
+  it("updates weapon guidance when the same goal moves from the bag to a quick slot", () => {
+    const view = (assigned: boolean) => <>
+      <button className="goal-chip">Goal</button>
+      <button className="hotbar-slot" data-slot="1">Stick</button>
+      <OnboardingTip goal={{ id: "wield-stick", text: "", hint: "", action: assigned ? { kind: "wield", slot: 1 } : null }} onDone={() => {}} />
+    </>;
+    const { rerender } = render(view(false));
+    expect(screen.getByText(/Open your bag and drag your stick to a quick slot/)).toBeInTheDocument();
+    rerender(view(true));
+    expect(screen.queryByText(/Open your bag and drag your stick/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Tap your stick to wield it/)).toBeInTheDocument();
+    expect(tipFor({ id: "wield-club", text: "", hint: "", action: null }).text).toContain("drag your stone club to a quick slot");
   });
 
   it("shows a step's tip once, remembers it, and does not show it again after a reload", () => {

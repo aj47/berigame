@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { COSMETICS, RECIPES, SKILLS, Skill, getCosmetic, hasCosmetic, levelForXp } from '@sim';
+import { COSMETICS, Cosmetic, RECIPES, SKILLS, Skill, getCosmetic, hasCosmetic, levelForXp } from '@sim';
 
 /** DamageNumber kind for an XP floater (no EventKind uses it). */
 export const XP_FLOAT_KIND = 100;
@@ -68,7 +68,7 @@ export const useProgressStore = create<ProgressState>((set, get) => {
     onCosmetics: (prevMask, nextMask) => {
       for (const c of COSMETICS) {
         if (hasCosmetic(nextMask, c.id) && !hasCosmetic(prevMask, c.id) && !c.skill) {
-          showBanner({ kind: 'cosmetic', title: `New keepsake: ${getCosmetic(c.id)!.name}`, detail: 'You are wearing it. Change it in Style.' });
+          showBanner({ kind: 'cosmetic', title: `New keepsake: ${getCosmetic(c.id)!.name}`, detail: c.id === Cosmetic.BerryHeart ? 'A gift from the Berry Giant. Find it in Character → Details.' : 'You are wearing it. Change it in Style.' });
         }
       }
     },

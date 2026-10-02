@@ -12,26 +12,16 @@ function stackLimit(itemId: string): number {
 
 /**
  * Add `quantity` of `itemId`, topping up existing stacks first, then filling
- * empty slots. Weapons go to the quick bar instead (see placeWeapon), so a
- * found stick can always be wielded straight away. Returns the new slot array
- * and whatever did not fit.
+ * empty slots. New weapons stay in the bag until the player moves them to a
+ * quick slot; collecting or crafting one never changes the quick bar.
+ * Returns the new slot array and whatever did not fit.
  */
 export function addItem(slots: readonly Slot[], itemId: string, quantity: number): { slots: Slot[]; remaining: number } {
-  if (isWeapon(itemId)) {
-    let out = slots.slice();
-    let remaining = quantity;
-    while (remaining > 0) {
-      const placed = placeWeapon(out, itemId);
-      if (!placed) break;
-      out = placed;
-      remaining -= 1;
-    }
-    return { slots: out, remaining };
-  }
   const out = slots.slice();
   const limit = stackLimit(itemId);
+  const firstSlot = isWeapon(itemId) ? HOTBAR_SIZE : 0;
   let remaining = quantity;
-  for (let i = 0; i < out.length && remaining > 0; i++) {
+  for (let i = firstSlot; i < out.length && remaining > 0; i++) {
     const s = out[i];
     if (s && s.itemId === itemId && s.quantity < limit) {
       const add = Math.min(limit - s.quantity, remaining);
@@ -39,7 +29,7 @@ export function addItem(slots: readonly Slot[], itemId: string, quantity: number
       remaining -= add;
     }
   }
-  for (let i = 0; i < out.length && remaining > 0; i++) {
+  for (let i = firstSlot; i < out.length && remaining > 0; i++) {
     if (out[i] === null) {
       const add = Math.min(limit, remaining);
       out[i] = { itemId, quantity: add };
@@ -47,32 +37,6 @@ export function addItem(slots: readonly Slot[], itemId: string, quantity: number
     }
   }
   return { slots: out, remaining };
-}
-
-/**
- * Put one weapon in the first empty quick slot. With the quick bar full, it
- * takes the last quick slot that does not hold a weapon, and that stack moves
- * to the first empty bag slot. Otherwise it goes to the first empty slot.
- * Returns null when the bag is full.
- */
-function placeWeapon(slots: Slot[], itemId: string): Slot[] | null {
-  const out = slots.slice();
-  const item = { itemId, quantity: 1 };
-  const bar = Math.min(HOTBAR_SIZE, out.length);
-  for (let i = 0; i < bar; i++) {
-    if (out[i] === null) { out[i] = item; return out; }
-  }
-  const free = out.indexOf(null, bar);
-  if (free < 0) return null;
-  for (let i = bar - 1; i >= 0; i--) {
-    if (!isWeapon(out[i]!.itemId)) {
-      out[free] = out[i];
-      out[i] = item;
-      return out;
-    }
-  }
-  out[free] = item;
-  return out;
 }
 
 /** Remove up to `quantity` from `slot`. Returns how many were removed. */

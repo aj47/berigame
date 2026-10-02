@@ -1,3 +1,4 @@
+import { restoreRecovery } from '../frontier/recovery';
 import React, { useEffect, useRef, useState } from "react";
 import { useLoadingStore } from "../store";
 import { TOKEN_KEY } from "../spacetime/connection";
@@ -103,6 +104,7 @@ const LoadingScreen = () => {
         {connectionIssue && hasSavedSignIn && (
           <details className="loading-recovery">
             <summary>Sign-in recovery</summary>
+            <label>Restore a character backup<input type="file" accept="application/json" onChange={e=>{const file=e.target.files?.[0];if(file)void restoreRecovery(file).catch(error=>setRecoveryError(error.message));}}/></label>
             <p>Try Rejoin first. Starting again creates a new character in this world. Your previous sign-in will be backed up in this browser. This cannot fix a server outage.</p>
             <button className="primary-button" onClick={startNewCharacter}>Start a new character</button>
             {recoveryError && <p role="alert">{recoveryError}</p>}

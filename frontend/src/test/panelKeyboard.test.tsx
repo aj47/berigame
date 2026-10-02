@@ -1,11 +1,22 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import UIComponents from '../Components/UIComponents';
+import { openSettlement } from '../frontier/navigation';
+import { openAdventure } from '../Components/adventureNavigation';
 
-vi.mock('../Components/AdventurePanel', () => ({ default: () => null, AdventureHud: () => null, DuelHud: () => null }));
+const region = vi.hoisted(() => ({ value: 'bramblewild' }));
+vi.mock('../frontier/FrontierPanel', () => ({ default: ({ open, request, setOpen }: any) => open ? <section aria-label="Settlements">{request.tab}<button onClick={() => setOpen(false)}>Close settlements</button></section> : null }));
+
+vi.mock('../Components/AdventurePanel', () => ({
+  default: ({ open, initialView, onClose }: any) => {
+    const [view, setView] = React.useState(initialView);
+    return open ? <section aria-label="Adventure"><p>Activity: {view}</p><button onClick={() => setView('hub')}>All activities</button><button onClick={onClose}>Close adventure</button></section> : null;
+  },
+  AdventureHud: () => null, DuelHud: () => null,
+}));
 vi.mock('../Components/SkillsPanel', () => ({ default: () => null }));
-vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => null, usePlayers: () => [], useMySkills: () => null, useMyCosmetics: () => null }));
+vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => ({ name: "Tester", region: region.value }), usePlayers: () => [], useMySkills: () => null, useMyCosmetics: () => null }));
 vi.mock('../Components/ChatBox', () => ({ default: ({ open }: any) => open ? <div>Opened chat</div> : null }));
 vi.mock('../Components/Inventory', () => ({ default: ({ open, onCraft }: any) => open ? <section aria-label="Inventory"><button onClick={onCraft}>Craft from bag</button></section> : null }));
 vi.mock('../Components/CraftingPanel', () => ({ default: ({ open }: any) => open ? <section aria-label="Crafting">Recipes</section> : null }));
@@ -18,7 +29,7 @@ vi.mock('../Components/TickDebug', () => ({ default: () => null }));
 vi.mock('../Components/Minimap', () => ({ default: () => null }));
 vi.mock('../Components/FriendsPanel', () => ({ default: () => null, FriendSync: () => null, InviteRedeemer: () => null }));
 vi.mock('../Components/TradeWindow', () => ({ default: () => null }));
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { region.value = "bramblewild"; cleanup(); vi.restoreAllMocks(); });
 
 describe('panel keyboard shortcuts respect native controls', () => {
   it.each([/^Bag/, /^Help/, /^Quick slot 1/])('does not consume Enter on a focused button', (name) => {
@@ -90,5 +101,67 @@ describe('compact menu and independent crafting', () => {
     fireEvent.click(screen.getByRole('button', { name: /Menu/ }));
     fireEvent.click(screen.getByRole('button', { name: /^Craft/ }));
     expect(screen.getByRole('region', { name: 'Crafting' })).toBeVisible();
+  });
+});
+
+describe('contextual adventure navigation', () => {
+  it.each(['expedition', 'market', 'feast', 'workshop', 'gardens', 'duels'] as const)('opens the requested %s activity from the world', view => {
+    render(<UIComponents />);
+    act(() => openAdventure(view));
+    expect(screen.getByText(`Activity: ${view}`)).toBeVisible();
+  });
+  it('opens the requested activity again after navigating within the panel', () => {
+    render(<UIComponents />);
+    act(() => openAdventure('market'));
+    fireEvent.click(screen.getByRole('button', { name: 'All activities' }));
+    expect(screen.getByText('Activity: hub')).toBeVisible();
+    act(() => openAdventure('market'));
+    expect(screen.getByText('Activity: market')).toBeVisible();
+    act(() => openAdventure('workshop'));
+    expect(screen.getByText('Activity: workshop')).toBeVisible();
+  });
+  it('resets to all activities when reopened from the toolbar', () => {
+    render(<UIComponents />);
+    act(() => openAdventure('market'));
+    fireEvent.click(screen.getByRole('button', { name: 'Close adventure' }));
+    const trigger = screen.getByRole('button', { name: 'Adventure', exact: true });
+    expect(trigger).toHaveFocus();
+    fireEvent.click(trigger);
+    expect(screen.getByText('Activity: hub')).toBeVisible();
+  });
+  it('keeps old adventure events working and ignores unknown views', () => {
+    render(<UIComponents />);
+    act(() => window.dispatchEvent(new Event('berigame-adventure')));
+    expect(screen.getByText('Activity: hub')).toBeVisible();
+    act(() => window.dispatchEvent(new CustomEvent('berigame-adventure', { detail: { view: 'shop' } })));
+    expect(screen.getByText('Activity: hub')).toBeVisible();
+  });
+});
+
+
+describe('settlements share the game panel slot', () => {
+  it('world links replace Adventure and Bag replaces settlements', () => {
+    render(<UIComponents frontierEnabled />);
+    fireEvent.click(screen.getByRole('button', {name:'Adventure'}));
+    act(() => openSettlement('Land', 'settlement-13'));
+    expect(screen.queryByRole('region', {name:'Adventure'})).not.toBeInTheDocument();
+    expect(screen.getByRole('region', {name:'Settlements'})).toHaveTextContent('Land');
+    fireEvent.click(screen.getByRole('button', {name:/^Bag/}));
+    expect(screen.queryByRole('region', {name:'Settlements'})).not.toBeInTheDocument();
+    expect(screen.getByRole('region', {name:'Inventory'})).toBeVisible();
+  });
+  it('keeps bag, crafting, chat and Escape working in the Meadows', () => {
+    region.value='settlement';
+    render(<UIComponents frontierEnabled />);
+    fireEvent.keyDown(document.body, {key:'i'});
+    expect(screen.getByRole('region', {name:'Settlements'})).toHaveTextContent('Bag');
+    fireEvent.keyDown(document.body, {key:'c'});
+    expect(screen.getByRole('region', {name:'Settlements'})).toHaveTextContent('Craft');
+    fireEvent.keyDown(document.body, {key:'Enter'});
+    expect(screen.queryByRole('region', {name:'Settlements'})).not.toBeInTheDocument();
+    expect(screen.getByText('Opened chat')).toBeVisible();
+    act(() => openSettlement());
+    fireEvent.keyDown(document.body, {key:'Escape'});
+    expect(screen.queryByRole('region', {name:'Settlements'})).not.toBeInTheDocument();
   });
 });

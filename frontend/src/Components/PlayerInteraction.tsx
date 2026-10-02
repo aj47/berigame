@@ -15,7 +15,7 @@ interface Selection {
 /** Resolve identities against live rows: choosing somebody never performs an action by itself. */
 export default function PlayerInteraction({ selected }: { selected: Selection }) {
   const players = usePlayersByHex(), me = useMyIdentityHex(), actions = useGameActions();
-  const friends = useChatPrefsStore(state => state.friends), muted = useChatPrefsStore(state => state.muted);
+  const muted = useChatPrefsStore(state => state.muted);
   const setSelected = useUserInputStore((state: any) => state.setClickedOtherObject);
   const available = (hex: string) => {
     const player = players.get(hex);
@@ -42,7 +42,6 @@ export default function PlayerInteraction({ selected }: { selected: Selection })
       <button className="context-action" onClick={() => run(() => actions.attack(player.identity))}>Attack<span aria-hidden="true">›</span></button>
       <button className="context-action" onClick={() => run(() => actions.follow(player.identity))}>Follow<span aria-hidden="true">›</span></button>
       <button className="context-action" onClick={() => run(() => actions.requestTrade(player.identity))}>Trade<span aria-hidden="true">›</span></button>
-      {!friends.has(selected.playerHex) && <button className="context-action" onClick={() => run(() => actions.addFriend(player.identity))}>Add friend<span aria-hidden="true">›</span></button>}
       <button className="context-action" onClick={() => run(() => {
         const prefs = useChatPrefsStore.getState(), hex = selected.playerHex!;
         const wasMuted = prefs.muted.has(hex);
