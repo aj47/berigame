@@ -24,6 +24,12 @@ export function wikiUrl(article = '', hostname = currentHostname()): string {
   return hostedUrl(hostname, WIKI_HOST, `/${suffix}`, localPath);
 }
 
+/** Machine-readable wiki files live at the root in production and local previews. */
+export function wikiResourceUrl(resource: string, hostname = currentHostname()): string {
+  const path = `/${resource.replace(/^\/+/, '')}`;
+  return hostedUrl(hostname, WIKI_HOST, path, path);
+}
+
 export function gameUrl(hostname = currentHostname()): string {
   return hostedUrl(hostname, GAME_HOST, '/', '/play');
 }

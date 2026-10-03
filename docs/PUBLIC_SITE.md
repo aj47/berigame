@@ -60,6 +60,17 @@ needed for this website release.
 - Play links reach the beta, and `/?join=CODE` preserves the invite query.
 - `/favicon.svg`, `/favicon.ico`, and `/apple-touch-icon.png` load on every deployed origin.
 - Opening the landing page or wiki does not open a game WebSocket or create a character.
+- `/llms.txt` links to the generated Markdown articles and live beta API descriptions.
+- `/wiki-index.json` lists every article, its sections, source files and build metadata.
+- `/wiki/crafting.md` serves Markdown; requesting `/crafting` with `Accept: text/markdown` serves the same document with `Vary: Accept`.
+- `/llms-full.txt`, `/robots.txt` and `/sitemap.xml` are readable without JavaScript.
+- `/wiki/no-such-article.md` returns 404 instead of an HTML application shell.
+
+The frontend build generates wiki exports in `dist` from `wikiContent.ts`, its
+article modules and the shared simulation definitions. Keep this generation step
+when changing the build pipeline. Do not hand-edit the exported files. Their
+content hash and generation metadata identify the documentation snapshot; they
+do not describe the live beta's feature flags or state.
 
 Local walkthrough recordings in `review-videos/` and `frontend/review-videos/`
 are review artifacts, not part of the deployed bundle.

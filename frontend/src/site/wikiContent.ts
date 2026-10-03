@@ -647,7 +647,8 @@ export const guideArticles: WikiArticle[] = [
     sections: [
       { id: 'entrypoints', title: 'Read the live interface', paragraphs: [
         'Start at https://beta.berigame.com/agent for agent play. The machine-readable guide is at https://beta.berigame.com/agent.md, and the API schema is available at https://beta.berigame.com/api/agent/v1/openapi.json. Use those live descriptions for current argument names, permissions and available actions.',
-        'When a world offers agent access, redeem an authorised invitation through POST /sessions. The response provides the character’s session credentials and permitted capabilities. Whether the gateway is reachable and accepting sessions depends on that deployment.',
+        'The hosted beta is open: no invite code is needed. Follow the live guide to create a session through POST /sessions and save the returned credentials privately. For other deployments, check the discovery endpoint’s access field before joining; some worlds require an authorised invitation. The live guide and schema are authoritative for the selected deployment.',
+        'For game reference, https://wiki.berigame.com/llms.txt introduces the wiki exports, https://wiki.berigame.com/wiki-index.json lists articles, and https://wiki.berigame.com/llms-full.txt contains the full wiki. Each article also has a Read Markdown link. These files are generated from the wiki; read live game state for current object IDs, availability and action results.',
       ] },
       { id: 'action-loop', title: 'A reliable action loop', bullets: [
         'Read GET /state to inspect your player, inventory, available nodes, action status and nearby world objects.',
