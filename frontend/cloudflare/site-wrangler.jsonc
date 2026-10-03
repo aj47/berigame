@@ -8,7 +8,13 @@
   "preview_urls": false,
   "routes": [
     { "pattern": "berigame.com", "custom_domain": true },
-    { "pattern": "wiki.berigame.com", "custom_domain": true }
+    { "pattern": "wiki.berigame.com", "custom_domain": true },
+    // Shared branding can update without publishing a new game/API Worker.
+    // Trailing wildcards also match cache-busting query strings.
+    { "pattern": "beta.berigame.com/favicon*", "zone_name": "berigame.com" },
+    { "pattern": "beta.berigame.com/apple-touch-icon.png*", "zone_name": "berigame.com" },
+    { "pattern": "beta.berigame.com/icon.png*", "zone_name": "berigame.com" },
+    { "pattern": "beta.berigame.com/logo.png*", "zone_name": "berigame.com" }
   ],
   "assets": {
     "directory": "../dist",

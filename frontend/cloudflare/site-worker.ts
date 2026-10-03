@@ -7,6 +7,7 @@ interface SiteEnv {
 
 const WIKI_ORIGIN = 'https://wiki.berigame.com';
 const GAME_ORIGIN = 'https://beta.berigame.com';
+const BRAND_ASSETS = new Set(['/favicon.svg', '/favicon.ico', '/favicon.png', '/apple-touch-icon.png', '/icon.png', '/logo.png']);
 
 async function wikiDocument(request: Request, env: SiteEnv, path: string, negotiated: boolean): Promise<Response> {
   const url = new URL(request.url);
@@ -57,6 +58,16 @@ export default {
     }
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
+    }
+
+    // Only the beta's icon paths route here. Never serve the site bundle as a game fallback.
+    if (url.hostname === 'beta.berigame.com') {
+      if (!BRAND_ASSETS.has(path)) return new Response(null, { status: 404 });
+      const asset = await env.ASSETS.fetch(request);
+      if (asset.headers.get('Content-Type')?.includes('text/html')) return new Response(null, { status: 404 });
+      const headers = new Headers(asset.headers);
+      headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+      return new Response(request.method === 'HEAD' || asset.status === 304 ? null : asset.body, { status: asset.status, headers });
     }
 
     if (path === '/play' || (url.hostname === 'berigame.com' && path === '/' && url.searchParams.has('join'))) {

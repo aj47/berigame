@@ -15,6 +15,16 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-03-blueberry-icon', date: '2026-10-03', period: 'Oct 3, 2026',
+    title: 'The blueberry becomes the game icon',
+    note: 'Branding update',
+    changes: [
+      'The in-game blueberry now appears in browser tabs, touch icons and website and wiki branding.',
+      'A matching transparent PNG is available at https://berigame.com/icon.png.',
+    ],
+    commits: [],
+  },
+  {
     id: '2026-10-03-agent-friendly-wiki', date: '2026-10-03', period: 'Oct 3, 2026',
     title: 'A wiki agents can read directly',
     note: 'Wiki update',

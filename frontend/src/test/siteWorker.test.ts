@@ -63,6 +63,26 @@ describe('public website hosting', () => {
     expect(bindings.ASSETS.fetch).not.toHaveBeenCalled();
   });
 
+  it.each(['/favicon.svg', '/favicon.ico', '/favicon.png', '/apple-touch-icon.png', '/icon.png', '/logo.png'])('serves the beta brand asset %s through the shared site', async path => {
+    const incoming = request('beta.berigame.com', `${path}?v=blueberry-1`);
+    const bindings = env();
+    const response = await worker.fetch(incoming, bindings);
+    expect(response.status).toBe(200);
+    expect(bindings.ASSETS.fetch).toHaveBeenCalledWith(incoming);
+    expect(response.headers.get('Cache-Control')).toBe('public, max-age=0, must-revalidate');
+  });
+
+  it.each(['/', '/play', '/favicon-unknown.png', '/icon.png/extra', '/assets/game.js'])('does not serve the public site bundle for beta path %s', async path => {
+    const bindings = env();
+    expect((await worker.fetch(request('beta.berigame.com', path), bindings)).status).toBe(404);
+    expect(bindings.ASSETS.fetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing beta icon instead of returning the SPA shell', async () => {
+    const response = await worker.fetch(request('beta.berigame.com', '/icon.png'), documentEnv('<html>SPA shell</html>', 'text/html'));
+    expect(response.status).toBe(404);
+  });
+
   it.each([
     ['/llms.txt', 'text/plain'], ['/llms-full.txt', 'text/plain'],
     ['/wiki-index.json', 'application/json'], ['/wiki/crafting.md', 'text/markdown'],

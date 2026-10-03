@@ -1,7 +1,7 @@
 import React from 'react';
 
-export function BerryMark() {
-  return <svg viewBox="0 0 44 44" fill="none" aria-hidden="true"><path d="M23 16C14 16 11 8 13 4c9 0 12 5 10 12Z" fill="#b7d69e"/><path d="M24 17c0-9 7-12 14-10-1 8-7 11-14 10Z" fill="#8cbb76"/><circle cx="17" cy="27" r="11" fill="#e18e91"/><circle cx="30" cy="29" r="10" fill="#d36777"/><circle cx="14" cy="23" r="2.4" fill="#ffd4be"/><circle cx="28" cy="25" r="2" fill="#ffd4be"/></svg>;
+export function BerryMark({ size = 36 }: { size?: number }) {
+  return <img className="berry-mark" src="/icon.png?v=blueberry-1" width={size} height={size} alt="" aria-hidden="true" />;
 }
 export function Arrow({ diagonal = false }: { diagonal?: boolean }) {
   return <span className="site-arrow" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d={diagonal ? 'M6 18 18 6M6 6h12v12' : 'M4 12h16m-6-6 6 6-6 6'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span>;

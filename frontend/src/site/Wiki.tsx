@@ -9,6 +9,7 @@ import { useHashAnchor } from './useHashAnchor'
 import { useArticleNavigation } from './useArticleNavigation'
 import RecipePlanner from './RecipePlanner'
 import WikiDocumentLink from './WikiDocumentLink'
+import { BerryMark } from './SiteIcons'
 import './wiki.css'
 import './wikiReading.css'
 
@@ -116,14 +117,14 @@ export default function Wiki({ slug }: { slug?: string }) {
   return <div className={`wiki-page${!slug ? ' wiki-home-page' : ''}`}>
     <a className="wiki-skip-link" href="#wiki-content">Skip wiki navigation</a>
     <div className="wiki-mobile-bar">
-      <a href={wikiUrl()} className="wiki-mobile-title"><BookIcon size={19} />BeriGame Wiki</a>
+      <a href={wikiUrl()} className="wiki-mobile-title"><BerryMark size={26} />BeriGame Wiki</a>
       <button ref={menuToggle} className="wiki-menu-toggle" type="button" aria-expanded={menuOpen} aria-controls="wiki-navigation" onClick={() => setMenuOpen(!menuOpen)}>
         {menuOpen ? 'Close menu' : 'Browse wiki'}<span aria-hidden="true">{menuOpen ? '×' : '☰'}</span>
       </button>
     </div>
     <div className="wiki-layout">
       <aside className={`wiki-sidebar${menuOpen ? ' wiki-sidebar-open' : ''}`} id="wiki-navigation" aria-label="Wiki navigation">
-        <a className="wiki-sidebar-brand" href={wikiUrl()}><span className="wiki-brand-icon"><BookIcon size={25} /></span><span>BeriGame Wiki<small>The island encyclopedia</small></span></a>
+        <a className="wiki-sidebar-brand" href={wikiUrl()}><span className="wiki-brand-icon"><BerryMark size={32} /></span><span>BeriGame Wiki<small>The island encyclopedia</small></span></a>
         <nav aria-label="Wiki articles">
           <a href={wikiUrl()} className={`wiki-nav-home${!slug && !normalizedQuery ? ' wiki-nav-current' : ''}`} aria-current={!slug && !normalizedQuery ? 'page' : undefined}>Wiki home<ArrowIcon /></a>
           <div className="wiki-nav-group wiki-nav-agents">

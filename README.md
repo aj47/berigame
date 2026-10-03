@@ -136,7 +136,10 @@ the shared simulation definitions where possible. Update explanatory prose along
 related article links. The landing island is an illustrative diorama; the
 trailer is a cinematic interpretation of the game. The crafting planner reads
 the shared recipe definitions, including one-time cosmetic unlocks. The shared
-berry favicon and Apple touch icon live in `frontend/public/` and apply to all routes.
+blueberry brand icon is `frontend/public/icon.png`, copied from the in-game
+`items/blueberry.png` artwork. Its PNG, ICO, SVG and Apple touch variants live in
+the same directory. The public site deployment serves these brand assets on all
+three production domains; see `docs/PUBLIC_SITE.md` for the narrow beta routes.
 
 Run `npm run site:deploy` to deploy the public website and wiki separately from
 the game. See [public website deployment](docs/PUBLIC_SITE.md) for domain setup,
