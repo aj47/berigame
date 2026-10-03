@@ -1,4 +1,5 @@
 import { agentUrl } from '../site/siteUrls';
+import { DISCORD_INVITE_URL } from '../communityLinks';
 import React, { memo, useEffect, useRef, useState } from "react";
 import ChatBox from "./ChatBox";
 import Inventory from "./Inventory";
@@ -223,7 +224,10 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
             <span className="toolbar-label">Settings</span> <kbd>O</kbd>
           </button>
           <button data-panel="bug" onClick={() => toggle("bug")}>Report a bug</button>
-          <a className="agent-entry-link" href={agentUrl()} target="_blank" rel="noreferrer" aria-label="Open BeriGame's agent onboarding page in a new tab">
+          <a className="toolbar-external-link" href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" aria-label="Join Discord (opens in a new tab)">
+            Join Discord <span aria-hidden="true">↗</span>
+          </a>
+          <a className="agent-entry-link toolbar-external-link" href={agentUrl()} target="_blank" rel="noreferrer" aria-label="Open BeriGame's agent onboarding page in a new tab">
             Agent
           </a>
         </div>

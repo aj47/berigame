@@ -3,6 +3,7 @@ import { useMyPlayer } from '../spacetime/hooks';
 import { useLoadingStore } from '../store';
 import { tickClock } from '../spacetime/tickClock';
 import { diagnosticAsset, diagnosticHistory, recordDiagnostic } from '../spacetime/diagnostics';
+import { DISCORD_INVITE_URL } from '../communityLinks';
 import './bugReport.css';
 
 export function GameDiagnostics() {
@@ -53,6 +54,7 @@ export default function BugReportPanel({ onClose }: { onClose: () => void }) {
   return <section className="game-panel bug-report-panel" aria-label="Report a bug">
     <header className="panel-heading"><h2>Report a bug</h2><button className="close-button" onClick={onClose} aria-label="Close bug report">×</button></header>
     <p>Describe what happened, then copy or download the report for <a href="https://discord.com/channels/1556010824827404308/1556011187936690281" target="_blank" rel="noreferrer">#feedback-n-bugs ↗</a>.</p>
+    <p className="bug-report-note">New to the community? <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">Join Discord ↗</a> to share your report.</p>
     <label>What happened?<textarea maxLength={2000} value={description} onChange={event => setDescription(event.target.value)} placeholder="What were you doing? What did you expect?" /></label>
     <p className="bug-report-note">Includes recent movement, action outcomes, tick timing and connection status. No chat, sign-in tokens or other players’ details. Nothing is sent automatically.</p>
     <div className="bug-report-actions"><button onClick={copy}>Copy report</button><button onClick={download}>Download report</button></div>

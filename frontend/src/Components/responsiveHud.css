@@ -17,7 +17,7 @@
   pointer-events: auto;
 }
 .ui-group .toolbar-secondary > button,
-.ui-group .toolbar-secondary .agent-entry-link {
+.ui-group .toolbar-secondary .toolbar-external-link {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -30,11 +30,13 @@
   background: transparent;
   color: var(--ink);
   font-size: 12px;
+  font-weight: bold;
   text-decoration: none;
   box-shadow: none;
 }
 .ui-group .toolbar-secondary > button:hover,
-.ui-group .toolbar-secondary .agent-entry-link:hover { background: #e6d4ad; }
+.ui-group .toolbar-secondary .toolbar-external-link:hover { background: #e6d4ad; }
+.ui-group .toolbar-secondary .toolbar-external-link:focus-visible { outline: 3px solid var(--blue); outline-offset: -3px; }
 .ui-group .game-toolbar .toolbar-menu-toggle { display: block; }
 .ui-group .game-toolbar .attack-mode-toggle {
   display: flex;
@@ -270,7 +272,7 @@
   .ui-group .game-panel h2 { font-size: 19px; }
   .ui-group .toolbar-secondary.is-open { max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom) - 68px); padding: 6px; }
   .ui-group .toolbar-secondary > button,
-  .ui-group .toolbar-secondary .agent-entry-link { min-height: 44px; }
+  .ui-group .toolbar-secondary .toolbar-external-link { min-height: 44px; }
 }
 /* Keep the emote control clear of open panels at every screen size. */
 body:has(.ui-group[data-panel-open="true"]) .social-hud .emote-wheel { display: none; }

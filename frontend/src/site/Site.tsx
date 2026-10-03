@@ -2,6 +2,7 @@ import { homeUrl, wikiUrl, gameUrl, agentUrl } from './siteUrls';
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import './site.css';
 import { BerryMark, Arrow } from './SiteIcons';
+import { DISCORD_INVITE_URL } from '../communityLinks';
 const Wiki = lazy(() => import('./Wiki'));
 const Landing = lazy(() => import('./Landing'));
 
@@ -40,10 +41,11 @@ export default function Site({ route }: { route: { kind: string; slug?: string }
         <a href={homeUrl('#explore')} onClick={() => setMenuOpen(false)}>The island</a>
         <a href={wikiUrl('getting-started')}>How to play</a>
         <a href={wikiUrl()} aria-current={isWiki ? 'page' : undefined}>Wiki & docs</a>
+        <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" aria-label="Join Discord (opens in a new tab)">Join Discord</a>
         <a className="site-button site-button-small" href={gameUrl()}>Play in browser <Arrow diagonal /></a>
       </nav>
     </header>
     {route.kind === 'landing' ? <Suspense fallback={<div className="site-loading" role="status">Opening the island…</div>}><Landing /></Suspense> : isWiki ? <div id="main-content" tabIndex={-1}><Suspense fallback={<div className="site-loading" role="status">Opening the field guide…</div>}><Wiki slug={route.slug} /></Suspense></div> : <main id="main-content" className="site-not-found"><span className="site-kicker">A path less travelled</span><h1>This page wandered off.</h1><p>Find your way back to the island, or look something up in the wiki.</p><a className="site-button" href={homeUrl()}>Back to the island <Arrow /></a><a href={wikiUrl()}>Browse the wiki</a></main>}
-    <footer className="site-footer"><a href={homeUrl()} className="site-brand"><BerryMark /><span>BeriGame</span></a><p>Little island. Giant adventures.</p><nav aria-label="Footer"><a href={wikiUrl()}>Player wiki</a><a href={wikiUrl('changelog')}>Changelog</a><a href={agentUrl()}>Agent guide</a><a href={gameUrl()}>Enter the island <Arrow diagonal /></a></nav><span className="site-footer-note">An evolving world, built for a little curiosity.</span></footer>
+    <footer className="site-footer"><a href={homeUrl()} className="site-brand"><BerryMark /><span>BeriGame</span></a><p>Little island. Giant adventures.</p><nav aria-label="Footer"><a href={wikiUrl()}>Player wiki</a><a href={wikiUrl('changelog')}>Changelog</a><a href={agentUrl()}>Agent guide</a><a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" aria-label="Join Discord (opens in a new tab)">Join Discord <Arrow diagonal /></a><a href={gameUrl()}>Enter the island <Arrow diagonal /></a></nav><span className="site-footer-note">An evolving world, built for a little curiosity.</span></footer>
   </div>;
 }

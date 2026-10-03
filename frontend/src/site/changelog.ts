@@ -15,6 +15,15 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-03-discord-links', date: '2026-10-03', period: 'Oct 3, 2026',
+    title: 'Join the BeriGame community on Discord',
+    changes: [
+      'Join Discord from the website, wiki or in-game menu. The invite opens the welcome channel and does not expire.',
+      'The bug-report panel includes a way to join the server alongside the direct feedback channel link.',
+    ],
+    commits: [],
+  },
+  {
     id: '2026-10-03-community-feedback', date: '2026-10-03', period: 'Oct 3, 2026',
     title: 'A clearer bank, right-drag camera and permanent island rewards',
     changes: [
