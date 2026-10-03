@@ -28,6 +28,7 @@ export const changelogEntries: ChangelogEntry[] = [
     title: 'Familiar controls, better building and quicker travel',
     changes: [
       'Keep the same bag, crafting menu and three quick slots in every district. Recipes show item icons, ingredient counts and nearby station requirements; storage and trading remain available from the bag.',
+      'Click or tap any dry location on the expanded map to walk there, including across the harbour trail between Bramblewild and the Meadows.',
       'Click players in the Meadows to open the familiar Attack, Follow and Trade menu. Attack follows a moving opponent into range and keeps swinging until stopped; protected locations explain why combat is unavailable.',
       'Equip or remove a Padded vest from the bag or a quick slot. Equipped armour clearly shows its three-point maximum-health bonus.',
       'Place walls, windows, doors, fences and gates along floor edges. Rotate to choose a side, combine several sides on one floor, and walk across the floor space inside. Existing buildings keep their positions until moved.',

@@ -1,11 +1,12 @@
-import { BRIDGES, FOREST_TREES, LANDMARKS, TRAILS, isBridge, terrainField } from '@sim';
-import { PLOTS, REGIONS } from '../../../shared/sim/frontier/catalog';
-import { homeLand, homePoint, MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
-import { meadowField } from '../../../shared/sim/frontier/regions';
+import { BRIDGES, FOREST_TREES, GRID_SIZE, LANDMARKS, TRAILS, isBridge, terrainField } from '@sim';
+import { PLOTS, REGIONS, type Location } from '../../../shared/sim/frontier/catalog';
+import { homeLand, homeLocation, homePoint, MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
+import { meadowField, regionLand } from '../../../shared/sim/frontier/regions';
 import type { MinimapModel } from '../Components/minimapModel';
 
 type MapPoint = { x: number; z: number };
 export type HomeMapView = 'overview' | 'bramblewild' | 'settlement';
+const LANDMARK_RADIUS = 9;
 /** Square district frames keep the original island readable at every screen size. */
 export const HOME_MAP_VIEWS = {
   overview: { x: -4, z: -77, span: 200 },
@@ -14,7 +15,15 @@ export const HOME_MAP_VIEWS = {
 } as const;
 export function homeMapProjection(size: number, view: HomeMapView = 'overview') {
   const bounds = HOME_MAP_VIEWS[view], scale = size / bounds.span;
-  return { scale, x: (v: number) => (v - bounds.x) * scale, z: (v: number) => (v - bounds.z) * scale };
+  return {
+    scale, x: (v: number) => (v - bounds.x) * scale, z: (v: number) => (v - bounds.z) * scale,
+    pointAt: (x: number, y: number) => ({ x: bounds.x + x / scale, z: bounds.z + y / scale }),
+  };
+}
+/** Original 64-tile map paints tile corners at integers and markers at cell centres. */
+export function legacyMapProjection(size: number) {
+  const scale = size / GRID_SIZE;
+  return { scale, center: (v: number) => (v + .5) * scale, pointAt: (x: number, y: number) => ({ x: x / scale - .5, z: y / scale - .5 }) };
 }
 export function homeMapLandmarkPositions(size: number) {
   const { x, z } = homeMapProjection(size, 'bramblewild');
@@ -26,6 +35,22 @@ export function homeMapLandmarkPositions(size: number) {
     placed.push(candidates.find(p => placed.every(other => Math.hypot(other.x - p.x, other.z - p.z) >= 20)) ?? candidates[0]);
   }
   return placed;
+}
+/** Convert canvas-relative CSS pixels to a walkable region-local tile; DPR is irrelevant. */
+export function mapDestinationAt(x: number, y: number, size: number, view: HomeMapView = 'overview', connected = true): Location | null {
+  if (![x, y, size].every(Number.isFinite) || size <= 0 || x < 0 || y < 0 || x >= size || y >= size) return null;
+  // Number circles can be displaced for readability. Their hit area follows the artwork.
+  if (connected && view === 'bramblewild' && size >= 200) {
+    const landmark = homeMapLandmarkPositions(size).findIndex(p => Math.hypot(p.x - x, p.z - y) <= LANDMARK_RADIUS);
+    if (landmark >= 0) {
+      const { x, z } = LANDMARKS[landmark];
+      return regionLand('bramblewild', { x, z }) ? { region: 'bramblewild', x, z } : null;
+    }
+  }
+  const point = (connected ? homeMapProjection(size, view) : legacyMapProjection(size)).pointAt(x, y);
+  const tile = { x: Math.round(point.x), z: Math.round(point.z) };
+  const destination: Location = connected ? homeLocation(tile) : { region: 'bramblewild', ...tile };
+  return regionLand(destination.region, destination) ? destination : null;
 }
 const plots = PLOTS.filter(p => p.region === 'settlement');
 const town = homePoint(REGIONS.settlement.spawn, 'settlement');
@@ -187,7 +212,7 @@ export function drawHomeMap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
   if (detailed && view === 'bramblewild') homeMapLandmarkPositions(size).forEach((p, index) => {
     ctx.strokeStyle = '#536342'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(p.anchorX, p.anchorZ); ctx.lineTo(p.x, p.z); ctx.stroke();
-    ctx.fillStyle = '#f5e4b7'; ctx.beginPath(); ctx.arc(p.x, p.z, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f5e4b7'; ctx.beginPath(); ctx.arc(p.x, p.z, LANDMARK_RADIUS, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.font = '700 11px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#364936'; ctx.fillText(String(index + 1), p.x, p.z);
   });

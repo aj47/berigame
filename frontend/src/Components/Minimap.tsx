@@ -1,12 +1,13 @@
 import { useFrontier } from "../frontier/useFrontier";
 import { MATERIALS, REGIONS } from "../../../shared/sim/frontier/catalog";
-import { homePoint } from "../../../shared/sim/frontier/homeMap";
-import { type HomeMapView } from "../frontier/homeMapArt";
+import { homePoint, isHomeRegion } from "../../../shared/sim/frontier/homeMap";
+import { HOME_MAP_VIEWS, homeMapProjection, mapDestinationAt, type HomeMapView } from "../frontier/homeMapArt";
 import { createPortal } from "react-dom";
 import React, { useEffect, useRef, useState } from "react";
 import { useGardenPlots, useGiantRaid, useGiants, useGroundItems, useInventoryRows, useMyIdentityHex, usePlayers, useTick, useTrees } from "../spacetime/hooks";
-import { areaOf, countRipe, getItemDef, LANDMARKS, ISLAND_NAME } from "@sim";
+import { areaOf, countRipe, getItemDef, LANDMARKS, ISLAND_NAME, GRID_SIZE, PlayerState } from "@sim";
 import { useGameActions } from "../spacetime/actions";
+import { useToastStore } from "../spacetime/stores/toastStore";
 import { drawMinimap, mapAccessLabel, minimapModel } from "./minimapModel";
 import "./minimap.css";
 
@@ -19,12 +20,12 @@ function useMapCanvas(size: number, source: React.MutableRefObject<() => ReturnT
     if (!el || !ctx || !size) return;
     const paint = () => {
       // Paint at the displayed size so district numbers stay legible on phones.
-      const pixels = el.clientWidth || size, dpr = Math.min(2, window.devicePixelRatio || 1);
+      const pixels = el.getBoundingClientRect().width || size, dpr = Math.min(2, window.devicePixelRatio || 1);
       const resolution = Math.round(pixels * dpr);
       if (el.width !== resolution || el.height !== resolution) {
         el.width = resolution; el.height = resolution;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawMinimap(ctx, source.current(), pixels, view);
     };
     paint();
@@ -45,20 +46,49 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
   const gardenRipe = countRipe(gardenPlots.map(r => ({ itemId: r.itemId, plantedAtMs: Number(r.plantedAtMicros / 1000n) })), Date.now());
   const home = settlements.enabled ? { claims: settlements.plots.filter(p => p.region === 'settlement' && p.claim).map(p => ({ id: p.id, mine: p.claim?.owner === meHex })) } : undefined;
   const [expanded, setExpanded] = useState(false), [view, setView] = useState<HomeMapView>('bramblewild');
+  const [message, setMessage] = useState(''), [pending, setPending] = useState(false);
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  const busy = useRef(false), mapSession = useRef(0), pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const close = () => { mapSession.current++; setExpanded(false); };
   const latest = useRef(() => minimapModel({ home, meHex, players, trees, groundItems, tick, giants, raid, gardenRipe, resources: settlements.resources, nowMs: Date.now() }));
   latest.current = () => minimapModel({ home, meHex, players, trees, groundItems, tick, giants, raid, gardenRipe, resources: settlements.resources, nowMs: Date.now() });
   const small = useMapCanvas(120, latest), big = useMapCanvas(expanded ? 480 : 0, latest, view);
   useEffect(() => {
     if (!expanded) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [expanded]);
 
-  const walk = (region: 'bramblewild' | 'settlement', x: number, z: number) => {
-    if (region === 'bramblewild' && me?.region !== 'settlement') void setTarget(x, z);
-    else void frontier({ action: 'walk', id: region, x, z });
-    setExpanded(false);
+  const walk = async (region: 'bramblewild' | 'settlement', x: number, z: number) => {
+    if (busy.current) return;
+    if (!me?.online || me.state !== PlayerState.Alive) { setMessage('Wait until you are back on the island to walk.'); return; }
+    const source = me.region || 'bramblewild';
+    if (!isHomeRegion(source)) { setMessage('Return to the home island to walk using this map.'); return; }
+    if (!home && (source !== 'bramblewild' || region !== 'bramblewild')) { setMessage('The Meadows are currently unavailable.'); return; }
+    busy.current = true; setPending(true); setMessage('');
+    const session = mapSession.current;
+    try {
+      const ok = source === 'bramblewild' && region === 'bramblewild'
+        ? await setTarget(x, z) : await frontier({ action: 'walk', id: region, x, z });
+      if (session !== mapSession.current) return;
+      if (ok !== false) close();
+      else setMessage(useToastStore.getState().message || 'Cannot reach that spot. Choose another location.');
+    } catch (error) {
+      if (session === mapSession.current) setMessage(error instanceof Error ? error.message : 'Cannot reach that spot. Choose another location.');
+    } finally { busy.current = false; setPending(false); }
+  };
+  const choosePoint = (x: number, y: number, size: number) => {
+    const destination = mapDestinationAt(x, y, size, view, !!home);
+    if (!destination) { setMessage('Choose a spot on dry land.'); return; }
+    void walk(destination.region as 'bramblewild' | 'settlement', destination.x, destination.z);
+  };
+  const initialCursor = () => {
+    const at = me && isHomeRegion(me.region || 'bramblewild') ? homePoint(me, me.region || 'bramblewild') : null;
+    const projection = homeMapProjection(1, view);
+    const x = at ? home ? projection.x(at.x) : (at.x + .5) / GRID_SIZE : .5;
+    const y = at ? home ? projection.z(at.z) : (at.z + .5) / GRID_SIZE : .5;
+    return x >= 0 && x < 1 && y >= 0 && y < 1 ? { x, y } : { x: .5, y: .5 };
   };
   const hasBag = groundItems.some(g => meHex && g.droppedOnDeath && g.droppedBy.toHexString() === meHex);
   const resources = settlements.resources.filter(n => n.region === 'settlement');
@@ -72,19 +102,40 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
   };
   const title = view === 'overview' ? 'Connected island' : view === 'settlement' ? 'The Meadows' : ISLAND_NAME;
   return <>
-    <button className={`minimap ${hidden ? 'minimap-hidden' : ''}`} aria-label={`Island map${hasBag ? ', your dropped bag is marked' : ''}. Tap to expand`} aria-expanded={expanded} onClick={() => { setView(home && me?.region === 'settlement' ? 'settlement' : 'bramblewild'); setExpanded(true); }}>
+    <button className={`minimap ${hidden ? 'minimap-hidden' : ''}`} aria-label={`Island map${hasBag ? ', your dropped bag is marked' : ''}. Tap to expand`} aria-expanded={expanded} onClick={() => { mapSession.current++; setMessage(''); setCursor(null); setView(home && me?.region === 'settlement' ? 'settlement' : 'bramblewild'); setExpanded(true); }}>
       <canvas ref={small} width={120} height={120} aria-hidden="true" />
       <span className="minimap-north" aria-hidden="true">N</span>
       <span className="minimap-compact-label" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5Zm6-2v16M15 5v16" /></svg>Map</span>
     </button>
-    {expanded && createPortal(<div className="minimap-expanded" role="dialog" aria-modal="true" aria-label="Island map" onClick={() => setExpanded(false)}>
+    {expanded && createPortal(<div className="minimap-expanded" role="dialog" aria-modal="true" aria-label="Island map" onClick={close}>
       <div className="minimap-card minimap-district-card" onClick={e => e.stopPropagation()}>
-        <header className="panel-heading"><h2>{title}</h2><button className="close-button" aria-label="Close map" onClick={() => setExpanded(false)} autoFocus>×</button></header>
-        {home && <nav className="map-districts" aria-label="Map view">{([['overview', 'Whole island'], ['bramblewild', 'Bramblewild'], ['settlement', 'Meadows']] as const).map(([id, name]) => <button key={id} aria-pressed={view === id} onClick={() => setView(id)}>{name}</button>)}</nav>}
+        <header className="panel-heading"><h2>{title}</h2><button className="close-button" aria-label="Close map" onClick={close} autoFocus>×</button></header>
+        {home && <nav className="map-districts" aria-label="Map view">{([['overview', 'Whole island'], ['bramblewild', 'Bramblewild'], ['settlement', 'Meadows']] as const).map(([id, name]) => <button key={id} aria-pressed={view === id} onClick={() => { setView(id); setCursor(null); setMessage(''); }}>{name}</button>)}</nav>}
         <div className="map-layout">
           <div className="map-visual">
-            <div className="minimap-big-wrap"><canvas ref={big} width={480} height={480} aria-hidden="true" /><span className="minimap-north" aria-hidden="true">N</span></div>
-            <p className="map-caption">{view === 'overview' ? 'One island, joined by the harbour trail. Choose a district for a closer view.' : view === 'settlement' ? 'Follow the paths to town, gathering spots and your homestead.' : 'Numbers match the destinations. Choose a place to walk there.'}</p>
+            <div className="minimap-big-wrap"><canvas ref={big} width={480} height={480} role="button" tabIndex={0} aria-label="Choose a walking destination on the map" aria-describedby="map-walk-help" aria-disabled={pending}
+              onPointerDown={e => { pointerStart.current = { x: e.clientX, y: e.clientY }; }}
+              onClick={e => {
+                if (e.button !== 0 || busy.current) return;
+                const start = pointerStart.current; pointerStart.current = null;
+                if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) return;
+                setCursor(null);
+                const rect = e.currentTarget.getBoundingClientRect();
+                choosePoint(e.clientX - rect.left, e.clientY - rect.top, rect.width);
+              }}
+              onFocus={() => setCursor(current => current ?? initialCursor())}
+              onKeyDown={e => {
+                if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', ' '].includes(e.key)) return;
+                e.preventDefault();
+                const at = cursor ?? initialCursor();
+                if (e.key === 'Enter' || e.key === ' ') { const size = e.currentTarget.getBoundingClientRect().width; choosePoint(at.x * size, at.y * size, size); return; }
+                const step = (e.shiftKey ? 5 : 1) / (home ? HOME_MAP_VIEWS[view].span : GRID_SIZE);
+                setCursor({ x: Math.max(0, Math.min(.999, at.x + (e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0))), y: Math.max(0, Math.min(.999, at.y + (e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0))) });
+              }} />
+              {cursor && <span className="map-walk-cursor" aria-hidden="true" style={{ left: `${cursor.x * 100}%`, top: `${cursor.y * 100}%` }} />}
+              <span className="minimap-north" aria-hidden="true">N</span></div>
+            <p className="map-caption" id="map-walk-help">Click or tap a spot on land to walk there.<span className="map-keyboard-help"> Use arrow keys to choose a spot, then Enter to walk.</span></p>
+            {(message || pending) && <p className="map-walk-status" role="status">{message || 'Finding a route…'}</p>}
             <div className="map-key"><span><i className="map-key-you" />You</span><span><i className="map-key-player" />Players</span>{view !== 'bramblewild' && <span><i className="map-key-land" />Your land</span>}</div>
           </div>
           <div className="map-destinations">

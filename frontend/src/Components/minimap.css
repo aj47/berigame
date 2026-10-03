@@ -2,7 +2,12 @@
 .minimap-district-card .panel-heading { margin-bottom: 12px; }
 .minimap-district-card .map-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(245px, 1fr); gap: 18px; align-items: start; }
 .minimap-district-card .minimap-big-wrap { width: 100%; }
-.minimap-district-card .minimap-big-wrap canvas { box-sizing: border-box; }
+.minimap-district-card .minimap-big-wrap canvas { box-sizing: border-box; border: 0; outline: 1px solid var(--line); cursor: crosshair; }
+.minimap-district-card .minimap-big-wrap canvas:focus-visible { outline: 3px solid #345a45; outline-offset: 3px; }
+.minimap-district-card .minimap-big-wrap canvas[aria-disabled=true] { cursor: progress; }
+.map-walk-cursor { position: absolute; width: 16px; height: 16px; border: 2px solid #fff3b3; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px #345a45; pointer-events: none; }
+.map-keyboard-help { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.map-walk-status { margin: 8px 0; color: #684327; font-size: 13px; }
 .minimap-district-card .map-districts { display: flex; gap: 6px; margin-bottom: 12px; }
 .minimap-district-card .map-districts button { min-height: 36px; padding: 7px 12px; font-size: 13px; }
 .minimap-district-card .map-districts button[aria-pressed=true] { background: #345a45; border-color: #345a45; color: #fff7df; }

@@ -1,6 +1,6 @@
 import { MATERIALS } from "../../../shared/sim/frontier/catalog";
 import { homePoint, isHomeRegion } from "../../../shared/sim/frontier/homeMap";
-import { drawHomeMap, type HomeMapView } from "../frontier/homeMapArt";
+import { drawHomeMap, legacyMapProjection, type HomeMapView } from "../frontier/homeMapArt";
 import {
   terrainField, trailDistance, isBridge, areaOf, LANDMARKS, SCENERY_BLOCKERS,
   GiantState,
@@ -111,8 +111,7 @@ const mapTiles = Array.from({length:GRID_SIZE*GRID_SIZE},(_,k)=>{
 /** Paint the map into a square canvas `size` CSS pixels wide (the context is already DPR-scaled). */
 export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size: number, view: HomeMapView = 'overview'): void {
   if (m.home) { drawHomeMap(ctx, m, size, view); return; }
-  const s = size / GRID_SIZE;
-  const px = (t: number) => (t + 0.5) * s;
+  const { scale: s, center: px } = legacyMapProjection(size);
   ctx.clearRect(0, 0, size, size);
   ctx.fillStyle = '#3f9fb1';
   ctx.fillRect(0,0,size,size);
