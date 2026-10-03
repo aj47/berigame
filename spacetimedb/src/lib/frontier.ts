@@ -120,7 +120,17 @@ export function frontierWorld(ctx: Ctx): World {
     },
     canLeaveHomeDistrict(a) {
       const identity = Identity.fromString(a.id);
-      return !ctx.db.expeditionMember.identity.find(identity) && !duelFor(ctx, identity) && !carrying(ctx, identity);
+      const now = Number(ctx.timestamp.microsSinceUnixEpoch / 1000n);
+      return now >= (repo.get('profile', a.id)?.events.hostileUntil ?? 0)
+        && !ctx.db.expeditionMember.identity.find(identity) && !duelFor(ctx, identity) && !carrying(ctx, identity);
+    },
+    movementSteps(a) {
+      const identity = Identity.fromString(a.id), row = ctx.db.player.identity.find(identity);
+      if (carrying(ctx, identity)) return 1;
+      const p = repo.get('profile', a.id), now = Number(ctx.timestamp.microsSinceUnixEpoch / 1000n);
+      if (a.hostile || row?.combatTarget || (p?.events.hostileUntil ?? 0) > now || (p?.nextAttack ?? 0) > now
+        || duelFor(ctx, identity) || ctx.db.expeditionMember.identity.find(identity)) return 2;
+      return 3;
     },
     save(a) {
       const identity = Identity.fromString(a.id),

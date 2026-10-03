@@ -5,7 +5,7 @@ import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Group, Vector3 } from 'three';
 import { BERRY_MARKET, GIANT_FEAST, tileToWorld } from '@sim';
-import { useExpeditions, useIslandProjects, useMyPlayer, usePlayers, useTick } from '../../spacetime/hooks';
+import { useExpeditionMembers, useExpeditions, useIslandProjects, useMyPlayer, usePlayers, useTick } from '../../spacetime/hooks';
 import { homePoint } from '../../../../shared/sim/frontier/homeMap';
 import type { Expedition } from '../../module_bindings/types';
 import { avatarGroup } from '../../animation/avatarRegistry';
@@ -67,7 +67,7 @@ function Cargo({row,tick,carrierTile,showLabel}:{row:Expedition;tick:number;carr
   </group>;
 }
 export default function AdventureWorld({ frontierEnabled = false }: { frontierEnabled?: boolean }) {
-  const expeditions=useExpeditions(),players=usePlayers(),projects=useIslandProjects(),tick=useTick();
+  const expeditions=useExpeditions(),members=useExpeditionMembers(),players=usePlayers(),projects=useIslandProjects(),tick=useTick();
   const me=useMyPlayer();
   const showWorldLabels=useSettingsStore(state=>state.showWorldLabels);
   const homeTile=me ? homePoint(me,me.region || 'bramblewild') : null;
@@ -75,7 +75,13 @@ export default function AdventureWorld({ frontierEnabled = false }: { frontierEn
   const nearTrail=nearby({x:49,z:27},8);
   const select=useUserInputStore((state:any)=>state.setClickedOtherObject);
   const built=(projects[0]?.wood??0)>=20&&(projects[0]?.obsidian??0)>=10;
-  const giants=expeditions.filter(e=>e.stage==='hauling'||(e.stage==='complete'&&e.destination==='feast'&&tick<=e.untilTick));
+  // The feast has one host. Completed expeditions are reward records, not
+  // additional bodies stacked at the same table. Keep your own result handy.
+  const ownExpedition=members.find(m=>m.identity.toHexString()===me?.identity.toHexString())?.expeditionId;
+  const completed=expeditions.filter(e=>e.stage==='complete'&&e.destination==='feast'&&tick<=e.untilTick)
+    .sort((a,b)=>a.id>b.id?-1:a.id<b.id?1:0);
+  const host=completed.find(e=>e.id===ownExpedition)??completed[0];
+  const giants=[...expeditions.filter(e=>e.stage==='hauling'),...(host?[host]:[])];
   return <group>
     {frontierEnabled && <group position={tileToWorld({x:49,z:27})} userData={{hoverTarget:{title:'Meadows trail',action:'Walk over · quests & land',click:'panel'}}} onClick={e=>{if(e.delta<=5){e.stopPropagation();if(holdState.active||performance.now()<holdState.suppressClickUntil)return;approachWorldInteraction({region:'bramblewild',x:49,z:27},()=>openSettlement());}}}>
       <mesh position={[0,.6,0]}><boxGeometry args={[.15,1.2,.15]}/><meshStandardMaterial color="#8b6c46"/></mesh>

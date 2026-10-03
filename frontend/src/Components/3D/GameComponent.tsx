@@ -4,11 +4,10 @@ import { type BuildDraft } from '../../frontier/FrontierPanel';
 import FrontierWorld, { FrontierScene } from '../../frontier/FrontierWorld';
 import HarbourApproach from '../../frontier/HarbourApproach';
 import { MEADOW_OFFSET } from '../../../../shared/sim/frontier/homeMap';
-import { PIECES } from '../../../../shared/sim/frontier/catalog';
 import { useMyPlayer } from '../../spacetime/hooks';
 import { Canvas } from '@react-three/fiber';
 import { PerformanceMonitor } from '@react-three/drei';
-import React, { Suspense, useState, useMemo } from 'react';
+import React, { Suspense, useState } from 'react';
 import CameraController from './CameraController';
 import PlayerController from './PlayerController';
 import RenderOnlineUsers from './RenderOnlineUsers';
@@ -73,7 +72,6 @@ const GameComponent = () => {
   const frontier = useFrontier();
   const [draft, setDraft] = useState<BuildDraft | null>(null);
   const homeScene = !me?.region || me.region === 'bramblewild' || (frontier.enabled && me.region === 'settlement');
-  const meadowSolids = useMemo(() => new Set(frontier.buildings.filter(b => b.region === 'settlement' && PIECES[b.piece].solid).map(b => `${b.x},${b.z}`)), [frontier.buildings]);
   const inFrontier = !!me?.region && me.region !== 'bramblewild';
   const [playerRef, setPlayerRef] = useState<any>();
   const clickedOtherObject = useUserInputStore((state: any) => state.clickedOtherObject);
@@ -88,7 +86,7 @@ const GameComponent = () => {
     <div style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
       <LoadingScreen />
       <WorldInteractionController disabled={!!draft} />
-      <UIComponents frontierEnabled={frontier.enabled} frontierCoins={frontier.profile.coins} draft={draft} onDraft={setDraft} />
+      <UIComponents frontier={frontier} frontierEnabled={frontier.enabled} frontierCoins={frontier.profile.coins} draft={draft} onDraft={setDraft} />
       {!inFrontier && <CharacterSetup />}
       {homeScene && !draft && <WorldHoverTooltip />}
       {!inFrontier && !draft && clickedOtherObject && <ClickDropdown />}
@@ -104,8 +102,8 @@ const GameComponent = () => {
           {frontier.enabled && me && <group position={[MEADOW_OFFSET.x, 0, MEADOW_OFFSET.z]}>
             <FrontierScene embedded draft={draft} onDraft={setDraft} />
           </group>}
-          <RenderOnlineUsers frontierBlocked={meadowSolids} />
-          <PlayerController setPlayerRef={setPlayerRef} frontierBlocked={meadowSolids} />
+          <RenderOnlineUsers frontier={frontier} />
+          <PlayerController setPlayerRef={setPlayerRef} frontier={frontier} />
           <CameraController playerRef={playerRef} />
           {!draft && <HoldToWalk />}
           {!draft && <WorldHover />}

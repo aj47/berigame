@@ -26,6 +26,7 @@ import { useSettingsStore } from "../spacetime/stores/settingsStore";
 
 import FrontierPanel, { type BuildDraft } from "../frontier/FrontierPanel";
 import { FRONTIER_EVENT, type FrontierRequest } from "../frontier/navigation";
+import type { FrontierSnapshot } from "../../../shared/sim/frontier/snapshot";
 
 type Panel = "settlement" | "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | null;
 /** Name and online count: the only part of the HUD shell that follows player rows. */
@@ -47,8 +48,8 @@ const WorldHeader = memo(({ coins }: { coins?: number }) => {
   );
 });
 
-const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft = null, onDraft = () => {} }: {
-  frontierEnabled?: boolean; frontierCoins?: number; draft?: BuildDraft | null; onDraft?: (draft: BuildDraft | null) => void;
+const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontier, draft = null, onDraft = () => {} }: {
+  frontierEnabled?: boolean; frontierCoins?: number; frontier?: FrontierSnapshot; draft?: BuildDraft | null; onDraft?: (draft: BuildDraft | null) => void;
 }) => {
   const me = useMyPlayer();
   const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
@@ -57,6 +58,8 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft =
   regionRef.current = inFrontier;
   const [frontierRequest, setFrontierRequest] = useState<FrontierRequest & { id: number }>({ tab: 'Journal', id: 0 });
   const openFrontier = (request: FrontierRequest = { tab: 'Journal' }) => {
+    if (request.tab === 'Bag') { setQuickSlotTarget(null); setPanel('inventory'); return; }
+    if (request.tab === 'Craft') { setPanel('crafting'); return; }
     setFrontierRequest(current => ({ ...request, id: current.id + 1 }));
     setPanel('settlement');
   };
@@ -74,8 +77,8 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft =
   const toolbar = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const toggle = (next: Panel) => {
-    if (regionRef.current && ['adventure', 'inventory', 'crafting', 'skills'].includes(next ?? '')) {
-      const tab = next === 'inventory' ? 'Bag' : next === 'crafting' ? 'Craft' : next === 'skills' ? 'Skills' : 'Journal';
+    if (regionRef.current && ['adventure', 'skills'].includes(next ?? '')) {
+      const tab = next === 'skills' ? 'Skills' : 'Journal';
       if (frontierPanelRef.current.panel === "settlement" && frontierPanelRef.current.tab === tab) setPanel(null);
       else openFrontier({ tab });
       return;
@@ -155,10 +158,10 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft =
     <div className="ui-group" data-panel-open={panel !== null}>
       <WorldHeader coins={inFrontier ? frontierCoins : undefined} />
       <nav className="game-toolbar" aria-label="Game panels" ref={toolbar}>
-        <button data-panel="adventure" aria-expanded={panel === "adventure" || (panel === "settlement" && frontierRequest.tab !== "Bag")} onClick={() => toggle("adventure")}>{inFrontier ? "Meadows" : "Adventure"}</button>
+        <button data-panel="adventure" aria-expanded={panel === "adventure" || panel === "settlement"} onClick={() => toggle("adventure")}>{inFrontier ? "Meadows" : "Adventure"}</button>
         <button
           data-panel="inventory"
-          aria-expanded={panel === "inventory" || (panel === "settlement" && frontierRequest.tab === "Bag")}
+          aria-expanded={panel === "inventory"}
           onClick={() => toggle("inventory")}
         >
           Bag <kbd>I</kbd>
@@ -223,15 +226,15 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft =
           </a>
         </div>
       </nav>
-      {frontierEnabled && <FrontierPanel draft={draft} onDraft={onDraft} open={panel === "settlement"} setOpen={open => setPanel(open ? "settlement" : null)} request={frontierRequest} onTab={tab => setFrontierRequest(current => ({ ...current, tab }))} showGoal={panel === null} />}
+      {frontierEnabled && <FrontierPanel draft={draft} onDraft={onDraft} open={panel === "settlement"} setOpen={open => setPanel(open ? "settlement" : null)} request={frontierRequest} onTab={tab => openFrontier({ tab })} showGoal={panel === null} />}
       <AdventurePanel onSettlements={frontierEnabled ? () => openFrontier() : undefined} key={adventureRequest.id} open={panel === "adventure"} initialView={adventureRequest.view} onClose={close} />
       {!inFrontier && <div className="world-objectives">
         <GoalChip visible={panel === null} />
         <DuelHud />
         <AdventureHud visible={panel === null} />
       </div>}
-      <Inventory open={panel === "inventory"} onClose={close} onCraft={() => setPanel('crafting')} initialQuickSlot={quickSlotTarget} />
-      <CraftingPanel open={panel === 'crafting'} onClose={close} />
+      <Inventory open={panel === "inventory"} onClose={close} onCraft={() => setPanel('crafting')} onStorage={frontierEnabled ? () => openFrontier({ tab: 'Storage' }) : undefined} frontier={frontier} initialQuickSlot={quickSlotTarget} />
+      <CraftingPanel open={panel === 'crafting'} onClose={close} frontier={frontierEnabled ? frontier : undefined} />
       {/* Friends and invites live behind Chat (no new toolbar button). */}
       <ChatBox open={panel === "chat"} onClose={close} onOpenFriends={openFriends} />
       <FriendsPanel key={`friends-${friendsRequest.id}`} open={panel === "friends"} initialAdding={friendsRequest.adding} initialSearch={friendsRequest.search} initialPlayerHex={friendsRequest.playerHex} onClose={close} onOpenChat={() => setPanel("chat")} />
@@ -240,7 +243,7 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft =
       <SettingsPanel open={panel === "settings"} onClose={close} recoveryEnabled={frontierEnabled} />
       {(!inFrontier || me?.region === "settlement") && <Minimap hidden={panel !== null} />}
       {panel === "help" && <HelpPanel onClose={close} />}
-      {!inFrontier && <CombatHud quickKeysEnabled={panel === null} onOpenBag={openBag} />}
+      <CombatHud quickKeysEnabled={panel === null} onOpenBag={openBag} frontier={frontier} />
       <TradeWindow />
       <InviteRedeemer />
       <FriendSync />

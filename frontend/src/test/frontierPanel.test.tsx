@@ -48,21 +48,11 @@ describe('progressive Meadows panel', () => {
     expect(deadlineLabel(now - 3600000, now)).toContain('1 hour overdue');
   });
 
-  it('still offers timber and stone when several timber trees are available', () => {
-    mock.state.resources = [
-      { id: 'timber-a', region: 'settlement', item: 'timber', x: 33, z: 52, regrowsAt: Date.now() + 10000 },
-      { id: 'timber-b', region: 'settlement', item: 'timber', x: 29, z: 58 },
-      { id: 'stone', region: 'settlement', item: 'stone', x: 32, z: 56 },
-    ];
-    render(<FrontierPanel {...props('Craft')} />);
-    expect(screen.getByRole('button', { name: 'Find timber' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Find stone' })).toBeVisible();
-  });
   it('keeps three primary tabs and all secondary activities reachable from More', () => {
     const p = props('Land');
     render(<FrontierPanel {...p} />);
     const nav = screen.getByRole('navigation', { name: 'Settlement activities' });
-    expect(within(nav).getAllByRole('button').map(b => b.textContent)).toEqual(['Quests', 'Your land', 'Workshop']);
+    expect(within(nav).getAllByRole('button').map(b => b.textContent)).toEqual(['Quests', 'Your land', 'Craft']);
     fireEvent.change(within(nav).getByRole('combobox'), { target: { value: 'Skills' } });
     expect(p.onTab).toHaveBeenCalledWith('Skills');
   });
@@ -135,12 +125,16 @@ describe('progressive Meadows panel', () => {
     expect(screen.getByText('Earn coins · supply orders').closest('details')).not.toHaveAttribute('open');
   });
 
-  it('shows recipes covered by your supplies and keeps unavailable recipes collapsed', () => {
-    mock.inventory = [{ owner: identity, itemId: 'timber', quantity: 2, slot: 0 }];
-    render(<FrontierPanel {...props('Craft')} />);
-    expect(screen.getByRole('heading', { name: /Planks/ })).toBeVisible();
-    expect(screen.getAllByRole('button', { name: 'Make' }).filter(b => !b.hasAttribute('disabled'))).toHaveLength(1);
-    expect(screen.getByText(/More recipes/).closest('details')).not.toHaveAttribute('open');
+  it('routes Craft and Bag to their shared panels and keeps storage distinct', () => {
+    const p = props('Storage');
+    render(<FrontierPanel {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Craft' }));
+    expect(p.onTab).toHaveBeenCalledWith('Craft');
+    fireEvent.click(screen.getByRole('button', { name: 'Open bag' }));
+    expect(p.onTab).toHaveBeenCalledWith('Bag');
+    expect(screen.getByRole('heading', { name: 'Storage & trade' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Eat' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Equip' })).not.toBeInTheDocument();
   });
 
   it('allows delivery quests to finish from supplies even without an event counter', async () => {
@@ -174,5 +168,34 @@ describe('optional character access recovery', () => {
   it('omits unavailable recovery controls when the expansion is disabled', () => {
     render(<SettingsPanel open onClose={() => {}} />);
     expect(screen.queryByText('Restore access on another browser')).not.toBeInTheDocument();
+  });
+});
+
+describe('shelter building choices', () => {
+  it('keeps the roof visible and explains missing fibre, then enables it when supplies arrive', () => {
+    own();
+    mock.inventory = [{ owner: identity, itemId: 'timber', quantity: 6, slot: 0 }];
+    const p = props('Build', 'settlement-13');
+    const ui = render(<FrontierPanel {...p} />);
+    const roof = screen.getByRole('button', { name: /Thatched roof/ });
+    expect(roof).toBeVisible();
+    expect(roof).toBeDisabled();
+    expect(within(roof).getByText('Plant fibre · 0/2')).toBeVisible();
+    mock.inventory.push({ owner: identity, itemId: 'fibre', quantity: 2, slot: 1 });
+    ui.rerender(<FrontierPanel {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: /Thatched roof/ }));
+    expect(p.onDraft).toHaveBeenCalledWith({ plot: 'settlement-13', piece: 'roof', rotation: 0 });
+  });
+
+  it('rechecks occupied boundaries when rotating a wall preview to another floor side', () => {
+    own();
+    const plot = mock.state.plots[12];
+    const point = { x: plot.x + 1, z: plot.z + 1 };
+    mock.state.buildings = [{ id: 'east-wall', claim: plot.id, piece: 'wall', region: plot.region, ...point, rotation: 1, edge: true, label: '' }];
+    const p = { ...props('Build', plot.id), draft: { plot: plot.id, piece: 'wall', rotation: 0, point, valid: true } };
+    render(<FrontierPanel {...p} />);
+    expect(screen.getByText(/south side/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Rotate ↻' }));
+    expect(p.onDraft).toHaveBeenCalledWith(expect.objectContaining({ rotation: 1, valid: false, reason: 'That building layer is occupied.' }));
   });
 });

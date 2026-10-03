@@ -2,6 +2,8 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { Group } from 'three';
 import { useTileMotion } from '../hooks/useTileMotion';
+import { boundaryKey } from '../../../shared/sim/frontier/building';
+import { meadowBlockedTiles } from '../Components/3D/hoverTarget';
 
 const harness = vi.hoisted(() => ({ frame: () => {}, now: 0, trees: [] as { x: number; z: number }[] }));
 vi.mock('@react-three/fiber', () => ({ useFrame: (frame: () => void) => { harness.frame = frame; } }));
@@ -87,6 +89,54 @@ describe('confirmed faster tile motion', () => {
 });
 
 describe('connected home island motion', () => {
+  it.each([['visitor', true], ['owner', false], ['guest', false]] as const)('uses %s gate access at the origin when animating an entry', (identity, detour) => {
+    const group = new Group(), ref = { current: group };
+    const frontier = {
+      plots: [{ id: 'plot', x: 12, z: 65, claim: { id: 'plot', owner: 'owner', permissions: { guest: 1 } } }],
+      buildings: [{ id: 'gate', claim: 'plot', region: 'settlement', piece: 'gate', x: 12, z: 65, rotation: 3, edge: true }],
+    } as any;
+    const collision = vi.fn(from => meadowBlockedTiles(frontier, from, identity));
+    const h = renderHook(({ x }) => useTileMotion(x, 65, 6, ref, 'settlement', undefined, collision), { initialProps: { x: 11 } });
+    h.rerender({ x: 12 });
+    expect(collision).toHaveBeenCalledWith({ x: 11, z: 65, region: 'settlement' });
+    expect(h.result.current.current.points.some(point => point.z !== 1)).toBe(detour);
+    act(() => { harness.now = 600; harness.frame(); });
+    expect(group.position.toArray()).toEqual([51, 0, 1]);
+  });
+  it('uses the occupied parcel at the origin to animate a visitor leaving through its gate', () => {
+    const group = new Group(), ref = { current: group };
+    const frontier = {
+      plots: [{ id: 'plot', x: 12, z: 65, claim: { id: 'plot', owner: 'owner', permissions: {} } }],
+      buildings: [{ id: 'gate', claim: 'plot', region: 'settlement', piece: 'gate', x: 12, z: 65, rotation: 3, edge: true }],
+    } as any;
+    const h = renderHook(({ x }) => useTileMotion(x, 65, 2, ref, 'settlement', undefined, from => meadowBlockedTiles(frontier, from, 'visitor')), { initialProps: { x: 12 } });
+    h.rerender({ x: 11 });
+    expect(h.result.current.current.points.every(point => point.z === 1)).toBe(true);
+    act(() => { harness.now = 300; harness.frame(); });
+    expect(group.position.toArray()).toEqual([50, 0, 1]);
+  });
+  it('animates around a wall edge between two walkable floor tiles', () => {
+    const group = new Group(), ref = { current: group };
+    const blocked = new Set([boundaryKey({ x: 31, z: 64 }, { x: 32, z: 64 })]);
+    const h = renderHook(({ x }) => useTileMotion(x, 64, 6, ref, 'settlement', blocked), { initialProps: { x: 31 } });
+    h.rerender({ x: 32 });
+    expect(h.result.current.current.points.some(point => point.z !== 0)).toBe(true);
+    act(() => { harness.now = 100; harness.frame(); });
+    expect(group.position.x).toBe(70);
+    expect(group.position.z).not.toBe(0);
+    act(() => { harness.now = 600; harness.frame(); });
+    expect(group.position.toArray()).toEqual([71, 0, 0]);
+  });
+  it('animates a three-step district update over one tick instead of snapping', () => {
+    const group = new Group(), ref = { current: group };
+    const h = renderHook(({ x }) => useTileMotion(x, 64, 6, ref, 'settlement'), { initialProps: { x: 30 } });
+    h.rerender({ x: 33 });
+    expect(group.position.x).toBe(69);
+    act(() => { harness.now = 300; harness.frame(); });
+    expect(group.position.x).toBeCloseTo(70.5);
+    act(() => { harness.now = 600; harness.frame(); });
+    expect(group.position.x).toBeCloseTo(72);
+  });
   it('keeps the same avatar moving through the district seam in both directions', () => {
     const group=new Group(), ref={current:group};
     const h=renderHook(({x,z,region})=>useTileMotion(x,z,6,ref,region as any), {initialProps:{x:63,z:25,region:'bramblewild'}});

@@ -14,7 +14,7 @@ export const wieldItem = spacetimedb.reducer(
   { slot: t.u8() },
   (ctx, { slot }) => {
     if (slot >= HOTBAR_SIZE) throw new SenderError('weapons are wielded from quick slots 1-3');
-    const p = requireAlivePlayer(ctx);
+    const p = requireAlivePlayer(ctx, true);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, currentTick(ctx));
     const item = readSlots(ctx, p.identity).slots[slot];
@@ -28,7 +28,7 @@ export const wieldItem = spacetimedb.reducer(
 /** Put the weapon away and fight with bare fists. */
 export const unwield = spacetimedb.reducer(
   (ctx) => {
-    const p = requireAlivePlayer(ctx);
+    const p = requireAlivePlayer(ctx, true);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, currentTick(ctx));
     p.weapon = '';

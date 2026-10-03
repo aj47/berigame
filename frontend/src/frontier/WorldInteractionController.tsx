@@ -7,8 +7,10 @@ import { useUserInputStore } from '../store';
 import { avatarGroup } from '../animation/avatarRegistry';
 import { homeDestination, homePath, homePoint, isHomeRegion, isHomeTarget } from '../../../shared/sim/frontier/homeMap';
 import { distance, regionalPath, regionLand } from '../../../shared/sim/frontier/regions';
-import { PIECES, type Location, type Point, type RegionId } from '../../../shared/sim/frontier/catalog';
+import { type Location, type Point, type RegionId } from '../../../shared/sim/frontier/catalog';
 import { PLAYER_ACTION, WORLD_INTERACTION, type WorldInteraction } from './worldInteraction';
+import { buildingBlocker } from '../../../shared/sim/frontier/building';
+import { meadowBlockedTiles } from '../Components/3D/hoverTarget';
 
 type Pending = WorldInteraction & { destination: Location; identity: string; started: number; accepted: boolean; acceptedAt?: number; observed: boolean; arrived?: number };
 
@@ -36,9 +38,15 @@ export default function WorldInteractionController({ disabled = false }: { disab
         request.perform();
         return;
       }
-      const solid = (p: Location) => p.region === 'bramblewild' ? blocked.has(p.z * 64 + p.x)
-        : frontier.buildings.some(b => b.region === p.region && b.x === p.x && b.z === p.z && PIECES[b.piece].solid)
-          || frontier.resources.some(n => n.region === p.region && n.x === p.x && n.z === p.z);
+      const district = home ? 'settlement' : region;
+      const buildings = buildingBlocker(meadowBlockedTiles(frontier, me, me.identity.toHexString(), district));
+      const solid = Object.assign((p: Location) => p.region === 'bramblewild' ? blocked.has(p.z * 64 + p.x)
+        : buildings(p) || frontier.resources.some(n => n.region === p.region && n.x === p.x && n.z === p.z), {
+        crosses: (a: Location, b: Location) => a.region === district && b.region === district && buildings.crosses(a, b),
+      });
+      const regionalObstacles = Object.assign((point: Point) => solid({ ...point, region }), {
+        crosses: (a: Point, b: Point) => solid.crosses({ ...a, region }, { ...b, region }),
+      });
       const from = home ? homePoint(me, region) : me;
       const candidates: Location[] = [];
       const reach = Math.ceil(request.radius);
@@ -49,7 +57,7 @@ export default function WorldInteractionController({ disabled = false }: { disab
       }
       candidates.sort((a, b) => distance(a, target) - distance(b, target) || distance(from, home ? homePoint(a, a.region) : a) - distance(from, home ? homePoint(b, b.region) : b));
       const destination = candidates.find(p => home ? homePath(from, homePoint(p, p.region), solid)
-        : regionalPath(region, me, p, point => solid({ ...point, region })));
+        : regionalPath(region, me, p, regionalObstacles));
       if (!destination) { useToastStore.getState().show('No clear route to this spot'); return; }
       // Actions synchronously cancel any older intent. Install this one afterwards.
       const call = region === 'bramblewild' && destination.region === 'bramblewild'

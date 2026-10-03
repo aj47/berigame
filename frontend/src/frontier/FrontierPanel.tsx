@@ -20,6 +20,8 @@ import { deadlineLabel, defaultPlot, missingMaterials, plotName, unlockHint } fr
 import { wikiUrl } from "../site/siteUrls";
 import { isHomeRegion } from "../../../shared/sim/frontier/homeMap";
 import { renewalPrice } from "../../../shared/sim/frontier/model";
+import { BUILDING_SIDES } from "../../../shared/sim/frontier/building";
+import { previewIssue } from "./preview";
 export type BuildDraft = {
   plot: string;
   moving?: string;
@@ -35,11 +37,11 @@ const cost = (items: Record<string, number>) =>
     .join(" · ");
 const when = (n: number) => new Date(n).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 const tabTitles: Record<FrontierRequest["tab"], string> = {
-  Journal: "Quests", Land: "Your land", Build: "Build", Craft: "Workshop",
-  Wildlife: "Wildlife", Skills: "Disciplines", Harbour: "Sailing", Bag: "Bag & storage",
+  Journal: "Quests", Land: "Your land", Build: "Build", Craft: "Craft",
+  Wildlife: "Wildlife", Skills: "Disciplines", Harbour: "Sailing", Bag: "Bag", Storage: "Storage & trade",
 };
 const primaryTabs = ["Journal", "Land", "Craft"] as const;
-const moreTabs = ["Wildlife", "Skills", "Harbour", "Bag"] as const;
+const moreTabs = ["Wildlife", "Skills", "Harbour", "Bag", "Storage"] as const;
 export default function FrontierPanel({
   draft,
   onDraft,
@@ -98,8 +100,6 @@ export default function FrontierPanel({
     : destination === region ? go(point) : undefined;
   const claimPrice = FRONTIER.deed + FRONTIER.taxes[0];
   const claimUnlocked = profile.quests.includes("tools");
-  const recipeInputs = (inputs: Record<string, number>) => Object.fromEntries(Object.entries(inputs).map(([item, amount]) =>
-    [item, profile.active.includes(2) && levelForXp(profile.xp[2]) >= 10 && amount >= 4 ? amount - 1 : amount]));
   const materialHint = (inputs: Record<string, number>) => {
     const missing = missingMaterials(inputs, bag);
     return Object.keys(missing).length ? `Need ${cost(missing)}` : "";
@@ -119,13 +119,11 @@ export default function FrontierPanel({
   const questDestination = isHomeRegion(region) ? { ...state.regions.settlement.spawn, region: "settlement" } : PORTS.find(port => port.region === region);
   const atQuestGiver = atSteward
     || PORTS.some(port => port.region === region && Math.max(Math.abs(me.x - port.x), Math.abs(me.z - port.z)) <= 4);
-  const recipeHint = (recipe: typeof state.recipes[number]) => unlockHint(profile, recipe) || materialHint(recipeInputs(recipe.inputs));
-  const readyRecipes = state.recipes.filter(recipe => !recipeHint(recipe));
-  const laterRecipes = state.recipes.filter(recipe => !!recipeHint(recipe));
   const pieces = Object.entries(PIECES);
   const pieceHint = (piece: typeof PIECES[string]) => unlockHint(profile, piece) || materialHint(piece.cost);
-  const readyPieces = pieces.filter(([, piece]) => !pieceHint(piece));
-  const laterPieces = pieces.filter(([, piece]) => !!pieceHint(piece));
+  const shelterPieces = new Set(['floor', 'wall', 'door', 'roof']);
+  const visiblePieces = pieces.filter(([key, piece]) => shelterPieces.has(key) || !pieceHint(piece));
+  const laterPieces = pieces.filter(([key, piece]) => !shelterPieces.has(key) && !!pieceHint(piece));
   async function run(command: Command) {
     if (busy) return;
     setBusy(true);
@@ -193,16 +191,6 @@ export default function FrontierPanel({
       )}
     </div>
   );
-  const renderRecipe = (recipe: typeof state.recipes[number]) => (
-    <article className="frontier-recipe" key={recipe.id}>
-      <div>
-        <h3>{getItemDef(recipe.output)?.name} <small>×{recipe.quantity}</small></h3>
-        {materials(recipeInputs(recipe.inputs))}
-        <small>{recipeHint(recipe) || (recipe.station === "harbour" ? "Make at the harbour" : recipe.station ? "Use the town workshop or your own station" : "Make anywhere")}</small>
-      </div>
-      {button("Make", { action: "craft", id: recipe.id }, !!recipeHint(recipe))}
-    </article>
-  );
   const renderPiece = ([key, piece]: typeof pieces[number]) => (
     <button key={key} disabled={!canBuild || !!pieceHint(piece)} onClick={() => {
       onDraft({ plot: plot!.id, piece: key, rotation: 0 });
@@ -237,13 +225,15 @@ export default function FrontierPanel({
           {draft.moving ? <span>Moving this piece uses no materials.</span> : materials(PIECES[draft.piece].cost)}
           <p>
             {draft.point
-              ? `Place at ${draft.point.x}, ${draft.point.z}`
+              ? `Place at ${draft.point.x}, ${draft.point.z}${PIECES[draft.piece]?.edge ? ` · ${BUILDING_SIDES[draft.rotation]} side` : ''}`
               : "Tap the ground to preview."}
           </p>
           <button
-            onClick={() =>
-              onDraft({ ...draft, rotation: (draft.rotation + 1) % 4 })
-            }
+            onClick={() => {
+              const next = { ...draft, rotation: (draft.rotation + 1) % 4 };
+              const reason = previewIssue(state, next, players);
+              onDraft({ ...next, valid: !reason, reason });
+            }}
           >
             Rotate ↻
           </button>
@@ -444,11 +434,12 @@ export default function FrontierPanel({
                   <p>Claim a plot, or ask a neighbour for building access.</p>
                   <button onClick={() => setTab("Land")}>Find a plot</button>
                 </article> : <>
-                  <p>Choose a piece, then tap your plot to place it.</p>
+                  <p>Choose a piece, then tap your plot to place it. Walls, doors and fences snap to the nearest tile side; rotate to choose another side.</p>
                   <p className="frontier-hint">Materials show what you have / what you need.</p>
-                  {readyPieces.length ? <div className="frontier-grid">{readyPieces.map(renderPiece)}</div> : <article>
+                  <div className="frontier-grid">{visiblePieces.map(renderPiece)}</div>
+                  {!pieces.some(([, piece]) => !pieceHint(piece)) && <article>
                     <h3>Gather building materials</h3>
-                    <p>Start with timber for a floor, walls and a roof.</p>
+                    <p>Gather timber for floors and walls, plus fibre for a thatched roof.</p>
                     <button onClick={() => setTab("Craft")}>Find materials</button>
                   </article>}
                   {laterPieces.length > 0 && <details><summary>More building pieces · {laterPieces.length}</summary><div className="frontier-grid">{laterPieces.map(renderPiece)}</div></details>}
@@ -492,32 +483,6 @@ export default function FrontierPanel({
                       )}
                     </article>
                   ))}
-              </>
-            )}
-            {tab === "Craft" && (
-              <>
-                {readyRecipes.length ? <>
-                  <p className="frontier-hint">You can make these now. Materials show what you have / what you need.</p>
-                  {readyRecipes.map(renderRecipe)}
-                </> : <article className="frontier-feature">
-                  <h3>Gather a few supplies</h3>
-                  <p>Collect timber, stone and plant fibre nearby to make your first tools.</p>
-                  <div className="frontier-controls">
-                    {["timber", "stone"].map(item => state.resources.filter(n => n.region === plotRegion && n.item === item).sort((a, b) =>
-                      Number(!!a.harvest || (a.regrowsAt ?? 0) > now) - Number(!!b.harvest || (b.regrowsAt ?? 0) > now)
-                      || Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z))[0]).filter((n): n is NonNullable<typeof n> => !!n).map(n => <button key={n.id}
-                      onClick={() => void walkTo({ x: n.x - 1, z: n.z }, n.region)}>Find {getItemDef(n.item)?.name.toLowerCase()}</button>)}
-                  </div>
-                </article>}
-                {laterRecipes.length > 0 && <details><summary>More recipes · {laterRecipes.length}</summary>{laterRecipes.map(renderRecipe)}</details>}
-                <details>
-                  <summary>Gather nearby</summary>
-                  {state.resources.filter(n => n.region === plotRegion).map(n => <article className="frontier-row" key={n.id}>
-                    <strong>{getItemDef(n.item)?.name}</strong>
-                    <button onClick={() => void walkTo({ x: n.x - 1, z: n.z }, n.region)}>Walk here</button>
-                    {button("Gather", { action: "gather", id: n.id })}
-                  </article>)}
-                </details>
               </>
             )}
             {tab === "Wildlife" && (
@@ -710,8 +675,10 @@ export default function FrontierPanel({
                 )}
               </>
             )}
-            {tab === "Bag" && (
+            {tab === "Storage" && (
               <>
+                <button onClick={() => setTab("Bag")}>Open bag</button>
+                <p className="frontier-hint">Arrange, eat and equip items from your bag. Use this panel to move supplies into storage or trade.</p>
                 <details>
                   <summary>Trade nearby</summary>
                   {players
@@ -788,13 +755,14 @@ export default function FrontierPanel({
                       ))}
                   </details>
                 )}
-                <h3>Carrying</h3>
+                <h3>Deposit from your bag</h3>
                 {bag.length === 0 && (
                   <p className="frontier-hint">Your bag is empty.</p>
                 )}
                 {bag.map((row) => (
                   <article className="frontier-row" key={row.slot}>
-                    <strong>
+                    <strong className="storage-item-label">
+                      <img src={getItemDef(row.itemId)?.icon} alt="" />
                       {row.quantity}{" "}
                       {getItemDef(row.itemId)?.name ?? row.itemId}
                     </strong>
@@ -809,11 +777,6 @@ export default function FrontierPanel({
                       },
                       !storage,
                     )}
-                    {(getItemDef(row.itemId)?.healthRestore ?? 0) > 0 &&
-                      button("Eat", { action: "eat", item: row.itemId })}
-                    {(!!getItemDef(row.itemId)?.weaponDamage ||
-                      row.itemId === "padded_vest") &&
-                      button("Equip", { action: "equip", item: row.itemId })}
                   </article>
                 ))}
                 {selectedContainer && <h3>Stored</h3>}
@@ -821,7 +784,8 @@ export default function FrontierPanel({
                   (slot, i) =>
                     slot && (
                       <article className="frontier-row" key={i}>
-                        <strong>
+                        <strong className="storage-item-label">
+                          <img src={getItemDef(slot.itemId)?.icon} alt="" />
                           {slot.quantity}{" "}
                           {getItemDef(slot.itemId)?.name ?? slot.itemId}
                         </strong>

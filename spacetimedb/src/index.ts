@@ -9,7 +9,7 @@ export * from './reducers/tick';
 export * from './reducers/movement';
 export * from './reducers/combat';
 export * from './reducers/harvest';
-export * from './reducers/inventory';
+export { eatBerry, moveItem, dropItem, pickupItem } from './reducers/inventory';
 export * from './reducers/chat';
 export * from './reducers/appearance';
 export * from './reducers/access';

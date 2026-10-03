@@ -1,5 +1,6 @@
 import { homePoint, homePath, HOME_JOIN, isHomeTarget, homeDestination } from "../frontier/homeMap";
 import { regionLand } from "../frontier/regions";
+import { enterRule } from '../areas';
 import { describe, expect, it } from "vitest";
 import {
   advance,
@@ -227,7 +228,7 @@ describe("settlements ownership and transactions", () => {
   });
 });
 describe("construction, quests and progression", () => {
-  it("rejects construction outside the parcel and across occupied tiles", () => {
+  it("rejects construction outside the parcel and duplicate furniture while leaving wall interiors usable", () => {
     const h = harness();
     h.buy();
     h.supplies();
@@ -235,6 +236,7 @@ describe("construction, quests and progression", () => {
       h.act({ action: "build", id: PLOTS[0].id, item: "wall", x: 20, z: 8 }),
     ).toThrow("Outside");
     h.act({ action: "build", id: PLOTS[0].id, item: "wall", x: 12, z: 9 });
+    h.act({ action: "build", id: PLOTS[0].id, item: "chest", x: 12, z: 9 });
     expect(() =>
       h.act({ action: "build", id: PLOTS[0].id, item: "chest", x: 12, z: 9 }),
     ).toThrow("occupied");
@@ -244,15 +246,50 @@ describe("construction, quests and progression", () => {
     h.buy();
     h.supplies();
     Object.assign(h.b, { x: 14, z: 10 });
-    for (const [x, z] of [
-      [13, 10],
-      [14, 9],
-      [15, 10],
-    ])
-      h.act({ action: "build", id: PLOTS[0].id, item: "wall", x, z });
+    for (const rotation of [1, 2, 3])
+      h.act({ action: "build", id: PLOTS[0].id, item: "wall", x: 14, z: 10, rotation });
     expect(() =>
-      h.act({ action: "build", id: PLOTS[0].id, item: "wall", x: 14, z: 11 }),
+      h.act({ action: "build", id: PLOTS[0].id, item: "wall", x: 14, z: 10, rotation: 0 }),
     ).toThrow("trap");
+  });
+  it("builds a floor, several distinct sides, and a roof on one tile to complete the shelter quest", () => {
+    const h = harness(); h.buy(); h.supplies();
+    for (const item of ['floor', 'wall', 'roof']) h.act({ action: 'build', id: PLOTS[0].id, item, x: 12, z: 9 });
+    h.act({ action: 'build', id: PLOTS[0].id, item: 'door', x: 12, z: 9, rotation: 1 });
+    expect(h.repo.all('building')).toHaveLength(4);
+    expect(h.repo.all('building').find(b => b.piece === 'wall')).toMatchObject({ edge: true, rotation: 0 });
+    expect(h.repo.get('profile', 'a')?.events.shelter).toBeGreaterThanOrEqual(1);
+    expect(() => h.act({ action: 'build', id: PLOTS[0].id, item: 'window', x: 12, z: 10, rotation: 2 })).toThrow('occupied');
+    // The south wall leaves the floor reachable from its other sides.
+    expect(() => h.act({ action: 'move', x: 12, z: 9 })).not.toThrow();
+  });
+  it("preserves centered saved walls and moves them explicitly onto a selected side", () => {
+    const h = harness(); h.buy(); h.supplies();
+    const legacy = { id: 'old-wall', claim: PLOTS[0].id, region: 'settlement' as const, x: 12, z: 9, piece: 'wall', rotation: 0, label: '' };
+    h.repo.put('building', legacy);
+    expect(() => h.act({ action: 'move', x: 12, z: 9 })).toThrow();
+    h.act({ action: 'build', id: PLOTS[0].id, item: 'roof', x: 12, z: 9 });
+    expect(h.repo.get('building', legacy.id)).toEqual(legacy);
+    h.act({ action: 'move_building', id: legacy.id, x: 12, z: 9, rotation: 2 });
+    expect(h.repo.get('building', legacy.id)).toMatchObject({ edge: true, rotation: 2 });
+    expect(() => h.act({ action: 'move', x: 12, z: 9 })).not.toThrow();
+  });
+  it('keeps an edge doorway private for outside visitors, lets helpers enter, and always lets occupants leave', () => {
+    const h = harness(); h.buy(); h.supplies();
+    for (const rotation of [0, 1, 2]) h.act({ action: 'build', id: PLOTS[0].id, item: 'wall', x: 12, z: 9, rotation });
+    h.act({ action: 'build', id: PLOTS[0].id, item: 'door', x: 12, z: 9, rotation: 3 });
+    Object.assign(h.b, { x: 11, z: 9 });
+    expect(() => h.act({ action: 'move', x: 12, z: 9 }, h.b)).toThrow('No walkable route');
+    expect(() => h.act({ action: 'move', x: 12, z: 9 })).not.toThrow();
+    const land = h.repo.get('claim', PLOTS[0].id)!;
+    h.repo.put('claim', { ...land, permissions: { b: 1 } });
+    h.act({ action: 'move', x: 12, z: 9 }, h.b);
+    advance(h.w);
+    expect({ x: h.b.x, z: h.b.z }).toEqual({ x: 12, z: 9 });
+    h.repo.put('claim', { ...land, permissions: {} });
+    h.act({ action: 'move', x: 11, z: 9 }, h.b);
+    h.w.now += 600; advance(h.w);
+    expect({ x: h.b.x, z: h.b.z }).toEqual({ x: 11, z: 9 });
   });
   it("requires storage permissions, preserves a full bag, and rejects dismantling nonempty chests", () => {
     const h = harness();
@@ -650,7 +687,7 @@ describe("connected home island", () => {
       expect(homePath(homePoint(REGIONS.settlement.spawn,'settlement'),homePoint(p.marker,'settlement'))).not.toBeNull();
     }
   });
-  it("walks from the harbour into the Meadows at two tiles per tick without relocating claims", () => {
+  it("walks from the harbour into the Meadows at three tiles per tick without relocating claims", () => {
     const h=harness();h.buy();const savedClaims=h.repo.all('claim');
     Object.assign(h.a,{region:'bramblewild',x:46,z:25});
     h.act({action:'enter'});
@@ -660,7 +697,7 @@ describe("connected home island", () => {
     for(let i=0;i<80 && h.a.target;i++) {
       h.w.now+=600;advance(h.w);
       const next=homePoint(h.a,h.a.region);
-      expect(Math.max(Math.abs(next.x-previous.x),Math.abs(next.z-previous.z))).toBeLessThanOrEqual(2);
+      expect(Math.max(Math.abs(next.x-previous.x),Math.abs(next.z-previous.z))).toBeLessThanOrEqual(3);
       crossed ||= h.a.region==='settlement';previous=next;
     }
     expect(crossed).toBe(true);expect(h.a.target).toBeUndefined();
@@ -693,4 +730,53 @@ describe("connected home island", () => {
     expect(()=>h.act({action:'walk',id:'sea',x:5,z:64})).toThrow();
     expect(()=>h.act({action:'walk',id:'bramblewild',x:90,z:25})).toThrow();
   });
+
+  it('names obstacles instead of a hedge when Meadows walls enclose the destination', () => {
+    const h = harness();
+    for (let rotation = 0; rotation < 4; rotation++) h.repo.put('building', {
+      id: `wall-${rotation}`, claim: PLOTS[0].id, region: 'settlement', x: 35, z: 64, piece: 'wall', rotation, edge: true, label: '',
+    });
+    expect(() => h.act({ action: 'walk', id: 'settlement', x: 35, z: 64 })).toThrow('An obstacle or closed gate blocks the way');
+    expect(h.a.target).toBeUndefined();
+  });
+
+  it('only suggests a sturdy stick when the missing key actually prevents the route', () => {
+    const h = harness(); Object.assign(h.a, { region: 'bramblewild', x: 25, z: 25 });
+    const rule = enterRule(false, false);
+    h.w.homeStepRule = () => (from, to) => to.region !== 'bramblewild' || rule(from, to);
+    expect(() => h.act({ action: 'enter' })).toThrow('sturdy stick');
+  });
+
+  it('names the stone club when a requested walk crosses the Boulders boundary', () => {
+    const h = harness(); Object.assign(h.a, { region: 'bramblewild', x: 46, z: 44 });
+    const rule = enterRule(true, false);
+    h.w.homeStepRule = () => (from, to) => to.region !== 'bramblewild' || rule(from, to);
+    expect(() => h.act({ action: 'walk', id: 'bramblewild', x: 55, z: 44 })).toThrow('stone club');
+  });
+
+  it('keeps combat and cargo movement slower while peaceful travel covers three valid steps', () => {
+    const h = harness();
+    for (const [hostile, budget, steps] of [[false, 3, 3], [true, 3, 2], [false, 1, 1]] as const) {
+      Object.assign(h.a, { region: 'settlement', x: 31, z: 64, hostile });
+      h.w.movementSteps = () => budget;
+      h.act({ action: 'walk', id: 'settlement', x: 40, z: 64 });
+      advance(h.w);
+      expect(h.a.x).toBe(31 + steps);
+    }
+  });
+});
+
+it('moves skiffs each server tick, with a real two-step Exploration 10 bonus', () => {
+  for (const skilled of [false, true]) {
+    const h = harness(); Object.assign(h.a, { region: 'sea', x: 50, z: 50 });
+    const p = h.repo.get('profile', h.a.id)!;
+    if (skilled) { p.active = [4]; p.xp[4] = 2025; h.repo.put('profile', p); }
+    h.repo.put('boat', { id: 'trip', owner: 'a', region: 'sea', x: 50, z: 50, lastPort: 'bramblewild', crew: ['a'], pilot: 'a', permissions: {}, emptySince: 0, target: { x: 60, z: 50 } });
+    advance(h.w);
+    expect(h.a.x).toBe(50 + (skilled ? 2 : 1));
+    h.w.now += 599; advance(h.w);
+    expect(h.a.x).toBe(50 + (skilled ? 2 : 1));
+    h.w.now++; advance(h.w);
+    expect(h.a.x).toBe(50 + (skilled ? 4 : 2));
+  }
 });

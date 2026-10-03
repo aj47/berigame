@@ -1,6 +1,7 @@
-import { homePoint, homePath, isHomeRegion } from "../../../shared/sim/frontier/homeMap";
+import { homePoint, homePath, homeLocation, isHomeRegion } from "../../../shared/sim/frontier/homeMap";
 import { regionalPath } from '../../../shared/sim/frontier/regions';
-import type { RegionId } from '../../../shared/sim/frontier/catalog';
+import { buildingBlocker } from '../../../shared/sim/frontier/building';
+import type { Location, RegionId } from '../../../shared/sim/frontier/catalog';
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Vector3 } from 'three';
@@ -38,7 +39,7 @@ const stepLength = (a: Vector3, b: Vector3) => Math.max(Math.abs(b.x-a.x), Math.
  * within a tick. Never predict movement through obstacles. The same movement
  * budget drives short-step duration and the diagonal/teleport distinction.
  */
-export function useTileMotion(tileX: number, tileZ: number, facing: number, groupRef: React.MutableRefObject<any>, region: RegionId = 'bramblewild', frontierBlocked?: Set<string>): React.MutableRefObject<Motion> {
+export function useTileMotion(tileX: number, tileZ: number, facing: number, groupRef: React.MutableRefObject<any>, region: RegionId = 'bramblewild', frontierBlocked?: Set<string>, frontierBlocksAt?: (from: Location) => Set<string>): React.MutableRefObject<Motion> {
   // Shared and stable while no node moves: tree cooldowns do not re-render avatars.
   const blocked = useWorldBlocked();
   const motion = useRef<Motion>({
@@ -60,11 +61,18 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
       if (g) g.position.copy(destination);
     };
     if (!m.initialized || !g) { snap(); return; }
-    // A legal two-step diagonal is 2.83 world units, not a teleport. Anything
-    // further than one tick of travel (e.g. a respawn) snaps.
-    const maximum = MOVEMENT_STEPS_PER_TICK;
+    // Peaceful district travel can cover three steps. Confirm the full route
+    // before animating, including walls between otherwise walkable floor tiles.
+    const maximum = 3;
     if ((previousRegion !== region && !(isHomeRegion(previousRegion) && isHomeRegion(region))) || chebyshev(previous, tile) > maximum) { snap(); return; }
-    const route = region === 'bramblewild' && previousRegion === 'bramblewild' ? bfsPath(previous, goalIsTile(tile), blocked) : isHomeRegion(region) ? homePath(previous, tile, p => p.region === 'bramblewild' ? blocked.has(p.z * 64 + p.x) : frontierBlocked?.has(`${p.x},${p.z}`) ?? false) : regionalPath(region, previous, tile, p => frontierBlocked?.has(`${p.x},${p.z}`) ?? false);
+    // Gate access depends on the actor at the start of this confirmed move.
+    // Using the new position would incorrectly unlock a gate just entered.
+    const fromLocation = { ...(previousRegion === 'settlement' ? homeLocation(previous) : previous), region: previousRegion };
+    const frontierObstacle = buildingBlocker(frontierBlocksAt?.(fromLocation) ?? frontierBlocked ?? new Set());
+    const homeObstacle = Object.assign((p: Location) => p.region === 'bramblewild' ? blocked.has(p.z * 64 + p.x) : frontierObstacle(p), {
+      crosses: (a: Location, b: Location) => a.region === 'settlement' && b.region === 'settlement' && frontierObstacle.crosses(a, b),
+    });
+    const route = region === 'bramblewild' && previousRegion === 'bramblewild' ? bfsPath(previous, goalIsTile(tile), blocked) : isHomeRegion(region) ? homePath(previous, tile, homeObstacle) : regionalPath(region, previous, tile, frontierObstacle);
     if (!route || route.length > maximum) { snap(); return; }
     // Finish any unrendered corner of the previous update before following
     // this update. Early network delivery must not make us cut across a tree.
@@ -74,7 +82,7 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
     m.stepLengths = m.points.slice(1).map((p, i) => stepLength(m.points[i], p));
     const steps = m.stepLengths.reduce((sum, value) => sum + value, 0);
     m.from.copy(g.position); m.to.copy(destination); m.segment=0;
-    m.durationMs = steps * tickClock.period / MOVEMENT_STEPS_PER_TICK;
+    m.durationMs = steps * tickClock.period / Math.max(MOVEMENT_STEPS_PER_TICK, route.length);
     // Continuing travel (or resuming within the arrival grace) keeps full speed.
     m.fromRest = !m.moving;
     m.startedAt = performance.now(); m.moving = steps > 0.01; m.holdMs = 0;

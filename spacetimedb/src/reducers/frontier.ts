@@ -1,6 +1,7 @@
 import { t, SenderError } from "spacetimedb/server";
 import spacetimedb from "../schema";
-import { perform } from "../../../shared/sim/frontier/engine";
+import { perform, validateCommand } from "../../../shared/sim/frontier/engine";
+import { eatFromSlot } from './inventory';
 import {
   clearInteractions,
   currentTick,
@@ -21,7 +22,6 @@ export const frontierAction = spacetimedb.reducer(
   (ctx, { command }) => {
     if (command.length > 2048) throw new SenderError("Action is too large");
     const player = requireAlivePlayer(ctx, true);
-    touchInput(player, currentTick(ctx));
     let input: unknown;
     try {
       input = JSON.parse(command);
@@ -33,6 +33,16 @@ export const frontierAction = spacetimedb.reducer(
       (carrying(ctx, ctx.sender) && (input as any)?.action !== "ability")
     )
       throw new SenderError("Finish your current adventure or duel first");
+    let validated;
+    try { validated = validateCommand(input); }
+    catch (e) { throw new SenderError((e as Error).message); }
+    if (validated.action === 'eat') {
+      const slot = readSlots(ctx, ctx.sender).slots.findIndex(item => item?.itemId === validated.item);
+      if (slot < 0) throw new SenderError('Carry that food first');
+      eatFromSlot(ctx, slot);
+      return;
+    }
+    touchInput(player, currentTick(ctx));
     const w = frontierWorld(ctx);
     ensureFrontierProfile(ctx, w.repo);
     const actor = w.actors.find((a) => a.id === ctx.sender.toHexString())!;

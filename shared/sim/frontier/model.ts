@@ -52,6 +52,8 @@ export type Building = Location & {
   claim: string;
   piece: string;
   rotation: number;
+  /** Absent on legacy centered pieces; retain their saved placement. */
+  edge?: boolean;
   label: string;
 };
 export type Container = {
@@ -167,6 +169,8 @@ export interface World {
   homeStepRule?(actor: Actor): (from: Location, to: Location) => boolean;
   homeBlocked?(point: Point): boolean;
   canLeaveHomeDistrict?(actor: Actor): boolean;
+  /** Authoritative cargo/adventure/combat movement budget, capped at three. */
+  movementSteps?(actor: Actor): number;
 }
 export function newProfile(id: string): Profile {
   return {

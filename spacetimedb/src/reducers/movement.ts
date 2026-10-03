@@ -25,7 +25,7 @@ export const setTarget = spacetimedb.reducer(
 
 /** Stop whatever you are doing. */
 export const cancel = spacetimedb.reducer((ctx) => {
-  const p = requireAlivePlayer(ctx);
+  const p = requireAlivePlayer(ctx, true);
   touchInput(p, currentTick(ctx));
   clearInteractions(ctx, p);
   savePlayer(ctx, p);

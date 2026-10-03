@@ -8,7 +8,7 @@ import { homePoint, homeTarget } from '../../../shared/sim/frontier/homeMap';
 const mock = vi.hoisted(() => ({ player: null as any, frontier: vi.fn(), setTarget: vi.fn() }));
 vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => mock.player, useWorldBlocked: () => new Set() }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ frontier: mock.frontier, setTarget: mock.setTarget }) }));
-vi.mock('../frontier/useFrontier', () => ({ useFrontier: () => ({ enabled: true, buildings: [], resources: [] }) }));
+vi.mock('../frontier/useFrontier', () => ({ useFrontier: () => ({ enabled: true, buildings: [], resources: [], plots: [] }) }));
 vi.mock('../animation/avatarRegistry', () => ({ avatarGroup: () => null }));
 const identity = { toHexString: () => 'me' };
 beforeEach(() => {

@@ -116,6 +116,8 @@ export type Piece = {
   cost: Cost;
   layer: "floor" | "solid" | "roof";
   solid: boolean;
+  /** New pieces mount on a tile boundary; rotation selects its side. */
+  edge?: boolean;
   station?: string;
   discipline?: number;
   level?: number;
@@ -132,25 +134,29 @@ export const PIECES: Record<string, Piece> = {
     cost: { timber: 3 },
     layer: "solid",
     solid: true,
+    edge: true,
   },
   window: {
     name: "Window wall",
     cost: { timber: 3 },
     layer: "solid",
     solid: true,
+    edge: true,
   },
   door: {
     name: "Door",
     cost: { timber: 3, fibre: 1 },
     layer: "solid",
     solid: false,
+    edge: true,
   },
-  fence: { name: "Fence", cost: { timber: 2 }, layer: "solid", solid: true },
+  fence: { name: "Fence", cost: { timber: 2 }, layer: "solid", solid: true, edge: true },
   gate: {
     name: "Gate",
     cost: { timber: 2, fibre: 1 },
     layer: "solid",
     solid: false,
+    edge: true,
   },
   roof: {
     name: "Thatched roof",
@@ -208,6 +214,7 @@ export const PIECES: Record<string, Piece> = {
     cost: { bricks: 3 },
     layer: "solid",
     solid: true,
+    edge: true,
     discipline: 2,
     level: 5,
   },

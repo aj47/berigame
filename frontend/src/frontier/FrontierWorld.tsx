@@ -13,6 +13,7 @@ import { holdState, isDirectAttackClick, MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, ope
 import { PlayerState } from "@sim";
 import { useUserInputStore } from "../store";
 import { previewIssue } from "./preview";
+import { buildingSideAt } from "../../../shared/sim/frontier/building";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
@@ -63,7 +64,10 @@ const Box = ({
     />
   </mesh>
 );
-function PieceModel({
+export function PieceModel({ edge = false, ...props }: { piece: string; ghost?: boolean; cutaway?: boolean; edge?: boolean }) {
+  return <group position={[0, 0, edge && PIECES[props.piece]?.edge ? .5 : 0]}><PieceShape {...props} /></group>;
+}
+function PieceShape({
   piece,
   ghost = false,
   cutaway = false,
@@ -347,13 +351,6 @@ export function FrontierScene({
     };
   }, [identity]);
   const pieces = state.buildings.filter((b) => b.region === region);
-  const solids = useMemo(
-    () =>
-      new Set(
-        pieces.filter((b) => PIECES[b.piece].solid).map((b) => `${b.x},${b.z}`),
-      ),
-    [state.buildings, region],
-  );
   const terrain = useMemo(() => {
     if(region === 'settlement') return createTerrainGeometry(meadowField, meadowTrailDistance,128,MEADOW_OFFSET,1,false);
     const vertices: number[] = [], colors: number[] = [];
@@ -422,13 +419,12 @@ export function FrontierScene({
       if (openMenuNear(scene, camera, gl.domElement.getBoundingClientRect(), native.clientX, native.clientY, radius, native)) return;
     }
     useUserInputStore.getState().setClickedOtherObject(null);
-    const point = {
-      x: Math.round(e.point.x + 25 - (embedded ? MEADOW_OFFSET.x : 0)),
-      z: Math.round(e.point.z + 25 - (embedded ? MEADOW_OFFSET.z : 0)),
-    };
+    const precise = { x: e.point.x + 25 - (embedded ? MEADOW_OFFSET.x : 0), z: e.point.z + 25 - (embedded ? MEADOW_OFFSET.z : 0) };
+    const point = { x: Math.round(precise.x), z: Math.round(precise.z) };
     if (draft && self.region === region) {
-      const reason = previewIssue(state, { ...draft, point }, players);
-      onDraft({ ...draft, point, valid: !reason, reason });
+      const rotation = PIECES[draft.piece]?.edge ? buildingSideAt(precise, point, draft.rotation) : draft.rotation;
+      const reason = previewIssue(state, { ...draft, point, rotation }, players);
+      onDraft({ ...draft, point, rotation, valid: !reason, reason });
     } else
       void actions.frontier({
         action: embedded ? "walk" : region === "sea" ? "sail" : "move",
@@ -543,6 +539,7 @@ export function FrontierScene({
         >
           <PieceModel
             piece={b.piece}
+            edge={b.edge}
             cutaway={state.plots.some(
               (p) =>
                 p.id === b.claim &&
@@ -559,7 +556,7 @@ export function FrontierScene({
           position={[draft.point.x - 25, 0.02, draft.point.z - 25]}
           rotation={[0, (draft.rotation * Math.PI) / 2, 0]}
         >
-          <PieceModel piece={draft.piece} ghost />
+          <PieceModel piece={draft.piece} edge={!!PIECES[draft.piece]?.edge} ghost />
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
             <planeGeometry args={[1, 1]} />
             <meshBasicMaterial
@@ -631,7 +628,7 @@ export function FrontierScene({
                 ? setPlayerRef
                 : undefined
             }
-            frontierBlocked={solids}
+            frontier={state}
           />
         ))}
       <AvatarDecals />

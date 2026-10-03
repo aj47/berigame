@@ -3,6 +3,8 @@ import { areaOf, enterRule, inBounds, isLandTile, nearestReachableTile, tileEqua
 import { HOME_JOIN, homeLand, homeLocation, homePath, homePoint } from '../../../../shared/sim/frontier/homeMap';
 import { PIECES } from '../../../../shared/sim/frontier/catalog';
 import { can } from '../../../../shared/sim/frontier/model';
+import { buildingBlocker, buildingCollisionKeys } from '../../../../shared/sim/frontier/building';
+import type { Location } from '../../../../shared/sim/frontier/catalog';
 import type { FrontierSnapshot } from '../../../../shared/sim/frontier/snapshot';
 
 export interface HoverHint {
@@ -63,17 +65,17 @@ export function groundHover(tile: Tile, me: Tile, blocked: Set<number>, hasStick
 }
 
 /** Match the server's building and gate rules in Meadows; coordinates remain local. */
-export function meadowBlockedTiles(state: Pick<FrontierSnapshot, 'buildings' | 'plots'>, me: Tile & { region?: string }, identity: string): Set<string> {
+export function meadowBlockedTiles(state: Pick<FrontierSnapshot, 'buildings' | 'plots'>, me: Tile & { region?: string }, identity: string, region = 'settlement'): Set<string> {
   const claims = new Map(state.plots.filter(p => p.claim).map(p => [p.id, p]));
-  return new Set(state.buildings.filter(b => {
-    if (b.region !== 'settlement') return false;
+  return buildingCollisionKeys(state.buildings, b => {
+    if (b.region !== region) return false;
     if (PIECES[b.piece]?.solid) return true;
     if (b.piece !== 'door' && b.piece !== 'gate') return false;
     const plot = claims.get(b.claim), claim = plot?.claim;
     if (!plot || !claim) return false;
-    const inside = me.region === 'settlement' && me.x >= plot.x && me.x < plot.x + 16 && me.z >= plot.z && me.z < plot.z + 16;
+    const inside = me.region === region && me.x >= plot.x && me.x < plot.x + 16 && me.z >= plot.z && me.z < plot.z + 16;
     return !inside && !can(claim, identity, 1) && !can(claim, identity, 2);
-  }).map(b => `${b.x},${b.z}`));
+  });
 }
 
 /** A pointer is in the shared home frame even while the player row uses district-local coordinates. */
@@ -82,14 +84,21 @@ export function connectedGroundHover(tile: Tile, me: Tile & { region?: string },
   if (region === 'bramblewild' && target.region === 'bramblewild') return groundHover(tile, me, blocked, hasStick, hasClub);
   if (!homeLand(tile)) return { title: 'Water', action: 'Choose a spot on land', tone: 'muted', tile };
   const rule = enterRule(hasStick, hasClub);
+  const meadow = buildingBlocker(meadowBlocked);
+  const obstacles = Object.assign((p: Location) => p.region === 'bramblewild' ? blocked.has(tileKey(p)) : meadow(p), {
+    crosses: (a: Location, b: Location) => a.region === 'settlement' && b.region === 'settlement' && meadow.crosses(a, b),
+  });
   const path = homePath(homePoint(me, region), tile,
-    p => p.region === 'bramblewild' ? blocked.has(tileKey(p)) : meadowBlocked.has(`${p.x},${p.z}`),
+    obstacles,
     (a, b) => b.region !== 'bramblewild' || rule(a.region === 'bramblewild' ? a : HOME_JOIN.bramblewild, b));
   if (path) return { title: 'Walk here', action: 'Click to move', tile };
-  if (!hasStick && region === 'bramblewild' && areaOf(me) === 'grove') {
+  const boundaryCouldMatter = (!hasStick && region === 'bramblewild' && areaOf(me) === 'grove')
+    || (!hasClub && target.region === 'bramblewild' && ['boulders', 'boulder-line'].includes(areaOf(target)));
+  const withoutBoundaries = boundaryCouldMatter && homePath(homePoint(me, region), tile, obstacles);
+  if (withoutBoundaries && !hasStick && region === 'bramblewild' && areaOf(me) === 'grove') {
     return { title: 'Thorny brambles', action: 'Carry a sturdy stick to cross', tone: 'muted', tile };
   }
-  if (!hasClub && target.region === 'bramblewild' && ['boulders', 'boulder-line'].includes(areaOf(target))) {
+  if (withoutBoundaries && !hasClub && target.region === 'bramblewild' && ['boulders', 'boulder-line'].includes(areaOf(target))) {
     return { title: 'Boulder boundary', action: 'Carry a stone club to cross', tone: 'muted', tile };
   }
   return { title: 'Path blocked', action: 'Choose a clear spot', detail: 'A building or obstacle blocks this route', tone: 'muted', tile };

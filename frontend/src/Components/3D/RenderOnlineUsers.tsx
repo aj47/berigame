@@ -56,7 +56,7 @@ const SHARED_LAYERS = <><AvatarDecals /><AvatarOverlay /><AnimationCulling /></>
 // so later ticks cannot change what it shows (TrainingDummy: 25-tick bar, dummyHpAt).
 const DUMMY_SETTLED_TICKS = Math.max(25, DUMMY_IDLE_RESET_TICKS);
 
-const RenderOnlineUsers = ({ frontierBlocked }: { frontierBlocked?: Set<string> }) => {
+const RenderOnlineUsers = ({ frontierBlocked, frontier }: { frontierBlocked?: Set<string>; frontier?: React.ComponentProps<typeof PlayerAvatar>['frontier'] }) => {
   const players = usePlayers();
   const me = useMyIdentityHex();
   const chat = useRecentChatBySender();
@@ -76,7 +76,7 @@ const RenderOnlineUsers = ({ frontierBlocked }: { frontierBlocked?: Set<string> 
         const hex = identityHex(p.identity);
         if (hex === me) return null;
         return (
-          <PlayerAvatar frontierBlocked={frontierBlocked} key={hex} row={p} isSelf={false} saved={appearances.get(hex)} targeted={hex === target} chatText={chat.get(hex)?.text} />
+          <PlayerAvatar frontier={frontier} frontierBlocked={frontierBlocked} key={hex} row={p} isSelf={false} saved={appearances.get(hex)} targeted={hex === target} chatText={chat.get(hex)?.text} />
         );
       })}
       {SHARED_LAYERS}

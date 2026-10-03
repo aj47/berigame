@@ -1,6 +1,7 @@
 import { FRONTIER, PIECES } from "../../../shared/sim/frontier/catalog";
 import type { FrontierSnapshot } from "../../../shared/sim/frontier/snapshot";
 import type { BuildDraft } from "./FrontierPanel";
+import { buildingsOverlap } from "../../../shared/sim/frontier/building";
 
 /** Immediate visual checks. The reducer also checks permissions, costs and escape routes. */
 export function previewIssue(
@@ -15,19 +16,17 @@ export function previewIssue(
     size = FRONTIER.sizes[plot.claim.tier];
   if (x < plot.x || z < plot.z || x >= plot.x + size || z >= plot.z + size)
     return "Outside the buildable area.";
+  const candidate = { ...draft.point, region: plot.region, piece: draft.piece, rotation: draft.rotation, edge: !!PIECES[draft.piece]?.edge };
   if (
     state.buildings.some(
       (b) =>
         b.id !== draft.moving &&
-        b.region === plot.region &&
-        b.x === x &&
-        b.z === z &&
-        PIECES[b.piece].layer === PIECES[draft.piece].layer,
+        buildingsOverlap(b, candidate),
     )
   )
     return "That building layer is occupied.";
   if (
-    [...players, ...state.creatures].some(
+    !candidate.edge && [...players, ...state.creatures].some(
       (p) => p.region === plot.region && p.x === x && p.z === z,
     )
   )

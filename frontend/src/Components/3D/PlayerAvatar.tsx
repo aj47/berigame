@@ -21,7 +21,9 @@ import { useSocialStore } from '../../spacetime/stores/socialStore';
 import { emoteCue } from '../../animation/emotes';
 import { avatarSelection } from './playerSelection';
 import { holdState, isDirectAttackClick } from './tapAssist';
-import { homePoint } from '../../../../shared/sim/frontier/homeMap';
+import { homePoint, isHomeRegion } from '../../../../shared/sim/frontier/homeMap';
+import type { FrontierSnapshot } from '../../../../shared/sim/frontier/snapshot';
+import { meadowBlockedTiles } from './hoverTarget';
 import { openSettlement } from '../../frontier/navigation';
 import { useResourceHarvest } from '../../frontier/useResourceHarvest';
 import { approachWorldInteraction } from '../../frontier/worldInteraction';
@@ -34,6 +36,7 @@ class HairBoundary extends React.Component<{ children:React.ReactNode; fallback:
 }
 interface Props {
   frontierBlocked?: Set<string>;
+  frontier?: Pick<FrontierSnapshot, 'buildings' | 'plots'>;
   row: Player;
   isSelf: boolean;
   /** This player's saved appearance row (looked up once by the parent), if any. */
@@ -61,7 +64,7 @@ function useHealthShown(hp: number, maxHp: number): boolean {
  * One shared rig and mechanically identical silhouette for every adventurer.
  * Memoized: a server tick re-renders only the avatars whose row (or labels) changed.
  */
-const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = false, chatText, setPlayerRef, frontierBlocked }: Props) => {
+const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = false, chatText, setPlayerRef, frontierBlocked, frontier: frontierState }: Props) => {
   const groupRef = useRef<any>(null);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const hex = identityHex(row.identity);
@@ -74,7 +77,8 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const appearanceKey = APPEARANCE_KEYS.map(key => chosen[key] ?? 0).join(':');
   const appearance = useMemo(() => normalizeAppearance(chosen), [appearanceKey]);
   const url = modelUrl(appearance.hairStyle);
-  const motion = useTileMotion(row.x, row.z, row.facing, groupRef, (row.region || 'bramblewild') as any, frontierBlocked);
+  const motion = useTileMotion(row.x, row.z, row.facing, groupRef, (row.region || 'bramblewild') as any, frontierBlocked,
+    frontierState ? from => meadowBlockedTiles(frontierState, from, hex, isHomeRegion(from.region) ? 'settlement' : from.region) : undefined);
   const cue = useCombatFxStore((s) => s.cues[hex]);
   const floating = useCombatFxStore((s) => s.numbers[hex]);
   const found = useCombatFxStore((s) => s.finds[hex]);

@@ -1,6 +1,6 @@
 import type { Identity } from 'spacetimedb';
 import { statsItem } from './stats';
-import { GROUND_ITEM_TTL_TICKS, INVENTORY_SIZE, addItem, emptySlots, type Slot, type Tile } from '../../../shared/sim';
+import { GROUND_ITEM_TTL_TICKS, INVENTORY_SIZE, TICK_MS, addItem, emptySlots, type Slot, type Tile } from '../../../shared/sim';
 import type { Ctx, GroundItemRow, InventorySlotRow } from './types';
 
 export interface SlotSnapshot {
@@ -44,11 +44,22 @@ export function dropOnGround(
   owner: Identity,
   itemId: string,
   quantity: number,
-  at: Tile,
+  at: Tile & { region?: string },
   tick: number,
   droppedOnDeath = false
 ): void {
   if (quantity <= 0) return;
+  if (at.region && at.region !== 'bramblewild') {
+    // Legacy ground piles have no district column. Keep portable drops and
+    // crafting overflow in the regional bags players can see and pick up.
+    const base = `item-${owner.toHexString()}-${ctx.timestamp.microsSinceUnixEpoch}`;
+    let id = base, suffix = 0;
+    while (ctx.db.frontierObject.key.find(`drop:${id}`)) id = `${base}-${++suffix}`;
+    const data = { id, region: at.region, x: at.x, z: at.z, slots: [{ itemId, quantity }],
+      expiresAt: Number(ctx.timestamp.microsSinceUnixEpoch / 1000n) + GROUND_ITEM_TTL_TICKS * TICK_MS };
+    ctx.db.frontierObject.insert({ key: `drop:${id}`, kind: 'drop', region: at.region, data: JSON.stringify(data) });
+    return;
+  }
   ctx.db.groundItem.insert({
     id: 0n,
     itemId,

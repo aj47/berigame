@@ -20,11 +20,15 @@ export const craft = spacetimedb.reducer(
   (ctx, { recipe }) => {
     const def = getRecipe(recipe);
     if (!def) throw new SenderError('no such recipe');
-    const p = requireAlivePlayer(ctx);
+    const p = requireAlivePlayer(ctx, true);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const T = currentTick(ctx);
     touchInput(p, T);
     if (p.hostile) throw new SenderError('Not while fighting');
+    const regionProfile = ctx.db.frontierPrivate.key.find(`profile:${p.identity.toHexString()}`);
+    if (regionProfile && Number(ctx.timestamp.microsSinceUnixEpoch / 1000n) < (JSON.parse(regionProfile.data).events?.hostileUntil ?? 0)) {
+      throw new SenderError('Not while fighting');
+    }
     const snap = readSlots(ctx, p.identity);
     const why = craftRejection(snap.slots, def, skillLevel(ctx, p.identity, Skill.Crafting));
     if (why) throw new SenderError(why);

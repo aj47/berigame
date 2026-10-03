@@ -5,9 +5,9 @@ import { GIANT_FEAST } from '@sim';
 import AdventureWorld from '../Components/3D/AdventureWorld';
 import { useUserInputStore } from '../store';
 
-const mock = vi.hoisted(() => ({ expeditions: [] as any[], tick: 100 }));
+const mock = vi.hoisted(() => ({ expeditions: [] as any[], members: [] as any[], me: null as any, tick: 100 }));
 vi.mock('../spacetime/hooks', () => ({
-  useMyPlayer: () => null,
+  useMyPlayer: () => mock.me, useExpeditionMembers: () => mock.members,
   useExpeditions: () => mock.expeditions, useIslandProjects: () => [], usePlayers: () => [], useTick: () => mock.tick,
 }));
 vi.mock('@react-three/fiber', () => ({ useFrame: () => {} }));
@@ -20,7 +20,7 @@ vi.mock('../Components/3D/AdventureModels', () => ({
 }));
 
 const expedition = (patch = {}) => ({ id: 7n, stage: 'hauling', destination: 'feast', x: 34, z: 17, giantX: 36, giantZ: 29, giantUntil: 0, baitUntil: 0, hiddenUntil: 0, untilTick: 200, ...patch });
-beforeEach(() => { mock.expeditions = []; mock.tick = 100; useUserInputStore.getState().setClickedOtherObject(null); });
+beforeEach(() => { mock.expeditions = []; mock.members = []; mock.me = null; mock.tick = 100; useUserInputStore.getState().setClickedOtherObject(null); });
 afterEach(cleanup);
 
 describe('Berry Giant world presence', () => {
@@ -66,5 +66,21 @@ describe('Berry Giant world presence', () => {
     render(<AdventureWorld />);
     expect(screen.getAllByRole('button')).toHaveLength(1);
     expect(screen.getByRole('button')).toHaveTextContent('Bring me a giant berry!');
+  });
+
+  it('uses one feast host for several completed crews while preserving your reward interaction', () => {
+    const identity = { toHexString: () => 'me' };
+    mock.me = { identity, x: 25, z: 25 };
+    mock.members = [{ identity, expeditionId: 7n }];
+    mock.expeditions = [expedition({ stage: 'complete' }), expedition({ id: 8n, stage: 'complete' }), expedition({ id: 9n })];
+    const ui = render(<AdventureWorld />);
+    expect(screen.getAllByRole('button', { name: 'Meet your berry friend' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Feed a giant berry' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Meet your berry friend' }));
+    expect(useUserInputStore.getState().clickedOtherObject.berryGiantExpeditionId).toBe(7n);
+    mock.members = [];
+    ui.rerender(<AdventureWorld />);
+    fireEvent.click(screen.getByRole('button', { name: 'Meet your berry friend' }));
+    expect(useUserInputStore.getState().clickedOtherObject.berryGiantExpeditionId).toBe(8n);
   });
 });

@@ -2,6 +2,10 @@ import { terrainLand } from "../terrain";
 import { REGIONS, type Location, type Point, type RegionId } from "./catalog";
 export const distance = (a: Point, b: Point) =>
   Math.max(Math.abs(a.x - b.x), Math.abs(a.z - b.z));
+/** Cell obstacles may also block the edge between two walkable tiles. */
+export type PathBlocker<P extends Point = Point> = ((p: P) => boolean) & {
+  crosses?: (from: P, to: P) => boolean;
+};
 /** Continuous shore used by both the server's tile mask and the shared terrain renderer. */
 export function meadowField(x: number, z: number): number {
   const coast=(1-Math.pow(Math.pow(Math.abs(x-64)/63,6)+Math.pow(Math.abs(z-64)/63,6),1/6))*63;
@@ -44,14 +48,14 @@ export function regionalPath(
   region: RegionId,
   from: Point,
   to: Point,
-  blocked: (p: Point) => boolean,
+  blocked: PathBlocker,
 ): Point[] | null {
   return gridPath(REGIONS[region].size, REGIONS[region].size, from, to,
     p => regionLand(region, p), blocked);
 }
 export function gridPath(
   width: number, height: number, from: Point, to: Point,
-  land: (p: Point) => boolean, blocked: (p: Point) => boolean,
+  land: (p: Point) => boolean, blocked: PathBlocker,
   canStep: (from: Point, to: Point) => boolean = () => true,
 ): Point[] | null {
   const inGrid = (p: Point) => Number.isInteger(p.x) && Number.isInteger(p.z) && p.x >= 0 && p.z >= 0 && p.x < width && p.z < height;
@@ -98,6 +102,7 @@ export function gridPath(
     return first;
   };
   const pass = (p: Point) => inGrid(p) && land(p) && !blocked(p);
+  const step = (a: Point, b: Point) => canStep(a, b) && !blocked.crosses?.(a, b);
   push({
     key: start,
     cost: 0,
@@ -127,13 +132,15 @@ export function gridPath(
     const p = { x: k % size, z: Math.floor(k / size) };
     for (const [dx, dz] of dirs) {
       const n = { x: p.x + dx, z: p.z + dz };
-      if (!pass(n) || !canStep(p, n)) continue;
+      if (!pass(n) || !step(p, n)) continue;
       if (
         dx &&
         dz &&
         (!pass({ x: p.x + dx, z: p.z }) || !pass({ x: p.x, z: p.z + dz }) ||
-          !canStep(p, { x: p.x + dx, z: p.z }) ||
-          !canStep(p, { x: p.x, z: p.z + dz }))
+          !step(p, { x: p.x + dx, z: p.z }) ||
+          !step(p, { x: p.x, z: p.z + dz }) ||
+          !step({ x: p.x + dx, z: p.z }, n) ||
+          !step({ x: p.x, z: p.z + dz }, n))
       )
         continue;
       const next = key(n),

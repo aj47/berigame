@@ -22,6 +22,9 @@ import { useToastStore } from "../spacetime/stores/toastStore";
 import { isTyping } from "./keyboard";
 import { PUNCH_ICON, isWieldedSlot, slotsFromRows } from "./itemUi";
 import { useInventoryDrag } from "./useInventoryDrag";
+import type { FrontierSnapshot } from "../../../shared/sim/frontier/snapshot";
+import { REGIONS } from "../../../shared/sim/frontier/catalog";
+import { foodHealing } from "../../../shared/sim/frontier/engine";
 
 const QUICK_KEYS = Array.from({ length: HOTBAR_SIZE }, (_, i) => String(i + 1));
 
@@ -29,18 +32,19 @@ interface Props {
   /** False while a panel is open, so its keyboard controls cannot consume items. */
   quickKeysEnabled?: boolean;
   onOpenBag?: (slot: number) => void;
+  frontier?: FrontierSnapshot;
 }
 
 /**
  * Bottom combat strip: health, opponent timing, the three quick slots
  * (inventory slots 0..HOTBAR_SIZE-1, keys 1-3) and Stop.
  */
-const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
+const CombatHud = ({ quickKeysEnabled = true, onOpenBag, frontier }: Props) => {
   const me = useMyPlayer();
   const players = usePlayersByHex();
   const tick = useTick();
   const rows = useInventoryRows();
-  const { eatBerry, wieldItem, unwield, cancel, moveItem } = useGameActions();
+  const { eatBerry, wieldItem, unwield, cancel, moveItem, frontier: frontierAction } = useGameActions();
   const showToast = useToastStore((s) => s.show);
   const sparkle = useFirstDayStore((s) => s.stickFoundAt !== null);
   const [pending, setPending] = useState(false);
@@ -50,6 +54,7 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
   const dead = !!me && me.state === PlayerState.Dead;
   const weapon: string = me?.weapon ?? "";
   const wielded = (index: number) => isWieldedSlot(slots, index, weapon, HOTBAR_SIZE);
+  const vestEquipped = (frontier?.profile.events.vest ?? 0) > 0 && slots.some(slot => slot?.itemId === 'padded_vest');
 
   const run = async (action: () => Promise<unknown>) => {
     if (pendingRef.current) return;
@@ -74,6 +79,10 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
     if (!me || !slot || dead || pendingRef.current || drag.isDragging || drag.isMoving) return;
     if (isWeapon(slot.itemId)) {
       void run(() => (wielded(index) ? unwield() : wieldItem(index)));
+      return;
+    }
+    if (slot.itemId === 'padded_vest' && frontier?.enabled) {
+      void run(() => frontierAction({ action: 'equip', item: slot.itemId, ...(vestEquipped ? { target: 'unequip' } : {}) }));
       return;
     }
     const def = getItemDef(slot.itemId);
@@ -106,7 +115,11 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
   }, []);
 
   if (!me) return null;
-  const safe = !dead && isSafe(me, tick);
+  const inBramblewild = !me.region || me.region === 'bramblewild';
+  const protectedFromPlayers = (me.region === 'settlement' && chebyshev(me, REGIONS.settlement.spawn) <= 4)
+    || !!frontier?.plots.some(plot => plot.region === me.region && plot.status === 'protected'
+      && me.x >= plot.x && me.x < plot.x + 16 && me.z >= plot.z && me.z < plot.z + 16);
+  const safe = !dead && (inBramblewild ? isSafe(me, tick) : protectedFromPlayers);
   const hp =Math.max(0, Math.min(100, (me.hp / Math.max(1, me.maxHp)) * 100));
   const target = me.combatTarget
     ? players.get(me.combatTarget.toHexString())
@@ -130,11 +143,11 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
   const weaponChip = (
     <span
       className={`weapon-chip ${weaponDef ? "armed" : ""} ${hostile ? "compact" : ""}`}
-      title={`${weaponDef ? "Wielding" : "Fighting with"} ${weaponName} · ${weaponDamage} damage per swing`}
+      title={`${weaponDef ? "Wielding" : "Fighting with"} ${weaponName} · ${weaponDamage} ${inBramblewild ? '' : 'base '}damage per swing`}
     >
       <img src={weaponDef?.icon ?? PUNCH_ICON} alt="" draggable={false} />
       <span className="weapon-chip-label">
-        {weaponName} · {weaponDamage} dmg
+        {weaponName} · {weaponDamage} {inBramblewild ? '' : 'base '}dmg
       </span>
     </span>
   );
@@ -157,8 +170,8 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
           <span>
             HP{" "}
             {safe && (
-              <em className="safe-badge" title="Nobody can hit you here or right now">
-                Safe
+              <em className="safe-badge" title={inBramblewild ? 'Nobody can hit you here or right now' : 'Protected from player combat here'}>
+                {inBramblewild ? 'Safe' : 'PvP safe'}
               </em>
             )}
             <strong>
@@ -187,8 +200,10 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
         {slots.slice(0, HOTBAR_SIZE).map((slot, index) => {
           const def = slot ? getItemDef(slot.itemId) : undefined;
           const weaponSlot = !!slot && isWeapon(slot.itemId);
+          const armourSlot = slot?.itemId === 'padded_vest' && !!frontier?.enabled;
           const food = !!def?.healthRestore;
-          const inHand = wielded(index);
+          const healing = foodHealing(def?.healthRestore ?? 0, frontier?.profile);
+          const inHand = armourSlot ? vestEquipped : wielded(index);
           const name = slot ? (def?.name ?? slot.itemId) : "";
           const hint = !slot
             ? "Empty"
@@ -196,8 +211,10 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
               ? inHand
                 ? "Wielded"
                 : "Wield"
+              : armourSlot
+                ? inHand ? 'Equipped' : 'Equip'
               : food
-                ? `Eat +${def!.healthRestore}`
+                ? `Eat +${healing}`
                 : "Move";
           const title = !slot
             ? "Choose an item from your bag for this quick slot"
@@ -205,8 +222,10 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
               ? inHand
                 ? `Put away ${name} and punch`
                 : `Wield ${name} (${def?.weaponDamage} damage)`
+              : armourSlot
+                ? inHand ? `Unequip ${name}` : `Equip ${name} (+3 max HP)`
               : food
-                ? `Eat ${name} (+${def!.healthRestore} HP)`
+                ? `Eat ${name} (+${healing} HP)`
                 : `Arrange ${name} in your bag`;
           return (
             <button
@@ -219,11 +238,11 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
               disabled={dead || (!slot && !onOpenBag)}
               aria-busy={pending || undefined}
               // Only a weapon is an on/off toggle; eating is a one-shot action.
-              aria-pressed={weaponSlot ? inHand : undefined}
-              aria-label={`Quick slot ${index + 1}: ${slot ? `${name}${inHand ? ", wielded" : ""}` : "empty"}`}
+              aria-pressed={weaponSlot || armourSlot ? inHand : undefined}
+              aria-label={`Quick slot ${index + 1}: ${slot ? `${name}${inHand ? armourSlot ? ', equipped' : ', wielded' : ""}` : "empty"}`}
               aria-describedby={slot ? `hotbar-hint-${index}` : undefined}
               title={title}
-              onClick={() => (!slot || (!weaponSlot && !food)) && onOpenBag ? onOpenBag(index) : activate(index)}
+              onClick={() => (!slot || (!weaponSlot && !armourSlot && !food)) && onOpenBag ? onOpenBag(index) : activate(index)}
             >
               {slot ? (
                 <img
@@ -263,6 +282,8 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
           ? "Eat or wield from your quick slots between swings."
           : weaponDef
             ? `${weaponName} wielded. Press its key again to punch instead.`
+            : !inBramblewild
+              ? 'Drag food or a weapon into quick slots. Keys 1–3 use them.'
             : slots.some(slot => slot?.itemId === STICK_ITEM_ID)
               ? slots.slice(0, HOTBAR_SIZE).some(slot => slot?.itemId === STICK_ITEM_ID)
                 ? "Punching. Tap your stick in the quick bar to wield it."

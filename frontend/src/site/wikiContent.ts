@@ -105,8 +105,8 @@ export const guideArticles: WikiArticle[] = [
         'When the emote palette is open, its number choices take priority over quick-slot keys. Shortcuts also stay out of the way while you are typing. You can always use the visible buttons instead.',
       ] },
       { id: 'meadows-menus', title: 'Meadows menus', paragraphs: [
-        'When settlements are enabled, Meadows has three main choices: Quests, Your land and Workshop. Quests focuses on the next objective and supply orders; Your land shows the current plot; Workshop shows available recipes before later unlocks.',
-        'Open More for Wildlife, Disciplines, Sailing or Bag & storage. Plot and town controls still check your character’s location before performing an action. The toolbar lets you inspect your progress whenever you need it.',
+        'When settlements are enabled, Meadows has three main choices: Quests, Your land and Craft. Quests focuses on the next objective and supply orders; Your land shows the current plot; Craft opens the same recipe panel used everywhere.',
+        'Open More for Wildlife, Disciplines, Sailing, Bag or Storage & trade. Plot and town controls still check your character’s location before performing an action. The toolbar lets you inspect your progress whenever you need it.',
       ] },
       { id: 'performance', title: 'Comfort and performance', paragraphs: [
         'Settings has Auto, High and Low graphics modes. Auto lowers rendering resolution when frames are slow; Low uses fewer pixels for older devices. You can also reduce motion, hide nameplates or world labels, and adjust master, effects and ambient volume. These preferences are saved on the current device.',
@@ -151,7 +151,7 @@ export const guideArticles: WikiArticle[] = [
       ] } },
       { id: 'distances', title: 'Reading distances and coordinates', paragraphs: [
         'Coordinates are server tile coordinates, written as (x, z), local to the named region. Bramblewild and Meadows have different local grids but share continuous land and walking routes. Sea coordinates belong to the sailing map. Most interaction ranges count the largest horizontal or vertical difference, so a diagonal neighbouring tile is also one tile away.',
-        'Normal movement allows up to two grid steps each 0.6-second tick. Carrying expedition cargo reduces that to one. Actual travel time also depends on the available path, blocked tiles and your destination.',
+        'Ordinary Bramblewild movement allows up to two grid steps each 0.6-second tick. Peaceful district routes and movement on the outlying islands allow three; combat and adventures keep the two-step limit, and carrying expedition cargo reduces it to one. Travel follows walkable paths and respects walls, gates and island boundaries.',
       ] },
     ],
     related: ['grove', 'coast', 'boulders', 'meadows', 'sailing-islands', 'death-safety'],
@@ -285,13 +285,13 @@ export const guideArticles: WikiArticle[] = [
         ['Obsidian', 'Boulders outcrops or Giant raid rewards', 'Shared workshop donation'],
       ] } },
       { id: 'settlement-storage', title: 'Settlement items and storage', paragraphs: [
-        'Open More → Bag & storage in the Meadows menu to use your carried items or transfer supplies to an accessible container. The town vault has six slots. A Storage chest or skiff has twelve; a trained Reedhorn provides six cargo slots while Beastcraft level 2 is active.',
+        'Bag (I) uses the same item grid and quick slots in every district. Open Bag → Storage to transfer supplies to an accessible container or trade. The town vault has six slots. A Storage chest or skiff has twelve; a trained Reedhorn provides six cargo slots while Beastcraft level 2 is active.',
         'Containers check both your location and permissions. You must be at town for your personal vault, near a chest with storage access, or aboard or beside a boat with cargo access. Chest contents stay with a plot if that plot is captured; your personal vault and boat remain yours.',
-        'Settlement equipment has its own Equip action in Bag & storage. The Iron club deals 9 base damage and an equipped Padded vest adds 3 maximum HP while carried. The Stick and Stone Club still provide the original island’s route keys.',
+        'The Iron club uses the same quick-slot Wield action as other weapons and deals 9 base damage. Equip a Padded vest from Bag or a quick slot to add 3 maximum HP while carried; Unequip removes the bonus. The Stick and Stone Club still provide the original island’s route keys.',
         'Coins are a server-saved balance rather than a bag item. Gathering produces supplies and XP; collect quest rewards or deliver supply orders to receive coins.',
       ] },
       { id: 'moving-dropping', title: 'Moving, dropping and picking up', paragraphs: [
-        'Drag items between bag and quick slots; on touch screens, hold an item before dragging. Matching stacks merge up to their limit, and different items swap places. You can also select an item and choose Move. Dropping creates a visible ground pile.',
+        'Drag items between bag and quick slots; on touch screens, hold an item before dragging. Matching stacks merge up to their limit, and different items swap places. You can also select an item and choose Move. Dropping creates a visible ground pile in Bramblewild or a dropped bag in other regions.',
         'Ground items last 500 server ticks, or five minutes. Pick-up works from an adjacent tile and can walk you towards the pile. If only part of a pile fits, the remainder stays on the ground. Items on the ground are not reserved for the player who dropped them.',
         'If a player covers a pile, select the player and choose the item under On the ground. Each stack has its own pickup action.',
         'Ordinary death drops your whole bag, including your wielded weapon. Skill progress and unlocked keepsakes persist. Friendly duels use separate practice health and do not drop your items.',
@@ -368,7 +368,7 @@ export const guideArticles: WikiArticle[] = [
     title: 'Crafting & recipes',
     category: 'Items & equipment',
     summary: 'Original island recipes, with a guide to the Meadows workshop and new materials.',
-    lead: 'On Bramblewild, open Craft with C to turn gathered materials into weapons, food and a keepsake. These original recipes complete instantly with the required ingredients and Crafting level. When settlements are enabled, Workshop adds tools, refined materials, creature supplies and boat parts.',
+    lead: 'Open Craft with C in any district to turn gathered materials into weapons, food and a keepsake. Camp recipes complete instantly with the required ingredients and Crafting level. When settlements are enabled, the same panel includes tools, refined materials, creature supplies and boat parts.',
     facts: [{ label: 'Original island recipes', value: String(RECIPES.length) }, { label: 'Crafting time', value: 'Instant' }, { label: 'Original recipes need a station?', value: 'No' }, { label: 'Shortcut', value: 'C' }],
     sections: [
       { id: 'recipe-table', title: 'Recipe reference', table: { headers: ['Recipe', 'Ingredients', 'Crafting level', 'XP', 'Result'], rows: RECIPES.map(recipe => [recipe.name, recipe.inputs.map(input => `${input.quantity} ${itemName(input.itemId)}`).join(' + '), String(recipe.level), String(recipe.xp), recipe.output ? `${recipe.output.quantity} ${itemName(recipe.output.itemId)}` : 'Permanent cosmetic unlock']) } },
@@ -388,7 +388,7 @@ export const guideArticles: WikiArticle[] = [
         'The shared camp workshop improves future expedition cargo. It is separate from the ability to make these four recipes.',
       ] },
       { id: 'meadows-workshop', title: 'The Meadows workshop', paragraphs: [
-        'Settlement recipes use Workshop and train Building rather than the original Crafting skill. Start with an Axe, Pick and Hammer, then make Planks, Rope, Cloth and Bricks for building and travel.',
+        'Settlement recipes appear alongside camp recipes in Craft and train Building rather than the original Crafting skill. Start with an Axe, Pick and Hammer, then make Planks, Rope, Cloth and Bricks for building and travel.',
         'Workbench, Kiln and Cooking station recipes work at the public Meadows workshop or a nearby private station you have permission to use. Skiff hulls require a harbour. Some advanced recipes also require an active discipline and level.',
         'Settlement crafting checks bag space and completes only if the output fits. Read Meadows materials & crafting for all settlement recipes, workstation requirements and active Building bonuses.',
       ] },

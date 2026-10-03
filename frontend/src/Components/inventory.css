@@ -2,6 +2,8 @@
 .ui-group .inventory-panel { display:flex; flex-direction:column; overflow:hidden; width:360px; }
 .inventory-panel .panel-heading { margin-bottom:6px; }
 .bag-heading-actions { display:flex; align-items:center; gap:5px; }
+.storage-item-label { display:flex; align-items:center; gap:6px; }
+.storage-item-label img { width:28px; height:28px; object-fit:contain; flex-shrink:0; }
 .bag-heading-actions .bag-craft-link { min-height:var(--control-size); padding:7px 10px; font-size:12px; background:transparent; border:1px solid #c9b58e; box-shadow:none; }
 .bag-quick-slots { flex-shrink:0; margin-bottom:8px; }
 .bag-quick-heading { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:5px; font-size:11px; }

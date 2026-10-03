@@ -19,6 +19,7 @@ import {
   frontierRepository,
   projectFrontier,
   tickFrontier,
+  frontierWorld,
 } from "../../../spacetimedb/src/lib/frontier";
 import {
   setTradeCoins,
@@ -76,6 +77,24 @@ function harness() {
 }
 
 describe("frontier database boundary", () => {
+  it('keeps the authoritative movement budget at one for berry cargo and two in combat', () => {
+    const h = harness(), world = frontierWorld(h.ctx), actor = world.actors[0];
+    expect(world.movementSteps!(actor)).toBe(3);
+    const profile = newProfile(actor.id), now = Number(h.ctx.timestamp.microsSinceUnixEpoch / 1000n);
+    profile.events.hostileUntil = now + 60_000;
+    h.repo.put('profile', profile);
+    expect(world.movementSteps!(actor)).toBe(2);
+    expect(world.canLeaveHomeDistrict!(actor)).toBe(false);
+    h.repo.put('profile', { ...profile, events: {}, nextAttack: now + 2400 });
+    expect(world.movementSteps!(actor)).toBe(2);
+    h.repo.put('profile', newProfile(actor.id));
+    h.db.player.identity.update({ ...h.db.player.identity.find(id(1)), combatTarget: id(2) });
+    expect(world.movementSteps!(actor)).toBe(2);
+    h.db.expeditionMember.insert({ identity: id(1), expeditionId: 1n });
+    h.db.expedition.insert({ id: 1n, stage: 'hauling', carrier: id(1) });
+    expect(world.movementSteps!(actor)).toBe(1);
+    expect(world.canLeaveHomeDistrict!(actor)).toBe(false);
+  });
   it("completes timed gathering against the live inventory and persists its shared stump", () => {
     const h = harness(), node = RESOURCE_PATCHES.find(n => n.id === 'settlement-timber')!;
     const player = h.db.player.identity.find(id(1));

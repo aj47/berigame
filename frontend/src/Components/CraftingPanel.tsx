@@ -1,17 +1,21 @@
 import React, { memo, useMemo, useRef, useState } from 'react';
 import { getItemDef, hasCosmetic, levelForXp, recipeStatus } from '@sim';
 import { useGameActions } from '../spacetime/actions';
-import { useInventoryRows, useMyCosmetics, useMySkills } from '../spacetime/hooks';
+import { useInventoryRows, useMyCosmetics, useMySkills, useMyPlayer } from '../spacetime/hooks';
 import { slotsFromRows } from './itemUi';
 import './crafting.css';
+import type { FrontierSnapshot } from '../../../shared/sim/frontier/snapshot';
+import { frontierRecipeStatus } from './craftingModel';
+import { foodHealing } from '../../../shared/sim/frontier/engine';
 
-const CraftingPanel = memo(({ open, onClose }: { open: boolean; onClose: () => void }) => {
+const CraftingPanel = memo(({ open, onClose, frontier }: { open: boolean; onClose: () => void; frontier?: FrontierSnapshot }) => {
   const rows = useInventoryRows();
+  const me = useMyPlayer();
   const skills = useMySkills();
   const cosmetics = useMyCosmetics();
   const slots = useMemo(() => slotsFromRows(rows), [rows]);
   const craftingLevel = levelForXp(skills?.craftingXp ?? 0);
-  const { craft } = useGameActions();
+  const { craft, frontier: frontierAction } = useGameActions();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const busy = useRef(false);
@@ -22,53 +26,68 @@ const CraftingPanel = memo(({ open, onClose }: { open: boolean; onClose: () => v
     setError('');
     try {
       if (await action() === false) setError('Could not craft. Check your supplies and try again.');
-    } catch {
-      setError('Could not craft. Try again.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Could not craft. Try again.');
     } finally {
       busy.current = false;
       setPending(false);
     }
   };
   if (!open) return null;
+  const recipes = [
+    ...recipeStatus(slots, craftingLevel).map(recipe => {
+      const output = recipe.output ? getItemDef(recipe.output.itemId) : null;
+      const owned = recipe.cosmetic !== null && hasCosmetic(cosmetics?.unlocked ?? 0, recipe.cosmetic);
+      return {
+        id: recipe.id, name: recipe.name, quantity: recipe.output?.quantity ?? 1,
+        icon: output?.icon ?? `/items/${recipe.id}.png`,
+        description: output?.weaponDamage ? `${output.weaponDamage} damage` : output?.healthRestore ? `Heals ${foodHealing(output.healthRestore, frontier?.profile)} HP` : 'Keepsake',
+        canCraft: recipe.canCraft && !owned, locked: recipe.locked, owned,
+        inputs: recipe.inputs.map(input => ({ ...input, have: slots.reduce((total, slot) => total + (slot?.itemId === input.itemId ? slot.quantity : 0), 0) })),
+        requirement: recipe.locked ? `Requires Crafting level ${recipe.level}.` : `+${recipe.xp} Crafting XP · Make anywhere.`,
+        make: () => craft(recipe.id),
+      };
+    }),
+    ...(frontier?.enabled ? frontier.recipes.map(recipe => {
+      const output = getItemDef(recipe.output);
+      const status = frontierRecipeStatus(recipe, frontier, me, slots);
+      return {
+        id: recipe.id, name: output?.name ?? recipe.output, icon: output?.icon,
+        description: output?.weaponDamage ? `${output.weaponDamage} damage` : output?.healthRestore ? `Heals ${foodHealing(output.healthRestore, frontier.profile)} HP` : recipe.output === 'padded_vest' ? 'Armour · +3 max HP when equipped' : 'Tools & materials',
+        owned: false, ...status,
+        make: () => frontierAction({ action: 'craft', id: recipe.id }),
+      };
+    }) : []),
+  ].sort((a, b) => Number(b.canCraft) - Number(a.canCraft));
   return <section className="game-panel crafting-panel" aria-label="Crafting">
     <header className="panel-heading">
       <h2>Craft <small>Level {craftingLevel}</small></h2>
       <button className="close-button" onClick={onClose} aria-label="Close crafting">×</button>
     </header>
+    <p className="craft-instructions">Use items from your bag. Ingredients show held / needed.</p>
     {error && <p role="alert" className="craft-error">{error}</p>}
     <div className="recipe-list" aria-label={`Recipes · Crafting level ${craftingLevel}`}>
-      {recipeStatus(slots, craftingLevel).map((r) => {
-        const owned = r.cosmetic !== null && hasCosmetic(cosmetics?.unlocked ?? 0, r.cosmetic);
-        const icon = r.output ? getItemDef(r.output.itemId)?.icon : `/items/${r.id}.png`;
-        const output = r.output ? getItemDef(r.output.itemId) : null;
-        return (
-          <article className={`craft-recipe ${r.locked ? "locked" : ""}`} key={r.id} data-recipe-row={r.id}>
-            <div className="craft-recipe-heading">
-              <img src={icon} alt="" />
-              <div><h3>{r.name}</h3><span>{output?.weaponDamage ? `${output.weaponDamage} damage` : output?.healthRestore ? `Heals ${output.healthRestore} HP` : 'Keepsake'}</span></div>
-            <button
-              type="button"
-              data-recipe={r.id}
-              aria-label={`${owned ? 'Owned' : r.locked ? `Lv ${r.level}` : 'Make'} ${r.name}`}
-              disabled={pending || !r.canCraft || owned}
-              title={r.locked ? `Needs Crafting level ${r.level}` : undefined}
-              onClick={() => void run(() => craft(r.id))}
-            >
-              {owned ? 'Owned' : r.locked ? `Lv ${r.level}` : pending ? '…' : 'Make'}
+      {recipes.map(recipe => (
+        <article className={`craft-recipe ${recipe.locked ? 'locked' : ''}`} key={recipe.id} data-recipe-row={recipe.id}>
+          <div className="craft-recipe-heading">
+            <img src={recipe.icon} alt="" />
+            <div><h3>{recipe.name}{recipe.quantity > 1 && <small> ×{recipe.quantity}</small>}</h3><span>{recipe.description}</span></div>
+            <button type="button" data-recipe={recipe.id} aria-label={`${recipe.owned ? 'Owned' : 'Make'} ${recipe.name}`}
+              disabled={pending || !recipe.canCraft} aria-describedby={`recipe-requirement-${recipe.id}`}
+              onClick={() => void run(recipe.make)}>
+              {recipe.owned ? 'Owned' : pending ? '…' : 'Make'}
             </button>
-            </div>
-            <ul className="craft-ingredients" aria-label={`${r.name} ingredients`}>
-              {r.inputs.map(i => {
-                const have = slots.reduce((total, slot) => total + (slot?.itemId === i.itemId ? slot.quantity : 0), 0);
-                return <li key={i.itemId} data-missing={have < i.quantity} aria-label={`${i.name}: ${have} held, ${i.quantity} needed`}>
-                  <img src={getItemDef(i.itemId)?.icon} alt="" /><span>{i.name}</span><strong>{Math.min(have, i.quantity)}/{i.quantity}</strong>
-                </li>;
-              })}
-            </ul>
-            {r.locked ? <p className="craft-recipe-note">Unlocks at Crafting level {r.level}</p> : r.canCraft && !owned ? <p className="craft-recipe-note">+{r.xp} Crafting XP</p> : null}
-          </article>
-        );
-      })}
+          </div>
+          <ul className="craft-ingredients" aria-label={`${recipe.name} ingredients`}>
+            {recipe.inputs.map(input => (
+              <li key={input.itemId} data-missing={input.have < input.quantity} aria-label={`${input.name}: ${input.have} held, ${input.quantity} needed`}>
+                <img src={getItemDef(input.itemId)?.icon} alt="" /><span>{input.name}</span><strong>{input.have}/{input.quantity}</strong>
+              </li>
+            ))}
+          </ul>
+          <p className="craft-recipe-note" id={`recipe-requirement-${recipe.id}`}>{recipe.requirement}</p>
+        </article>
+      ))}
     </div>
   </section>;
 });

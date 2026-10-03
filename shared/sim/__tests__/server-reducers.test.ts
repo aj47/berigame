@@ -1597,3 +1597,55 @@ describe('character creation and rename', () => {
     const h=harness();expect(()=>saveCharacter(h.ctx,{name:'Fern',...DEFAULT_APPEARANCE,[key]:255})).toThrow('available styles');expect(h.appearances.size).toBe(0);expect(h.me().name).toBe('Player-a');
   });
 });
+
+describe('portable bag and quick-slot actions', () => {
+  it.each(['settlement', 'reedwake', 'cinder', 'sea'])('uses the same inventory slots and controls in %s', region => {
+    h.me().region = region;
+    h.inventory.set(80n, { id: 80n, owner: A, slot: 5, itemId: 'stone_club', quantity: 1 });
+    moveSlot(h.ctx, { from: 5, to: 1 });
+    wield(h.ctx, { slot: 1 });
+    expect(h.me().weapon).toBe('stone_club');
+    unwield(h.ctx);
+    expect(h.me().weapon).toBe('');
+    h.tick(11);
+    eat(h.ctx, { slot: 0 });
+    expect(h.me().hp).toBe(25);
+    expect(slotsOf(A)[0]?.quantity).toBe(1);
+    expect(() => eat(h.ctx, { slot: 0 })).toThrow('still chewing');
+    Object.assign(h.me(), { targetX: 310, targetZ: 60 });
+    cancel(h.ctx);
+    expect(h.me().targetX).toBeUndefined();
+    expect(h.me().region).toBe(region);
+  });
+
+  it('keeps Meadows drops in Meadows and never creates a pile at matching Bramblewild coordinates', () => {
+    Object.assign(h.me(), { region: 'settlement', x: 12, z: 11 });
+    drop(h.ctx, { slot: 0, quantity: 1 });
+    drop(h.ctx, { slot: 0, quantity: 1 });
+    const bags = [...h.ctx.db.frontierObject.kind.filter('drop')].map((r: any) => JSON.parse(r.data));
+    expect(bags).toHaveLength(2);
+    expect(new Set(bags.map(b => b.id)).size).toBe(2);
+    expect(bags).toEqual(expect.arrayContaining([expect.objectContaining({ region: 'settlement', x: 12, z: 11, slots: [{ itemId: 'berry_blueberry', quantity: 1 }] })]));
+    expect(h.ground.size).toBe(0);
+    expect(slotsOf(A)[0]).toBeNull();
+  });
+
+  it('makes camp recipes in Meadows with the same ingredients and recipe rules', () => {
+    h.me().region = 'settlement';
+    h.inventory.clear();
+    h.inventory.set(81n, { id: 81n, owner: A, slot: 4, itemId: 'driftwood', quantity: 1 });
+    h.inventory.set(82n, { id: 82n, owner: A, slot: 5, itemId: 'flint', quantity: 2 });
+    craftReducer(h.ctx, { recipe: 'stone_club' });
+    expect(slotsOf(A).filter(Boolean)).toEqual([{ itemId: 'stone_club', quantity: 1 }]);
+    expect(h.me().region).toBe('settlement');
+  });
+
+  it('does not make regional combat or ground interactions available through Bramblewild reducers', () => {
+    h.me().region = 'settlement';
+    expect(() => attack(h.ctx, { target: B })).toThrow('belongs to Bramblewild');
+    expect(() => move(h.ctx, { x: 20, z: 20 })).toThrow('belongs to Bramblewild');
+    h.me().state = PlayerState.Dead;
+    expect(() => eat(h.ctx, { slot: 0 })).toThrow('you are dead');
+    expect(() => moveSlot(h.ctx, { from: 0, to: 1 })).toThrow('you are dead');
+  });
+});

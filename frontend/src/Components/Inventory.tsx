@@ -4,19 +4,23 @@ import { useGameActions } from "../spacetime/actions";
 import { useInventoryRows, useMyPlayer } from "../spacetime/hooks";
 import { isWieldedSlot, slotsFromRows } from "./itemUi";
 import { useInventoryDrag } from "./useInventoryDrag";
+import type { FrontierSnapshot } from "../../../shared/sim/frontier/snapshot";
+import { foodHealing } from "../../../shared/sim/frontier/engine";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onCraft?: () => void;
+  onStorage?: () => void;
+  frontier?: FrontierSnapshot;
   initialQuickSlot?: number | null;
 }
 
 /** Drag or tap to arrange items; the server owns swaps and stack quantities. */
-const Inventory = memo(({ open, onClose, onCraft, initialQuickSlot = null }: Props) => {
+const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQuickSlot = null }: Props) => {
   const rows = useInventoryRows();
   const me = useMyPlayer();
-  const { eatBerry, wieldItem, unwield, moveItem, dropItem } = useGameActions();
+  const { eatBerry, wieldItem, unwield, moveItem, dropItem, frontier: frontierAction } = useGameActions();
   const [selected, setSelected] = useState<number | null>(null);
   const [movingFrom, setMovingFrom] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
@@ -66,8 +70,11 @@ const Inventory = memo(({ open, onClose, onCraft, initialQuickSlot = null }: Pro
   if (!open) return null;
   const item = selected !== null ? slots[selected] : null;
   const def = item ? getItemDef(item.itemId) : undefined;
+  const healing = foodHealing(def?.healthRestore ?? 0, frontier?.profile);
   const occupied = slots.filter(Boolean).length;
   const weaponSelected = !!item && isWeapon(item.itemId);
+  const armourSelected = item?.itemId === 'padded_vest';
+  const armourEquipped = armourSelected && (frontier?.profile.events.vest ?? 0) > 0;
   const selectedWielded = selected !== null && wielded(selected);
   const inQuickBar = selected !== null && selected < HOTBAR_SIZE;
   const selectSlot = (slot: number) => {
@@ -108,6 +115,7 @@ const Inventory = memo(({ open, onClose, onCraft, initialQuickSlot = null }: Pro
           </h2>
         </div>
         <div className="bag-heading-actions">
+        {onStorage && <button className="bag-craft-link" onClick={onStorage}>Storage ↗</button>}
         {onCraft && <button className="bag-craft-link" onClick={onCraft}>Craft ↗</button>}
         <button
           className="close-button"
@@ -170,7 +178,7 @@ const Inventory = memo(({ open, onClose, onCraft, initialQuickSlot = null }: Pro
           <>
             <strong>Choose a destination slot</strong>
             <p>
-              Matching berries stack. Different items swap places. Slots 1–3
+              Matching items stack. Different items swap places. Slots 1–3
               are your quick bar.
             </p>
             <button onClick={() => setMovingFrom(null)}>Cancel move</button>
@@ -182,8 +190,10 @@ const Inventory = memo(({ open, onClose, onCraft, initialQuickSlot = null }: Pro
               <span>
                 {weaponSelected
                   ? `Weapon · ${def?.weaponDamage ?? 0} damage`
+                  : armourSelected
+                    ? `${armourEquipped ? 'Equipped' : 'Armour'} · +3 max HP`
                   : def?.healthRestore
-                    ? `Restores ${def.healthRestore} HP`
+                    ? `Restores ${healing} HP`
                     : "Crafting material"}{" "}
                 · {item.quantity} held
                 {selectedWielded ? " · wielded" : ""}
@@ -209,6 +219,11 @@ const Inventory = memo(({ open, onClose, onCraft, initialQuickSlot = null }: Pro
                 >
                   {selectedWielded ? "Unwield" : inQuickBar ? "Wield" : "Choose quick slot ↑"}
                 </button>
+              ) : armourSelected && frontier?.enabled ? (
+                <button className="primary-button" disabled={locked}
+                  onClick={() => void run(() => frontierAction({ action: 'equip', item: 'padded_vest', ...(armourEquipped ? { target: 'unequip' } : {}) }))}>
+                  {armourEquipped ? 'Unequip' : 'Equip'}
+                </button>
               ) : def?.healthRestore ? (
                 <button
                   className="primary-button"
@@ -216,7 +231,7 @@ const Inventory = memo(({ open, onClose, onCraft, initialQuickSlot = null }: Pro
                   title={me && me.hp >= me.maxHp ? "You're already at full health" : undefined}
                   onClick={() => void run(() => eatBerry(selected!))}
                 >
-                  Eat <span>+{def?.healthRestore ?? 0}</span>
+                  Eat <span>+{healing}</span>
                 </button>
               ) : null}
               <button

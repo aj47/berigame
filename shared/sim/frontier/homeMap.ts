@@ -1,5 +1,5 @@
 import type { Location, Point, RegionId } from './catalog';
-import { gridPath, regionLand } from './regions';
+import { gridPath, regionLand, type PathBlocker } from './regions';
 
 /** Meadows are the eastern part of Bramblewild. Saved parcel coordinates stay local. */
 export const MEADOW_OFFSET = { x: 64, z: -39 } as const;
@@ -24,13 +24,16 @@ export function homeLand(p: Point): boolean {
   const local = homeLocation(p);
   return regionLand(local.region, local);
 }
-export function homePath(from: Point, to: Point, blocked: (p: Location) => boolean = () => false, canStep: (from: Location, to: Location) => boolean = () => true): Point[] | null {
+export function homePath(from: Point, to: Point, blocked: PathBlocker<Location> = () => false, canStep: (from: Location, to: Location) => boolean = () => true): Point[] | null {
   // Shift northing for the bounded search; exported coordinates stay in Bramblewild's frame.
   const shift = (p: Point) => ({ x: p.x, z: p.z - MEADOW_OFFSET.z });
   const unshift = (p: Point) => ({ x: p.x, z: p.z + MEADOW_OFFSET.z });
   const local = (p: Point) => homeLocation(unshift(p));
+  const obstacles = Object.assign((p: Point) => blocked(local(p)), {
+    crosses: (a: Point, b: Point) => blocked.crosses?.(local(a), local(b)) ?? false,
+  });
   return gridPath(192, 128, shift(from), shift(to),
-    p => homeLand(unshift(p)), p => blocked(local(p)),
+    p => homeLand(unshift(p)), obstacles,
     (a, b) => canStep(local(a), local(b)))?.map(unshift) ?? null;
 }
 export const HOME_MAP = {

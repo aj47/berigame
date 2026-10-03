@@ -3,6 +3,7 @@ import type { Identity } from 'spacetimedb';
 import { MAX_INPUTS_PER_TICK, Pending, PlayerState } from '../../../shared/sim';
 import type { Ctx, PlayerRow } from './types';
 import { requireAdmission } from './access';
+import { maxHealth } from '../../../shared/sim/frontier/engine';
 
 export function hex(id: Identity): string {
   return id.toHexString();
@@ -48,6 +49,12 @@ export function touchInput(p: PlayerRow, tick: number): void {
 }
 
 export function savePlayer(ctx: Ctx, p: PlayerRow): void {
+  const profile = ctx.db.frontierPrivate?.key.find(`profile:${hex(p.identity)}`);
+  if (profile) {
+    const bag = Array.from(ctx.db.inventorySlot.owner.filter(p.identity));
+    p.maxHp = maxHealth(JSON.parse(profile.data), { bag });
+    p.hp = Math.min(p.hp, p.maxHp);
+  }
   ctx.db.player.identity.update(p);
 }
 

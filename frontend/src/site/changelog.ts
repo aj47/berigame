@@ -15,6 +15,20 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-03-controls-building-travel', date: '2026-10-03', period: 'Oct 3, 2026',
+    title: 'Familiar controls, better building and quicker travel',
+    changes: [
+      'Keep the same bag, crafting menu and three quick slots in every district. Recipes show item icons, ingredient counts and nearby station requirements; storage and trading remain available from the bag.',
+      'Equip or remove a Padded vest from the bag or a quick slot. Equipped armour clearly shows its three-point maximum-health bonus.',
+      'Place walls, windows, doors, fences and gates along floor edges. Rotate to choose a side, combine several sides on one floor, and walk across the floor space inside. Existing buildings keep their positions until moved.',
+      'Floors, walls, doors and roofs remain visible in the building menu when materials are missing, with the required materials shown.',
+      'Walk faster while travelling peacefully and sail skiffs twice as fast. Carrying giant berries and fighting retain their movement limits; Exploration level 10 improves sailing further.',
+      'Blocked routes describe obstacles and closed gates, with tool hints only when a progression boundary actually blocks the route. Completed feasts share one visible Giant instead of piling Giants into the same spot.',
+      'The Giant is easier to click, and the optional One-click attack toggle attacks eligible targets directly. Giant raids now begin every 20 minutes.',
+    ],
+    commits: ['252507f'],
+  },
+  {
     id: '2026-10-02-connected-meadows', date: '2026-10-02', period: 'Oct 2, 2026',
     title: 'A connected Meadows and clearer next steps',
     note: 'Live beta update — Meadows settlements are enabled.',

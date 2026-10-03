@@ -2,7 +2,10 @@ import { homePoint, homePath, homeTarget, homeDestination, homeLocation, isHomeR
 import { addItem, countItem, removeFromSlot } from "../inventory";
 import { getItemDef } from "../items";
 import { facingFromDelta } from "../grid";
+import { areaOf } from "../areas";
+import { TICK_MS } from "../constants";
 import { levelForXp } from "../skills";
+import { buildingBlocker, buildingCollisionKeys, buildingsOverlap, isEdgeBuilding } from "./building";
 import type { Slot } from "../types";
 import {
   DAY,
@@ -29,6 +32,7 @@ import {
   near,
   regionalPath,
   regionLand,
+  type PathBlocker,
 } from "./regions";
 import {
   can,
@@ -279,24 +283,19 @@ function blocked(w: World, a: Actor, extra?: Building, omit?: string) {
     .all("building")
     .filter((b) => b.region === a.region && b.id !== omit);
   if (extra) pieces.push(extra);
-  const cells = new Set(
-    pieces
-      .filter(
-        (b) =>
-          PIECES[b.piece].solid ||
-          (["door", "gate"].includes(b.piece) &&
-            !can(claim(w, b.claim), a.id, 1) &&
-            !can(claim(w, b.claim), a.id, 2) &&
-            !(
-              a.x >= plotFor(claim(w, b.claim)).x &&
-              a.x < plotFor(claim(w, b.claim)).x + 16 &&
-              a.z >= plotFor(claim(w, b.claim)).z &&
-              a.z < plotFor(claim(w, b.claim)).z + 16
-            )),
-      )
-      .map((b) => `${b.x},${b.z}`),
+  const cells = buildingCollisionKeys(pieces, (b) =>
+    PIECES[b.piece].solid ||
+    (["door", "gate"].includes(b.piece) &&
+      !can(claim(w, b.claim), a.id, 1) &&
+      !can(claim(w, b.claim), a.id, 2) &&
+      !(
+        a.x >= plotFor(claim(w, b.claim)).x &&
+        a.x < plotFor(claim(w, b.claim)).x + 16 &&
+        a.z >= plotFor(claim(w, b.claim)).z &&
+        a.z < plotFor(claim(w, b.claim)).z + 16
+      )),
   );
-  return (p: Point) => cells.has(`${p.x},${p.z}`);
+  return buildingBlocker(cells);
 }
 function placement(w: World, a: Actor, c: Claim, b: Building, omit?: string) {
   const parcel = plotFor(c),
@@ -316,22 +315,19 @@ function placement(w: World, a: Actor, c: Claim, b: Building, omit?: string) {
     !pieces.some(
       (other) =>
         other.id !== omit &&
-        other.region === b.region &&
-        other.x === b.x &&
-        other.z === b.z &&
-        PIECES[other.piece].layer === def.layer,
+        buildingsOverlap(other, b),
     ),
     "That layer is occupied",
   );
   check(
-    !w.actors.some(
+    isEdgeBuilding(b) || !w.actors.some(
       (other) =>
         other.region === b.region && other.x === b.x && other.z === b.z,
     ),
     "A character is standing there",
   );
   check(
-    !w.repo
+    isEdgeBuilding(b) || !w.repo
       .all("creature")
       .some(
         (other) =>
@@ -370,6 +366,7 @@ export function previewBuilding(w: World, a: Actor, c: Command) {
       x: integer(c.x),
       z: integer(c.z),
       rotation: integer(c.rotation ?? 0, 0, 3),
+      edge: !!PIECES[str(c.item)]?.edge,
       label: "",
     };
     placement(w, a, land, b);
@@ -404,19 +401,43 @@ function storagePermission(w: World, a: Actor, c: Container) {
   } else
     check(c.owner === a.id && atTown(a), "Your vault is available in town");
 }
-function homeRoute(w: World, a: Actor, to: Point) {
-  const meadowBlocked = blocked(w, { ...a, ...(a.region === "settlement" ? a : { x: -1, z: -1 }), region: "settlement" });
+function homeRoute(w: World, a: Actor, to: Point, respectBoundaries = true) {
+  const meadowBlocked: PathBlocker = blocked(w, { ...a, ...(a.region === "settlement" ? a : { x: -1, z: -1 }), region: "settlement" });
+  const obstacles = Object.assign((p: Location) => p.region === "bramblewild" ? (w.homeBlocked?.(p) ?? false) : meadowBlocked(p), {
+    crosses: (from: Location, next: Location) => from.region === "settlement" && next.region === "settlement" && !!meadowBlocked.crosses?.(from, next),
+  });
   return homePath(homePoint(a, a.region), to,
-    p => p.region === "bramblewild" ? (w.homeBlocked?.(p) ?? false) : meadowBlocked(p),
-    w.homeStepRule?.(a));
+    obstacles, respectBoundaries ? w.homeStepRule?.(a) : undefined);
 }
 function queueHomeWalk(w: World, a: Actor, to: Location) {
   check(isHomeRegion(a.region) && !onboard(w, a.id), "Walking is available on the home island");
   check(to.region === a.region || (!a.hostile && (w.canLeaveHomeDistrict?.(a) ?? true)), "Finish your adventure or combat before taking the Meadows trail");
   check(regionLand(to.region, to), "Choose dry ground in the requested district");
   const target = homePoint(to, to.region);
-  check(homeRoute(w, a, target), "No walkable route. Carry a sturdy stick to pass the Bramblewild hedge");
+  if (!homeRoute(w, a, target)) {
+    // Only blame a progression boundary when removing that rule restores a
+    // route. A house wall or locked gate must never suggest crafting a stick.
+    const unrestricted = w.homeStepRule && homeRoute(w, a, target, false);
+    if (unrestricted) {
+      const rule = w.homeStepRule!(a);
+      let previous: Location = a;
+      for (const point of unrestricted) {
+        const next = homeLocation(point);
+        if (!rule(previous, next) && next.region === "bramblewild") {
+          const boulders = ["boulder-line", "boulders"].includes(areaOf(next));
+          check(false, boulders ? "No walkable route. Carry a stone club to cross the Boulders" : "No walkable route. Carry a sturdy stick to pass the Bramblewild hedge");
+        }
+        previous = next;
+      }
+    }
+    check(false, "No walkable route. An obstacle or closed gate blocks the way");
+  }
   a.target = homeTarget(target);
+}
+
+/** Travel is quicker at peace; server adapters retain cargo and combat limits. */
+function movementSteps(w: World, a: Actor): number {
+  return Math.max(1, Math.min(a.hostile ? 2 : 3, w.movementSteps?.(a) ?? 3));
 }
 export function cancelGathering(w: World, actorId: string) {
   for (const node of w.repo.all("resource")) {
@@ -815,6 +836,7 @@ export function perform(w: World, a: Actor, input: unknown): void {
         x: integer(cmd.x),
         z: integer(cmd.z),
         rotation: integer(cmd.rotation ?? 0, 0, 3),
+        edge: !!def.edge,
         label: (cmd.label ?? "").slice(0, 48),
       };
       placement(w, a, land, b);
@@ -852,6 +874,7 @@ export function perform(w: World, a: Actor, input: unknown): void {
         x: integer(cmd.x),
         z: integer(cmd.z),
         rotation: integer(cmd.rotation ?? b.rotation, 0, 3),
+        edge: !!PIECES[b.piece]?.edge,
       };
       placement(w, a, land, next, b.id);
       r.put("building", next);
@@ -1266,10 +1289,7 @@ export function perform(w: World, a: Actor, input: unknown): void {
       check(def && def.healthRestore > 0, "Choose food");
       check(w.now >= p.nextAbility, "Wait before eating again");
       spend(a, { [item]: 1 });
-      a.hp = Math.min(
-        maxHealth(p, a),
-        a.hp + Math.min(10, def.healthRestore + (unlocked(p, 1, 10) ? 2 : 0)),
-      );
+      a.hp = Math.min(maxHealth(p, a), a.hp + foodHealing(def.healthRestore, p));
       p.nextAbility = w.now + 1800;
       p.nextAttack = Math.max(p.nextAttack, w.now + 1800);
       break;
@@ -1296,12 +1316,16 @@ export function perform(w: World, a: Actor, input: unknown): void {
     }
     case "equip": {
       const item = str(cmd.item);
+      if (item === "padded_vest" && cmd.target === "unequip") {
+        p.events.vest = 0;
+        break;
+      }
       check(
         countItem(a.bag, item) > 0 &&
           (item === "padded_vest" || !!getItemDef(item)?.weaponDamage),
         "Carry usable equipment first",
       );
-      if (item === "padded_vest") event(p, "vest");
+      if (item === "padded_vest") p.events.vest = 1;
       else a.weapon = item;
       break;
     }
@@ -1387,13 +1411,17 @@ export function perform(w: World, a: Actor, input: unknown): void {
   r.put("profile", p);
   w.save(a);
 }
-export function maxHealth(p: Profile, a: Actor) {
+export function maxHealth(p: Pick<Profile, 'active' | 'events'>, a: Pick<Actor, 'bag'>) {
   return Math.min(
     36,
     30 +
       (p.active.includes(0) ? 3 : 0) +
       (p.events.vest && countItem(a.bag, "padded_vest") ? 3 : 0),
   );
+}
+/** Food uses the same Forager benefit from the bag, quick bar, and agent API. */
+export function foodHealing(base: number, p?: Pick<Profile, 'active' | 'xp'>) {
+  return Math.min(10, base + (p?.active.includes(1) && levelForXp(p.xp[1]) >= 10 ? 2 : 0));
 }
 export function damage(p: Profile, a: Actor) {
   const base = getItemDef(a.weapon)?.weaponDamage || 3;
@@ -1522,7 +1550,7 @@ export function advance(w: World) {
     const route = canWalk ? homeRoute(w, a, destination) : null;
     if (route?.length) {
       const previousRegion = a.region;
-      Object.assign(a, homeLocation(route[Math.min(1, route.length - 1)]));
+      Object.assign(a, homeLocation(route[Math.min(movementSteps(w, a), route.length) - 1]));
       if (a.region !== previousRegion && a.region === "settlement") {
         const p = profile(w, a.id);
         event(p, "visit:settlement");
@@ -1544,7 +1572,7 @@ export function advance(w: World) {
   )) {
     const route = regionalPath(a.region, a, a.target!, blocked(w, a));
     if (route?.length) {
-      Object.assign(a, route[Math.min(1, route.length - 1)]);
+      Object.assign(a, route[Math.min(movementSteps(w, a), route.length) - 1]);
       if (distance(a, a.target!) === 0) a.target = undefined;
     } else a.target = undefined;
     w.save(a);
@@ -1576,8 +1604,7 @@ export function advance(w: World) {
           online.some((a) => a.id === b.pilot) &&
           w.now >= (b.nextMove ?? 0)
         ) {
-          b.nextMove =
-            w.now + (unlocked(profile(w, b.pilot), 4, 10) ? 900 : 1200);
+          b.nextMove = w.now + TICK_MS;
           const route = regionalPath(
             "sea",
             b,
@@ -1585,7 +1612,8 @@ export function advance(w: World) {
             (p) => !boatCanFloat(p),
           );
           if (route?.length) {
-            Object.assign(b, route[0]);
+            const steps = unlocked(profile(w, b.pilot), 4, 10) ? 2 : 1;
+            Object.assign(b, route[Math.min(steps, route.length) - 1]);
             if (distance(b, b.target) === 0) b.target = undefined;
             changed = true;
           }

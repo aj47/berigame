@@ -19,7 +19,7 @@ vi.mock('../Components/AdventurePanel', () => ({
 vi.mock('../Components/SkillsPanel', () => ({ default: () => null }));
 vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => ({ name: "Tester", region: region.value }), usePlayers: () => [], useMySkills: () => null, useMyCosmetics: () => null }));
 vi.mock('../Components/ChatBox', () => ({ default: ({ open }: any) => open ? <div>Opened chat</div> : null }));
-vi.mock('../Components/Inventory', () => ({ default: ({ open, onCraft }: any) => open ? <section aria-label="Inventory"><button onClick={onCraft}>Craft from bag</button></section> : null }));
+vi.mock('../Components/Inventory', () => ({ default: ({ open, onCraft, onStorage }: any) => open ? <section aria-label="Inventory"><button onClick={onCraft}>Craft from bag</button>{onStorage && <button onClick={onStorage}>Storage from bag</button>}</section> : null }));
 vi.mock('../Components/CraftingPanel', () => ({ default: ({ open }: any) => open ? <section aria-label="Crafting">Recipes</section> : null }));
 vi.mock('../Components/AppearancePanel', () => ({ default: () => null }));
 vi.mock('../Components/CombatHud', () => ({ default: () => <button aria-label="Quick slot 1: Blueberry">Blueberry</button> }));
@@ -161,6 +161,20 @@ describe('contextual adventure navigation', () => {
 
 
 describe('settlements share the game panel slot', () => {
+  it.each(['bramblewild', 'settlement'])('routes world Bag and Craft requests to the shared panels in %s', district => {
+    region.value = district;
+    render(<UIComponents frontierEnabled />);
+    act(() => openSettlement('Craft'));
+    expect(screen.getByRole('region', { name: 'Crafting' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Settlements' })).not.toBeInTheDocument();
+    act(() => openSettlement('Bag'));
+    expect(screen.getByRole('region', { name: 'Inventory' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Crafting' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Storage from bag' }));
+    expect(screen.getByRole('region', { name: 'Settlements' })).toHaveTextContent('Storage');
+    expect(screen.queryByRole('region', { name: 'Inventory' })).not.toBeInTheDocument();
+  });
+
   it('world links replace Adventure and Bag replaces settlements', () => {
     render(<UIComponents frontierEnabled />);
     fireEvent.click(screen.getByRole('button', {name:'Adventure'}));
@@ -175,9 +189,10 @@ describe('settlements share the game panel slot', () => {
     region.value='settlement';
     render(<UIComponents frontierEnabled />);
     fireEvent.keyDown(document.body, {key:'i'});
-    expect(screen.getByRole('region', {name:'Settlements'})).toHaveTextContent('Bag');
+    expect(screen.getByRole('region', {name:'Inventory'})).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Quick slot 1: Blueberry' })).toBeVisible();
     fireEvent.keyDown(document.body, {key:'c'});
-    expect(screen.getByRole('region', {name:'Settlements'})).toHaveTextContent('Craft');
+    expect(screen.getByRole('region', {name:'Crafting'})).toBeVisible();
     fireEvent.keyDown(document.body, {key:'Enter'});
     expect(screen.queryByRole('region', {name:'Settlements'})).not.toBeInTheDocument();
     expect(screen.getByText('Opened chat')).toBeVisible();

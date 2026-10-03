@@ -20,7 +20,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
     title: 'Meadows materials & crafting',
     category: 'Skills & activities',
     summary: 'Gather supplies, make tools, grow carrots and prepare your first skiff.',
-    lead: `${availability} Open Workshop for settlement recipes. Start with the nearby timber, stone, fibre and clay patches, then use the public town workshop to make supplies for a home, companions and sailing.`,
+    lead: `${availability} Open Craft (C) for camp and settlement recipes in one place. Start with the nearby timber, stone, fibre and clay patches, then use the public town workshop to make supplies for a home, companions and sailing.`,
     facts: [
       { label: 'Settlement recipes', value: String(FRONTIER_RECIPES.length) },
       { label: 'Gathering reach', value: '2 tiles' },
@@ -32,7 +32,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
         'Look for timber pines with pale trunk bands and wood chips. Your starter hatchet collects one Timber per cut. Carry a crafted Axe to use its metal head and receive two Timber per cut; both count toward gathering quests.',
         'Make a Hammer from one Timber and two Stone for Tools of the trade. Claim the quest reward at the steward when it is your active quest.',
         'Turn Timber into Planks and Plant fibre into Rope. These are used in stables, sails and skiff hulls.',
-        'Workshop shows recipes you can make first. Open its remaining recipes to see missing materials or discipline requirements.',
+        'Craft shows recipes you can make first. Every recipe displays item icons, held / needed ingredients, and any station or discipline requirement.',
       ] },
       { id: 'patches', title: 'Where to gather', paragraphs: [
         'Six marked timber pines form a gathering route around Meadows town. Move to another tree while a stump regrows. The coordinates below belong to each named region. Stand within two tiles of a patch to gather. Plant fibre, Reeds and Carrot seeds award Cultivation XP; other resource patches award Exploration XP. Each completed gather awards 8 XP, even when that discipline is inactive.',
@@ -44,7 +44,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
         rows: RESOURCE_PATCHES.map(patch => [REGIONS[patch.region].name, itemName(patch.item), point(patch)]),
       } },
       { id: 'workstations', title: 'Using a workstation', paragraphs: [
-        'Recipes without a station can be crafted from Workshop. Workbench, Kiln and Cooking station recipes can also be made within four tiles of the Meadows steward at the public town workshop.',
+        'Recipes without a station can be crafted from Craft. Workbench, Kiln and Cooking station recipes can also be made within four tiles of the Meadows steward at the public town workshop.',
         'For a private workstation, stand within two tiles of it on a plot you own or have building permission to use. Harbour recipes require a harbour; the public town workshop does not replace it. Finish combat and make room in your bag before crafting.',
         'The table shows base ingredients and outputs. With Building active at level 2, recipes that normally produce two or more items produce one extra. At Building level 10, each recipe ingredient requiring four or more items costs one fewer. These perks do not reduce the materials used to place building pieces.',
       ] },
@@ -66,8 +66,8 @@ export const frontierSystemsArticles: WikiArticle[] = [
         ['Hammer', 'Craft it for Tools of the trade; it is not consumed when placing building pieces.'],
         ['Watering can', 'Carry it when planting to shorten carrot growth to ninety minutes.'],
         ['Creature harness', 'Spend one to train a companion with Beastcraft active at level 2.'],
-        ['Iron club', '9 base damage; equip from Bag & storage. It does not replace the Stick or Stone Club as an island route key.'],
-        ['Padded vest', 'Equip from Bag & storage for +3 maximum HP while carried. Total maximum HP is capped at 36.'],
+        ['Iron club', '9 base damage; move it into a quick slot in Bag, then wield it. It does not replace the Stick or Stone Club as an island route key.'],
+        ['Padded vest', 'Equip from Bag or a quick slot for +3 maximum HP while carried. Unequip it to remove the bonus. Total maximum HP is capped at 36.'],
       ] } },
     ],
     related: ['meadows', 'coins-quests', 'building-storage', 'frontier-disciplines', 'wildlife-companions', 'sailing-islands'],
@@ -88,7 +88,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
     sections: [
       { id: 'first-friend', title: 'Befriend your first creature', bullets: [
         'Approach a tameable creature and choose Observe within four tiles. First observing a species awards 15 Beastcraft XP.',
-        'Make Taming feed in Workshop: two Greenberries and one Plant fibre produce two portions before Building bonuses.',
+        'Make Taming feed in Craft: two Greenberries and one Plant fibre produce two portions before Building bonuses.',
         'Move within two tiles and Offer feed. Wait at least six seconds before the second feeding. Each feeding consumes one portion; Beastcraft active at level 5 reduces taming to one feeding.',
         'A successful tame awards 30 Beastcraft XP. Your first companion becomes active automatically. Build your own Creature stable before befriending additional companions; you can own four in total.',
       ] },
@@ -111,7 +111,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
         'Use ability requires your trained, active companion within two tiles and Beastcraft active at level 2. Abilities normally recover in sixty seconds; active Beastcraft level 10 reduces this to thirty seconds. Taming, food and other abilities can also briefly delay the next ability.',
       ] },
       { id: 'cargo-and-protection', title: 'Pack supplies and expedition help', paragraphs: [
-        'Training a Reedhorn creates six cargo slots. Use More → Bag & storage to deposit or withdraw while your Reedhorn is active, nearby and Beastcraft level 2 is active.',
+        'Training a Reedhorn creates six cargo slots. Use Bag → Storage to deposit or withdraw while your Reedhorn is active, nearby and Beastcraft level 2 is active.',
         'A Shellback’s ability applies to the giant berry expedition while you are carrying its cargo. It prevents the expedition Giant from biting that cargo for twelve seconds. It does not protect your ordinary bag or boat inventory.',
         'If you are defeated, your active companion rests for one minute. Any Reedhorn pack contents join your dropped supplies and remain collectible for five minutes. Companions themselves remain yours; call one again from town or a stable after its rest.',
       ] },
@@ -193,7 +193,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
         'Follow the steward’s quests towards The shipwright, then walk to Driftwood Harbour in Bramblewild at (46, 29). Meet shipwright records the visit for the quest.',
         'Craft a Skiff hull at a harbour from 20 Planks and 6 Rope. Craft a Sail at a Workbench or the public town workshop from 8 Cloth and 4 Rope. Active Building perks can lower these base ingredient costs.',
         'Stand within four tiles of a harbour and choose Assemble skiff. This consumes one hull and one sail, creates twelve cargo slots and awards 40 Building XP. You can own one skiff.',
-        'Use More → Bag & storage to load food and useful supplies into the boat. Depositing food records progress for Prepare for the crossing. Food is carried as provisions; sailing does not automatically consume it.',
+        'Use Bag → Storage to load food and useful supplies into the boat. Depositing food records progress for Prepare for the crossing. Food is carried as provisions; sailing does not automatically consume it.',
       ] },
       { id: 'crew', title: 'Invite and organise your crew', paragraphs: [
         'The owner has full boat access. Under Crew permissions, grant other characters boarding, piloting and cargo access separately. Boarding permission lets a player join at a harbour; piloting permission lets an onboard player take the helm; cargo permission lets them transfer supplies.',
@@ -202,6 +202,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
       ] },
       { id: 'voyage', title: 'Sail, dock and explore', bullets: [
         'Board, choose Take helm, then choose Sail beside a destination or tap the open sea to steer.',
+        'Skiffs move one sea tile every 0.6 seconds. With Exploration active at level 10, the pilot covers two tiles per tick. The whole crew and cargo travel together.',
         'Reach the destination’s sea coordinates, then choose Dock. Ordinary docking range is two tiles; Exploration active at level 5 increases it to four.',
         'Choose Disembark to explore. First discovering a port by docking awards 50 Exploration XP to each passenger and records the destination for relevant quests.',
         'Return to the harbour, board and sail home when ready. If everyone aboard is offline for five minutes, an at-sea skiff returns to its last port with its cargo.',
