@@ -56,6 +56,19 @@ beforeEach(() => {
 });
 
 describe("settings panel", () => {
+  it("explains one-click attack and saves its checked state", () => {
+    render(<SettingsPanel open onClose={() => {}} />);
+    const toggle = screen.getByRole('checkbox', { name: 'One-click attack' });
+    expect(toggle).not.toBeChecked();
+    expect(toggle).toHaveAccessibleDescription('Click an attackable target to walk up and attack. Hold for options.');
+    fireEvent.click(toggle);
+    expect(toggle).toBeChecked();
+    expect(useSettingsStore.getState().oneClickAttack).toBe(true);
+    expect(JSON.parse(localStorage.getItem('berigame.settings.v1')!).oneClickAttack).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Reset to defaults' }));
+    expect(toggle).not.toBeChecked();
+  });
+
   it("binds sound, graphics, nameplates and camera to the settings store", () => {
     render(<SettingsPanel open onClose={() => {}} />);
     fireEvent.change(screen.getByLabelText("Master"), { target: { value: "0.3" } });

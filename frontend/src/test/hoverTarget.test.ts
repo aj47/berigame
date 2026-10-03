@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, Vector3 } from 'three';
 import { GARDEN_PLOT_TILES, SPAWN_TILE, TILE_ORIGIN, tileKey, tileToWorld, gardenPlotAt, worldToTile } from '@sim';
 import { connectedGroundHover, groundHover, hoverRoots, hoverTargetOf, hoverTile, isWorldSurface, meadowBlockedTiles } from '../Components/3D/hoverTarget';
-import { clickableNear, MOUSE_TAP_RADIUS, openMenuNear } from '../Components/3D/tapAssist';
+import { clickableNear, isDirectAttackClick, MOUSE_TAP_RADIUS, openMenuNear } from '../Components/3D/tapAssist';
 import { useUserInputStore } from '../store';
 import { homePoint } from '../../../shared/sim/frontier/homeMap';
 import { frontierSnapshot } from '../../../shared/sim/frontier/snapshot';
@@ -74,6 +74,27 @@ describe('world hover targeting', () => {
     expect(openMenuNear(f.scene, f.camera, rect, 100, 100, MOUSE_TAP_RADIUS)).toBe(true);
     expect(target.handler).toHaveBeenCalledTimes(1);
     expect(useUserInputStore.getState().clickedOtherObject).toBeNull();
+  });
+
+  it('uses click assistance to attack once, but preserves options for an explicit hold', () => {
+    const f = fixture(), target = f.object(), attack = vi.fn();
+    target.root.userData.hoverTarget.click = 'action';
+    target.handler.mockImplementation((event: any) => {
+      if (isDirectAttackClick(event, true)) attack();
+      else useUserInputStore.getState().setClickedOtherObject({ connectionId: 'Options' });
+    });
+    expect(openMenuNear(f.scene, f.camera, rect, 118, 100, MOUSE_TAP_RADIUS)).toBe(true);
+    expect(attack).toHaveBeenCalledOnce();
+    expect(useUserInputStore.getState().clickedOtherObject).toBeNull();
+    expect(openMenuNear(f.scene, f.camera, rect, 118, 100, MOUSE_TAP_RADIUS, undefined, 'menu')).toBe(true);
+    expect(attack).toHaveBeenCalledOnce();
+    expect(useUserInputStore.getState().clickedOtherObject).toMatchObject({ connectionId: 'Options' });
+  });
+
+  it('requires the toggle and a primary click for direct attacks', () => {
+    expect(isDirectAttackClick({}, false)).toBe(false);
+    expect(isDirectAttackClick({ button: 2 }, true)).toBe(false);
+    expect(isDirectAttackClick({ nativeEvent: { button: 2 } }, true)).toBe(false);
   });
 
   it('evaluates changing status and resolves individual plots from the hit point', () => {

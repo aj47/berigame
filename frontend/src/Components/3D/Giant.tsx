@@ -6,7 +6,7 @@ import {
   EventKind, GIANT_REACH, GIANT_SLAM_WINDUP_TICKS, GIANT_STOMP_WINDUP_TICKS, GiantAttack, GiantState, TICK_MS, attackRadius, giantHpAt, tileToWorld,
   formatCountdown,
 } from '@sim';
-import { useGiantRaid, useNow } from '../../spacetime/hooks';
+import { useGiantRaid, useMyPlayer, useNow } from '../../spacetime/hooks';
 import type { Giant as GiantRow } from '../../module_bindings/types';
 import { useGameActions } from '../../spacetime/actions';
 import { useGiantStore } from '../../spacetime/stores/giantStore';
@@ -14,8 +14,9 @@ import { tickClock } from '../../spacetime/tickClock';
 import { useUserInputStore } from '../../store';
 import DamageNumber from './DamageNumber';
 import { LowPolyBuilder, coastMaterial, linear } from './nodes/lowPoly';
+import { useSettingsStore } from '../../spacetime/stores/settingsStore';
 import { approachWorldInteraction } from '../../frontier/worldInteraction';
-import { holdState } from './tapAssist';
+import { holdState, isDirectAttackClick } from './tapAssist';
 
 /*
  * F3 "The Giant": a mossy stone giant, about 4.3 units tall over its 3x3
@@ -104,6 +105,7 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
   const seen = useRef({ windupAt: -Infinity, riseAt: -Infinity, state: giant.state, yaw: 0, sleep: giant.state === GiantState.Asleep ? 1 : 0 });
   const eyes = useRef<Group>(null);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
+  const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
 
   const hit = useGiantStore((s) => s.hit);
   const p = giantParts();
@@ -243,23 +245,28 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
     }
   });
 
+  const attack = () => {
+    // The raid may have ended while its menu was open.
+    if (row.current.state !== GiantState.Defeated && row.current.state !== GiantState.Asleep) onAttack(row.current.id);
+    setClickedOtherObject(null);
+  };
   const onClick = (e: any) => {
     if (e.delta > 5) return;
     e.stopPropagation();
     if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
-    const event = { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() };
-    approachWorldInteraction({ region: 'bramblewild', x: row.current.x, z: row.current.z }, () => {
-      const down = row.current.state === GiantState.Defeated;
-      const asleep = row.current.state === GiantState.Asleep;
-      setClickedOtherObject({ connectionId: 'The Giant', e: event, dropdownOptions: [
-        { label: asleep ? 'The Giant is asleep' : down ? 'The Giant is resting' : 'Attack The Giant', disabled: down || asleep, onClick: () => { onAttack(row.current.id); setClickedOtherObject(null); } },
-      ] });
-    }, GIANT_REACH);
+    const down = row.current.state === GiantState.Defeated;
+    const asleep = row.current.state === GiantState.Asleep;
+    if (!down && !asleep && isDirectAttackClick(e, oneClickAttack)) { attack(); return; }
+    // Combat reducers already approach the target. Show the choice at the click
+    // instead of making the player wait for a walk before they can attack.
+    setClickedOtherObject({ connectionId: 'The Giant', e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() }, dropdownOptions: [
+      { label: asleep ? 'The Giant is asleep' : down ? 'The Giant is resting' : 'Attack The Giant', disabled: down || asleep, onClick: attack },
+    ] });
   };
 
   return (
-    <group position={[x, 0, z]} name="giant" userData={{ berigameGiant: giant.id, hoverTarget: {
-      title: 'The Giant', action: 'Walk over for Giant options', click: 'panel', radius: 2.1,
+    <group position={[x, 0, z]} name="giant" onClick={onClick} userData={{ berigameGiant: giant.id, hoverTarget: {
+      title: 'The Giant', action: oneClickAttack && giant.state !== GiantState.Asleep && giant.state !== GiantState.Defeated ? 'Click to attack · hold for options' : 'Click for Giant options', click: 'action', radius: 2.1,
       detail: giant.state === GiantState.Asleep ? 'Asleep' : giant.state === GiantState.Defeated ? 'Resting' : 'Ready to battle',
       tone: giant.state === GiantState.Asleep || giant.state === GiantState.Defeated ? 'muted' : 'ready',
     } }}>
@@ -284,8 +291,8 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
         ))}
       </group>
       <mesh ref={dust} visible={false} rotation={[-Math.PI / 2, 0, 0]} geometry={dustRing} material={dustMat} raycast={() => null} />
-      {/* Invisible click target over the footprint. */}
-      <mesh position={[0, 2.1, 0]} visible={false} onClick={onClick}><boxGeometry args={[3, 4.4, 3]} /><meshBasicMaterial /></mesh>
+      {/* Fill gaps in the silhouette; animated limbs also bubble to the root. */}
+      <mesh position={[0, 2.1, 0]} visible={false}><boxGeometry args={[3, 4.4, 3]} /><meshBasicMaterial /></mesh>
       {hit && <DamageNumber key={`giant-${hit.seq}`} playerPosition={{ x: 0, y: 0, z: 0 }} yOffset={4.6} kind={EventKind.Hit} text={String(hit.damage)} itemId={hit.itemId} appearAt={hit.at + hit.delayMs} />}
       <GiantBar giant={giant} tick={tick} />
     </group>
@@ -334,7 +341,15 @@ const AwakeBar = ({ giant, tick }: { giant: GiantRow; tick: number }) => {
 
 const Giant = ({ giant, tick }: { giant: GiantRow; tick: number }) => {
   const { attackGiant } = useGameActions();
-  return <GiantModel giant={giant} tick={tick} onAttack={attackGiant} />;
+  const me = useMyPlayer();
+  const attack = (id: number) => {
+    // The connected island is visible from Meadows, but this reducer belongs
+    // to Bramblewild. Cross the district boundary before requesting combat.
+    if (me?.region && me.region !== 'bramblewild') {
+      approachWorldInteraction({ region: 'bramblewild', x: giant.x, z: giant.z }, () => { void attackGiant(id); }, GIANT_REACH);
+    } else void attackGiant(id);
+  };
+  return <GiantModel giant={giant} tick={tick} onAttack={attack} />;
 };
 
 export default React.memo(Giant);

@@ -12,13 +12,15 @@ const us = (ms: number) => BigInt(ms) * 1000n;
 const asleep = (wakeMs: number, announced = 0) => ({ awake: false, nextWakeAtMicros: us(wakeMs), raidEndsAtMicros: 0n, announced });
 
 describe('raid schedule math', () => {
-  it('wakes every 3 hours on the UTC hour grid, strictly after now', () => {
-    expect(RAID_INTERVAL_MS).toBe(3 * H);
-    expect(nextRaidWakeMs(0)).toBe(3 * H);
-    expect(nextRaidWakeMs(3 * H - 1)).toBe(3 * H);
-    expect(nextRaidWakeMs(3 * H)).toBe(6 * H);
+  it('wakes every 20 minutes on the UTC grid, strictly after now', () => {
+    expect(RAID_INTERVAL_MS).toBe(20 * 60_000);
+    expect(nextRaidWakeMs(0)).toBe(20 * 60_000);
+    expect(nextRaidWakeMs(20 * 60_000 - 1)).toBe(20 * 60_000);
+    expect(nextRaidWakeMs(20 * 60_000)).toBe(40 * 60_000);
+    expect(nextRaidWakeMs(40 * 60_000)).toBe(H);
+    expect(nextRaidWakeMs(24 * H - 1)).toBe(24 * H);
     const d = Date.UTC(2026, 8, 30, 13, 7, 0);
-    expect(new Date(nextRaidWakeMs(d)).toISOString()).toBe('2026-09-30T15:00:00.000Z');
+    expect(new Date(nextRaidWakeMs(d)).toISOString()).toBe('2026-09-30T13:20:00.000Z');
   });
 
   it('announces T-10 then T-1 once each; a late start skips straight to the shortest due lead', () => {

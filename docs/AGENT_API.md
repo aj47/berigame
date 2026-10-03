@@ -301,7 +301,7 @@ per cut. All current IDs and positions are in `frontier.resources`.
   of the Boulders' L, (60,40) and (40,60): 8 ticks to chip, 150 to reform, 1
   obsidian (about 1.3 a minute world-wide). `harvest {kind: "obsidian"}` works.
 - **Scheduled raids (1.4.0).** The Giant **sleeps between raids** and wakes
-  every 3 hours on the UTC hour (00:00, 03:00, ... UTC). `state.giant.asleep`,
+  every 20 minutes at :00, :20 and :40 UTC. `state.giant.asleep`,
   `state.giant.nextWakeAt` (ISO time, null during a raid),
   `nextWakeInSeconds`, and `state.giant.raid {active, endsAt?, endsInSeconds?,
   playersAtWake?, lastOutcome: none|defeated|slept, count, schedule}`. Asleep

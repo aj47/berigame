@@ -1275,7 +1275,45 @@ describe('M3/F3: the Boulders gate and the Giant', () => {
     run(10);
     expect(update).not.toHaveBeenCalled();
     expect(raidUpdate).not.toHaveBeenCalled();
-    expect(() => attackGiant(h.ctx, { giantId: GIANT_ID })).toThrow('The Giant is asleep. It wakes in 2:58:20');
+    expect(() => attackGiant(h.ctx, { giantId: GIANT_ID })).toThrow('The Giant is asleep. It wakes in 18:20');
+  });
+
+  it('brings a persisted three-hour wake forward once, resetting its announcements', () => {
+    run();
+    const oldWake = 3 * 60 * 60_000;
+    Object.assign(h.raids.get(GIANT_ID), { nextWakeAtMicros: BigInt(oldWake) * 1000n, announced: 3 });
+    const update = h.ctx.db.giantRaid.id.update as any;
+    update.mockClear();
+    run(3);
+    expect(h.raids.get(GIANT_ID)).toMatchObject({ awake: false, nextWakeAtMicros: BigInt(RAID_INTERVAL_MS) * 1000n, announced: 0 });
+    expect(update).toHaveBeenCalledTimes(1);
+    setMs(RAID_INTERVAL_MS - RAID_ANNOUNCE_LEADS_MS[0]); run();
+    expect(giantEvents(GiantEventKind.Announce).map((e: any) => e.quantity)).toEqual([10]);
+  });
+
+  it('preserves a legacy wake already due, then returns to the 20-minute cadence', () => {
+    run();
+    const oldWake = 3 * 60 * 60_000;
+    Object.assign(h.raids.get(GIANT_ID), { nextWakeAtMicros: BigInt(oldWake) * 1000n });
+    setMs(oldWake); run();
+    expect(h.raids.get(GIANT_ID)).toMatchObject({ awake: true, raidCount: 1 });
+    setMs(oldWake + RAID_WINDOW_MS); run();
+    expect(h.raids.get(GIANT_ID)).toMatchObject({ awake: false, nextWakeAtMicros: BigInt(oldWake + RAID_INTERVAL_MS) * 1000n });
+  });
+
+  it('preserves an active raid and off-grid owner test wakes during schedule correction', () => {
+    run();
+    const oldWake = 3 * 60 * 60_000;
+    trigger(h.ctx, { delaySeconds: 60 * 60 });
+    const testWake = h.raids.get(GIANT_ID).nextWakeAtMicros;
+    run();
+    expect(h.raids.get(GIANT_ID).nextWakeAtMicros).toBe(testWake);
+    trigger(h.ctx, { delaySeconds: 0 });
+    const raid = h.raids.get(GIANT_ID);
+    Object.assign(raid, { nextWakeAtMicros: BigInt(oldWake) * 1000n });
+    const ends = raid.raidEndsAtMicros;
+    run();
+    expect(h.raids.get(GIANT_ID)).toMatchObject({ awake: true, nextWakeAtMicros: BigInt(oldWake) * 1000n, raidEndsAtMicros: ends });
   });
 
   it('awake and idle without anyone near: still no writes', () => {
@@ -1286,7 +1324,7 @@ describe('M3/F3: the Boulders gate and the Giant', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('announces at T-10 and T-1 minutes once each, then wakes on the hour with HP scaled by the Boulders crowd', () => {
+  it('announces at T-10 and T-1 minutes once each, then wakes on schedule with HP scaled by the Boulders crowd', () => {
     run();
     const wakeMs = RAID_INTERVAL_MS;
     setMs(wakeMs - RAID_ANNOUNCE_LEADS_MS[0] - 1000); run(3);

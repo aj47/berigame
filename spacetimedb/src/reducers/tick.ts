@@ -455,7 +455,7 @@ function defeatGiant(s: TickState, g: GiantRow): void {
  * telegraph, blow, recover. The giant row is written only on a change.
  */
 function phaseGiant(s: TickState): void {
-  const raid = s.ctx.db.giantRaid.id.find(GIANT_ID) ?? ensureRaid(s.ctx, s.T);
+  const raid = ensureRaid(s.ctx, s.T);
   const due = raidDue(raid, nowMs(s.ctx));
   if (due.kind === 'announce') {
     s.ctx.db.giantRaid.id.update({ ...raid, announced: due.announced });

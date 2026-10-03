@@ -79,7 +79,7 @@ const HoldToWalk = () => {
       timer = 0;
       const rect = el.getBoundingClientRect();
       // Context menu: the same menu a tap on the object opens.
-      if (openMenuNear(scene, camera, rect, x, y, TOUCH_TAP_RADIUS)) {
+      if (openMenuNear(scene, camera, rect, x, y, TOUCH_TAP_RADIUS, undefined, 'menu')) {
         consumed = true;
         holdState.suppressClickUntil = performance.now() + 600;
         return;

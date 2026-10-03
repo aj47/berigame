@@ -10,6 +10,8 @@ export function nowMs(ctx: Ctx): number {
 }
 
 const micros = (ms: number) => BigInt(Math.floor(ms)) * 1000n;
+/** Persisted wakes from the old three-hour schedule need no schema migration. */
+const LEGACY_RAID_INTERVAL_MICROS = 3n * 60n * 60n * 1_000_000n;
 
 /**
  * The raid row, inserted on first use. A database published before raids had
@@ -18,7 +20,19 @@ const micros = (ms: number) => BigInt(Math.floor(ms)) * 1000n;
  */
 export function ensureRaid(ctx: Ctx, tick: number): GiantRaidRow {
   const row = ctx.db.giantRaid.id.find(GIANT_ID);
-  if (row) return row;
+  if (row) {
+    // Bring old scheduled wakes onto the new cadence immediately after publish.
+    // Leave active / already-due raids and off-grid owner test wakes alone.
+    if (!row.awake && row.nextWakeAtMicros % LEGACY_RAID_INTERVAL_MICROS === 0n) {
+      const nextWakeAtMicros = micros(nextRaidWakeMs(nowMs(ctx)));
+      if (row.nextWakeAtMicros > nextWakeAtMicros) {
+        const next = { ...row, nextWakeAtMicros, announced: 0 };
+        ctx.db.giantRaid.id.update(next);
+        return next;
+      }
+    }
+    return row;
+  }
   const g = ensureGiant(ctx, tick);
   sleepGiantRow(ctx, g, tick);
   clearContributions(ctx);

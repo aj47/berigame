@@ -8,6 +8,11 @@ export const MOUSE_TAP_RADIUS = 10;
 
 export type ClickHandler = (e: any) => void;
 
+/** A held press always keeps the options menu available in one-click mode. */
+export function isDirectAttackClick(event: { interaction?: string; button?: number; nativeEvent?: { button?: number } }, enabled: boolean): boolean {
+  return enabled && event.interaction !== 'menu' && (event.button ?? event.nativeEvent?.button ?? 0) === 0;
+}
+
 /** The nearest ancestor's R3F onClick handler, skipping the ground itself. */
 export function clickHandlerOf(object: Object3D | null): { handler: ClickHandler; object: Object3D } | null {
   for (let o: Object3D | null = object; o; o = o.parent) {
@@ -73,6 +78,7 @@ export function clickableNear(
 export function openMenuNear(
   scene: Object3D, camera: Camera, rect: { left: number; top: number; width: number; height: number },
   clientX: number, clientY: number, radius: number, nativeEvent?: Event,
+  interaction: 'click' | 'menu' = 'click',
 ): boolean {
   const store = useUserInputStore as any;
   let opened = false;
@@ -84,7 +90,7 @@ export function openMenuNear(
     const target = hoverTargetOf(t.hit.object, t.hit.point);
     if (target === null) return true;
     const before = store.getState().clickedOtherObject;
-    t.handler(syntheticClick(t, clientX, clientY, nativeEvent, originalRay));
+    t.handler({ ...syntheticClick(t, clientX, clientY, nativeEvent, originalRay), interaction });
     const after = store.getState().clickedOtherObject;
     opened = (!!after && after !== before) || target?.hint.click === 'panel' || target?.hint.click === 'action';
     return !opened;

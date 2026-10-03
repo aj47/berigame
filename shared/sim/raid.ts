@@ -1,7 +1,7 @@
 /**
  * Scheduled Giant raids. The Giant sleeps between raids and wakes at fixed,
  * predictable UTC times (every RAID_INTERVAL_MS on the epoch grid: 00:00,
- * 03:00, 06:00 ... UTC). Awake, it has more HP the more players were in the
+ * 00:20, 00:40, 01:00 ... UTC). Awake, it has more HP the more players were in the
  * Boulders when it woke (bounded); left undefeated for RAID_WINDOW_MS it goes
  * back to sleep. Pure rules shared by the module and the client countdown.
  *
@@ -11,8 +11,8 @@
  */
 import { OBSIDIAN_ITEM_ID } from './items';
 
-/** Wake cadence: every 3 hours on the hour (UTC). */
-export const RAID_INTERVAL_MS = 3 * 60 * 60 * 1000;
+/** Wake cadence: every 20 minutes, at :00, :20 and :40 (UTC). */
+export const RAID_INTERVAL_MS = 20 * 60 * 1000;
 /** How long a raid lasts before the Giant goes back to sleep undefeated. */
 export const RAID_WINDOW_MS = 15 * 60 * 1000;
 /** World-wide announcements before a wake: T-10 min and T-1 min. Longest first. */

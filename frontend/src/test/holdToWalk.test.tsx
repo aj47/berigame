@@ -89,4 +89,17 @@ describe('hold navigation across the home island', () => {
     expect(gather).toHaveBeenCalledTimes(1);
     expect(mock.frontier).not.toHaveBeenCalled(); expect(mock.setTarget).not.toHaveBeenCalled();
   });
+
+  it('marks long presses as menu requests even when one-click attacks are available', () => {
+    pointAt(69, 25);
+    const giant = new Mesh(new BoxGeometry(2, 2, 2), new MeshBasicMaterial());
+    giant.position.set(44, 0, 0);
+    const handler = vi.fn();
+    (giant as any).__r3f = { handlers: { onClick: handler } };
+    giant.userData.hoverTarget = { title: 'The Giant', action: 'Attack', click: 'action' };
+    mock.state.scene.add(giant); mock.state.scene.updateMatrixWorld(true);
+    render(<HoldToWalk />); press(wrapper);
+    expect(handler).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ interaction: 'menu' }));
+    expect(mock.frontier).not.toHaveBeenCalled(); expect(mock.setTarget).not.toHaveBeenCalled();
+  });
 });

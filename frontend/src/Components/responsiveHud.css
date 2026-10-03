@@ -36,6 +36,19 @@
 .ui-group .toolbar-secondary > button:hover,
 .ui-group .toolbar-secondary .agent-entry-link:hover { background: #e6d4ad; }
 .ui-group .game-toolbar .toolbar-menu-toggle { display: block; }
+.ui-group .game-toolbar .attack-mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.ui-group .game-toolbar .attack-mode-toggle[aria-pressed="true"] {
+  background: #477344;
+  border-color: #345b31;
+  color: #fff9e9;
+}
+.attack-mode-toggle > span { white-space: nowrap; }
+.attack-mode-state { font-size: 11px; }
 .ui-group .toolbar-secondary kbd { display: none; }
 .minimap-compact-label { display: none; }
 
@@ -71,7 +84,7 @@
     width: min(420px, calc(100% - var(--hud-left) - var(--hud-right)));
     height: var(--dock-height);
     display: grid;
-    grid-template-columns: 1.3fr 1fr 1fr 1.1fr;
+    grid-template-columns: 1.3fr 1fr 1fr 1fr 1.1fr;
     gap: 4px;
     padding: 2px;
     border: 1px solid #ad9165;
@@ -91,6 +104,8 @@
   .ui-group .game-toolbar > button[aria-expanded="true"],
   .ui-group .game-toolbar > button[data-active="true"] { background: #e6d4ad; color: #3b4d35; }
   .ui-group .game-toolbar .toolbar-menu-toggle { display: block; }
+  .ui-group .game-toolbar .attack-mode-toggle { flex-direction: column; gap: 1px; }
+  .ui-group .game-toolbar .attack-mode-long-label { display: none; }
   .ui-group .game-toolbar kbd { display: none; }
   .ui-group .toolbar-secondary { display: none; }
   .ui-group .toolbar-secondary.is-open {
@@ -242,6 +257,8 @@
   .ui-group { --quickbar-height: 96px; }
   .ui-group .game-toolbar,
   .ui-group .combat-hud { left: auto; right: var(--hud-right); transform: none; width: min(360px, calc(50% - 18px)); }
+  .ui-group .game-toolbar { grid-template-columns: 1.5fr 1fr 1fr 1fr 1.1fr; }
+  .ui-group .game-toolbar > button { font-size: 11px; }
   .ui-group .combat-hud .hotbar-slot { height: 49px; min-height: 49px; }
   .ui-group .hotbar-icon { width: 22px; height: 22px; }
   .ui-group .weapon-chip-label { display: none; }

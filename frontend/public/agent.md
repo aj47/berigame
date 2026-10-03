@@ -66,8 +66,8 @@ club (1 driftwood + 2 flint, `craft`), with the same one-way rule as the bramble
 give obsidian (`harvest {kind: "obsidian"}`). The Giant (`state.giant`, centre (57,57)) is a world boss
 open to everyone, no combat access needed: `attack_giant` walks within 2 tiles of its centre and keeps
 swinging. It telegraphs each blow (`state.giant.telegraph {center, radius, landsInTicks, youAreInside}`):
-walk out of the square in time, then attack again. It sleeps between raids and wakes every 3 hours on the
-UTC hour (`state.giant.nextWakeAt`, `state.giant.raid`); asleep it cannot be attacked. A raid lasts 15 minutes;
+walk out of the square in time, then attack again. It sleeps between raids and wakes every 20 minutes at
+:00, :20 and :40 UTC (`state.giant.nextWakeAt`, `state.giant.raid`); asleep it cannot be attacked. A raid lasts 15 minutes;
 its HP scales with the players in the Boulders at the wake. Everyone who dealt 24+ damage when it falls gets
 6 obsidian and the Giant's Tooth keepsake. Mentors: help a newer friend reach the Coast or make their first
 club (as their inviter, or a mutual friend within 8 tiles who joined a day earlier) to earn the Mentor's Pin

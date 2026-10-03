@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import UIComponents from '../Components/UIComponents';
 import { openSettlement } from '../frontier/navigation';
 import { openAdventure } from '../Components/adventureNavigation';
+import { useSettingsStore } from '../spacetime/stores/settingsStore';
 
 const region = vi.hoisted(() => ({ value: 'bramblewild' }));
 vi.mock('../frontier/FrontierPanel', () => ({ default: ({ open, request, setOpen }: any) => open ? <section aria-label="Settlements">{request.tab}<button onClick={() => setOpen(false)}>Close settlements</button></section> : null }));
@@ -29,7 +30,27 @@ vi.mock('../Components/TickDebug', () => ({ default: () => null }));
 vi.mock('../Components/Minimap', () => ({ default: () => null }));
 vi.mock('../Components/FriendsPanel', () => ({ default: () => null, FriendSync: () => null, InviteRedeemer: () => null }));
 vi.mock('../Components/TradeWindow', () => ({ default: () => null }));
-afterEach(() => { region.value = "bramblewild"; cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { region.value = "bramblewild"; cleanup(); useSettingsStore.getState().reset(); vi.restoreAllMocks(); });
+
+describe('one-click attack toggle', () => {
+  it('stays visible outside the menu, reflects its on/off state and syncs with Settings', () => {
+    render(<UIComponents />);
+    const toggle = screen.getByRole('button', { name: 'One-click attack' });
+    expect(toggle).toBeVisible();
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle).toHaveTextContent('Off');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(toggle).toHaveTextContent('On');
+    expect(JSON.parse(localStorage.getItem('berigame.settings.v1')!).oneClickAttack).toBe(true);
+    fireEvent.keyDown(document.body, { key: 'o' });
+    const checkbox = screen.getByRole('checkbox', { name: 'One-click attack' });
+    expect(checkbox).toBeChecked();
+    fireEvent.click(checkbox);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('region', { name: 'Settings' })).toBeVisible();
+  });
+});
 
 describe('panel keyboard shortcuts respect native controls', () => {
   it.each([/^Bag/, /^Help/, /^Quick slot 1/])('does not consume Enter on a focused button', (name) => {

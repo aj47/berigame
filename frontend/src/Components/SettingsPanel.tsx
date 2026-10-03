@@ -59,6 +59,7 @@ const GRAPHICS: { value: Settings["graphics"]; label: string; hint: string }[] =
 /** Player preferences, bound to settingsStore (saved in this browser only). */
 const SettingsPanel = ({ open, onClose, recoveryEnabled = false }: Props) => {
   const s = useSettingsStore();
+  const attackHintId = useId();
   if (!open) return null;
   return (
     <section className="game-panel settings-panel" aria-label="Settings">
@@ -70,6 +71,14 @@ const SettingsPanel = ({ open, onClose, recoveryEnabled = false }: Props) => {
           ×
         </button>
       </header>
+      <fieldset className="settings-group">
+        <legend>Controls</legend>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={s.oneClickAttack} aria-describedby={attackHintId} onChange={(e) => s.set({ oneClickAttack: e.target.checked })} />
+          <span>One-click attack</span>
+        </label>
+        <p className="settings-hint" id={attackHintId}>Click an attackable target to walk up and attack. Hold for options.</p>
+      </fieldset>
       <fieldset className="settings-group">
         <legend>Sound</legend>
         <label className="settings-toggle">

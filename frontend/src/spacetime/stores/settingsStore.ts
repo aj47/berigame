@@ -16,6 +16,8 @@ export interface Settings {
   showNameplates: boolean;
   showWorldLabels: boolean;
   showGuidance: boolean;
+  /** Clicking an attackable target approaches and attacks; holding opens its menu. */
+  oneClickAttack: boolean;
   /** Multiplier for camera drag/zoom speed, 0.5..2 */
   cameraSensitivity: number;
   /** Skip knockback, hitstop and fleeing wildlife bursts. Defaults to the OS preference. */
@@ -35,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showNameplates: true,
   showWorldLabels: true,
   showGuidance: true,
+  oneClickAttack: false,
   cameraSensitivity: 1,
   reduceMotion: prefersReduced(),
 };

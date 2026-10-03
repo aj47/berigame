@@ -9,7 +9,8 @@ import { openSettlement } from "./navigation";
 import { plotName } from "./panelModel";
 import { resourceHover } from "./resourcePresentation";
 import { meadowTrailDistance } from "./meadowPathArt";
-import { holdState, MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, openMenuNear } from "../Components/3D/tapAssist";
+import { holdState, isDirectAttackClick, MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, openMenuNear } from "../Components/3D/tapAssist";
+import { PlayerState } from "@sim";
 import { useUserInputStore } from "../store";
 import { previewIssue } from "./preview";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -178,9 +179,45 @@ function PieceModel({
     piece === "chest" ? "#99704b" : piece === "kitchen" ? "#859087" : "#c6a77b",
   );
 }
-function Animal({ creature, showLabel }: { creature: Creature; showLabel: boolean }) {
+export function Animal({ creature, showLabel, disabled = false }: { creature: Creature; showLabel: boolean; disabled?: boolean }) {
   const ref = useRef<Group>(null);
   const def = SPECIES.find((s) => s.id === creature.species)!;
+  const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
+  const me = useMyPlayer();
+  const { frontier } = useGameActions();
+  const setSelected = useUserInputStore((s: any) => s.setClickedOtherObject);
+  const hostile = creature.species === 'bristleback';
+  const attackable = hostile && creature.restUntil <= Date.now() && me?.state === PlayerState.Alive;
+  const live = useRef({ creature, alive: me?.state === PlayerState.Alive, mounted: true });
+  live.current = { creature, alive: me?.state === PlayerState.Alive, mounted: true };
+  useEffect(() => {
+    live.current.mounted = true;
+    return () => { live.current.mounted = false; };
+  }, []);
+  const onClick = (e: any) => {
+    if (disabled || !hostile || e.delta > 5) return;
+    e.stopPropagation();
+    if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
+    const attack = () => {
+      const current = live.current;
+      if (!current.mounted || !current.alive || current.creature.restUntil > Date.now()) return;
+      setSelected(null);
+      void frontier({ action: 'attack', id: current.creature.id });
+    };
+    if (isDirectAttackClick(e, oneClickAttack && attackable)) {
+      setSelected(null);
+      approachWorldInteraction(creature, attack, 1);
+      return;
+    }
+    const event = { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() };
+    approachWorldInteraction(creature, () => {
+      if (!live.current.mounted) return;
+      const resting = live.current.creature.restUntil > Date.now();
+      setSelected({ connectionId: def.name, e: event, dropdownOptions: [
+        { label: resting ? `${def.name} is resting` : `Attack ${def.name}`, disabled: resting || !live.current.alive, onClick: attack },
+      ] });
+    }, 1);
+  };
   useFrame(({ clock }, dt) => {
     if (ref.current) {
       ref.current.position.x +=
@@ -194,7 +231,12 @@ function Animal({ creature, showLabel }: { creature: Creature; showLabel: boolea
     }
   });
   return (
-    <group ref={ref} position={[creature.x - 25, 0, creature.z - 25]}>
+    <group ref={ref} position={[creature.x - 25, 0, creature.z - 25]} onClick={hostile ? onClick : undefined} userData={{ hoverTarget: hostile && !disabled ? {
+      title: def.name, action: oneClickAttack && attackable ? 'Click to attack' : 'Click for combat options',
+      detail: creature.restUntil > Date.now() ? 'Resting' : attackable && oneClickAttack ? 'Hold for combat options' : 'Hostile wildlife',
+      click: oneClickAttack && attackable ? 'action' : 'panel', radius: .7,
+      tile: homePoint(creature, creature.region),
+    } : null }}>
       <mesh
         position={[0, 0.42, 0]}
         scale={
@@ -554,7 +596,7 @@ export function FrontierScene({
       {state.creatures
         .filter((c) => c.region === region && distance(me, c) < 35)
         .map((c) => (
-          <Animal key={c.id} creature={c} showLabel={showWorldLabels && distance(me,c)<10} />
+          <Animal key={c.id} creature={c} showLabel={showWorldLabels && distance(me,c)<10} disabled={!!draft} />
         ))}
       {state.boats
         .filter((b) => b.region === region)

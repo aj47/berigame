@@ -221,7 +221,7 @@ export const guideArticles: WikiArticle[] = [
         'Each harvest gives one obsidian. These two outcrops are shared resources, so another adventurer may be gathering or waiting at the same node. Obsidian can be donated to the permanent camp workshop; it has no weapon recipe in the current recipe list.',
       ] },
       { id: 'giant', title: 'The Giant’s territory', paragraphs: [
-        'The raid Giant stands at (57, 57) and blocks a 3 × 3 footprint. It wakes every three hours on the UTC clock and stays available for up to fifteen minutes. The raid countdown shows the next wake or the remaining window.',
+        'The raid Giant stands at (57, 57) and blocks a 3 × 3 footprint. It wakes every twenty minutes at :00, :20 and :40 UTC and stays available for up to fifteen minutes. The raid countdown shows the next wake or the remaining window.',
         'An awake Giant notices alive, unprotected players in the Boulders within eight tiles. Its marked attacks can hit nearby players even if they have not started attacking, although active grace prevents the damage. Stay out of its marked squares and prepare food before joining.',
       ] },
     ],
@@ -506,11 +506,11 @@ export const guideArticles: WikiArticle[] = [
     title: 'The Giant & scheduled raids',
     category: 'Combat',
     summary: 'Raid schedule, scaling HP, attack telegraphs and equal contribution rewards.',
-    lead: 'The Giant is a cooperative world boss in the Boulders. It sleeps between scheduled raids, wakes every three hours and shares one health pool across all participants. Read its marked attacks, step clear, then return to land your blows.',
-    facts: [{ label: 'Location', value: 'The Boulders · (57, 57)' }, { label: 'Schedule', value: 'Every 3 hours · UTC' }, { label: 'Raid window', value: '15 minutes' }, { label: 'Health', value: '600–2,000 HP' }, { label: 'Reward threshold', value: '24 damage' }],
+    lead: 'The Giant is a cooperative world boss in the Boulders. It sleeps between scheduled raids, wakes every twenty minutes and shares one health pool across all participants. Read its marked attacks, step clear, then return to land your blows.',
+    facts: [{ label: 'Location', value: 'The Boulders · (57, 57)' }, { label: 'Schedule', value: 'Every 20 minutes · UTC' }, { label: 'Raid window', value: '15 minutes' }, { label: 'Health', value: '600–2,000 HP' }, { label: 'Reward threshold', value: '24 damage' }],
     sections: [
       { id: 'schedule', title: 'When the Giant wakes', paragraphs: [
-        'Standard raid times are 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00 and 21:00 UTC. World announcements appear ten minutes and one minute before a wake. The in-game countdown shows the current world’s next scheduled raid.',
+        'Raids start at :00, :20 and :40 of every hour UTC. World announcements appear ten minutes and one minute before a wake. The in-game countdown shows the current world’s next scheduled raid.',
         'A raid lasts up to fifteen minutes. If the Giant is defeated or the window expires, it returns to sleep until the next scheduled wake. It cannot be attacked while asleep. During an active raid, its health does not regenerate and contribution is retained for that raid.',
       ] },
       { id: 'health-scaling', title: 'Health scaling', paragraphs: ['At the wake, the game counts alive, online players in the Boulders. The Giant starts at 600 HP for zero or one counted player, then gains 200 HP for each extra player up to eight counted players. More players can still join the fight without increasing that already established health.'], table: { headers: ['Players counted at wake', 'Raid HP'], rows: [['0–1', '600'], ['2', '800'], ['3', '1,000'], ['4', '1,200'], ['5', '1,400'], ['6', '1,600'], ['7', '1,800'], ['8 or more', '2,000']] } },

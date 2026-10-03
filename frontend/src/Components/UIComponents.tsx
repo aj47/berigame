@@ -22,6 +22,7 @@ import "./skills.css";
 import "./responsiveHud.css";
 import "./inventory.css";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
+import { useSettingsStore } from "../spacetime/stores/settingsStore";
 
 import FrontierPanel, { type BuildDraft } from "../frontier/FrontierPanel";
 import { FRONTIER_EVENT, type FrontierRequest } from "../frontier/navigation";
@@ -50,6 +51,7 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft =
   frontierEnabled?: boolean; frontierCoins?: number; draft?: BuildDraft | null; onDraft?: (draft: BuildDraft | null) => void;
 }) => {
   const me = useMyPlayer();
+  const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
   const inFrontier = !!me?.region && me.region !== 'bramblewild';
   const regionRef = useRef(inFrontier);
   regionRef.current = inFrontier;
@@ -167,6 +169,16 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft =
           onClick={() => setPanel((current) => (current === "chat" || current === "friends" ? null : "chat"))}
         >
           Chat <kbd>↵</kbd>
+        </button>
+        <button
+          className="attack-mode-toggle"
+          aria-label="One-click attack"
+          aria-pressed={oneClickAttack}
+          title="Click an attackable target to walk up and attack. Hold for options."
+          onClick={() => useSettingsStore.getState().set({ oneClickAttack: !oneClickAttack })}
+        >
+          <span>1-click<span className="attack-mode-long-label"> attack</span></span>
+          <span className="attack-mode-state">{oneClickAttack ? 'On' : 'Off'}</span>
         </button>
         <button
           className="toolbar-menu-toggle"
