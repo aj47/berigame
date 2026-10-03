@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { readFile } from 'node:fs/promises'
 import { configDefaults } from 'vitest/config'
+import { wikiAssets } from './scripts/wiki-assets.mjs'
 
 // Serve the machine-readable guide inline in browsers as well as HTTP clients.
 function agentGuide() {
@@ -22,7 +23,7 @@ function agentGuide() {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react({ fastRefresh: !process.env.VITEST }), agentGuide()],
+  plugins: [react({ fastRefresh: !process.env.VITEST }), agentGuide(), wikiAssets()],
   // Auxiliary art-preview HTML files are not application entry points.
   optimizeDeps: { entries: ['index.html'] },
   resolve: {

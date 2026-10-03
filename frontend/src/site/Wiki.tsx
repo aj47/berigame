@@ -1,4 +1,4 @@
-import { homeUrl, wikiUrl } from './siteUrls';
+import { homeUrl, wikiResourceUrl, wikiUrl } from './siteUrls';
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ITEM_DEFS } from '@sim'
 import { articles } from './wikiContent'
@@ -8,6 +8,8 @@ import { escapePattern, searchArticles } from './wikiSearch'
 import { useHashAnchor } from './useHashAnchor'
 import { useArticleNavigation } from './useArticleNavigation'
 import RecipePlanner from './RecipePlanner'
+import WikiDocumentLink from './WikiDocumentLink'
+import { BerryMark } from './SiteIcons'
 import './wiki.css'
 import './wikiReading.css'
 
@@ -115,16 +117,22 @@ export default function Wiki({ slug }: { slug?: string }) {
   return <div className={`wiki-page${!slug ? ' wiki-home-page' : ''}`}>
     <a className="wiki-skip-link" href="#wiki-content">Skip wiki navigation</a>
     <div className="wiki-mobile-bar">
-      <a href={wikiUrl()} className="wiki-mobile-title"><BookIcon size={19} />BeriGame Wiki</a>
+      <a href={wikiUrl()} className="wiki-mobile-title"><BerryMark size={26} />BeriGame Wiki</a>
       <button ref={menuToggle} className="wiki-menu-toggle" type="button" aria-expanded={menuOpen} aria-controls="wiki-navigation" onClick={() => setMenuOpen(!menuOpen)}>
         {menuOpen ? 'Close menu' : 'Browse wiki'}<span aria-hidden="true">{menuOpen ? '×' : '☰'}</span>
       </button>
     </div>
     <div className="wiki-layout">
       <aside className={`wiki-sidebar${menuOpen ? ' wiki-sidebar-open' : ''}`} id="wiki-navigation" aria-label="Wiki navigation">
-        <a className="wiki-sidebar-brand" href={wikiUrl()}><span className="wiki-brand-icon"><BookIcon size={25} /></span><span>BeriGame Wiki<small>The island encyclopedia</small></span></a>
+        <a className="wiki-sidebar-brand" href={wikiUrl()}><span className="wiki-brand-icon"><BerryMark size={32} /></span><span>BeriGame Wiki<small>The island encyclopedia</small></span></a>
         <nav aria-label="Wiki articles">
           <a href={wikiUrl()} className={`wiki-nav-home${!slug && !normalizedQuery ? ' wiki-nav-current' : ''}`} aria-current={!slug && !normalizedQuery ? 'page' : undefined}>Wiki home<ArrowIcon /></a>
+          <div className="wiki-nav-group wiki-nav-agents">
+            <h2>For agents</h2>
+            <WikiDocumentLink href={wikiResourceUrl('llms.txt')} title="llms.txt">Start here · llms.txt</WikiDocumentLink>
+            <WikiDocumentLink href={wikiResourceUrl('wiki-index.json')} title="JSON article index">Article index · JSON</WikiDocumentLink>
+            <WikiDocumentLink href={wikiResourceUrl('llms-full.txt')} title="Complete wiki">Full wiki · Markdown</WikiDocumentLink>
+          </div>
           {categories.map(category => <div className="wiki-nav-group" key={category}>
             <h2>{category}</h2>
             {guides.filter(item => item.category === category).map(item => <a key={item.slug} href={articleHref(item.slug)} className={item.slug === slug && !normalizedQuery ? 'wiki-nav-current' : undefined} aria-current={item.slug === slug && !normalizedQuery ? 'page' : undefined}>{item.title}</a>)}
@@ -162,6 +170,17 @@ export default function Wiki({ slug }: { slug?: string }) {
 
           <a className="wiki-latest-update" href={`${articleHref('changelog')}#${latestUpdate.id}`}><span className="wiki-update-label">What’s new <time dateTime={latestUpdate.date}>{latestUpdate.period}</time></span><strong>{latestUpdate.title}</strong><span className="wiki-update-link">Read the changelog <ArrowIcon /></span></a>
 
+          <section className="wiki-agent-resources" aria-labelledby="wiki-agents-title">
+            <div><h2 id="wiki-agents-title">For agents</h2><p>Read Markdown or JSON generated from this wiki. Use the live API guide and schema for requests, and live game state for current IDs, availability and action results.</p></div>
+            <nav aria-label="Agent resources">
+              <WikiDocumentLink href={wikiResourceUrl('llms.txt')} title="llms.txt">Start here <ArrowIcon /></WikiDocumentLink>
+              <WikiDocumentLink href={wikiResourceUrl('wiki-index.json')} title="JSON article index">JSON index</WikiDocumentLink>
+              <WikiDocumentLink href={wikiResourceUrl('llms-full.txt')} title="Complete wiki">Full wiki</WikiDocumentLink>
+              <a href="https://beta.berigame.com/agent.md">Live API guide</a>
+              <a href="https://beta.berigame.com/api/agent/v1/openapi.json">API schema</a>
+            </nav>
+          </section>
+
           <nav className="wiki-quick-links" aria-label="Start exploring">{topicLinks.map(topic => <a href={articleHref(topic.slug)} key={topic.slug}><span className="wiki-topic-icon"><img src={topic.icon} alt="" width="50" height="50" /></span><span><strong>{topic.title}</strong><small>{topic.description}</small></span><ArrowIcon /></a>)}</nav>
 
           <section className="wiki-item-browser" aria-labelledby="wiki-items-title">
@@ -182,7 +201,7 @@ export default function Wiki({ slug }: { slug?: string }) {
           </section>
           <div className="wiki-bottom-note"><BookIcon size={23} /><p>Looking for something specific? Search item names, ingredients, skills or places with the <kbd>/</kbd> shortcut.</p><a href="#wiki-content">Back to top ↑</a></div>
         </> : article ? <article className={`wiki-article${article.itemId ? ' wiki-item-article' : ''}${article.slug === 'changelog' ? ' wiki-changelog' : ''}`}>
-          <header className="wiki-article-header"><div className="wiki-eyebrow">{article.category} / {article.itemId ? 'ITEM REFERENCE' : article.slug === 'changelog' ? 'ISLAND HISTORY' : 'FIELD GUIDE'}</div><h1>{article.title}</h1><p className="wiki-article-summary">{article.summary}</p><div className="wiki-article-meta"><span><BookIcon size={16} /> {readingMinutes} min read</span><span>{articleHeadings.length} sections</span><button className="wiki-copy-article" type="button" onClick={() => reading.copyLink()}><LinkIcon copied={reading.copiedId === 'article'} />{reading.copiedId === 'article' ? 'Copied!' : 'Copy link'}</button></div></header>
+          <header className="wiki-article-header"><div className="wiki-eyebrow">{article.category} / {article.itemId ? 'ITEM REFERENCE' : article.slug === 'changelog' ? 'ISLAND HISTORY' : 'FIELD GUIDE'}</div><h1>{article.title}</h1><p className="wiki-article-summary">{article.summary}</p><div className="wiki-article-meta"><span><BookIcon size={16} /> {readingMinutes} min read</span><span>{articleHeadings.length} sections</span><div className="wiki-article-tools"><WikiDocumentLink className="wiki-markdown-link" href={wikiResourceUrl(`wiki/${encodeURIComponent(article.slug)}.md`)} title={`${article.title} · Markdown`}>Read Markdown</WikiDocumentLink><button className="wiki-copy-article" type="button" onClick={() => reading.copyLink()}><LinkIcon copied={reading.copiedId === 'article'} />{reading.copiedId === 'article' ? 'Copied!' : 'Copy link'}</button></div></div></header>
           <span className="wiki-copy-status" role="status">{reading.copyMessage}</span>
           <div className="wiki-reading-bar"><label htmlFor="wiki-section-jump"><span>On this page</span><select id="wiki-section-jump" aria-label="Jump to article section" value={reading.activeId} onChange={event => reading.jumpTo(event.target.value)}><option value="">Introduction</option>{articleHeadings.map(section => <option key={section.id} value={section.id}>{section.title}</option>)}</select></label><span className="wiki-reading-percent" aria-hidden="true">{reading.progress}%</span><div className="wiki-reading-track" aria-hidden="true"><span style={{ width: `${reading.progress}%` }} /></div></div>
           <div className="wiki-article-layout">

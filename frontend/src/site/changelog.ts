@@ -25,7 +25,7 @@ export const changelogEntries: ChangelogEntry[] = [
       'The bag clearly marks equipped armour and shows Equip or Unequip in every region.',
       'Menu → Report a bug prepares a shareable report with build, connection, tick timing and movement diagnostics. Reports stay local until you copy or download them to share.',
     ],
-    commits: [],
+    commits: ['2ce5916'],
   },
   {
     id: '2026-10-03-meadows-icons', date: '2026-10-03', period: 'Oct 3, 2026',
@@ -50,7 +50,28 @@ export const changelogEntries: ChangelogEntry[] = [
       'Blocked routes describe obstacles and closed gates, with tool hints only when a progression boundary actually blocks the route. Completed feasts share one visible Giant instead of piling Giants into the same spot.',
       'The Giant is easier to click, and the optional One-click attack toggle attacks eligible targets directly. Giant raids now begin every 20 minutes.',
     ],
-    commits: ['252507f'],
+    commits: ['252507f', '5e84623', '02c12c4', '507e714', 'c16c3da'],
+  },
+  {
+    id: '2026-10-03-blueberry-icon', date: '2026-10-03', period: 'Oct 3, 2026',
+    title: 'The blueberry becomes the game icon',
+    note: 'Branding update',
+    changes: [
+      'The in-game blueberry now appears in browser tabs, touch icons and website and wiki branding.',
+      'A matching transparent PNG is available at https://berigame.com/icon.png.',
+    ],
+    commits: ['63584ab'],
+  },
+  {
+    id: '2026-10-03-agent-friendly-wiki', date: '2026-10-03', period: 'Oct 3, 2026',
+    title: 'A wiki agents can read directly',
+    note: 'Wiki update',
+    changes: [
+      'Every wiki article now has a Markdown version, with a JSON article index and a complete text export generated from the same guides.',
+      'The For agents links introduce the reference and point to the live API guide and schema. Open exported documents in the wiki reader and copy their text or URL.',
+      'Agents can request Markdown directly from article URLs. The wiki also publishes crawler discovery files and returns a clear missing-document response for unknown exports.',
+    ],
+    commits: ['464d501'],
   },
   {
     id: '2026-10-02-connected-meadows', date: '2026-10-02', period: 'Oct 2, 2026',

@@ -98,6 +98,32 @@ available together when developing locally.
 - `/play` — the multiplayer game. Existing `/?join=...` invitations still work.
 - `/agent` — the agent field guide and API onboarding.
 
+The wiki also serves documentation directly over HTTP, without JavaScript:
+
+- `/llms.txt` — start here; categorized article links and live API entry points.
+- `/wiki-index.json` — article summaries, item IDs, section anchors, source paths and build metadata.
+- `/wiki/<article>.md` — one article as Markdown; every browser article has a **Read Markdown** link.
+- `/llms-full.txt` — the entire wiki in one Markdown document.
+- `/robots.txt` and `/sitemap.xml` — crawler discovery.
+
+Normal clicks on wiki export links open a document reader with copy controls.
+The links retain their raw `href` for agents and modified clicks. This also lets
+embedded browsers read the documents when they block top-level file navigation.
+
+On the wiki host, request an article with `Accept: text/markdown` to receive
+its Markdown representation. Local development supports the same header on
+`/docs/<article>`. Explicit export URLs also work on static previews. Unknown
+Markdown documents return 404 on the public Worker and local development server.
+The public site Worker adds discovery links and varies negotiated responses by
+`Accept`; a plain static host only serves the exported files.
+
+`npm run site:build` (or the frontend's `npm run build`) generates these files in
+`frontend/dist` from the same article data as the browser wiki. The JSON index
+records a content hash, generation time, base commit and working-tree status.
+These describe the documentation build, not the live game deployment. Agents
+should use the linked beta guide, discovery, OpenAPI and authenticated state for
+current access, request schemas and game conditions.
+
 To work on the landing page or wiki without starting a game server, run
 `npm ci --prefix frontend` and `npm run dev --prefix frontend`. Open
 http://127.0.0.1:5173. Reading the website does not connect to the game server
@@ -110,7 +136,10 @@ the shared simulation definitions where possible. Update explanatory prose along
 related article links. The landing island is an illustrative diorama; the
 trailer is a cinematic interpretation of the game. The crafting planner reads
 the shared recipe definitions, including one-time cosmetic unlocks. The shared
-berry favicon and Apple touch icon live in `frontend/public/` and apply to all routes.
+blueberry brand icon is `frontend/public/icon.png`, copied from the in-game
+`items/blueberry.png` artwork. Its PNG, ICO, SVG and Apple touch variants live in
+the same directory. The public site deployment serves these brand assets on all
+three production domains; see `docs/PUBLIC_SITE.md` for the narrow beta routes.
 
 Run `npm run site:deploy` to deploy the public website and wiki separately from
 the game. See [public website deployment](docs/PUBLIC_SITE.md) for domain setup,

@@ -1,0 +1,21 @@
+.wiki-document-dialog { width:min(960px,calc(100vw - 32px)); max-width:none; max-height:calc(100dvh - 40px); padding:0; border:1px solid #b8c3a9; border-radius:9px; background:var(--wiki-paper,#f7f4eb); color:var(--wiki-ink,#173c30); box-shadow:0 24px 90px #173c3040; font:14px/1.6 Arial,Helvetica,sans-serif; }
+.wiki-document-dialog[open] { display:flex; flex-direction:column; }
+.wiki-document-dialog::backdrop { background:#152f27a8; }
+.wiki-document-dialog * { box-sizing:border-box; }
+.wiki-document-header { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:18px 22px 10px; flex-shrink:0; }
+.wiki-document-dialog .wiki-document-header h2 { margin:0; font:400 26px/1.25 Georgia,'Times New Roman',serif; text-transform:none; letter-spacing:normal; color:inherit; overflow-wrap:anywhere; }
+.wiki-document-dialog button { border:1px solid #b8c3a9; border-radius:5px; background:#edf0df; color:#284c35; padding:7px 12px; font:inherit; cursor:pointer; touch-action:manipulation; }
+.wiki-document-dialog button:hover { background:#dce6cb; }
+.wiki-document-dialog button:disabled { opacity:.55; cursor:default; }
+.wiki-document-dialog :is(button,pre):focus-visible { outline:3px solid #a77732; outline-offset:3px; }
+.wiki-document-close { flex-shrink:0; }
+.wiki-document-close span { margin-left:6px; font-size:20px; line-height:1; }
+.wiki-document-dialog .wiki-document-source { margin:0; padding:0 22px; color:#627060; font-size:12px; overflow-wrap:anywhere; flex-shrink:0; }
+.wiki-document-source span { user-select:all; }
+.wiki-document-actions { display:flex; align-items:center; flex-wrap:wrap; gap:9px; padding:14px 22px 17px; border-bottom:1px solid #d5d9c8; flex-shrink:0; }
+.wiki-document-copy-status { color:#526848; font-size:12px; }
+.wiki-document-body { min-height:90px; overflow:auto; padding:20px 22px; overscroll-behavior:contain; }
+.wiki-document-body pre { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font:12px/1.75 ui-monospace,SFMono-Regular,Consolas,monospace; tab-size:2; }
+.wiki-document-error { color:#7b3929; }
+.wiki-document-error button { margin-top:12px; }
+@media(max-width:600px) { .wiki-document-dialog { width:calc(100vw - 20px); max-height:calc(100dvh - 20px); } .wiki-document-header { padding:15px 16px 10px; gap:10px; } .wiki-document-dialog .wiki-document-header h2 { font-size:22px; } .wiki-document-dialog .wiki-document-source { padding:0 16px; } .wiki-document-actions { padding:13px 16px; } .wiki-document-body { padding:16px; } .wiki-document-copy-status:not(:empty) { flex-basis:100%; } }

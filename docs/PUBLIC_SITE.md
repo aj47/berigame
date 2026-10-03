@@ -8,6 +8,11 @@ The public website runs on the Cloudflare Worker `berigame-site`:
 | `wiki.berigame.com` | Wiki home and article paths such as `/crafting` |
 | `beta.berigame.com` | Existing game and agent API, on the separate `berigame-beta` Worker |
 
+The site Worker also owns narrow routes for the beta's favicon, Apple touch icon,
+`/icon.png` and `/logo.png`. Those routes serve shared brand assets. The Worker
+rejects other beta paths; the game and API remain on `berigame-beta`. This follows
+Cloudflare's [route precedence over Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/routes/).
+
 `frontend/cloudflare/site-wrangler.jsonc` binds the public domains and serves the
 Vite build. `site-worker.ts` redirects `/docs` URLs to the wiki, and `/play`,
 `/agent` and old root invite links to the beta. Query strings and browser
@@ -43,8 +48,8 @@ npx --yes wrangler@4.36.0 deploy --dry-run --config frontend/cloudflare/site-wra
 
 ## Game updates
 
-Publishing the public Worker does not update the existing beta game. To publish
-the shared berry favicon, in-game wiki links, or other approved frontend changes
+Publishing the public Worker updates the shared brand icons on all three domains.
+To publish in-game wiki links or other approved frontend changes
 to the game, use the separate `npm run beta:deploy` command described in
 [Cloudflare beta operations](CLOUDFLARE_BETA.md). That build sets the correct
 Maincloud connection and admission settings. Deploy the public site first so
@@ -59,7 +64,20 @@ needed for this website release.
 - Main-site `/docs/crafting?q=flint` redirects to wiki `/crafting?q=flint`.
 - Play links reach the beta, and `/?join=CODE` preserves the invite query.
 - `/favicon.svg`, `/favicon.ico`, and `/apple-touch-icon.png` load on every deployed origin.
+- `/icon.png` is the transparent 128 × 128 blueberry used by the game. `/logo.png` is a compatibility copy. The PNG, ICO and self-contained SVG favicons use this same artwork.
 - Opening the landing page or wiki does not open a game WebSocket or create a character.
+- `/llms.txt` links to the generated Markdown articles and live beta API descriptions.
+- `/wiki-index.json` lists every article, its sections, source files and build metadata.
+- `/wiki/crafting.md` serves Markdown; requesting `/crafting` with `Accept: text/markdown` serves the same document with `Vary: Accept`.
+- `/llms-full.txt`, `/robots.txt` and `/sitemap.xml` are readable without JavaScript.
+- `/wiki/no-such-article.md` returns 404 instead of an HTML application shell.
+- Clicking Start here, JSON index, Full wiki or an article's Read Markdown link opens the document reader. Check loading, Copy URL, close and Escape in the browser.
+
+The frontend build generates wiki exports in `dist` from `wikiContent.ts`, its
+article modules and the shared simulation definitions. Keep this generation step
+when changing the build pipeline. Do not hand-edit the exported files. Their
+content hash and generation metadata identify the documentation snapshot; they
+do not describe the live beta's feature flags or state.
 
 Local walkthrough recordings in `review-videos/` and `frontend/review-videos/`
 are review artifacts, not part of the deployed bundle.

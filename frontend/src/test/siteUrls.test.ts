@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agentUrl, gameUrl, homeUrl, wikiUrl } from '../site/siteUrls';
+import { agentUrl, gameUrl, homeUrl, wikiResourceUrl, wikiUrl } from '../site/siteUrls';
 
 describe('links between the website, wiki and existing game', () => {
   it('uses clean local article links on the wiki domain', () => {
@@ -36,6 +36,18 @@ describe('links between the website, wiki and existing game', () => {
       expect(wikiUrl('?q=Flint', hostname)).toBe('/docs?q=Flint');
       expect(gameUrl(hostname)).toBe('/play');
       expect(agentUrl(hostname)).toBe('/agent');
+    }
+  });
+
+  it('keeps machine-readable resources at the wiki root across hosts', () => {
+    for (const resource of ['llms.txt', 'wiki-index.json', 'llms-full.txt', 'wiki/agent-play.md']) {
+      expect(wikiResourceUrl(resource, 'wiki.berigame.com')).toBe(`/${resource}`);
+      for (const hostname of ['berigame.com', 'www.berigame.com', 'beta.berigame.com']) {
+        expect(wikiResourceUrl(resource, hostname)).toBe(`https://wiki.berigame.com/${resource}`);
+      }
+      for (const hostname of ['', 'localhost', '127.0.0.1', 'preview.workers.dev']) {
+        expect(wikiResourceUrl(`/${resource}`, hostname)).toBe(`/${resource}`);
+      }
     }
   });
 });
