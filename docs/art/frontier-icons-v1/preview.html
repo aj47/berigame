@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BeriGame / Meadows icon set</title>
+  <style>
+    :root { color-scheme: light; --ink: #392d21; --muted: #776d61; --paper: #f7f3e9; --line: #ded7c8; --sample: #fff1a1; --sample-ink: #594521; --accent: #527b45; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button { font: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #527b45; outline-offset: 4px; }
+    .shell { max-width: 1420px; margin: auto; padding: 48px 40px 64px; }
+    header { display: flex; justify-content: space-between; gap: 30px; align-items: flex-end; padding-bottom: 30px; border-bottom: 1px solid var(--line); }
+    .eyebrow { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; font-weight: 750; color: var(--accent); margin: 0 0 12px; }
+    h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(30px, 4vw, 50px); font-weight: 500; line-height: 1.08; letter-spacing: -.035em; margin: 0; }
+    h1 span { color: #938575; padding: 0 5px; }
+    .intro { margin: 15px 0 0; color: var(--muted); line-height: 1.6; font-size: 14px; max-width: 680px; }
+    .count { white-space: nowrap; border: 1px solid var(--line); border-radius: 100px; padding: 11px 16px; font-size: 12px; color: var(--muted); }
+    .count strong { color: var(--ink); font-size: 16px; margin-right: 5px; }
+    .toolbar { display: flex; gap: 20px; align-items: center; justify-content: space-between; padding: 22px 0 26px; }
+    .toolbar-title { color: var(--muted); font-size: 12px; }
+    .swatches { display: flex; align-items: center; gap: 6px; }
+    .swatches > span { margin-right: 8px; }
+    .swatch { display: flex; align-items: center; gap: 7px; padding: 8px 12px; border: 1px solid transparent; border-radius: 100px; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; }
+    .swatch[aria-pressed="true"] { border-color: #bdb39d; background: #fffdf8; color: var(--ink); }
+    .swatch i { width: 13px; height: 13px; border-radius: 50%; background: var(--swatch); box-shadow: inset 0 0 0 1px #0002; }
+    .hint { font-size: 12px; color: var(--muted); }
+    .section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; margin: 0 0 15px; }
+    h2 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+    .section-heading p { margin: 0; color: var(--muted); font-size: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+    .card { overflow: hidden; background: #fffdf8; border: 1px solid var(--line); border-radius: 15px; }
+    .stage { height: 172px; width: 100%; border: 0; display: grid; place-items: center; background: var(--sample); position: relative; padding: 16px; cursor: zoom-in; transition: background .15s; }
+    .stage:disabled { cursor: default; }
+    .stage img { width: 128px; height: 128px; object-fit: contain; filter: drop-shadow(0 5px 4px #00000012); }
+    .stage img:not([src]) { visibility: hidden; }
+    .pending { color: var(--sample-ink); font-size: 11px; opacity: .65; position: absolute; }
+    .card[data-ready="true"] .pending { display: none; }
+    .card[data-ready="false"] img { visibility: hidden; }
+    .meta { padding: 15px 16px 0; }
+    .meta h3 { font-size: 14px; font-weight: 650; margin: 0 0 5px; line-height: 1.2; }
+    .meta code { color: #8c8070; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; }
+    .sizes { display: flex; justify-content: space-around; align-items: flex-end; gap: 10px; margin: 14px 10px 10px; padding: 12px 8px 8px; border-radius: 8px; background: var(--sample); color: var(--sample-ink); }
+    .size { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 7px; width: 64px; min-height: 84px; }
+    .size img { display: block; object-fit: contain; flex-shrink: 0; }
+    .size span { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; opacity: .7; }
+    .references { border-top: 1px solid var(--line); margin-top: 44px; padding-top: 30px; }
+    .reference-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+    .reference { margin: 0; padding: 18px 12px 14px; background: var(--sample); border-radius: 12px; text-align: center; }
+    .reference img { width: 88px; height: 88px; object-fit: contain; }
+    .reference figcaption { color: var(--sample-ink); font-size: 11px; margin-top: 9px; }
+    footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 28px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    dialog { width: min(600px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; background: #fffdf8; color: var(--ink); border: 1px solid var(--line); border-radius: 20px; overflow: auto; box-shadow: 0 18px 90px #0005; }
+    dialog::backdrop { background: #201d19a8; backdrop-filter: blur(5px); }
+    .modal-top { padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .modal-top h2 { font-size: 21px; font-family: Georgia, "Times New Roman", serif; }
+    .modal-top code { font-size: 11px; color: var(--muted); }
+    .close { border: 1px solid var(--line); border-radius: 50%; width: 34px; height: 34px; font-size: 22px; background: transparent; cursor: pointer; color: var(--muted); }
+    .modal-stage { background: var(--sample); display: grid; place-items: center; min-height: 340px; }
+    .modal-stage img { width: 288px; height: 288px; object-fit: contain; }
+    .modal-bottom { padding: 18px 24px 22px; display: flex; gap: 18px; align-items: center; justify-content: space-between; font-size: 11px; color: var(--muted); }
+    .modal-bottom a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    @media (max-width: 1150px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (max-width: 900px) { .shell { padding: 32px 24px 48px; } .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .reference-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } header { align-items: flex-start; } .count { margin-top: 2px; } }
+    @media (max-width: 650px) { .shell { padding: 28px 14px 40px; } header { flex-direction: column; gap: 20px; } .toolbar { align-items: flex-start; gap: 12px; flex-direction: column; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .stage { height: 150px; } .stage img { width: 120px; height: 120px; } .meta { padding: 13px 12px 0; } .sizes { gap: 0; padding-inline: 3px; margin-inline: 6px; } .size { width: auto; } .section-heading { align-items: flex-start; flex-direction: column; gap: 6px; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">Bramblewild field notes · Art review</p>
+        <h1>BeriGame <span>/</span> Meadows icon set</h1>
+        <p class="intro">Gathering supplies, handmade tools, and a little island life. Twenty-five new item icons, with the original collection close by for comparison.</p>
+      </div>
+      <div class="count" aria-live="polite"><strong id="ready-count">0 / 25</strong> icons ready</div>
+    </header>
+
+    <div class="toolbar">
+      <div class="swatches" role="group" aria-label="Preview background">
+        <span class="toolbar-title">Background</span>
+        <button class="swatch" data-theme="sand" style="--swatch:#fff1a1" aria-pressed="true"><i aria-hidden="true"></i>Sand</button>
+        <button class="swatch" data-theme="ocean" style="--swatch:#006994" aria-pressed="false"><i aria-hidden="true"></i>Ocean</button>
+        <button class="swatch" data-theme="dark" style="--swatch:#2b3038" aria-pressed="false"><i aria-hidden="true"></i>Dark</button>
+      </div>
+      <span class="hint">Click an icon for a closer look · Small previews use actual display sizes</span>
+    </div>
+
+    <section aria-labelledby="collection-title">
+      <div class="section-heading"><h2 id="collection-title">The Meadows collection</h2><p>128 px master · 32 / 48 / 64 px previews</p></div>
+      <div class="grid" id="gallery"></div>
+    </section>
+
+    <section class="references" aria-labelledby="references-title">
+      <div class="section-heading"><h2 id="references-title">The originals</h2><p>Existing in-game art · Style references</p></div>
+      <div class="reference-grid" id="references"></div>
+    </section>
+
+    <footer><span>Transparent PNG assets · BeriGame</span><span id="refresh-note">Waiting icons refresh automatically as files become available.</span></footer>
+  </main>
+
+  <dialog id="inspector" aria-labelledby="inspector-title">
+    <div class="modal-top"><div><h2 id="inspector-title"></h2><code id="inspector-id"></code></div><button class="close" aria-label="Close icon preview">×</button></div>
+    <div class="modal-stage"><img id="inspector-image" alt=""></div>
+    <div class="modal-bottom"><span>Enlarged preview · Original asset is 128 × 128 px</span><a id="inspector-link" target="_blank" rel="noopener">Open PNG</a></div>
+  </dialog>
+
+  <script>
+    const assetRoot = '../../../frontend/public/items/';
+    const items = [
+      ['timber', 'Timber'], ['stone', 'Stone'], ['fibre', 'Plant fibre'], ['clay', 'Clay'],
+      ['reeds', 'Reeds'], ['resin', 'Resin'], ['iron_ore', 'Iron ore'], ['planks', 'Planks'],
+      ['rope', 'Rope'], ['cloth', 'Cloth'], ['bricks', 'Bricks'], ['iron_fittings', 'Iron fittings'],
+      ['axe', 'Axe'], ['pick', 'Pick'], ['hammer', 'Hammer'], ['watering_can', 'Watering can'],
+      ['taming_feed', 'Taming feed'], ['travel_rations', 'Travel rations'], ['skiff_hull', 'Skiff hull'],
+      ['sail', 'Sail'], ['harness', 'Creature harness'], ['carrot', 'Carrot'], ['carrot_seed', 'Carrot seed'],
+      ['iron_club', 'Iron club'], ['padded_vest', 'Padded vest'],
+    ];
+    const originals = [['blueberry', 'Blueberry'], ['strawberry', 'Strawberry'], ['greenberry', 'Greenberry'], ['goldberry', 'Goldberry'], ['stick', 'Stick'], ['driftwood', 'Driftwood']];
+    const themes = { sand: ['#fff1a1', '#594521'], ocean: ['#006994', '#e8f7ff'], dark: ['#2b3038', '#f4eddd'] };
+    const gallery = document.getElementById('gallery');
+    const ready = new Set();
+    const inspector = document.getElementById('inspector');
+    const cards = new Map();
+
+    function openIcon(id, name) {
+      const path = `${assetRoot}frontier/${id}.png`;
+      document.getElementById('inspector-title').textContent = name;
+      document.getElementById('inspector-id').textContent = `${id}.png`;
+      document.getElementById('inspector-image').src = path;
+      document.getElementById('inspector-image').alt = name;
+      document.getElementById('inspector-link').href = path;
+      inspector.showModal();
+    }
+
+    for (const [id, name] of items) {
+      const card = document.createElement('article');
+      card.className = 'card';
+      card.dataset.ready = 'false';
+      card.innerHTML = `<button class="stage" disabled aria-label="Enlarge ${name}"><span class="pending">Preparing icon…</span><img alt="${name}"></button><div class="meta"><h3>${name}</h3><code>${id}</code></div><div class="sizes">${[32, 48, 64].map(size => `<div class="size"><img width="${size}" height="${size}" alt=""><span>${size} px</span></div>`).join('')}</div>`;
+      const main = card.querySelector('.stage img');
+      const button = card.querySelector('.stage');
+      main.addEventListener('load', () => {
+        card.dataset.ready = 'true';
+        button.disabled = false;
+        for (const img of card.querySelectorAll('.size img')) img.src = main.src;
+        ready.add(id);
+        document.getElementById('ready-count').textContent = `${ready.size} / ${items.length}`;
+        if (ready.size === items.length) document.getElementById('refresh-note').textContent = 'All 25 icons are available for review.';
+      });
+      main.addEventListener('error', () => { card.dataset.ready = 'false'; });
+      button.addEventListener('click', () => openIcon(id, name));
+      gallery.append(card);
+      cards.set(id, main);
+      main.src = `${assetRoot}frontier/${id}.png`;
+    }
+
+    for (const [id, name] of originals) {
+      const figure = document.createElement('figure');
+      figure.className = 'reference';
+      figure.innerHTML = `<img src="${assetRoot}${id}.png" alt="Original ${name} icon"><figcaption>${name}</figcaption>`;
+      document.getElementById('references').append(figure);
+    }
+
+    for (const button of document.querySelectorAll('[data-theme]')) {
+      button.addEventListener('click', () => {
+        const [background, ink] = themes[button.dataset.theme];
+        document.documentElement.style.setProperty('--sample', background);
+        document.documentElement.style.setProperty('--sample-ink', ink);
+        for (const other of document.querySelectorAll('[data-theme]')) other.setAttribute('aria-pressed', String(other === button));
+      });
+    }
+    inspector.querySelector('.close').addEventListener('click', () => inspector.close());
+    inspector.addEventListener('click', event => {
+      if (event.target === inspector) {
+        const bounds = inspector.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) inspector.close();
+      }
+    });
+    setInterval(() => {
+      for (const [id, img] of cards) if (!ready.has(id)) img.src = `${assetRoot}frontier/${id}.png?retry=${Date.now()}`;
+    }, 15000);
+  </script>
+</body>
+</html>

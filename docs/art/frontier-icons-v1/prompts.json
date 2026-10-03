@@ -1,0 +1,182 @@
+{
+  "generator": "built-in image_gen",
+  "style_reference": "/Users/ajjoobandi/Development/personal/berigame/docs/art/style-anchor.png",
+  "prompt_prefix": "Use case: stylized-concept. Create one production-ready BeriGame inventory icon. The attached image is the ORIGINAL STYLE REFERENCE only. Match its thick uniform dark-brown (#2B1D14) outline, chunky toy-like silhouette, two to three broad faceted cel-shading steps, rich warm colors, and a clean upper-left highlight. Hand-painted 2D fantasy island game art, compact and readable at 32 pixels. One subject centered, fully visible with 12% transparent padding on every side. Square canvas. Real transparent background. No text, letters, digits, labels, frames, decorative sparkles, extra objects, scenery, floor, cast shadow, photorealism, fine noise, thin outlines, or realistic texture. Draw ONLY this inventory object: ",
+  "items": [
+    {
+      "id": "timber",
+      "name": "Timber",
+      "subject": "Timber: one stout freshly cut hardwood log angled from lower left to upper right, rich warm brown bark, large pale golden circular cut end with two simple growth rings, one small branch stub. Clearly fresh timber, unlike pale bleached driftwood.",
+      "source": "source/timber.png",
+      "asset": "../../../frontend/public/items/frontier/timber.png"
+    },
+    {
+      "id": "stone",
+      "name": "Stone",
+      "subject": "One squat irregular rounded grey stone with a few large angular facets, pale warm grey upper-left face and dark slate lower-right face. A common ordinary building rock, broad chunky boulder silhouette. No crystals, no shiny metal.",
+      "source": "source/stone.png",
+      "asset": "../../../frontend/public/items/frontier/stone.png"
+    },
+    {
+      "id": "fibre",
+      "name": "Plant fibre",
+      "subject": "Plant fibre: one compact sheaf of loose long olive-green and straw-gold plant fibers, loosely bound in the middle by a simple brown cord. Frayed tapered leafy ends fan gently outward at the top and bottom. Clearly a raw grass fiber bundle, not a rope.",
+      "source": "source/fibre.png",
+      "asset": "../../../frontend/public/items/frontier/fibre.png"
+    },
+    {
+      "id": "clay",
+      "name": "Clay",
+      "subject": "Clay: one warm terracotta-orange lump of soft raw clay, squat and lumpy, with one shallow thumb indentation and a broad light-orange upper-left plane, dark reddish-brown shadow at lower right. Clearly pliable raw clay, no vessel or bricks.",
+      "source": "source/clay.png",
+      "asset": "../../../frontend/public/items/frontier/clay.png"
+    },
+    {
+      "id": "reeds",
+      "name": "Reeds",
+      "subject": "Reeds: three harvested sage-green reed stalks tied together at the base with a tan cord, two tall brown cattail seed heads and one shorter head, with a few long pointed olive-green leaves. Compact upright bunch, bold large shapes.",
+      "source": "source/reeds.png",
+      "asset": "../../../frontend/public/items/frontier/reeds.png"
+    },
+    {
+      "id": "resin",
+      "name": "Resin",
+      "subject": "Resin: one large solid honey-amber tree-sap droplet, asymmetrical teardrop with round bulbous base and a curled short pointed top, glossy pale yellow upper-left highlight and burnt-orange lower-right shading. Opaque jewel-like solid sap with bold outline.",
+      "source": "source/resin.png",
+      "asset": "../../../frontend/public/items/frontier/resin.png"
+    },
+    {
+      "id": "iron_ore",
+      "name": "Iron ore",
+      "subject": "Iron ore: one angular charcoal-slate rock chunk with three broad rusty copper-brown iron mineral veins embedded across its face, a few muted cool grey exposed metal facets, solid bold irregular silhouette. Clearly rough unprocessed ore; not an ingot, gem, or ordinary plain grey stone.",
+      "source": "source/iron_ore.png",
+      "asset": "../../../frontend/public/items/frontier/iron_ore.png"
+    },
+    {
+      "id": "planks",
+      "name": "Planks",
+      "subject": "Planks: three thick golden honey-brown sawn wooden boards stacked at a slight diagonal, squared ends and clean bevels, two simple bold grain marks, pale tan upper-left highlights and warm brown side faces. Compact overlapping bundle, no logs or bark.",
+      "source": "source/planks.png",
+      "asset": "../../../frontend/public/items/frontier/planks.png"
+    },
+    {
+      "id": "rope",
+      "name": "Rope",
+      "subject": "Rope: a stout coil of thick tan braided palm-fibre rope with one short loose end curling to the right. A compact circular coil with a clear small central hole, a few big readable braid segments, golden upper-left highlight and brown shadow.",
+      "source": "source/rope.png",
+      "asset": "../../../frontend/public/items/frontier/rope.png"
+    },
+    {
+      "id": "cloth",
+      "name": "Cloth",
+      "subject": "Cloth: one folded square of warm ivory linen, two overlapping fabric layers with one corner folded back, broad soft angular crease and a tiny simple hem. Compact cream fabric silhouette with golden-beige cel shadows, no patterned embroidery or symbols.",
+      "source": "source/cloth.png",
+      "asset": "../../../frontend/public/items/frontier/cloth.png"
+    },
+    {
+      "id": "bricks",
+      "name": "Bricks",
+      "subject": "Bricks: a compact stack of three handmade warm red-orange terracotta building bricks, two side by side at the base and one across the top, thick rectangular blocks with softly chipped beveled corners. Pale peach upper-left highlights and reddish-brown side faces.",
+      "source": "source/bricks.png",
+      "asset": "../../../frontend/public/items/frontier/bricks.png"
+    },
+    {
+      "id": "iron_fittings",
+      "name": "Iron fittings",
+      "subject": "Iron fittings: two chunky dark blue-grey forged iron L-shaped building brackets overlapping at different angles, each with one or two large circular rivet holes, and one short broad bolt between them. Cool slate metal with broad pale grey cel highlights, clear industrial hardware silhouettes.",
+      "source": "source/iron_fittings.png",
+      "asset": "../../../frontend/public/items/frontier/iron_fittings.png"
+    },
+    {
+      "id": "axe",
+      "name": "Axe",
+      "subject": "Axe: one primitive island chopping axe, diagonally from lower left to upper right. A short stout warm brown wooden handle with simple tan cord grip, broad blue-grey iron wedge head with a wide crescent cutting edge on one side. Chunky friendly tool, no decoration or blood.",
+      "source": "source/axe.png",
+      "asset": "../../../frontend/public/items/frontier/axe.png"
+    },
+    {
+      "id": "pick",
+      "name": "Pick",
+      "subject": "Pick: one pickaxe diagonally from lower left to upper right, thick warm brown wooden handle and curved blue-grey metal crosshead with two pointed tips. Tan cord wraps at the grip, broad pale steel upper-left highlight. Strong recognizable pickaxe silhouette.",
+      "source": "source/pick.png",
+      "asset": "../../../frontend/public/items/frontier/pick.png"
+    },
+    {
+      "id": "hammer",
+      "name": "Hammer",
+      "subject": "Hammer: one crafting mallet held diagonally from lower left to upper right, short stout honey-brown wooden handle, large blocky grey stone hammer head with softly beveled ends bound securely with two thick tan cord straps. Broad pale-grey top face, compact heavy head.",
+      "source": "source/hammer.png",
+      "asset": "../../../frontend/public/items/frontier/hammer.png"
+    },
+    {
+      "id": "watering_can",
+      "name": "Watering can",
+      "subject": "Watering can: one cheerful teal glazed ceramic watering can with round squat body, large loop handle, short upward angled spout ending in a broad perforated rose, and visible open filling hole at the top. Cool turquoise body, lighter aqua upper-left face, darker deep teal shading. No plants, no water spray.",
+      "source": "source/watering_can.png",
+      "asset": "../../../frontend/public/items/frontier/watering_can.png"
+    },
+    {
+      "id": "taming_feed",
+      "name": "Taming feed",
+      "subject": "Taming feed: one small open tan woven-feed sack bulging with coarse golden feed pellets and three clearly visible green berries on top. Folded sack rim, a short brown cord around the neck, chunky cozy farm provision silhouette. No printed marks.",
+      "source": "source/taming_feed.png",
+      "asset": "../../../frontend/public/items/frontier/taming_feed.png"
+    },
+    {
+      "id": "travel_rations",
+      "name": "Travel rations",
+      "subject": "Travel rations: a compact open folded cream travel-food cloth tied underneath with brown cord, holding a thick orange carrot segment and two red strawberries with green tops. Bundle reads as portable provisions. Saturated food colors, beige fabric, bold simple shapes. No loaf or meat.",
+      "source": "source/travel_rations.png",
+      "asset": "../../../frontend/public/items/frontier/travel_rations.png"
+    },
+    {
+      "id": "skiff_hull",
+      "name": "Skiff hull",
+      "subject": "Skiff hull: one miniature open wooden rowboat hull viewed from slightly above in three-quarter view, angled lower left to upper right. Brown planked shell with pointed bow, flat squared stern, warm honey-colored rim and two large internal ribs/bench crosspieces. Compact readable boat silhouette. No sail, mast, oars, water, people, or stand.",
+      "source": "source/skiff_hull.png",
+      "asset": "../../../frontend/public/items/frontier/skiff_hull.png"
+    },
+    {
+      "id": "sail",
+      "name": "Sail",
+      "subject": "Sail: one cream triangular canvas sail rigged to a short brown wooden mast and a diagonal spar, with a simple tan rope attachment and two broad cel-shaded fabric folds. Slightly billowing but clean triangular silhouette. Warm ivory fabric, golden beige shading. No boat, flags, marks, text or scenery.",
+      "source": "source/sail.png",
+      "asset": "../../../frontend/public/items/frontier/sail.png"
+    },
+    {
+      "id": "harness",
+      "name": "Creature harness",
+      "subject": "Creature harness: one small empty brown leather animal harness, a compact loop of broad chest straps crossing with a second neck loop, two warm brass buckles and a short dangling strap end. Thick caramel leather with warm tan upper-left highlights and dark brown shadow. No creature, saddle, chain or rider.",
+      "source": "source/harness.png",
+      "asset": "../../../frontend/public/items/frontier/harness.png"
+    },
+    {
+      "id": "carrot",
+      "name": "Carrot",
+      "subject": "Carrot: one plump vivid orange carrot angled from lower left tip to upper right leafy crown, squat tapered root with two short broad curved grooves, three lush green leaves attached to the top. Pale golden-orange upper-left highlight, burnt orange shadow. Simple immediately recognizable vegetable silhouette.",
+      "source": "source/carrot.png",
+      "asset": "../../../frontend/public/items/frontier/carrot.png"
+    },
+    {
+      "id": "carrot_seed",
+      "name": "Carrot seed",
+      "subject": "Carrot seed: a tiny open tan seed pouch with folded rim and a cluster of five large olive-brown oval seed kernels spilling in front; one small fresh carrot-green sprout growing from one kernel visually identifies them as seeds. Seeds and pouch dominate, no carrot root and no printed picture or text.",
+      "source": "source/carrot_seed.png",
+      "asset": "../../../frontend/public/items/frontier/carrot_seed.png"
+    },
+    {
+      "id": "iron_club",
+      "name": "Iron club",
+      "subject": "Iron club: one heavy blunt iron war club angled from lower left to upper right. Thick wooden handle with brown leather wrapped grip and a bulky dark steel grey cylindrical flanged head, three broad blunt raised metal ridges. Upper-left pale steel highlight, blue-grey shadow. Friendly chunky fantasy game weapon; no spikes, blade, gore or effects.",
+      "source": "source/iron_club.png",
+      "asset": "../../../frontend/public/items/frontier/iron_club.png"
+    },
+    {
+      "id": "padded_vest",
+      "name": "Padded vest",
+      "subject": "Padded vest: one tan quilted sleeveless adventurer vest, front view, rounded shoulder openings, V neck and a simple brown leather tie at the chest. A few large diamond-shaped padded panels, warm golden-beige upper-left highlights and caramel lower-right shading. Empty garment, no body, arms, shirt, pants or accessories.",
+      "source": "source/padded_vest.png",
+      "asset": "../../../frontend/public/items/frontier/padded_vest.png"
+    }
+  ]
+}
