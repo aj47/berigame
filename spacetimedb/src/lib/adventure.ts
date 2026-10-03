@@ -1,4 +1,5 @@
 import { frontierRepository, projectFrontier } from './frontier';
+import { awardDisciplineXp } from '../../../shared/sim/frontier/shrines';
 import type { Identity } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
 import { addXp, Cosmetic, hasCosmetic, PATH_FIELDS, type Tile, PlayerState, chebyshev, Feat, hasTechnique, BERRY_MARKET, GIANT_FEAST, ADVENTURE_CAMP, expeditionPayout, EXPEDITION_COMPLETION_XP, giantFriendship, rollDestination, worldBlockedSet, inSafeRing, swingDamage, duelHit, tileKey, bfsPath, goalIsTile } from '../../../shared/sim';
@@ -19,7 +20,7 @@ export function progress(ctx: Ctx, id: Identity, path: number, xp: number, feat 
   const p = profile(ctx, id), field = PATH_FIELDS[path];
   saveProfile(ctx, { ...p, [field]: addXp(p[field], xp), feats: p.feats | feat });
   const repo = frontierRepository(ctx), frontier = repo.get('profile', id.toHexString());
-  if (frontier) { const discipline = [1,2,4,0,3][path]; frontier.xp[discipline] = addXp(frontier.xp[discipline], xp); repo.put('profile',frontier); projectFrontier(ctx,repo); }
+  if (frontier) { const discipline = [1,2,4,0,3][path]; awardDisciplineXp(frontier, discipline, xp); repo.put('profile',frontier); projectFrontier(ctx,repo); }
 }
 export function carrying(ctx: Ctx, id: Identity): boolean {
   const m = ctx.db.expeditionMember.identity.find(id);

@@ -7,6 +7,7 @@ import { useFrame } from '@react-three/fiber';
 import { Vector3 } from 'three';
 import { MOVEMENT_STEPS_PER_TICK, bfsPath, chebyshev, facingToYaw, goalIsTile, tileToWorld, type Facing, type Tile } from '@sim';
 import { tickClock } from '../spacetime/tickClock';
+import { recordDiagnostic } from '../spacetime/diagnostics';
 import { useWorldBlocked } from '../spacetime/hooks';
 import { MOVEMENT_ANIMATION_GRACE_MS, START_EASE_MS, dampAngle, easedElapsed, easedSpeedFactor, turnFactor } from '../animation/locomotion';
 
@@ -39,7 +40,7 @@ const stepLength = (a: Vector3, b: Vector3) => Math.max(Math.abs(b.x-a.x), Math.
  * within a tick. Never predict movement through obstacles. The same movement
  * budget drives short-step duration and the diagonal/teleport distinction.
  */
-export function useTileMotion(tileX: number, tileZ: number, facing: number, groupRef: React.MutableRefObject<any>, region: RegionId = 'bramblewild', frontierBlocked?: Set<string>, frontierBlocksAt?: (from: Location) => Set<string>): React.MutableRefObject<Motion> {
+export function useTileMotion(tileX: number, tileZ: number, facing: number, groupRef: React.MutableRefObject<any>, region: RegionId = 'bramblewild', frontierBlocked?: Set<string>, frontierBlocksAt?: (from: Location) => Set<string>, diagnoseSelf = false): React.MutableRefObject<Motion> {
   // Shared and stable while no node moves: tree cooldowns do not re-render avatars.
   const blocked = useWorldBlocked();
   const motion = useRef<Motion>({
@@ -54,17 +55,25 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
     const destination = new Vector3(...tileToWorld(tile));
     const previous = m.authoritative;
     const previousRegion = m.region;
+    const diagnose = (kind: string, data: Record<string, string | number>) => {
+      if (!diagnoseSelf) return;
+      const from = previousRegion === 'settlement' ? homeLocation(previous) : previous;
+      recordDiagnostic(kind, { tick: tickClock.tick, fromRegion: previousRegion, toRegion: region,
+        fromX: from.x, fromZ: from.z, toX: tileX, toZ: tileZ, ...data });
+    };
     m.authoritative = tile; m.region = region;
-    const snap = () => {
+    const snap = (reason: string, routeLength = -1) => {
+      diagnose('movement-snap', { reason, routeLength });
       m.from.copy(destination); m.to.copy(destination); m.points=[]; m.stepLengths=[];
       m.segment=0; m.moving=false; m.speed=0; m.holdMs=0; m.initialized=true;
       if (g) g.position.copy(destination);
     };
-    if (!m.initialized || !g) { snap(); return; }
+    if (!m.initialized || !g) { snap('startup'); return; }
     // Peaceful district travel can cover three steps. Confirm the full route
     // before animating, including walls between otherwise walkable floor tiles.
     const maximum = 3;
-    if ((previousRegion !== region && !(isHomeRegion(previousRegion) && isHomeRegion(region))) || chebyshev(previous, tile) > maximum) { snap(); return; }
+    if (previousRegion !== region && !(isHomeRegion(previousRegion) && isHomeRegion(region))) { snap('region-change'); return; }
+    if (chebyshev(previous, tile) > maximum) { snap('jump-limit'); return; }
     // Gate access depends on the actor at the start of this confirmed move.
     // Using the new position would incorrectly unlock a gate just entered.
     const fromLocation = { ...(previousRegion === 'settlement' ? homeLocation(previous) : previous), region: previousRegion };
@@ -73,7 +82,8 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
       crosses: (a: Location, b: Location) => a.region === 'settlement' && b.region === 'settlement' && frontierObstacle.crosses(a, b),
     });
     const route = region === 'bramblewild' && previousRegion === 'bramblewild' ? bfsPath(previous, goalIsTile(tile), blocked) : isHomeRegion(region) ? homePath(previous, tile, homeObstacle) : regionalPath(region, previous, tile, frontierObstacle);
-    if (!route || route.length > maximum) { snap(); return; }
+    if (!route) { snap('route-invalid'); return; }
+    if (route.length > maximum) { snap('route-too-long', route.length); return; }
     // Finish any unrendered corner of the previous update before following
     // this update. Early network delivery must not make us cut across a tree.
     const remaining = m.moving ? m.points.slice(m.segment + 1) : [];
@@ -87,6 +97,7 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
     m.fromRest = !m.moving;
     m.startedAt = performance.now(); m.moving = steps > 0.01; m.holdMs = 0;
     if (m.moving) {
+      diagnose('movement-interpolate', { routeLength: route.length, durationMs: Math.round(m.durationMs) });
       const next=m.points[1];
       m.yaw=Math.atan2(next.x-m.from.x,next.z-m.from.z);
       m.speed=m.from.distanceTo(next)/(m.stepLengths[0]*tickClock.period/MOVEMENT_STEPS_PER_TICK/1000);

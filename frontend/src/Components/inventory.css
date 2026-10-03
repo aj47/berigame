@@ -29,6 +29,8 @@
 .bag-assignment-hint p { margin:0; font-size:12px; flex:1; }
 .bag-assignment-hint button { min-height:var(--control-size); padding:8px; font-size:11px; }
 .bag-error { color:#973a30; font-size:12px; margin:0 0 8px; }
+.inventory-panel .bag-equipment-hint { font-size:11px; line-height:1.45; color:var(--ink-soft); margin:8px 0 0; }
+.bag-equipped-mark { position:absolute; top:3px; left:4px; color:#775e1d; font-size:10px; font-weight:bold; }
 .ui-group .crafting-panel .recipe-list { border:0; padding:0; margin:0; }
 .crafting-panel .recipe-row { padding:6px 0; border-bottom:1px solid #d4c3a1; }
 .crafting-panel .recipe-row:first-child { margin-top:0; padding-top:0; }

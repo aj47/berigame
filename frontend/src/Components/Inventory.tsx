@@ -30,6 +30,8 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
   const slots = useMemo(() => slotsFromRows(rows), [rows]);
   const weapon: string = me?.weapon ?? "";
   const wielded = (index: number) => isWieldedSlot(slots, index, weapon, HOTBAR_SIZE);
+  const vestEquipped = (frontier?.profile.events.vest ?? 0) > 0 && slots.some(slot => slot?.itemId === 'padded_vest');
+  const equipped = (index: number) => slots[index]?.itemId === 'padded_vest' && vestEquipped;
   useEffect(() => {
     session.current++;
     setMovingFrom(null); setSelected(null); setError('');
@@ -48,8 +50,8 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
       if (started !== session.current) return;
       if (success !== false) onSuccess?.();
       else setError('Could not update your bag. Try again.');
-    } catch {
-      if (started === session.current) setError('Could not update your bag. Try again.');
+    } catch (cause) {
+      if (started === session.current) setError(cause instanceof Error ? cause.message : 'Could not update your bag. Try again.');
       return false;
     } finally { busy.current = false; setPending(false); }
   };
@@ -65,7 +67,7 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
     onStart: () => { setAssignTo(null); setMovingFrom(null); setSelected(null); setError(''); },
     onError: () => setError('Could not update your bag. Try again.'),
   });
-  const locked = pending || drag.isMoving;
+  const locked = pending || drag.isMoving || me?.state === PlayerState.Dead;
 
   if (!open) return null;
   const item = selected !== null ? slots[selected] : null;
@@ -74,7 +76,7 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
   const occupied = slots.filter(Boolean).length;
   const weaponSelected = !!item && isWeapon(item.itemId);
   const armourSelected = item?.itemId === 'padded_vest';
-  const armourEquipped = armourSelected && (frontier?.profile.events.vest ?? 0) > 0;
+  const armourEquipped = armourSelected && vestEquipped;
   const selectedWielded = selected !== null && wielded(selected);
   const inQuickBar = selected !== null && selected < HOTBAR_SIZE;
   const selectSlot = (slot: number) => {
@@ -94,7 +96,7 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
   const quickLabel = (index: number) => {
     const target = slots[index];
     if (assignSelected) return `Put ${def?.name ?? item.itemId} in quick slot ${index + 1}${target ? target.itemId === item.itemId ? ', stack items' : `, swap with ${getItemDef(target.itemId)?.name ?? target.itemId}` : ''}`;
-    return `Slot ${index + 1}: ${target ? `${getItemDef(target.itemId)?.name ?? target.itemId}, ${target.quantity}${wielded(index) ? ', wielded' : ''}` : 'empty'}${movingFrom !== null ? ', move here' : ''}`;
+    return `Slot ${index + 1}: ${target ? `${getItemDef(target.itemId)?.name ?? target.itemId}, ${target.quantity}${wielded(index) ? ', wielded' : equipped(index) ? ', equipped' : ''}` : 'empty'}${movingFrom !== null ? ', move here' : ''}`;
   };
   const selectQuick = (index: number) => {
     if (assignSelected) move(selected!, index);
@@ -115,7 +117,7 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
           </h2>
         </div>
         <div className="bag-heading-actions">
-        {onStorage && <button className="bag-craft-link" onClick={onStorage}>Storage ↗</button>}
+        {onStorage && <button className="bag-craft-link" onClick={onStorage} title="Personal bank · protect items from defeat">Bank ↗</button>}
         {onCraft && <button className="bag-craft-link" onClick={onCraft}>Craft ↗</button>}
         <button
           className="close-button"
@@ -132,10 +134,10 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
           {slots.slice(0, HOTBAR_SIZE).map((slot, index) => {
             const definition = slot ? getItemDef(slot.itemId) : undefined;
             const fullStack = assignSelected && slot?.itemId === item.itemId && slot.quantity >= (def?.maxStack ?? 1);
-            return <button {...drag.slotProps(index)} key={index} type="button" className={`inventory-slot quick ${slot ? 'filled' : ''} ${wielded(index) ? 'wielded' : ''} ${selected === index || assignTo === index ? 'selected' : ''} ${assignSelected || movingFrom !== null ? 'move-target' : ''}`} disabled={locked || Boolean(fullStack)} onClick={() => selectQuick(index)} aria-label={quickLabel(index)} aria-pressed={selected === index || assignTo === index} title={quickLabel(index)}>
+            return <button {...drag.slotProps(index)} key={index} type="button" className={`inventory-slot quick ${slot ? 'filled' : ''} ${wielded(index) || equipped(index) ? 'wielded' : ''} ${selected === index || assignTo === index ? 'selected' : ''} ${assignSelected || movingFrom !== null ? 'move-target' : ''}`} disabled={locked || Boolean(fullStack)} onClick={() => selectQuick(index)} aria-label={quickLabel(index)} aria-pressed={selected === index || assignTo === index} title={quickLabel(index)}>
               <span className="quick-slot-number" aria-hidden="true">{index + 1}</span>
               {slot ? <><img src={definition?.icon ?? '/berry.svg'} alt="" draggable={false}/><span className="qty">{slot.quantity}</span></> : <span className="empty-slot-mark" aria-hidden="true">+</span>}
-              <span className="bag-quick-caption">{assignSelected ? fullStack ? 'Full' : !slot ? 'Put here' : slot.itemId === item.itemId ? 'Stack' : 'Swap' : slot ? definition?.name ?? slot.itemId : 'Add item'}</span>
+              <span className="bag-quick-caption">{assignSelected ? fullStack ? 'Full' : !slot ? 'Put here' : slot.itemId === item.itemId ? 'Stack' : 'Swap' : equipped(index) ? 'Equipped · Vest' : slot ? definition?.name ?? slot.itemId : 'Add item'}</span>
             </button>;
           })}
         </div>
@@ -148,11 +150,11 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
             <button
               {...drag.slotProps(index)}
               key={index}
-              className={`inventory-slot ${slot ? "filled" : ""} ${selected === index ? "selected" : ""} ${movingFrom !== null && movingFrom !== index ? "move-target" : ""}`}
+              className={`inventory-slot ${slot ? "filled" : ""} ${equipped(index) ? 'wielded' : ''} ${selected === index ? "selected" : ""} ${movingFrom !== null && movingFrom !== index ? "move-target" : ""}`}
               onClick={() => selectSlot(index)}
               disabled={locked}
               aria-pressed={selected === index}
-              aria-label={`Slot ${index + 1}: ${slot ? `${definition?.name ?? slot.itemId}, ${slot.quantity}${wielded(index) ? ", wielded" : ""}` : "empty"}${movingFrom !== null ? ", move here" : ""}`}
+              aria-label={`Slot ${index + 1}: ${slot ? `${definition?.name ?? slot.itemId}, ${slot.quantity}${equipped(index) ? ", equipped" : ""}` : "empty"}${movingFrom !== null ? ", move here" : ""}`}
             >
               {slot ? (
                 <>
@@ -162,6 +164,7 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
                     draggable={false}
                   />
                   <span className="qty">{slot.quantity}</span>
+                  {equipped(index) && <span className="bag-equipped-mark" aria-hidden="true">E</span>}
                 </>
               ) : (
                 <span className="empty-slot-mark" aria-hidden="true">
@@ -219,8 +222,9 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
                 >
                   {selectedWielded ? "Unwield" : inQuickBar ? "Wield" : "Choose quick slot ↑"}
                 </button>
-              ) : armourSelected && frontier?.enabled ? (
-                <button className="primary-button" disabled={locked}
+              ) : armourSelected ? (
+                <button className="primary-button" disabled={locked || !frontier?.enabled}
+                  title={!frontier?.enabled ? 'Equipment is available when Meadows is enabled' : 'Wear this vest from any bag slot'}
                   onClick={() => void run(() => frontierAction({ action: 'equip', item: 'padded_vest', ...(armourEquipped ? { target: 'unequip' } : {}) }))}>
                   {armourEquipped ? 'Unequip' : 'Equip'}
                 </button>
@@ -247,6 +251,7 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
                 Drop 1
               </button>
             </div>
+            {armourSelected && <p className="bag-equipment-hint">Wear it from any bag slot. Equipping adds 3 maximum HP; eat food to refill your health.</p>}
             <details className="bag-item-details"><summary>Item details</summary>
               {def?.description && <p>{def.description}</p>}
               <p>Anyone can pick up dropped items.</p>

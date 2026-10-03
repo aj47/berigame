@@ -7,6 +7,8 @@ import { TICK_MS } from "../constants";
 import { levelForXp } from "../skills";
 import { buildingBlocker, buildingCollisionKeys, buildingsOverlap, isEdgeBuilding } from "./building";
 import { regionalPvPProblem } from "./combat";
+import { sameDisciplines, specializationSwitch } from './specialization';
+import { ISLAND_SHRINES, shrineRestored, awardDisciplineXp } from './shrines';
 import type { Slot } from "../types";
 import {
   DAY,
@@ -80,6 +82,7 @@ export type Command = {
   rotation?: number;
   permissions?: number;
   disciplines?: number[];
+  earlySwitch?: boolean;
   label?: string;
 };
 export const COMMANDS = [
@@ -126,6 +129,7 @@ export const COMMANDS = [
   "invite_contest",
   "survey",
   "brace",
+  "restore_shrine",
 ] as const;
 export function validateCommand(value: unknown): Command {
   check(
@@ -147,6 +151,7 @@ export function validateCommand(value: unknown): Command {
         "rotation",
         "permissions",
         "disciplines",
+        "earlySwitch",
         "label",
       ].includes(k),
     ),
@@ -165,6 +170,8 @@ export function validateCommand(value: unknown): Command {
         c.disciplines.every((n) => Number.isInteger(n) && n >= 0 && n < 5),
       "Choose two different disciplines",
     );
+  if (c.earlySwitch !== undefined)
+    check(c.action === 'specialize' && typeof c.earlySwitch === 'boolean', 'Early switch must be true or false on a specialization action');
   return c;
 }
 function nextId(w: World, prefix: string) {
@@ -180,7 +187,7 @@ function event(p: Profile, key: string, amount = 1) {
   p.events[key] = (p.events[key] ?? 0) + amount;
 }
 function xp(p: Profile, discipline: number, amount: number) {
-  p.xp[discipline] = Math.min(21025, p.xp[discipline] + amount);
+  awardDisciplineXp(p, discipline, amount);
 }
 function money(w: World, p: Profile, delta: number, reason: string) {
   check(
@@ -223,10 +230,10 @@ function consume(bag: Slot[], cost: Cost): Slot[] {
   }
   return out;
 }
-function receive(bag: Slot[], id: string, quantity: number) {
+function receive(bag: Slot[], id: string, quantity: number, storage = false) {
   check(getItemDef(id), "Unknown item");
-  const r = addItem(bag, id, quantity);
-  check(r.remaining === 0, "Make room in your inventory first");
+  const r = addItem(bag, id, quantity, { allowWeaponQuickSlots: storage });
+  check(r.remaining === 0, storage ? "This storage is full" : "Make room in your inventory first");
   return r.slots;
 }
 function spend(a: Actor, cost: Cost) {
@@ -914,15 +921,18 @@ export function perform(w: World, a: Actor, input: unknown): void {
     case "container": {
       let c = r.get("container", id);
       if (id === `vault-${a.id}` && !c)
-        c = { id, owner: a.id, slots: Array(6).fill(null) };
+        c = { id, owner: a.id, slots: Array(FRONTIER.bankSlots).fill(null) };
       check(c, "Unknown container");
       storagePermission(w, a, c);
+      // Grow legacy personal vaults on access, preserving every occupied slot.
+      if (id === `vault-${a.id}` && c.slots.length < FRONTIER.bankSlots)
+        c.slots = [...c.slots, ...Array(FRONTIER.bankSlots - c.slots.length).fill(null)];
       const quantity = integer(cmd.quantity, 1, 99),
         item = str(cmd.item);
       check(getItemDef(item), "Unknown item");
       if (cmd.target === "deposit") {
         const bag = consume(a.bag, { [item]: quantity });
-        const slots = receive(c.slots, item, quantity);
+        const slots = receive(c.slots, item, quantity, true);
         a.bag = bag;
         c.slots = slots;
         if (c.boat && (getItemDef(item)?.healthRestore ?? 0) > 0)
@@ -953,15 +963,24 @@ export function perform(w: World, a: Actor, input: unknown): void {
         "Change disciplines in town outside conflict and voyages",
       );
       check(cmd.disciplines, "Choose two disciplines");
-      if (p.active.length) {
-        check(
-          w.now >= p.switchedAt + FRONTIER.switchCooldown,
-          "Wait 24 hours between specialization changes",
-        );
-        money(w, p, -FRONTIER.switchCost, "specialization");
-      }
+      // Retrying an accepted command, or reversing its pair, never charges again.
+      if (sameDisciplines(p.active, cmd.disciplines)) break;
+      const switching = specializationSwitch(p, w.now);
+      check(!switching.waitMs || cmd.earlySwitch, `Wait 24 hours between specialization changes, or switch early for ${switching.earlyCost} coins total`);
+      const price = switching.waitMs ? switching.earlyCost : switching.normalCost;
+      if (price) money(w, p, -price, switching.waitMs ? 'early specialization change' : 'specialization');
       p.active = cmd.disciplines;
       p.switchedAt = w.now;
+      break;
+    }
+    case "restore_shrine": {
+      const shrine = ISLAND_SHRINES.find(shrine => shrine.id === id);
+      check(shrine, "Choose an island shrine");
+      check(!shrineRestored(p, shrine.id), "You already restored this shrine");
+      check(near(a, shrine, 2) && !onboard(w, a.id), "Walk beside the shrine on its island");
+      a.bag = consume(a.bag, shrine.cost);
+      p.events[`shrine:${shrine.id}`] = 1;
+      p.notes = [...p.notes.slice(-19), `${shrine.name} restored: permanent +5% discipline XP.`];
       break;
     }
     case "brace": {

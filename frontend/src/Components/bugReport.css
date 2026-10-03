@@ -1,0 +1,8 @@
+.bug-report-panel { overflow-y: auto; }
+.bug-report-panel p { line-height: 1.45; }
+.bug-report-panel label { display: grid; gap: .5rem; font-weight: 600; }
+.bug-report-panel textarea { box-sizing: border-box; width: 100%; min-height: 7rem; padding: .7rem; border: 1px solid #b9bea1; border-radius: .5rem; background: #fffdf3; color: #2c382d; font: inherit; resize: vertical; }
+.bug-report-panel details textarea { min-height: 12rem; font: .75rem monospace; }
+.bug-report-note { font-size: .85rem; color: #596751; }
+.bug-report-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.bug-report-panel button { min-height: 44px; }

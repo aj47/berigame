@@ -15,6 +15,19 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-03-community-feedback', date: '2026-10-03', period: 'Oct 3, 2026',
+    title: 'A clearer bank, right-drag camera and permanent island rewards',
+    changes: [
+      'Open Bank from your bag to store loot safely in Meadows town. Personal banks now hold 48 slots, preserve existing items, and offer walking directions, item icons and stack transfers.',
+      'Right-drag rotates the desktop camera. Left click remains available for movement and actions; touch controls and zoom stay familiar.',
+      'Skip the discipline-switch wait for 50 coins total (20 normal plus 30 extra). The first pair remains free, and switching after 24 hours still costs 20 coins.',
+      'Restore the Reedwake Tide Shrine and Cinder Ember Shrine with materials. Each permanently adds 5% to your character’s discipline XP gains, up to 10% total.',
+      'The bag clearly marks equipped armour and shows Equip or Unequip in every region.',
+      'Menu → Report a bug prepares a shareable report with build, connection, tick timing and movement diagnostics. Reports stay local until you copy or download them to share.',
+    ],
+    commits: [],
+  },
+  {
     id: '2026-10-03-meadows-icons', date: '2026-10-03', period: 'Oct 3, 2026',
     title: 'New artwork for every Meadows item',
     changes: [

@@ -12,7 +12,7 @@ import { hoverTile, isWorldSurface } from './hoverTarget';
 
 /** Press this long without moving to start a hold. */
 export const HOLD_MS = 380;
-/** Movement (px) that turns a press into a camera drag. */
+/** Movement (px) that cancels a pending hold, allowing touch camera dragging. */
 export const HOLD_SLOP = 10;
 /** How often a held finger re-aims the walk target. */
 export const HOLD_RETARGET_MS = 250;

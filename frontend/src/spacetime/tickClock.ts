@@ -1,3 +1,4 @@
+import { recordDiagnostic } from './diagnostics';
 import { TICK_MS } from '@sim';
 import { observeWorldDelivery } from './worldLivenessMonitor';
 
@@ -20,6 +21,7 @@ export function onWorldTick(tick: number): void {
     const clamped = Math.min(900, Math.max(400, observed));
     tickClock.period = tickClock.period * 0.8 + clamped * 0.2;
   }
+  recordDiagnostic('tick', { tick, intervalMs: tickClock.arrivedAt ? Math.round(now - tickClock.arrivedAt) : 0 });
   tickClock.tick = tick;
   tickClock.arrivedAt = now;
 }

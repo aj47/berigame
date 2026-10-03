@@ -150,7 +150,7 @@ describe('progressive Meadows panel', () => {
     expect(p.onTab).toHaveBeenCalledWith('Craft');
     fireEvent.click(screen.getByRole('button', { name: 'Open bag' }));
     expect(p.onTab).toHaveBeenCalledWith('Bag');
-    expect(screen.getByRole('heading', { name: 'Storage & trade' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Bank & storage' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Eat' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Equip' })).not.toBeInTheDocument();
   });

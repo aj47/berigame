@@ -38,6 +38,37 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('one bag, craft panel and quick bar in every district', () => {
+  it.each(['bramblewild', 'settlement', 'reedwake', 'cinder'])('equips a vest directly from a regular bag slot in %s and waits for the saved state', async region => {
+    mock.player.region = region;
+    mock.rows = [{ owner: identity, slot: 12, itemId: 'padded_vest', quantity: 1 }];
+    const frontier = snapshot(), onStorage = vi.fn();
+    const view = render(<Inventory open onClose={() => {}} frontier={frontier} onStorage={onStorage} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Slot 13: Padded vest, 1' }));
+    expect(screen.getByText('Armour · +3 max HP · 1 held')).toBeVisible();
+    expect(screen.queryByText(/Crafting material/)).not.toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Equip' })));
+    expect(mock.frontier).toHaveBeenLastCalledWith({ action: 'equip', item: 'padded_vest' });
+    expect(screen.getByRole('button', { name: 'Equip' })).toBeVisible();
+    frontier.profile.events.vest = 1;
+    view.rerender(<Inventory open onClose={() => {}} frontier={{ ...frontier }} onStorage={onStorage} />);
+    expect(screen.getByRole('button', { name: 'Slot 13: Padded vest, 1, equipped' })).toHaveClass('wielded');
+    expect(screen.getByText('Equipped · +3 max HP · 1 held')).toBeVisible();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Unequip' })));
+    expect(mock.frontier).toHaveBeenLastCalledWith({ action: 'equip', item: 'padded_vest', target: 'unequip' });
+    fireEvent.click(screen.getByRole('button', { name: 'Bank ↗' }));
+    expect(onStorage).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a failed vest equip available to retry without claiming it is equipped', async () => {
+    mock.frontier.mockRejectedValueOnce(new Error('Wait until you respawn'));
+    render(<Inventory open onClose={() => {}} frontier={snapshot()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Slot 3: Padded vest, 1' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Equip' })));
+    expect(screen.getByRole('alert')).toHaveTextContent('Wait until you respawn');
+    expect(screen.getByRole('button', { name: 'Equip' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Unequip' })).not.toBeInTheDocument();
+  });
+
   it('shows the same Forager healing bonus in the bag and quick bar', () => {
     const frontier = snapshot();
     frontier.profile.active = [1]; frontier.profile.xp[1] = 1_000_000;
@@ -74,7 +105,7 @@ describe('one bag, craft panel and quick bar in every district', () => {
     const frontier = snapshot();
     frontier.profile.events.vest = 1;
     const view = render(<><Inventory open onClose={() => {}} frontier={frontier} /><CombatHud frontier={frontier} /></>);
-    fireEvent.click(screen.getByRole('button', { name: 'Slot 3: Padded vest, 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Slot 3: Padded vest, 1, equipped' }));
     expect(screen.getByText('Equipped · +3 max HP · 1 held')).toBeVisible();
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Unequip' })));
     expect(mock.frontier).toHaveBeenLastCalledWith({ action: 'equip', item: 'padded_vest', target: 'unequip' });

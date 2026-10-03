@@ -2,10 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { useFrontier } from "./useFrontier";
 import { useInventoryRows, useMyPlayer, usePlayers, useNow } from "../spacetime/hooks";
 import { useGameActions } from "../spacetime/actions";
-import { getItemDef, levelForXp } from "@sim";
+import { getItemDef } from "@sim";
 import {
-  DISCIPLINE_PERKS,
-  DISCIPLINES,
   FRONTIER,
   PIECES,
   PORTS,
@@ -22,6 +20,9 @@ import { isHomeRegion } from "../../../shared/sim/frontier/homeMap";
 import { renewalPrice } from "../../../shared/sim/frontier/model";
 import { BUILDING_SIDES } from "../../../shared/sim/frontier/building";
 import { previewIssue } from "./preview";
+import DisciplineSelection from './DisciplineSelection';
+import BankStoragePanel from './BankStoragePanel';
+import ShrinesPanel from './ShrinesPanel';
 export type BuildDraft = {
   plot: string;
   moving?: string;
@@ -38,7 +39,7 @@ const cost = (items: Record<string, number>) =>
 const when = (n: number) => new Date(n).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 const tabTitles: Record<FrontierRequest["tab"], string> = {
   Journal: "Quests", Land: "Your land", Build: "Build", Craft: "Craft",
-  Wildlife: "Wildlife", Skills: "Disciplines", Harbour: "Sailing", Bag: "Bag", Storage: "Storage & trade",
+  Wildlife: "Wildlife", Skills: "Disciplines", Harbour: "Sailing", Bag: "Bag", Storage: "Bank & storage",
 };
 const primaryTabs = ["Journal", "Land", "Craft"] as const;
 const moreTabs = ["Wildlife", "Skills", "Harbour", "Bag", "Storage"] as const;
@@ -73,10 +74,7 @@ export default function FrontierPanel({
     [error, setError] = useState(""),
     [selected, setSelected] = useState(""),
     [helper, setHelper] = useState(""),
-    [mask, setMask] = useState(1),
-    [choice, setChoice] = useState<number[]>([]),
-    [storage, setStorage] = useState(""),
-    [quantity, setQuantity] = useState(1);
+    [mask, setMask] = useState(1);
   useEffect(() => {
     if (request.plot) setSelected(request.plot);
   }, [request]);
@@ -89,7 +87,6 @@ export default function FrontierPanel({
     myBoat = state.boats.find((b) => b.owner === id),
     aboard = state.boats.find((b) => b.crew.includes(id));
   const activeQuest = state.quests.find((q) => q.available && !q.complete),
-    selectedContainer = state.containers.find((c) => c.id === storage),
     bag = inventory.filter((row) => row.owner.toHexString() === id);
   const canBuild = !!plot?.claim && (plot.claim.owner === id || !!((plot.claim.permissions[id] ?? 0) & 1));
   const plotRegion = isHomeRegion(region) ? "settlement" : region;
@@ -531,67 +528,18 @@ export default function FrontierPanel({
             )}
             {tab === "Skills" && (
               <>
-                <p>Choose two active disciplines to use their perks. All five keep earning XP.</p>
-                <details><summary>How disciplines relate to skills</summary>
-                  <p>Skills &amp; techniques tracks island gathering and camp abilities. Disciplines track Meadows activities and can improve combat, crafting and companions.</p>
-                  <p>Your existing skill and adventure XP gives disciplines a starting boost the first time you use a Meadows activity. After that, their XP grows separately.</p>
-                  <a href={wikiUrl('frontier-disciplines')} target="_blank" rel="noreferrer">Discipline guide ↗</a>
-                </details>
-                {DISCIPLINES.map((name, i) => (
-                  <article key={name}>
-                    <div className="frontier-row">
-                      <div>
-                        <h3>{name}</h3>
-                        <div className="frontier-stats">
-                          <span>Lv. {levelForXp(profile.xp[i])}</span>
-                          <span>{profile.xp[i]} XP</span>
-                          {profile.active.includes(i) && (
-                            <span className="frontier-active">Active</span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        aria-pressed={choice.includes(i)}
-                        onClick={() =>
-                          setChoice(
-                            choice.includes(i)
-                              ? choice.filter((n) => n !== i)
-                              : choice.length < 2
-                                ? [...choice, i]
-                                : choice,
-                          )
-                        }
-                      >
-                        {choice.includes(i) ? "Selected" : "Select"}
-                      </button>
-                    </div>
-                    <details>
-                      <summary>Abilities</summary>
-                      <ul>
-                        {DISCIPLINE_PERKS[i].map((perk) => (
-                          <li key={perk}>{perk}</li>
-                        ))}
-                      </ul>
-                    </details>
-                  </article>
-                ))}
-                {button(
-                  profile.active.length
-                    ? "Activate pair · 20 coins"
-                    : "Activate pair · free",
-                  { action: "specialize", disciplines: choice },
-                  choice.length !== 2,
-                )}
-                <p>
-                  {choice.length}/2 selected · Change in town, once per 24
-                  hours.
-                </p>
+                <DisciplineSelection profile={profile} now={now} busy={busy} onActivate={run}
+                  blockedReason={!me.hp ? 'Respawn before changing disciplines.'
+                    : !atSteward ? 'Visit the Meadows town square to change disciplines.'
+                    : me.hostile || now < (profile.events.hostileUntil ?? 0) || aboard || state.plots.some(p => p.claim?.challenge && (p.claim.challenge.attackers.includes(id) || p.claim.challenge.defenders.includes(id)))
+                      ? 'Finish your conflict or voyage before changing disciplines.' : ''} />
                 {button("Survey a region cache", { action: "survey" })}
                 {button("Brace against creatures", { action: "brace" })}
               </>
             )}
             {tab === "Harbour" && (
               <>
+                <ShrinesPanel profile={profile} me={{ region: region as any, x: me.x, z: me.z }} bag={bag} busy={busy} aboard={!!aboard} onAction={run} />
                 <article>
                   <h3>Your first skiff</h3>
                   <p>Assemble at Driftwood Harbour (46,29).</p>
@@ -648,132 +596,7 @@ export default function FrontierPanel({
                 )}
               </>
             )}
-            {tab === "Storage" && (
-              <>
-                <button onClick={() => setTab("Bag")}>Open bag</button>
-                <p className="frontier-hint">Arrange, eat and equip items from your bag. Use this panel to move supplies into storage or trade.</p>
-                <details>
-                  <summary>Trade nearby</summary>
-                  {players
-                    .filter(
-                      (p) =>
-                        p.online &&
-                        p.region === region &&
-                        p.identity.toHexString() !== id,
-                    )
-                    .map((p) => (
-                      <button
-                        key={p.identity.toHexString()}
-                        onClick={() => void actions.requestTrade(p.identity)}
-                      >
-                        Trade with {p.name}
-                      </button>
-                    ))}
-                </details>
-                <div className="frontier-storage">
-                  <label>
-                    Storage
-                    <select
-                      aria-label="Storage"
-                      value={storage}
-                      onChange={(e) => setStorage(e.target.value)}
-                    >
-                      <option value="">Choose storage</option>
-                      <option value={`vault-${id}`}>
-                        Personal vault · town
-                      </option>
-                      {state.containers
-                        .filter((c) => c.id !== `vault-${id}`)
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.id}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                  <label>
-                    Quantity
-                    <input
-                      type="number"
-                      min={1}
-                      max={99}
-                      value={quantity}
-                      onChange={(e) =>
-                        setQuantity(
-                          Math.max(
-                            1,
-                            Math.min(99, Number(e.target.value) || 1),
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                </div>
-                {state.drops.some((d) => d.region === region) && (
-                  <details>
-                    <summary>Dropped bags</summary>
-                    {state.drops
-                      .filter((d) => d.region === region)
-                      .map((d) => (
-                        <article key={d.id}>
-                          <span>
-                            {d.x},{d.z}
-                          </span>
-                          <button onClick={() => void go(d)}>Walk here</button>
-                          {button("Pick up", {
-                            action: "pickup_bag",
-                            id: d.id,
-                          })}
-                        </article>
-                      ))}
-                  </details>
-                )}
-                <h3>Deposit from your bag</h3>
-                {bag.length === 0 && (
-                  <p className="frontier-hint">Your bag is empty.</p>
-                )}
-                {bag.map((row) => (
-                  <article className="frontier-row" key={row.slot}>
-                    <strong className="storage-item-label">
-                      <img src={getItemDef(row.itemId)?.icon} alt="" />
-                      {row.quantity}{" "}
-                      {getItemDef(row.itemId)?.name ?? row.itemId}
-                    </strong>
-                    {button(
-                      "Deposit",
-                      {
-                        action: "container",
-                        id: storage,
-                        item: row.itemId,
-                        quantity,
-                        target: "deposit",
-                      },
-                      !storage,
-                    )}
-                  </article>
-                ))}
-                {selectedContainer && <h3>Stored</h3>}
-                {selectedContainer?.slots.map(
-                  (slot, i) =>
-                    slot && (
-                      <article className="frontier-row" key={i}>
-                        <strong className="storage-item-label">
-                          <img src={getItemDef(slot.itemId)?.icon} alt="" />
-                          {slot.quantity}{" "}
-                          {getItemDef(slot.itemId)?.name ?? slot.itemId}
-                        </strong>
-                        {button("Withdraw", {
-                          action: "container",
-                          id: storage,
-                          item: slot.itemId,
-                          quantity,
-                          target: "withdraw",
-                        })}
-                      </article>
-                    ),
-                )}
-              </>
-            )}
+            {tab === "Storage" && <BankStoragePanel state={state} onBag={() => setTab("Bag")} onTravel={() => setOpen(false)} />}
           </div>
         </section>
       )}

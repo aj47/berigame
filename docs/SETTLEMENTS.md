@@ -33,10 +33,10 @@ Saved parcels, buildings and local coordinates remain unchanged. `homeMap.ts` pl
 | Expansion | Buildable area grows from 8×8 to 12×12 to 16×16. Upgrades cost 100/250 coins, materials, and adjustment of prepaid tax. |
 | Upkeep | 30/60/100 coins weekly by tier. Up to 28 days prepaid. Three days of grace before vulnerability. Paying arrears cancels a challenge and refunds its deposit. |
 | Capture | One week's tax as deposit; 24 hours' notice; a ten-minute window; challenger must continuously hold the marker for two minutes. Registered defenders interrupt the hold. Failure refunds half and starts a 24-hour cooldown. |
-| Transfer | Buildings and ordinary plot storage transfer. Wallets, personal six-slot town vaults, boats and companions remain with their owners. |
+| Transfer | Buildings and ordinary plot storage transfer. Wallets, personal 48-slot town vaults, boats and companions remain with their owners. |
 | Permissions | Separate build, storage and upkeep permissions; up to eight helpers. Permissions are frozen during a challenge. Attackers require an explicit invitation and defenders must be owner/build helpers. |
 | Construction | 18 piece types, three placement layers, one storey, 128 pieces per parcel. Move for free; dismantle for 75% of each input, rounded down. Occupancy, bounds, layers and escape routes are validated by the server. |
-| Disciplines | Might, Cultivation, Building, Beastcraft and Exploration earn XP independently. Two active disciplines; first choice free, later changes cost 20 coins with a 24-hour cooldown, in town outside conflict. Existing progression migrates once and subsequent Bramblewild XP also contributes. |
+| Disciplines | Might, Cultivation, Building, Beastcraft and Exploration earn XP independently. Two active disciplines; first choice free. Later changes cost 20 coins after 24 hours, or 50 coins total (20 + 30 extra) to switch early, in town outside conflict. Each change starts a fresh cooldown; selecting the same pair again costs nothing. Existing progression migrates once and subsequent Bramblewild XP also contributes. |
 | Equipment | 25 new item types and 16 inventory recipes, alongside the 18 construction recipes. Damage tops out at ten per strike, versus the existing club's eight; maximum health is 36, versus the base 30. |
 | Tools | Axe doubles timber yield. A pick enables the level-ten Might mining perk. A watering can shortens newly planted carrots from two hours to 90 minutes. |
 | Creatures | Four tameable species and hostile Bristlebacks. Observe before feeding; one active companion and three additional pets after building a stable. Advanced utilities require active Beastcraft. |
@@ -68,6 +68,7 @@ Player region defaults to `bramblewild`, so existing coordinates remain valid. P
 {"action":"tax","id":"settlement-1","quantity":1}
 {"action":"container","id":"piece-123","target":"deposit","item":"timber","quantity":5}
 {"action":"specialize","disciplines":[2,3]}
+{"action":"specialize","disciplines":[0,1],"earlySwitch":true}
 {"action":"board","id":"skiff-123"}
 {"action":"pilot"}
 {"action":"sail","x":100,"z":15}
@@ -109,3 +110,9 @@ Additional checks are intentionally restricted to isolated local databases:
 Desktop and 390-pixel browser checks passed with no runtime errors or horizontal overflow. The isolated database-adapter load test measured **58–296 ms p95** across runs after the A* change (previously 488.3 ms). Run the load check separately from browser/render tests to avoid CPU contention. It measures local reducer logic and serialization, not hosted database latency.
 
 Before a public release, still measure the full populated world on the target mobile device against the 30 FPS target and run the hosted load check against the 300 ms server p95 target. These hardware/hosting results have not been claimed from the local tests.
+
+## Island shrine restorations
+
+Reedwake Tide Shrine and Cinder Ember Shrine stand at each island’s landing (8,64), outside claimable plots. Restore the Tide Shrine with 8 reeds and 4 resin, or the Ember Shrine with 8 stone and 4 iron ore. Stand within two tiles and disembark first. Each restoration is permanent for that character and gives +5% discipline XP, capped at +10% for both. Fractional bonus XP accumulates separately per discipline; the existing level/XP cap remains. The bonus applies to Meadows XP and original-island activities that award discipline XP, without changing original skill or adventure XP.
+
+The Sailing panel lists both shrines and their costs; clicking a shrine opens that panel. Flags and fractional carries live in the existing private profile JSON, so no table migration or world reset is required.

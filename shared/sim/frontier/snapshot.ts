@@ -1,5 +1,6 @@
 import { HOME_MAP } from "./homeMap";
 import { COMMANDS } from "./engine";
+import { ISLAND_SHRINES, shrineRestored, shrineXpBonusPercent } from './shrines';
 import {
   DISCIPLINES,
   DISCIPLINE_PERKS,
@@ -48,6 +49,8 @@ export function frontierSnapshot(
     enabled: objects.find((r) => r.kind === "config")?.value.enabled ?? false,
     pausedAt: objects.find((r) => r.kind === "config")?.value.pausedAt ?? 0,
     profile,
+    shrines: ISLAND_SHRINES.map(shrine => ({ ...shrine, restored: shrineRestored(profile, shrine.id) })),
+    shrineXpBonusPercent: shrineXpBonusPercent(profile),
     plots: PLOTS.map((plot) => {
       const c = claims.find((c) => c.id === plot.id);
       return {

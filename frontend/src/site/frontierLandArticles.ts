@@ -45,7 +45,7 @@ export const frontierLandArticles: WikiArticle[] = [
         ['More → Wildlife', 'Observe, befriend, train and call creatures'],
         ['More → Disciplines', 'Choose active disciplines and inspect their levels and perks'],
         ['More → Sailing', 'The shipwright, skiff construction, crew and voyages'],
-        ['More → Bag & storage', 'Carried items, the personal town vault, chests, cargo and nearby trade'],
+        ['Bag → Bank', 'The personal town bank, chests, cargo and nearby trade'],
       ] } },
       { id: 'local-resources', title: 'Gather around the town square', paragraphs: [
         'Approach a resource and gather while beside it. The nearby patches provide the materials for your first tools and building pieces. Watch the gathering action finish before collecting again.',
@@ -199,7 +199,7 @@ export const frontierLandArticles: WikiArticle[] = [
       ] },
       { id: 'storage', title: 'Put supplies in storage', paragraphs: [
         'Open More → Bag & storage, choose Storage and set the quantity. Deposit moves that amount from your bag into the selected container; Withdraw brings stored items back. Both destinations need enough inventory space.',
-        'Your personal town vault holds six slots and is usable while you are in the Meadows town square. Only your character can access it. It remains yours if you lose a plot.',
+        'Open Bank from your bag. Your personal bank holds 48 slots and is usable in the Meadows town square. Use Walk to bank to approach it. Only your character can access it; its contents stay safe after defeat or loss of a plot. Existing vault contents are preserved.',
         'Each Storage chest holds twelve slots. Walk beside it and use the owner’s or a helper’s Storage access. A chest and its contents belong to the plot and transfer if that plot is captured.',
         'Boat cargo and trained pack-creature storage appear through the same storage controls when available. They have their own location and access requirements; plot permissions do not grant boat cargo access.',
       ] },

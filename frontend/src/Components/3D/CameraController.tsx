@@ -4,14 +4,16 @@ import { CameraControls } from "@react-three/drei";
 import { useAppearancePreview } from '../../appearance/store';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
 import { HOLD_EVENT } from './HoldToWalk';
+import { configureWorldCameraInput, guardWorldCameraClicks } from './cameraInput';
 
 const CameraController = (props) => {
 	const ref = useRef<CameraControls | null>(null);
-	const { size } = useThree();
+	const { size, gl, events } = useThree();
 	const editing = useAppearancePreview((s) => s.draft !== null);
 	const beforePreviewDistance = useRef<number | null>(null);
 	useEffect(() => {
 		if (ref.current) {
+			configureWorldCameraInput(ref.current);
 			ref.current.setFocalOffset(0, 0.5, 0);
 			ref.current.minPolarAngle = Math.PI / 7;
 			ref.current.maxPolarAngle = Math.PI / 2.6;
@@ -19,6 +21,7 @@ const CameraController = (props) => {
 			ref.current.maxDistance = 32;
 		}
 	}, []);
+	useEffect(() => guardWorldCameraClicks(gl.domElement, events.connected), [gl, events.connected]);
 	useEffect(() => {
 		// Preserve readable body size in short landscape viewports; widen portrait discovery.
 		const distance = size.height < 500 ? 13 : size.width / size.height < 0.8 ? 23 : 18;

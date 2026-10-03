@@ -16,10 +16,10 @@ function stackLimit(itemId: string): number {
  * quick slot; collecting or crafting one never changes the quick bar.
  * Returns the new slot array and whatever did not fit.
  */
-export function addItem(slots: readonly Slot[], itemId: string, quantity: number): { slots: Slot[]; remaining: number } {
+export function addItem(slots: readonly Slot[], itemId: string, quantity: number, options: { allowWeaponQuickSlots?: boolean } = {}): { slots: Slot[]; remaining: number } {
   const out = slots.slice();
   const limit = stackLimit(itemId);
-  const firstSlot = isWeapon(itemId) ? HOTBAR_SIZE : 0;
+  const firstSlot = isWeapon(itemId) && !options.allowWeaponQuickSlots ? HOTBAR_SIZE : 0;
   let remaining = quantity;
   for (let i = firstSlot; i < out.length && remaining > 0; i++) {
     const s = out[i];

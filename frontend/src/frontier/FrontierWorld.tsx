@@ -4,6 +4,7 @@ import { linear } from "../Components/3D/nodes/lowPoly";
 import { homePoint, MEADOW_OFFSET } from "../../../shared/sim/frontier/homeMap";
 import MeadowScenery, { ResourceModel } from "./MeadowScenery";
 import MeadowTownSquare from "./MeadowTownSquare";
+import IslandShrines3D from './IslandShrines3D';
 import { approachWorldInteraction } from "./worldInteraction";
 import { openSettlement } from "./navigation";
 import { plotName } from "./panelModel";
@@ -465,6 +466,7 @@ export function FrontierScene({
       {region !== "sea" && (
         <>
           <MeadowScenery region={region} claimed={state.plots.filter(p=>!!p.claim).map(p=>p.id)}/>
+          <IslandShrines3D region={region} profile={state.profile} showLabels={showWorldLabels} disabled={!!draft} />
           <MeadowTownSquare x={def.spawn.x - 24} />
           <group position={[def.spawn.x - 25, 0, 39]} userData={{ hoverTarget: { title: 'Steward', action: 'Open quests & workshop', click: 'panel' } }} onClick={e => { if (!draft && e.delta <= 5) { e.stopPropagation(); if (holdState.active || performance.now() < holdState.suppressClickUntil) return; approachWorldInteraction({ region, ...def.spawn }, () => openSettlement()); } }}>
             <AdventureAssetView asset="gardener" />

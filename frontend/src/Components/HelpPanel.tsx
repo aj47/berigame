@@ -16,7 +16,7 @@ export default function HelpPanel({ onClose }: { onClose: () => void }) {
       <li><img src="/items/stone_club.png" alt="" /><div><strong>Explore the Coast</strong><span>Carry a stick through the brambles. Gather supplies and craft a club.</span></div></li>
     </ol>
     <div className="help-controls" aria-label="World controls">
-      <span><strong>Move</strong>Tap the ground</span><span><strong>Look</strong>Drag · pinch to zoom</span>
+      <span><strong>Move</strong>Left click or tap the ground</span><span><strong>Look</strong>Right drag · touch drag</span>
       <span><strong>More actions</strong>Press and hold</span><span><strong>Cancel action</strong>Tap Stop or press Esc</span>
     </div>
     <details className="menu-guide-details"><summary>Gathering & crafting</summary>
@@ -40,7 +40,7 @@ export default function HelpPanel({ onClose }: { onClose: () => void }) {
     </details>
     <details className="menu-guide-details"><summary>Keyboard & camera</summary>
       <dl className="help-keys">{[['1 / 2 / 3', 'Use quick slot'], ['I', 'Bag'], ['K', 'Skills'], ['C', 'Craft'], ['Enter', 'Chat'], ['O', 'Settings'], ['Esc', 'Close / stop']].map(([key, action]) => <div key={key}><dt><kbd>{key}</kbd></dt><dd>{action}</dd></div>)}</dl>
-      <p>Hold the ground to keep walking. Scroll or pinch to zoom.</p>
+      <p>Drag with the right mouse button to rotate the camera. On touch screens, drag to rotate. Hold the ground to keep walking. Scroll or pinch to zoom.</p>
       <button className="reset-view-button" onClick={() => window.dispatchEvent(new Event('berigame-camera-reset'))}>Reset view</button>
     </details>
     <a className="agent-help-link" href={wikiUrl()} target="_blank" rel="noreferrer">BeriGame wiki ↗</a>

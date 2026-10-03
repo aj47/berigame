@@ -1,3 +1,4 @@
+import { recordDiagnostic } from './diagnostics';
 import { PLAYER_ACTION } from '../frontier/worldInteraction';
 import { normalizeAppearance, type Appearance } from '@sim';
 import { useCallback } from 'react';
@@ -21,18 +22,24 @@ export function useGameActions() {
       window.dispatchEvent(new Event(PLAYER_ACTION));
       const loading = useLoadingStore.getState();
       if (!navigator.onLine || loading.worldUpdatesStalled || !loading.websocketConnected || !loading.gameDataLoaded) {
+        recordDiagnostic('action', { action: label, outcome: 'waiting-for-world' });
         show('Waiting for live world updates');
         return false;
       }
       const conn = getConnection();
       if (!conn) {
+        recordDiagnostic('action', { action: label, outcome: 'not-connected' });
         show('Not connected');
         return false;
       }
+      const started = performance.now();
+      recordDiagnostic('action', { action: label, outcome: 'started' });
       try {
         await trackCall(fn(conn));
+        recordDiagnostic('action', { action: label, outcome: 'accepted', durationMs: Math.round(performance.now() - started) });
         return true;
       } catch (e: any) {
+        recordDiagnostic('action', { action: label, outcome: e instanceof ConnectionLostError ? 'connection-lost' : 'rejected', durationMs: Math.round(performance.now() - started) });
         if (e instanceof ConnectionLostError) {
           show('Connection lost — reconnecting');
           return false;
@@ -47,7 +54,7 @@ export function useGameActions() {
   );
 
   return {
-    frontier: (command: import("../../../shared/sim/frontier/engine").Command) => run("frontier", c => c.reducers.frontierAction({ command: JSON.stringify(command) })),
+    frontier: (command: import("../../../shared/sim/frontier/engine").Command) => run(`frontier:${command.action}`, c => c.reducers.frontierAction({ command: JSON.stringify(command) })),
     equipTechnique: (technique: number) => run('technique', c => c.reducers.equipTechnique({ technique })),
     expeditionAction: (action: string, expeditionId = 0n, extra: { target?: Identity; x?: number; z?: number; destination?: string } = {}) => run('expedition', c => c.reducers.expeditionAction({ action, expeditionId, target: extra.target, x: extra.x ?? 35, z: extra.z ?? 37, destination: extra.destination ?? 'market' })),
     contributeProject: (itemId: string) => run('project', c => c.reducers.contributeProject({ itemId })),

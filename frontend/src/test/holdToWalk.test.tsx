@@ -38,6 +38,16 @@ beforeEach(() => {
 afterEach(() => { cleanup(); wrapper.remove(); vi.useRealTimers(); });
 
 describe('hold navigation across the home island', () => {
+  it('does not start a walk or options menu while the right mouse button is held', () => {
+    pointAt(69, 25); render(<HoldToWalk />);
+    const event = new MouseEvent('pointerdown', { bubbles: true, button: 2, clientX: 100, clientY: 100 });
+    Object.defineProperty(event, 'pointerId', { value: 1 });
+    wrapper.dispatchEvent(event); vi.advanceTimersByTime(HOLD_MS * 3);
+    expect(holdState.active).toBe(false);
+    expect(holdState.suppressClickUntil).toBe(0);
+    expect(mock.frontier).not.toHaveBeenCalled(); expect(mock.setTarget).not.toHaveBeenCalled();
+  });
+
   it('accepts the canvas wrapper and sends Meadows coordinates without clamping to the old island', () => {
     pointAt(69, 25); render(<HoldToWalk />); press(wrapper);
     expect(mock.frontier).toHaveBeenCalledWith({ action: 'walk', id: 'settlement', x: 5, z: 64 });

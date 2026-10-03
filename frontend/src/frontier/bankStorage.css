@@ -1,0 +1,18 @@
+.bank-intro { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.bank-intro > strong { font-size:16px; }
+.frontier-panel .bank-protection { padding:10px 12px; border-radius:9px; background:#e5eddd; color:#36542f; font-size:12px; line-height:1.5; }
+.bank-location { margin:6px 0 14px; padding:2px 0 10px; border-bottom:1px solid #d9dfcd; font-size:12px; }
+.bank-storage section { margin:16px 0; }
+.bank-storage .bank-amount { display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:12px; }
+.bank-amount select { width:150px; }
+.bank-storage h3 { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.bank-storage h3 small { font:11px system-ui; white-space:nowrap; }
+.bank-items { padding:0; margin:0; list-style:none; }
+.bank-item { display:flex; align-items:center; gap:8px; border-bottom:1px solid #dde0ce; padding:7px 0; }
+.bank-item > img { width:32px; height:32px; object-fit:contain; flex:none; }
+.bank-item > span { min-width:0; flex:1; }
+.bank-item strong { display:block; font-size:12px; overflow-wrap:anywhere; }
+.bank-item small { display:block; font-size:10px; }
+.frontier-panel .bank-item button { flex:none; margin:0; padding:7px 8px; min-height:36px; font-size:11px; }
+.bank-item button span { font-variant-numeric:tabular-nums; }
+.bank-notice { color:#3d602e; font-size:12px; }

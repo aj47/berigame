@@ -12,6 +12,7 @@ import GoalChip from "./GoalChip";
 import SettingsPanel from "./SettingsPanel";
 import Minimap from "./Minimap";
 import TickDebug from "./TickDebug";
+import BugReportPanel, { GameDiagnostics } from "./BugReportPanel";
 import FriendsPanel, { FriendSync, InviteRedeemer } from "./FriendsPanel";
 import TradeWindow from "./TradeWindow";
 import AdventurePanel, { AdventureHud, DuelHud } from "./AdventurePanel";
@@ -28,7 +29,7 @@ import FrontierPanel, { type BuildDraft } from "../frontier/FrontierPanel";
 import { FRONTIER_EVENT, type FrontierRequest } from "../frontier/navigation";
 import type { FrontierSnapshot } from "../../../shared/sim/frontier/snapshot";
 
-type Panel = "settlement" | "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | null;
+type Panel = "bug" | "settlement" | "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | null;
 /** Name and online count: the only part of the HUD shell that follows player rows. */
 const WorldHeader = memo(({ coins }: { coins?: number }) => {
   const me = useMyPlayer();
@@ -92,7 +93,7 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
     const previous = panel === "friends" ? "chat" : panel === "settlement" ? "adventure" : panel;
     setPanel(null);
     // Secondary controls disappear with the compact menu; return to its trigger.
-    const secondary = ["menu", "skills", "appearance", "crafting", "help", "settings"].includes(previous ?? "");
+    const secondary = ["menu", "skills", "appearance", "crafting", "help", "settings", "bug"].includes(previous ?? "");
     const target = secondary && menuButton.current?.getClientRects().length
       ? menuButton.current
       : toolbar.current?.querySelector<HTMLButtonElement>(`[data-panel="${previous}"]`);
@@ -189,7 +190,7 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
           ref={menuButton}
           aria-expanded={panel === "menu"}
           aria-controls="game-menu"
-          data-active={["menu", "skills", "appearance", "crafting", "help", "settings"].includes(panel ?? "")}
+          data-active={["menu", "skills", "appearance", "crafting", "help", "settings", "bug"].includes(panel ?? "")}
           onClick={() => toggle("menu")}
         >
           <span aria-hidden="true">☰</span> Menu
@@ -221,6 +222,7 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
             <span aria-hidden="true" className="toolbar-gear">⚙</span>
             <span className="toolbar-label">Settings</span> <kbd>O</kbd>
           </button>
+          <button data-panel="bug" onClick={() => toggle("bug")}>Report a bug</button>
           <a className="agent-entry-link" href={agentUrl()} target="_blank" rel="noreferrer" aria-label="Open BeriGame's agent onboarding page in a new tab">
             Agent
           </a>
@@ -243,6 +245,8 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
       <SettingsPanel open={panel === "settings"} onClose={close} recoveryEnabled={frontierEnabled} />
       {(!inFrontier || me?.region === "settlement") && <Minimap hidden={panel !== null} />}
       {panel === "help" && <HelpPanel onClose={close} />}
+      {panel === "bug" && <BugReportPanel onClose={close} />}
+      <GameDiagnostics />
       <CombatHud quickKeysEnabled={panel === null} onOpenBag={openBag} frontier={frontier} />
       <TradeWindow />
       <InviteRedeemer />

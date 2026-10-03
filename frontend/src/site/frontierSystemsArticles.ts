@@ -111,7 +111,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
         'Use ability requires your trained, active companion within two tiles and Beastcraft active at level 2. Abilities normally recover in sixty seconds; active Beastcraft level 10 reduces this to thirty seconds. Taming, food and other abilities can also briefly delay the next ability.',
       ] },
       { id: 'cargo-and-protection', title: 'Pack supplies and expedition help', paragraphs: [
-        'Training a Reedhorn creates six cargo slots. Use Bag → Storage to deposit or withdraw while your Reedhorn is active, nearby and Beastcraft level 2 is active.',
+        'Training a Reedhorn creates six cargo slots. Use Bag → Bank → Storage location to deposit or withdraw while your Reedhorn is active, nearby and Beastcraft level 2 is active.',
         'A Shellback’s ability applies to the giant berry expedition while you are carrying its cargo. It prevents the expedition Giant from biting that cargo for twelve seconds. It does not protect your ordinary bag or boat inventory.',
         'If you are defeated, your active companion rests for one minute. Any Reedhorn pack contents join your dropped supplies and remain collectible for five minutes. Companions themselves remain yours; call one again from town or a stable after its rest.',
       ] },
@@ -137,7 +137,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
     ],
     sections: [
       { id: 'choose', title: 'Choose your active pair', paragraphs: [
-        'Visit the Meadows town square and open More → Disciplines. Select two different disciplines and Activate pair. Your first pair is free. Later changes cost 20 coins and require at least twenty-four hours since your previous activation.',
+        'Visit the Meadows town square and open More → Disciplines. Select two different disciplines and Activate pair. Your first pair is free. Later changes cost 20 coins after twenty-four hours. To skip the wait, choose Switch now for 50 coins total: the normal 20 plus 30 extra. Each change starts a new twenty-four-hour wait; choosing your current pair again costs nothing.',
         'Change choices in town while outside combat, claim conflicts and voyages. Changing your pair preserves all XP. Basic gathering, crafting and other available activities continue to award the appropriate XP even if that discipline is inactive.',
         'Building and Beastcraft are a useful first pair for a home and trained companion. Choose Might for combat and mining perks, Cultivation for crops and food, or Exploration for island discovery and docking.',
       ] },
@@ -193,7 +193,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
         'Follow the steward’s quests towards The shipwright, then walk to Driftwood Harbour in Bramblewild at (46, 29). Meet shipwright records the visit for the quest.',
         'Craft a Skiff hull at a harbour from 20 Planks and 6 Rope. Craft a Sail at a Workbench or the public town workshop from 8 Cloth and 4 Rope. Active Building perks can lower these base ingredient costs.',
         'Stand within four tiles of a harbour and choose Assemble skiff. This consumes one hull and one sail, creates twelve cargo slots and awards 40 Building XP. You can own one skiff.',
-        'Use Bag → Storage to load food and useful supplies into the boat. Depositing food records progress for Prepare for the crossing. Food is carried as provisions; sailing does not automatically consume it.',
+        'Use Bag → Bank → Storage location to load food and useful supplies into the boat. Depositing food records progress for Prepare for the crossing. Food is carried as provisions; sailing does not automatically consume it.',
       ] },
       { id: 'crew', title: 'Invite and organise your crew', paragraphs: [
         'The owner has full boat access. Under Crew permissions, grant other characters boarding, piloting and cargo access separately. Boarding permission lets a player join at a harbour; piloting permission lets an onboard player take the helm; cargo permission lets them transfer supplies.',

@@ -82,7 +82,7 @@ export const guideArticles: WikiArticle[] = [
     facts: [{ label: 'Movement', value: 'Click or tap ground' }, { label: 'Quick slots', value: '3 · keys 1–3' }, { label: 'Server tick', value: '0.6 seconds' }],
     sections: [
       { id: 'movement-camera', title: 'Movement and camera', paragraphs: [
-        'Click or tap a destination on the ground. Your character follows a route around trees, rocks and other blocked terrain. On touch screens, holding the ground keeps walking towards your finger. Drag to look around, and pinch or scroll to zoom.',
+        'Left click or tap a destination on the ground. Your character follows a route around trees, rocks and other blocked terrain. Hold the right mouse button and drag to look around. On touch screens, drag to look around or hold the ground to keep walking towards your finger. Pinch or scroll to zoom.',
         'Selecting an interaction such as harvesting or trading can walk you into range automatically. Clicking another destination or pressing Stop cancels the current action. Water, brambles and boulders still obey the world’s access rules; a route cannot carry you through a barrier you have not unlocked.',
         'If the camera gets awkward, open Help → Keyboard & camera → Reset view. Camera sensitivity, graphics quality and reduced motion are available in Settings.',
       ] },
@@ -106,7 +106,7 @@ export const guideArticles: WikiArticle[] = [
       ] },
       { id: 'meadows-menus', title: 'Meadows menus', paragraphs: [
         'When settlements are enabled, Meadows has three main choices: Quests, Your land and Craft. Quests focuses on the next objective and supply orders; Your land shows the current plot; Craft opens the same recipe panel used everywhere.',
-        'Open More for Wildlife, Disciplines, Sailing, Bag or Storage & trade. Plot and town controls still check your character’s location before performing an action. The toolbar lets you inspect your progress whenever you need it.',
+        'Open More for Wildlife, Disciplines, Sailing, Bag or Bank & storage. Plot and town controls still check your character’s location before performing an action. The toolbar lets you inspect your progress whenever you need it.',
       ] },
       { id: 'performance', title: 'Comfort and performance', paragraphs: [
         'Settings has Auto, High and Low graphics modes. Auto lowers rendering resolution when frames are slow; Low uses fewer pixels for older devices. You can also reduce motion, hide nameplates or world labels, and adjust master, effects and ambient volume. These preferences are saved on the current device.',
@@ -285,7 +285,7 @@ export const guideArticles: WikiArticle[] = [
         ['Obsidian', 'Boulders outcrops or Giant raid rewards', 'Shared workshop donation'],
       ] } },
       { id: 'settlement-storage', title: 'Settlement items and storage', paragraphs: [
-        'Bag (I) uses the same item grid and quick slots in every district. Open Bag → Storage to transfer supplies to an accessible container or trade. The town vault has six slots. A Storage chest or skiff has twelve; a trained Reedhorn provides six cargo slots while Beastcraft level 2 is active.',
+        'Bag (I) uses the same item grid and quick slots in every district. Open Bag → Bank for your personal bank, other storage or trade. Your bank has 48 slots and keeps items safe through defeat and plot capture. Deposit or withdraw beside the steward in Meadows town; Walk to bank guides you there from the home island. A Storage chest or skiff has twelve slots; a trained Reedhorn provides six cargo slots while Beastcraft level 2 is active.',
         'Containers check both your location and permissions. You must be at town for your personal vault, near a chest with storage access, or aboard or beside a boat with cargo access. Chest contents stay with a plot if that plot is captured; your personal vault and boat remain yours.',
         'The Iron club uses the same quick-slot Wield action as other weapons and deals 9 base damage. Equip a Padded vest from Bag or a quick slot to add 3 maximum HP while carried; Unequip removes the bonus. The Stick and Stone Club still provide the original island’s route keys.',
         'Coins are a server-saved balance rather than a bag item. Gathering produces supplies and XP; collect quest rewards or deliver supply orders to receive coins.',
@@ -322,7 +322,7 @@ export const guideArticles: WikiArticle[] = [
         ['Befriending', 'Gifts, helping Moss, bribing Pip and feeding the Giant', 'NPC cooperation'],
       ] }, paragraphs: ['Gathering and crafting also feed their matching adventure path. Techniques need both a path level and a matching milestone. Open Skills with K to see the exact requirement and select up to three unlocked techniques at camp. They change expedition options without increasing PvP damage or health.'] },
       { id: 'settlement-disciplines', title: 'Settlement disciplines', paragraphs: [
-        'Might, Cultivation, Building, Beastcraft and Exploration track settlement activities. Open Meadows → More → Disciplines and activate two different disciplines at the town square. The first pair is free; changing it later costs 20 coins with a twenty-four-hour wait between changes.',
+        'Might, Cultivation, Building, Beastcraft and Exploration track settlement activities. Open Meadows → More → Disciplines and activate two different disciplines at the town square. The first pair is free. Later changes cost 20 coins after twenty-four hours, or 50 coins total (20 plus 30 extra) to switch early. Each change starts a new wait and keeps your earned XP.',
         'You earn and retain XP in every discipline, but its advanced perks require it to be active. Might supports combat and mining, Cultivation improves crops and food, Building unlocks materials and batch bonuses, Beastcraft trains companions, and Exploration helps discovery and docking.',
         'When you first use a Meadows activity, your matching island skill and adventure XP gives disciplines a one-time starting boost. After that, the five discipline totals grow separately from the original skills and adventure paths. See Five disciplines, two active choices for the exact XP sources and level 2, 5 and 10 abilities.',
       ] },

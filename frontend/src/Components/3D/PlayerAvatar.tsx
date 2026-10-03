@@ -77,7 +77,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const appearance = useMemo(() => normalizeAppearance(chosen), [appearanceKey]);
   const url = modelUrl(appearance.hairStyle);
   const motion = useTileMotion(row.x, row.z, row.facing, groupRef, (row.region || 'bramblewild') as any, frontierBlocked,
-    frontierState ? from => meadowBlockedTiles(frontierState, from, hex, isHomeRegion(from.region) ? 'settlement' : from.region) : undefined);
+    frontierState ? from => meadowBlockedTiles(frontierState, from, hex, isHomeRegion(from.region) ? 'settlement' : from.region) : undefined, isSelf);
   const cue = useCombatFxStore((s) => s.cues[hex]);
   const floating = useCombatFxStore((s) => s.numbers[hex]);
   const found = useCombatFxStore((s) => s.finds[hex]);
