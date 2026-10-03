@@ -487,33 +487,6 @@ export default function FrontierPanel({
             )}
             {tab === "Wildlife" && (
               <>
-                <details>
-                  <summary>Nearby players &amp; combat</summary>
-                  <p>
-                    Both players must allow combat, or join opposing capture
-                    teams. Town and paid homes are protected.
-                  </p>
-                  {players
-                    .filter(
-                      (p) =>
-                        p.online &&
-                        p.region === region &&
-                        p.identity.toHexString() !== id &&
-                        Math.max(Math.abs(p.x - me.x), Math.abs(p.z - me.z)) <
-                          12,
-                    )
-                    .map((p) => (
-                      <article key={p.identity.toHexString()}>
-                        <strong>
-                          {p.name} · {p.hp} HP
-                        </strong>
-                        {button("Attack", {
-                          action: "attack",
-                          id: p.identity.toHexString(),
-                        })}
-                      </article>
-                    ))}
-                </details>
                 {state.creatures
                   .filter((c) => c.region === region || c.owner === id)
                   .map((c) => (

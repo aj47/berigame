@@ -23,6 +23,7 @@ import { PORTS, type RegionId } from "../../../shared/sim/frontier/catalog";
 import { readSlots, writeSlots } from "./inventory";
 import { canPlay } from "./access";
 import type { Ctx } from "./types";
+import { advanceRegionalInteractions } from './regionalInteractions';
 const PUBLIC = new Set<Kind>([
   "claim",
   "building",
@@ -300,6 +301,7 @@ export function tickFrontier(ctx: Ctx) {
   if (!repo.get("config", "world")?.enabled) return;
   const w = frontierWorld(ctx);
   advance(w);
+  advanceRegionalInteractions(ctx, w);
   if (w.repo.changed?.size) projectFrontier(ctx, w.repo);
 }
 export function configureFrontier(ctx: Ctx, enabled: boolean, pause: boolean) {

@@ -126,7 +126,8 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag, frontier }: Props) => {
     : undefined;
   const hostile = me.hostile && !dead;
   const targetAvailable =
-    target && target.online && target.state !== PlayerState.Dead;
+    target && target.online && target.state !== PlayerState.Dead
+      && (target.region || 'bramblewild') === (me.region || 'bramblewild');
   const inRange = targetAvailable && chebyshev(me, target) <= MELEE_RANGE;
   const recovery = Math.max(0, me.nextSwingTick - tick);
   const timing = !targetAvailable

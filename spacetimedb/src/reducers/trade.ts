@@ -40,7 +40,6 @@ export const requestTrade = spacetimedb.reducer(
     if (problem) throw new SenderError(problem);
     clearInteractions(ctx, p);
     if (chebyshev(p, other!) > TRADE_RANGE) {
-      if (p.region && p.region !== 'bramblewild') throw new SenderError('Walk beside your trade partner first');
       // Keep a reciprocal request while approaching, but withdraw trades with anyone else.
       for (const row of tradesOf(ctx, p.identity)) {
         if (!sameId(row.a, target) && !sameId(row.b, target)) withdrawTrade(ctx, row, p.identity, 'Trade cancelled');

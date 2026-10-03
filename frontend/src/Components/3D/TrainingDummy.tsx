@@ -54,7 +54,7 @@ const TrainingDummy = ({ dummy, tick }: { dummy: TrainingDummyRow; tick: number 
     if (e.delta > 5) return;
     e.stopPropagation();
     if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
-    if (isDirectAttackClick(e, oneClickAttack)) { attack(); return; }
+    if (isDirectAttackClick(e, useSettingsStore.getState().oneClickAttack)) { attack(); return; }
     setClickedOtherObject({ connectionId: 'Training dummy', e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() }, dropdownOptions: [
       { label: 'Attack Training dummy', onClick: attack },
     ] });

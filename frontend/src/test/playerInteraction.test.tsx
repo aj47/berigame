@@ -5,12 +5,14 @@ import { PlayerState } from '@sim';
 import ClickDropdown from '../Components/ClickDropdown';
 import { useUserInputStore } from '../store';
 import { useChatPrefsStore } from '../spacetime/stores/chatPrefsStore';
+import { useToastStore } from '../spacetime/stores/toastStore';
 
 const mock = vi.hoisted(() => ({
-  players: new Map<string, any>(),
+  players: new Map<string, any>(), plots: [] as any[],
   attack: vi.fn(), follow: vi.fn(), requestTrade: vi.fn(), addFriend: vi.fn(),
 }));
-vi.mock('../spacetime/hooks', () => ({ usePlayersByHex: () => mock.players, useMyIdentityHex: () => 'self' }));
+vi.mock('../spacetime/hooks', () => ({ usePlayersByHex: () => mock.players, useMyIdentityHex: () => 'self', useTick: () => 100 }));
+vi.mock('../frontier/useFrontier', () => ({ useFrontier: () => ({ plots: mock.plots }) }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => mock }));
 const identity = (hex: string) => ({ toHexString: () => hex });
 function open(hex?: string, choices = ['front', 'back']) {
@@ -18,22 +20,24 @@ function open(hex?: string, choices = ['front', 'back']) {
   return render(<ClickDropdown />);
 }
 beforeEach(() => {
-  mock.players = new Map(['front', 'back', 'self'].map(hex => [hex, { identity: identity(hex), name: `${hex} player`, online: true, state: PlayerState.Alive }]));
-  mock.attack.mockClear(); mock.follow.mockClear(); mock.requestTrade.mockClear(); mock.addFriend.mockClear();
+  mock.players = new Map(['front', 'back', 'self'].map(hex => [hex, { identity: identity(hex), name: `${hex} player`, online: true, state: PlayerState.Alive, x: 40, z: 25, region: 'bramblewild', hp: 30, maxHp: 30, respawnTick: 0 }]));
+  mock.plots = [];
+  for (const action of [mock.attack, mock.follow, mock.requestTrade]) action.mockReset().mockResolvedValue(true);
+  mock.addFriend.mockClear();
   useChatPrefsStore.setState({ friends: new Set(), muted: new Set() });
   useUserInputStore.getState().setClickedOtherObject(null);
 });
 afterEach(cleanup);
 
 describe('player picker and actions', () => {
-  it.each([['front', 'Follow', 'follow'], ['back', 'Trade', 'requestTrade'], ['back', 'Attack', 'attack']] as const)('chooses %s and sends %s only to that identity', (hex, label, action) => {
+  it.each([['front', 'Follow', 'follow'], ['back', 'Trade', 'requestTrade'], ['back', 'Attack', 'attack']] as const)('chooses %s and sends %s only to that identity', async (hex, label, action) => {
     open();
     expect(screen.getByRole('group', { name: 'Choose player' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Attack' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: `${hex} player` }));
     expect(mock.attack).not.toHaveBeenCalled(); expect(mock.follow).not.toHaveBeenCalled(); expect(mock.requestTrade).not.toHaveBeenCalled();
     expect(screen.getByRole('group', { name: `Actions for ${hex} player` })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: label }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: label })));
     expect(mock[action]).toHaveBeenCalledExactlyOnceWith(mock.players.get(hex).identity);
     expect(screen.queryByRole('group')).not.toBeInTheDocument();
   });
@@ -73,5 +77,44 @@ describe('player picker and actions', () => {
     expect(screen.getByRole('button', { name: 'back player' })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('group')).not.toBeInTheDocument();
+  });
+
+  it('uses the same targeted Attack, Follow and Trade menu in Meadows', async () => {
+    for (const row of mock.players.values()) Object.assign(row, { region: 'settlement', x: 116, z: 106 });
+    open('back', ['back']);
+    expect(screen.queryByText('Wildlife')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Follow' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Trade' })).toBeEnabled();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Attack' })));
+    expect(mock.attack).toHaveBeenCalledExactlyOnceWith(mock.players.get('back').identity);
+  });
+
+  it('explains town protection before attempting an attack and keeps social actions available', () => {
+    for (const row of mock.players.values()) Object.assign(row, { region: 'settlement', x: 31, z: 64 });
+    open('back', ['back']);
+    expect(screen.getByRole('button', { name: 'Attack' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Attack' })).toHaveAccessibleDescription(/town/i);
+    expect(screen.getByRole('button', { name: 'Follow' })).toBeEnabled();
+    expect(mock.attack).not.toHaveBeenCalled();
+  });
+
+  it('keeps the exact server rejection visible for retry instead of dismissing the player menu', async () => {
+    mock.attack.mockImplementation(async () => { useToastStore.getState().show('Combat is not enabled for this character'); return false; });
+    open('back', ['back']);
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Attack' })));
+    expect(screen.getByRole('alert')).toHaveTextContent('Combat is not enabled for this character');
+    expect(screen.getByRole('group', { name: 'Actions for back player' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Attack' })).toBeEnabled();
+  });
+
+  it('does not let a slow successful action dismiss another player menu', async () => {
+    let resolve!: (success: boolean) => void;
+    mock.attack.mockImplementation(() => new Promise<boolean>(done => { resolve = done; }));
+    open('front');
+    fireEvent.click(screen.getByRole('button', { name: 'Attack' }));
+    fireEvent.click(screen.getByRole('button', { name: '← Choose another player' }));
+    fireEvent.click(screen.getByRole('button', { name: 'back player' }));
+    await act(async () => resolve(true));
+    expect(screen.getByRole('group', { name: 'Actions for back player' })).toBeInTheDocument();
   });
 });

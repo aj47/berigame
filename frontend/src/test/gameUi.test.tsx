@@ -572,6 +572,20 @@ describe("the Safe badge", () => {
 });
 
 describe("authoritative swing timing", () => {
+  it('uses regional swing ticks and stops advertising range when the target changes districts', () => {
+    mock.player = { ...mock.player, region: 'settlement', hostile: true,
+      combatTarget: { toHexString: () => 'opponent' }, nextSwingTick: 103 };
+    mock.players.set('opponent', { name: 'Rival', online: true, state: PlayerState.Alive, region: 'settlement', x: 26, z: 25 });
+    const { rerender } = render(<CombatHud />);
+    expect(screen.getByText('Recovery · 3 ticks')).toBeInTheDocument();
+    mock.players.set('opponent', { ...mock.players.get('opponent'), region: 'cinder' });
+    mock.tick = 104;
+    rerender(<CombatHud />);
+    expect(screen.getByText('Target unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('Swing ready')).not.toBeInTheDocument();
+    expect(screen.queryByText('Moving into range')).not.toBeInTheDocument();
+  });
+
   it("shows recovery from the server tick, but never promises a swing outside melee range", () => {
     mock.player = {
       ...mock.player,

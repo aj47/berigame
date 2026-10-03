@@ -13,6 +13,7 @@ vi.mock('../spacetime/hooks', () => ({
   useGroundItems: () => mock.items, useTick: () => mock.tick,
   usePlayersByHex: () => mock.players, useMyIdentityHex: () => 'me',
 }));
+vi.mock('../frontier/useFrontier', () => ({ useFrontier: () => ({ plots: [] }) }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => mock }));
 const tile = { x: 25, z: 25 };
 const pile = (id: bigint, itemId: string, quantity: number, at = tile) => ({ id, itemId, quantity, ...at, expiresTick: 600 });
@@ -27,7 +28,7 @@ function open(extra = {}) {
 beforeEach(() => {
   mock.items = [pile(1n, 'berry_blueberry', 3), pile(2n, 'stick', 1), pile(3n, 'flint', 2, { x: 28, z: 30 })];
   mock.tick = 100;
-  mock.players = new Map(['willow', 'orion'].map(hex => [hex, { name: hex === 'willow' ? 'Willow' : 'Orion', identity: { toHexString: () => hex }, online: true, state: PlayerState.Alive, ...tile }]));
+  mock.players = new Map(['me', 'willow', 'orion'].map(hex => [hex, { name: hex === 'willow' ? 'Willow' : hex === 'orion' ? 'Orion' : 'Me', identity: { toHexString: () => hex }, online: true, state: PlayerState.Alive, ...tile }]));
   vi.clearAllMocks(); mock.pickupItem.mockReset().mockResolvedValue(true);
   useUserInputStore.getState().setClickedOtherObject(null);
 });

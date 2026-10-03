@@ -208,7 +208,9 @@ export function Animal({ creature, showLabel, disabled = false }: { creature: Cr
       setSelected(null);
       void frontier({ action: 'attack', id: current.creature.id });
     };
-    if (isDirectAttackClick(e, oneClickAttack && attackable)) {
+    const attackNow = useSettingsStore.getState().oneClickAttack && live.current.alive
+      && live.current.creature.restUntil <= Date.now();
+    if (isDirectAttackClick(e, attackNow)) {
       setSelected(null);
       approachWorldInteraction(creature, attack, 1);
       return;

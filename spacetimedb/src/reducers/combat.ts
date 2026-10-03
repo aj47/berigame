@@ -1,7 +1,9 @@
 import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { HOTBAR_SIZE, PlayerState, inGrace, inSafeRing, isWeapon, retaliationSwingTick } from '../../../shared/sim';
+import { HOTBAR_SIZE, PlayerState, TICK_MS, inGrace, inSafeRing, isWeapon, retaliationSwingTick } from '../../../shared/sim';
+import { regionalPvPProblem } from '../../../shared/sim/frontier/combat';
+import { ensureFrontierProfile, frontierWorld, projectFrontier } from '../lib/frontier';
 import { readSlots } from '../lib/inventory';
 import { clearInteractions, currentTick, findPlayer, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { requireCapability } from '../lib/access';
@@ -40,15 +42,35 @@ export const unwield = spacetimedb.reducer(
 export const attack = spacetimedb.reducer(
   { target: t.identity() },
   (ctx, { target }) => {
-    requireCapability(ctx, ctx.sender, 'combat');
-    requireCapability(ctx, target, 'combat');
-    const p = requireAlivePlayer(ctx);
+    const p = requireAlivePlayer(ctx, true);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     if (duelFor(ctx, p.identity) || duelFor(ctx, target)) throw new SenderError('Finish the friendly duel before starting ordinary combat');
     if (sameId(target, p.identity)) throw new SenderError('cannot attack yourself');
     const tgt = findPlayer(ctx, target);
-    if (!tgt || (tgt.region && tgt.region !== (p.region || 'bramblewild')) || !tgt.online || tgt.state !== PlayerState.Alive) throw new SenderError('target unavailable');
+    if (!tgt || (tgt.region || 'bramblewild') !== (p.region || 'bramblewild') || !tgt.online || tgt.state !== PlayerState.Alive) throw new SenderError('target unavailable');
     const T = currentTick(ctx);
+    if (p.region && p.region !== 'bramblewild') {
+      const w = frontierWorld(ctx), a = w.actors.find(a => a.id === p.identity.toHexString())!;
+      if (!w.repo.get('config', 'world')?.enabled) throw new SenderError('The settlements expansion is not enabled');
+      if (p.region === 'sea') throw new SenderError('Disembark before fighting');
+      const problem = regionalPvPProblem(a, w.actors.find(a => a.id === target.toHexString()), w.repo.all('claim'), w.now);
+      if (problem) throw new SenderError(problem);
+      touchInput(p, T);
+      if (p.hostile && sameId(p.combatTarget, target)) { savePlayer(ctx, p); return; }
+      ensureFrontierProfile(ctx, w.repo);
+      const profile = w.repo.get('profile', a.id)!;
+      profile.nextAttack = Math.max(profile.nextAttack, w.now + Math.max(1, (p.nextSwingTick ?? 0) - T) * TICK_MS);
+      clearInteractions(ctx, p);
+      p.combatTarget = target;
+      p.hostile = true;
+      p.nextSwingTick = T + Math.ceil((profile.nextAttack - w.now) / TICK_MS);
+      w.repo.put('profile', profile);
+      projectFrontier(ctx, w.repo);
+      savePlayer(ctx, p);
+      return;
+    }
+    requireCapability(ctx, ctx.sender, 'combat');
+    requireCapability(ctx, target, 'combat');
     if (inSafeRing(p) || inSafeRing(tgt)) throw new SenderError('No fighting in the safe ring');
     if (inGrace(tgt, T)) throw new SenderError(`They are protected for ${Math.max(1, Math.ceil((tgt.respawnTick + 10 - T) * .6))} more seconds. Invite them to a friendly duel instead.`);
     touchInput(p, T);
@@ -81,11 +103,12 @@ export const attack = spacetimedb.reducer(
 export const follow = spacetimedb.reducer(
   { target: t.identity() },
   (ctx, { target }) => {
-    const p = requireAlivePlayer(ctx);
+    const p = requireAlivePlayer(ctx, true);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     if (sameId(target, p.identity)) throw new SenderError('cannot follow yourself');
     const tgt = findPlayer(ctx, target);
-    if (!tgt || (tgt.region && tgt.region !== (p.region || 'bramblewild')) || !tgt.online) throw new SenderError('target unavailable');
+    if (!tgt || (tgt.region || 'bramblewild') !== (p.region || 'bramblewild') || !tgt.online || tgt.state !== PlayerState.Alive) throw new SenderError('target unavailable');
+    if (p.region === 'sea') throw new SenderError('Disembark before following');
     touchInput(p, currentTick(ctx));
     clearInteractions(ctx, p);
     p.combatTarget = target;

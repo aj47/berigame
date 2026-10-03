@@ -78,6 +78,26 @@ describe('one-click player attacks', () => {
     expect(selected()).toMatchObject({ playerHex: 'other' });
   });
 
+  it.each([true, false])('uses the latest mode when toggled to %s before the 3D handler updates', enabled => {
+    useSettingsStore.setState({ oneClickAttack: !enabled });
+    const row = player();
+    const ui = render(<PlayerAvatar row={row} isSelf={false} />);
+    const capturedClick = props(ui.container).onClick;
+    // Tap assistance must consume this click even before the hover hint rerenders.
+    expect(props(ui.container).userData.hoverTarget.click).toBe('action');
+    act(() => {
+      useSettingsStore.getState().set({ oneClickAttack: enabled });
+      capturedClick({ delta: 0, button: 0, stopPropagation: vi.fn(), clientX: 100, clientY: 100 });
+    });
+    if (enabled) {
+      expect(mock.attack).toHaveBeenCalledExactlyOnceWith(row.identity);
+      expect(selected()).toBeNull();
+    } else {
+      expect(mock.attack).not.toHaveBeenCalled();
+      expect(selected()).toMatchObject({ playerHex: 'other' });
+    }
+  });
+
   it.each(['self', 'dead', 'offline', 'safe target', 'safe attacker', 'protected', 'dead attacker', 'other region'])('does not directly attack %s', kind => {
     useSettingsStore.setState({ oneClickAttack: true });
     const row = player(kind === 'dead' ? { state: PlayerState.Dead } : kind === 'offline' ? { online: false }
@@ -91,32 +111,70 @@ describe('one-click player attacks', () => {
     expect(mock.frontier).not.toHaveBeenCalled();
   });
 
-  it('approaches regional players before asking the authoritative frontier combat rules', () => {
+  it.each(['settlement', 'reedwake', 'cinder'])('opens the player dropdown directly in %s without a Wildlife panel or island loot', region => {
+    mock.me.region = region;
+    const row = player({ region });
+    const ui = render(<PlayerAvatar row={row} isSelf={false} />);
+    click(ui.container);
+    expect(selected()).toMatchObject({ playerHex: 'other', playerChoices: ['other'], groundTiles: [], groundRegion: region });
+    expect(props(ui.container).userData.hoverTarget).toMatchObject({ action: 'Click for player actions', playerHex: 'other' });
+    expect(mock.openSettlement).not.toHaveBeenCalled();
+    expect(mock.approach).not.toHaveBeenCalled();
+  });
+
+  it('queues a regional target identity once and lets the server follow its movement', () => {
     useSettingsStore.setState({ oneClickAttack: true });
     mock.me.region = 'settlement';
     const row = player({ region: 'settlement' });
     const ui = render(<React.StrictMode><PlayerAvatar row={row} isSelf={false} /></React.StrictMode>);
     click(ui.container);
-    expect(mock.approach).toHaveBeenCalledWith(expect.objectContaining({ region: 'settlement', x: row.x, z: row.z }), expect.any(Function), 1);
+    expect(mock.attack).toHaveBeenCalledExactlyOnceWith(row.identity);
+    expect(mock.approach).not.toHaveBeenCalled();
     expect(mock.frontier).not.toHaveBeenCalled();
-    act(() => mock.approach.mock.lastCall![1]());
-    expect(mock.frontier).toHaveBeenCalledExactlyOnceWith({ action: 'attack', id: 'other' });
-    expect(mock.attack).not.toHaveBeenCalled();
+    ui.rerender(<React.StrictMode><PlayerAvatar row={{ ...row, x: row.x + 5 }} isSelf={false} /></React.StrictMode>);
+    expect(mock.attack).toHaveBeenCalledOnce();
+    expect(selected()).toBeNull();
   });
 
-  it('does not attack a regional player who becomes unavailable during the approach', () => {
+  it('does not attack a regional player who becomes unavailable before a click', () => {
     useSettingsStore.setState({ oneClickAttack: true });
     mock.me.region = 'settlement';
     const row = player({ region: 'settlement' });
     const ui = render(<PlayerAvatar row={row} isSelf={false} />);
-    click(ui.container);
     ui.rerender(<PlayerAvatar row={{ ...row, state: PlayerState.Dead }} isSelf={false} />);
-    act(() => mock.approach.mock.lastCall![1]());
+    click(ui.container);
+    expect(mock.attack).not.toHaveBeenCalled();
     expect(mock.frontier).not.toHaveBeenCalled();
+  });
+  it('keeps a protected Meadows player on the explicit menu even with one-click enabled', () => {
+    useSettingsStore.setState({ oneClickAttack: true });
+    mock.me = player({ identity: identity('me'), region: 'settlement', x: 31, z: 64 });
+    const ui = render(<PlayerAvatar row={player({ region: 'settlement', x: 32, z: 64 })} isSelf={false} />);
+    click(ui.container);
+    expect(mock.attack).not.toHaveBeenCalled();
+    expect(selected()).toMatchObject({ playerHex: 'other' });
   });
 });
 
 describe('one-click hostile wildlife attacks', () => {
+  it.each([true, false])('uses the latest mode when toggled to %s before the wildlife handler updates', enabled => {
+    useSettingsStore.setState({ oneClickAttack: !enabled });
+    const ui = render(<Animal creature={creature()} showLabel={false} />);
+    const capturedClick = props(ui.container).onClick;
+    act(() => {
+      useSettingsStore.getState().set({ oneClickAttack: enabled });
+      capturedClick({ delta: 0, button: 0, stopPropagation: vi.fn(), clientX: 100, clientY: 100 });
+    });
+    act(() => mock.approach.mock.lastCall![1]());
+    if (enabled) {
+      expect(mock.frontier).toHaveBeenCalledExactlyOnceWith({ action: 'attack', id: 'bristle' });
+      expect(selected()).toBeNull();
+    } else {
+      expect(mock.frontier).not.toHaveBeenCalled();
+      expect(selected().dropdownOptions[0].label).toMatch(/^Attack /);
+    }
+  });
+
   it('approaches before attacking a bristleback, with no dropdown', () => {
     useSettingsStore.setState({ oneClickAttack: true });
     const row = creature();

@@ -1640,9 +1640,9 @@ describe('portable bag and quick-slot actions', () => {
     expect(h.me().region).toBe('settlement');
   });
 
-  it('does not make regional combat or ground interactions available through Bramblewild reducers', () => {
+  it('rejects cross-region combat and keeps Bramblewild ground interactions local', () => {
     h.me().region = 'settlement';
-    expect(() => attack(h.ctx, { target: B })).toThrow('belongs to Bramblewild');
+    expect(() => attack(h.ctx, { target: B })).toThrow('target unavailable');
     expect(() => move(h.ctx, { x: 20, z: 20 })).toThrow('belongs to Bramblewild');
     h.me().state = PlayerState.Dead;
     expect(() => eat(h.ctx, { slot: 0 })).toThrow('you are dead');

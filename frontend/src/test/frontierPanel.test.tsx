@@ -8,9 +8,9 @@ import { useSettingsStore } from '../spacetime/stores/settingsStore';
 import SettingsPanel from '../Components/SettingsPanel';
 import { deadlineLabel } from '../frontier/panelModel';
 
-const mock = vi.hoisted(() => ({ state: null as any, player: null as any, inventory: [] as any[], frontier: vi.fn().mockResolvedValue(true), exportRecovery: vi.fn().mockResolvedValue(undefined) }));
+const mock = vi.hoisted(() => ({ state: null as any, player: null as any, players: [] as any[], inventory: [] as any[], frontier: vi.fn().mockResolvedValue(true), exportRecovery: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../frontier/useFrontier', () => ({ useFrontier: () => mock.state }));
-vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => mock.player, useInventoryRows: () => mock.inventory, usePlayers: () => [mock.player], useNow: () => Date.now() }));
+vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => mock.player, useInventoryRows: () => mock.inventory, usePlayers: () => [mock.player, ...mock.players], useNow: () => Date.now() }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ frontier: mock.frontier, setTarget: vi.fn() }) }));
 vi.mock('../frontier/recovery', () => ({ exportRecovery: mock.exportRecovery, restoreRecovery: vi.fn() }));
 const identity = { toHexString: () => 'me' };
@@ -21,11 +21,29 @@ beforeEach(() => {
   mock.state = frontierSnapshot([{ kind: 'config', data: JSON.stringify({ enabled: true }) }], [], 'me', Date.now());
   mock.player = { identity, region: 'settlement', x: 31, z: 64, hp: 20, name: 'Tester' };
   mock.inventory = [];
+  mock.players = [];
   useSettingsStore.setState({ showGuidance: true });
 });
 afterEach(cleanup);
 
 describe('progressive Meadows panel', () => {
+  it('keeps Wildlife focused on creatures even when another player is nearby', async () => {
+    mock.players = [{ ...mock.player, identity: { toHexString: () => 'neighbour' }, name: 'Nearby adventurer', online: true, x: 32 }];
+    mock.state.creatures = [
+      { id: 'bun', species: 'burrowbun', region: 'settlement', x: 32, z: 64, owner: '' },
+      { id: 'bristleback', species: 'bristleback', region: 'settlement', x: 33, z: 64, owner: '' },
+    ];
+    render(<FrontierPanel {...props('Wildlife')} />);
+    expect(screen.queryByText('Nearby players & combat')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nearby adventurer/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Both players must allow combat/)).not.toBeInTheDocument();
+    const bun = screen.getByRole('heading', { name: 'Burrowbun' }).closest('article')!;
+    expect(within(bun).getByRole('button', { name: 'Offer feed' })).toBeVisible();
+    const hostileCreature = screen.getByRole('heading', { name: 'Bristleback' }).closest('article')!;
+    await act(async () => fireEvent.click(within(hostileCreature).getByRole('button', { name: 'Attack' })));
+    expect(mock.frontier).toHaveBeenCalledWith({ action: 'attack', id: 'bristleback' });
+  });
+
   it('shows held and required construction materials, summing inventory stacks', () => {
     own();
     mock.inventory = [{ owner: identity, itemId: 'timber', quantity: 2, slot: 0 }, { owner: identity, itemId: 'timber', quantity: 4, slot: 1 }];

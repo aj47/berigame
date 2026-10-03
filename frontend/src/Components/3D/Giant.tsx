@@ -256,7 +256,7 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
     if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
     const down = row.current.state === GiantState.Defeated;
     const asleep = row.current.state === GiantState.Asleep;
-    if (!down && !asleep && isDirectAttackClick(e, oneClickAttack)) { attack(); return; }
+    if (!down && !asleep && isDirectAttackClick(e, useSettingsStore.getState().oneClickAttack)) { attack(); return; }
     // Combat reducers already approach the target. Show the choice at the click
     // instead of making the player wait for a walk before they can attack.
     setClickedOtherObject({ connectionId: 'The Giant', e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() }, dropdownOptions: [

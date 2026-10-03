@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_APPEARANCE, normalizeAppearance, APPEARANCE_KEYS, PlayerState, inGrace, inSafeRing, type Appearance } from '@sim';
+import { DEFAULT_APPEARANCE, normalizeAppearance, APPEARANCE_KEYS, PlayerState, type Appearance } from '@sim';
 import type { Player } from '../../module_bindings/types';
 import { useTileMotion } from '../../hooks/useTileMotion';
 import { useCombatFxStore } from '../../spacetime/stores/combatFxStore';
@@ -24,9 +24,8 @@ import { holdState, isDirectAttackClick } from './tapAssist';
 import { homePoint, isHomeRegion } from '../../../../shared/sim/frontier/homeMap';
 import type { FrontierSnapshot } from '../../../../shared/sim/frontier/snapshot';
 import { meadowBlockedTiles } from './hoverTarget';
-import { openSettlement } from '../../frontier/navigation';
+import { playerAttackProblem } from '../playerAttack';
 import { useResourceHarvest } from '../../frontier/useResourceHarvest';
-import { approachWorldInteraction } from '../../frontier/worldInteraction';
 
 class HairBoundary extends React.Component<{ children:React.ReactNode; fallback:React.ReactNode }, { failed:boolean }> {
   state={failed:false};
@@ -90,19 +89,10 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const dead = row.state === PlayerState.Dead;
   const me = useMyPlayer();
   const tick = useTick();
-  const { attack, frontier } = useGameActions();
+  const { attack } = useGameActions();
   const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
-  const regionalActions = !isSelf && ((row.region && row.region !== 'bramblewild') || (me?.region && me.region !== 'bramblewild'));
   const selfGroundActions = isSelf && (!row.region || row.region === 'bramblewild');
-  const sameRegion = (row.region || 'bramblewild') === (me?.region || 'bramblewild');
-  const directAttack = oneClickAttack && !isSelf && row.online && !dead && !!me && me.state === PlayerState.Alive
-    && sameRegion && (!!regionalActions || (!inSafeRing(me) && !inSafeRing(row) && !inGrace(row, tick)));
-  const liveAttack = useRef({ row, directAttack, mounted: true });
-  liveAttack.current = { row, directAttack, mounted: true };
-  useEffect(() => {
-    liveAttack.current.mounted = true;
-    return () => { liveAttack.current.mounted = false; };
-  }, []);
+  const directAttack = oneClickAttack && !isSelf && !playerAttackProblem(me, row, frontierState, tick);
   // Moving, fighting, harvesting or dying ends an emote (a Sit holds until then).
   const activity = `${row.x},${row.z},${row.hostile},${row.pending},${row.harvestTreeId},${row.state},${gathering?.harvest?.startedAt ?? ''}`;
   const lastActivity = useRef(activity);
@@ -132,23 +122,21 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
     if (dead || e.delta > 5 || (isSelf && !selfGroundActions)) return;
     e.stopPropagation();
     if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
-    if (isDirectAttackClick(e, directAttack)) {
+    // The toolbar can commit before the separate 3D renderer updates its handler.
+    const attackNow = useSettingsStore.getState().oneClickAttack && !isSelf
+      && !playerAttackProblem(me, row, frontierState, tick);
+    if (isDirectAttackClick(e, attackNow)) {
       setClickedOtherObject(null);
-      if (regionalActions) {
-        approachWorldInteraction({ ...row, region: (row.region || 'bramblewild') as any }, () => {
-          const current = liveAttack.current;
-          if (current.mounted && current.directAttack) void frontier({ action: 'attack', id: identityHex(current.row.identity) });
-        }, 1);
-      } else void attack(row.identity);
+      void attack(row.identity);
       return;
     }
-    if (regionalActions) {
-      setClickedOtherObject(null);
-      approachWorldInteraction({ ...row, region: (row.region || 'bramblewild') as any }, () => openSettlement('Wildlife'));
-      return;
-    }
+    const selection = avatarSelection({ hex, name: row.name, x: row.x, z: row.z, isSelf }, e.intersections ?? []);
+    const groundRegion = row.region || 'bramblewild';
     setClickedOtherObject({
-      ...avatarSelection({ hex, name: row.name, x: row.x, z: row.z, isSelf }, e.intersections ?? []),
+      ...selection,
+      groundRegion,
+      // Regional dropped bags have their own table; local coordinates must not alias island loot.
+      groundTiles: groundRegion === 'bramblewild' ? selection.groundTiles : [],
       e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray },
     });
   };
@@ -157,10 +145,10 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   return (
     <group ref={groupRef} onClick={onClick} userData={{ hoverTarget: dead || (isSelf && !selfGroundActions) ? null : {
       title: isSelf ? 'You' : row.name,
-      action: isSelf ? 'Click for ground actions' : directAttack ? 'Click to attack' : regionalActions ? 'View player actions' : 'Click for player actions',
-      detail: isSelf ? 'Pick up items · walk here' : directAttack ? 'Hold for player actions' : regionalActions ? undefined : 'Follow · trade · attack',
+      action: isSelf ? 'Click for ground actions' : directAttack ? 'Click to attack' : 'Click for player actions',
+      detail: isSelf ? 'Pick up items · walk here' : directAttack ? 'Hold for player actions' : 'Follow · trade · attack',
       radius: .65, tile: homePoint(row, row.region || 'bramblewild'),
-      ...(isSelf ? {} : directAttack ? { playerHex: hex, click: 'action' } : regionalActions ? { click: 'panel' } : { playerHex: hex }),
+      ...(isSelf ? {} : { playerHex: hex, click: 'action' }),
     } }}>
       <mesh position={[0, 1.05, 0]} visible={false}><boxGeometry args={[0.9, 2.1, 0.8]} /><meshBasicMaterial /></mesh>
       {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} itemId={floating.itemId} appearAt={floating.at + floating.delayMs} />}

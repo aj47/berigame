@@ -105,6 +105,30 @@ describe('world prop interactions', () => {
     expect(attack).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { target: 'giant', enabled: true }, { target: 'giant', enabled: false },
+    { target: 'dummy', enabled: true }, { target: 'dummy', enabled: false },
+  ])('uses the latest mode for $target when toggled to $enabled before the handler updates', ({ target, enabled }) => {
+    useSettingsStore.setState({ oneClickAttack: !enabled });
+    const giant = { ...freshGiant(0), id: 1, state: GiantState.Idle } as any;
+    const dummy = { id: 1, x: 28, z: 28, hp: 30, maxHp: 30, lastHitTick: 0 } as any;
+    const ui = render(target === 'giant' ? <Giant giant={giant} tick={100} /> : <TrainingDummy dummy={dummy} tick={100} />);
+    const group = ui.container.querySelector(`[name="${target === 'giant' ? 'giant' : 'training-dummy'}"]`) as any;
+    const capturedClick = group[Object.keys(group).find(key => key.startsWith('__reactProps$'))!].onClick;
+    act(() => {
+      useSettingsStore.getState().set({ oneClickAttack: enabled });
+      capturedClick({ delta: 0, button: 0, stopPropagation: vi.fn(), clientX: 100, clientY: 100 });
+    });
+    const attack = target === 'giant' ? mock.attackGiant : mock.attackDummy;
+    if (enabled) {
+      expect(attack).toHaveBeenCalledExactlyOnceWith(1);
+      expect(selected()).toBeNull();
+    } else {
+      expect(attack).not.toHaveBeenCalled();
+      expect(selected().dropdownOptions[0].label).toMatch(/^Attack /);
+    }
+  });
+
   it('one-click attacks the training dummy and respects hold release suppression', () => {
     useSettingsStore.setState({ oneClickAttack: true });
     const dummy = { id: 1, x: 28, z: 28, hp: 30, maxHp: 30, lastHitTick: 0 } as any;

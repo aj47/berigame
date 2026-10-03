@@ -89,7 +89,7 @@ const GameComponent = () => {
       <UIComponents frontier={frontier} frontierEnabled={frontier.enabled} frontierCoins={frontier.profile.coins} draft={draft} onDraft={setDraft} />
       {!inFrontier && <CharacterSetup />}
       {homeScene && !draft && <WorldHoverTooltip />}
-      {!inFrontier && !draft && clickedOtherObject && <ClickDropdown />}
+      {!draft && clickedOtherObject && <ClickDropdown region={me?.region || 'bramblewild'} />}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       <WorldBoundary>
       {!homeScene ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" dpr={dpr} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>

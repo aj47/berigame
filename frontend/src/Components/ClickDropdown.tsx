@@ -5,9 +5,23 @@ import BerryGiantInteraction from "./BerryGiantInteraction";
 import PlayerInteraction from "./PlayerInteraction";
 import GroundPickupActions from "./GroundPickupActions";
 import { useGameActions } from "../spacetime/actions";
+import { Plane, Vector3, type Ray } from 'three';
+import { homeLocation, isHomeRegion } from '../../../shared/sim/frontier/homeMap';
+import { regionLand } from '../../../shared/sim/frontier/regions';
+import type { Location, RegionId } from '../../../shared/sim/frontier/catalog';
 
-const ClickDropdown = () => {
-  const { setTarget } = useGameActions();
+const ground = new Plane(new Vector3(0, 1, 0), 0);
+/** Home scenes share world coordinates; distant islands retain their local grid. */
+function walkDestination(selected: { walkTile?: { x: number; z: number }; e?: { ray?: Ray } }, region: RegionId): Location | null {
+  const hit = selected.e?.ray?.intersectPlane(ground, new Vector3());
+  const point = selected.walkTile ?? (hit ? { x: Math.round(hit.x + 25), z: Math.round(hit.z + 25) } : null);
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return null;
+  const destination = isHomeRegion(region) ? homeLocation(point) : { region, ...point };
+  return regionLand(destination.region, destination) ? destination : null;
+}
+
+const ClickDropdown = ({ region = 'bramblewild' }: { region?: string }) => {
+  const { setTarget, frontier } = useGameActions();
   const selected = useUserInputStore((state: any) => state.clickedOtherObject);
   const setSelected = useUserInputStore(
     (state: any) => state.setClickedOtherObject,
@@ -52,6 +66,8 @@ const ClickDropdown = () => {
     };
   }, [setSelected]);
   if (!selected) return null;
+  const destination = walkDestination(selected, region as RegionId);
+  const islandGround = region === 'bramblewild' && (!selected.groundRegion || selected.groundRegion === 'bramblewild');
   return (
     <div
       className={`click-dropdown${selected.berryGiantExpeditionId !== undefined ? ' berry-giant-dropdown' : ''}`}
@@ -87,14 +103,16 @@ const ClickDropdown = () => {
           <span aria-hidden="true">›</span>
         </button>
       ))}
-      {selected.groundTiles?.length > 0 && <GroundPickupActions tiles={selected.groundTiles} selectedId={selected.groundItemId} onClose={() => {
+      {islandGround && selected.groundTiles?.length > 0 && <GroundPickupActions tiles={selected.groundTiles} selectedId={selected.groundItemId} onClose={() => {
         // A slow pickup response must not dismiss a different menu opened meanwhile.
         if (useUserInputStore.getState().clickedOtherObject === selected) setSelected(null);
       }} />}
-      {selected.walkTile && <button className="context-action context-walk" onClick={() => {
-        const { x, z } = selected.walkTile;
+      {destination && <button className="context-action context-walk" onClick={() => {
+        const { x, z } = destination;
         setSelected(null);
-        void setTarget(x, z);
+        if (region === 'bramblewild' && destination.region === 'bramblewild') void setTarget(x, z);
+        else if (isHomeRegion(region)) void frontier({ action: 'walk', id: destination.region, x, z });
+        else void frontier({ action: region === 'sea' ? 'sail' : 'move', x, z });
       }}>Walk here<span aria-hidden="true">›</span></button>}
     </div>
   );

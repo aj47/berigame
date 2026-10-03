@@ -6,6 +6,7 @@ import { areaOf } from "../areas";
 import { TICK_MS } from "../constants";
 import { levelForXp } from "../skills";
 import { buildingBlocker, buildingCollisionKeys, buildingsOverlap, isEdgeBuilding } from "./building";
+import { regionalPvPProblem } from "./combat";
 import type { Slot } from "../types";
 import {
   DAY,
@@ -296,6 +297,12 @@ function blocked(w: World, a: Actor, extra?: Building, omit?: string) {
       )),
   );
   return buildingBlocker(cells);
+}
+/** Reach another actor along a currently legal route, stopping at interaction range. */
+export function interactionRoute(w: World, a: Actor, target: Actor, range = 1): Point[] | null {
+  if (a.region !== target.region || a.region === 'bramblewild' || a.region === 'sea' || onboard(w, a.id)) return null;
+  const route = regionalPath(a.region, a, target, blocked(w, a));
+  return route?.slice(0, Math.max(0, route.length - range)) ?? null;
 }
 function placement(w: World, a: Actor, c: Claim, b: Building, omit?: string) {
   const parcel = plotFor(c),
@@ -1338,43 +1345,8 @@ export function perform(w: World, a: Actor, input: unknown): void {
           near(a, target, 1) && target.online && target.alive,
           "Walk beside the target",
         );
-        const contest = r
-          .all("claim")
-          .find(
-            (c) =>
-              c.challenge &&
-              w.now >= c.challenge.opens &&
-              w.now < c.challenge.closes &&
-              ((c.challenge.attackers.includes(a.id) &&
-                c.challenge.defenders.includes(id)) ||
-                (c.challenge.defenders.includes(a.id) &&
-                  c.challenge.attackers.includes(id))) &&
-              a.region === plotFor(c).region &&
-              distance(a, plotFor(c).marker) <= 6 &&
-              distance(target, plotFor(c).marker) <= 6,
-          );
-        check(
-          contest ||
-            (a.combat && target.combat && !atTown(a) && !atTown(target)),
-          "Both characters must consent to combat or join opposing contest teams",
-        );
-        check(
-          !r
-            .all("claim")
-            .some(
-              (c) =>
-                claimStatus(c, w.now) === "protected" &&
-                [a, target].some(
-                  (who) =>
-                    who.region === plotFor(c).region &&
-                    who.x >= plotFor(c).x &&
-                    who.x < plotFor(c).x + 16 &&
-                    who.z >= plotFor(c).z &&
-                    who.z < plotFor(c).z + 16,
-                ),
-            ),
-          "Paid homes are protected from player combat",
-        );
+        const problem = regionalPvPProblem(a, target, r.all("claim"), w.now);
+        check(!problem, problem ?? "Player combat is unavailable");
         p.events.hostileUntil = w.now + 60000;
         const tp = profile(w, target.id);
         tp.events.hostileUntil = w.now + 60000;
