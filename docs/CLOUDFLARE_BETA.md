@@ -351,3 +351,8 @@ index without resetting its Durable Object. Never use the local-only
 The expansion remains disabled until the owner calls `configure_expansion`.
 Publishing alone does not enable it. Follow the checks and rollout controls in
 [Settlements](SETTLEMENTS.md) before activating it.
+
+The public beta was enabled on October 2, 2026 with `configure_expansion true false`
+after deploying the connected Meadows module and client. The owner config was
+read back as `enabled: true`, `pausedAt: 0`. Existing data was preserved with
+`--delete-data=never`; all 40 tables were privately exported before deployment.

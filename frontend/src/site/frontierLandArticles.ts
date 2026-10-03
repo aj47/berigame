@@ -9,7 +9,7 @@ const itemName = (id: string) => getItemDef(id)?.name ?? id;
 const cost = (items: Cost) => Object.entries(items).map(([id, count]) => `${count} ${itemName(id)}`).join(' + ');
 const claimPrice = FRONTIER.deed + FRONTIER.taxes[0];
 const starterCoins = QUESTS.slice(0, 3).reduce((total, quest) => total + quest.coins, 0);
-const availability = 'These features are available in worlds where the world owner has enabled the Meadows expansion.';
+const availability = 'The Meadows expansion is enabled in the public beta. Other worlds can enable it through their world owner.';
 
 /** Expansion guides use the same definitions as the game for prices, quests and pieces. */
 export const frontierLandArticles: WikiArticle[] = [

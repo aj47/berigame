@@ -17,7 +17,7 @@ export const changelogEntries: ChangelogEntry[] = [
   {
     id: '2026-10-02-connected-meadows', date: '2026-10-02', period: 'Oct 2, 2026',
     title: 'A connected Meadows and clearer next steps',
-    note: 'Prepared in the local preview; this is not a public release announcement. Settlement features require the world owner to enable the expansion.',
+    note: 'Live beta update — Meadows settlements are enabled.',
     changes: [
       'Walk from Bramblewild along the east harbour trail into the Meadows, with matching trees, terrain and smaller object labels. Land hovering and navigation continue across the district boundary.',
       'The Meadows menu starts with Quests, Your land and Workshop. Wildlife, Disciplines, Sailing and Bag & storage sit under More, while plot names and claim costs are easier to read.',
@@ -27,7 +27,7 @@ export const changelogEntries: ChangelogEntry[] = [
       'Progress, coins and land save automatically on the server. Buying land no longer requires a recovery download; optional character-access recovery is in Settings.',
       'Eight new wiki guides cover the Meadows, coins and quests, land and upkeep, building and storage, materials and recipes, wildlife, disciplines and sailing. Item pages and the original guides now link to those systems.',
     ],
-    commits: [],
+    commits: ['a5433ec'],
   },
   {
     id: '2026-10-02-everyday-adventures', date: '2026-10-02', period: 'Oct 2, 2026',
@@ -46,7 +46,7 @@ export const changelogEntries: ChangelogEntry[] = [
   {
     id: '2026-10-02-settlements', date: '2026-10-02', period: 'Oct 2, 2026',
     title: 'Settlements and sailing prepared',
-    note: 'Disabled in the hosted beta. These features become playable when the world owner enables settlements.',
+    note: 'Initially prepared behind the expansion flag; enabled in the connected Meadows update above.',
     changes: [
       'Land claims, building, quests, coins and five disciplines lay the foundations for settlements.',
       'Skiffs, new islands, creature companions and 25 new items expand what you can explore and make.',

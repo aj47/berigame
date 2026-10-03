@@ -8,7 +8,7 @@ import type { WikiArticle } from './wikiContent';
 const itemName = (id: string) => getItemDef(id)?.name ?? id;
 const ingredients = (cost: Cost) => Object.entries(cost).map(([id, quantity]) => `${quantity} ${itemName(id)}`).join(' + ');
 const point = (position: { x: number; z: number }) => `(${position.x}, ${position.z})`;
-const availability = 'These activities are available in worlds where the settlements expansion is enabled.';
+const availability = 'These activities are available in the public beta, where the settlements expansion is enabled.';
 const stationName = (station?: string) => ({
   workbench: 'Workbench', kiln: 'Kiln', kitchen: 'Cooking station', harbour: 'Harbour',
 }[station ?? ''] ?? 'None');

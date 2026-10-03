@@ -2,6 +2,8 @@
 
 The expansion is implemented behind the world owner's `configure_expansion` flag. It defaults to disabled. Publishing the module and client preserves that setting; enabling the expansion is a separate owner action.
 
+The public beta enabled Meadows on October 2, 2026, after the matching module and client were deployed. New worlds still default to disabled.
+
 ## Play loop
 
 1. Carry a sturdy stick through the grove hedge, then follow the east road past Driftwood Harbour at **46,29** into the Meadows. **Map → Meadows town** or **Adventure → Make a home in the Meadows → Walk to Meadows town** queues the same walk.
