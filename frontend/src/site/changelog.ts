@@ -15,6 +15,17 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-03-agent-friendly-wiki', date: '2026-10-03', period: 'Oct 3, 2026',
+    title: 'A wiki agents can read directly',
+    note: 'Wiki update',
+    changes: [
+      'Every wiki article now has a Markdown version, with a JSON article index and a complete text export generated from the same guides.',
+      'The For agents links introduce the reference and point to the live API guide and schema. Open exported documents in the wiki reader and copy their text or URL.',
+      'Agents can request Markdown directly from article URLs. The wiki also publishes crawler discovery files and returns a clear missing-document response for unknown exports.',
+    ],
+    commits: ['464d501'],
+  },
+  {
     id: '2026-10-02-connected-meadows', date: '2026-10-02', period: 'Oct 2, 2026',
     title: 'A connected Meadows and clearer next steps',
     note: 'Live beta update — Meadows settlements are enabled.',

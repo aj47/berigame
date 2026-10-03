@@ -106,6 +106,10 @@ The wiki also serves documentation directly over HTTP, without JavaScript:
 - `/llms-full.txt` — the entire wiki in one Markdown document.
 - `/robots.txt` and `/sitemap.xml` — crawler discovery.
 
+Normal clicks on wiki export links open a document reader with copy controls.
+The links retain their raw `href` for agents and modified clicks. This also lets
+embedded browsers read the documents when they block top-level file navigation.
+
 On the wiki host, request an article with `Accept: text/markdown` to receive
 its Markdown representation. Local development supports the same header on
 `/docs/<article>`. Explicit export URLs also work on static previews. Unknown

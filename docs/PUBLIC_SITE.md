@@ -65,6 +65,7 @@ needed for this website release.
 - `/wiki/crafting.md` serves Markdown; requesting `/crafting` with `Accept: text/markdown` serves the same document with `Vary: Accept`.
 - `/llms-full.txt`, `/robots.txt` and `/sitemap.xml` are readable without JavaScript.
 - `/wiki/no-such-article.md` returns 404 instead of an HTML application shell.
+- Clicking Start here, JSON index, Full wiki or an article's Read Markdown link opens the document reader. Check loading, Copy URL, close and Escape in the browser.
 
 The frontend build generates wiki exports in `dist` from `wikiContent.ts`, its
 article modules and the shared simulation definitions. Keep this generation step
