@@ -1,5 +1,9 @@
 import type { Object3D, Vector3 } from 'three';
-import { areaOf, enterRule, inBounds, isLandTile, nearestReachableTile, tileEquals, TILE_ORIGIN, type Tile } from '@sim';
+import { areaOf, enterRule, inBounds, isLandTile, nearestReachableTile, tileEquals, tileKey, TILE_ORIGIN, type Tile } from '@sim';
+import { HOME_JOIN, homeLand, homeLocation, homePath, homePoint } from '../../../../shared/sim/frontier/homeMap';
+import { PIECES } from '../../../../shared/sim/frontier/catalog';
+import { can } from '../../../../shared/sim/frontier/model';
+import type { FrontierSnapshot } from '../../../../shared/sim/frontier/snapshot';
 
 export interface HoverHint {
   title: string;
@@ -10,8 +14,8 @@ export interface HoverHint {
   tile?: Tile;
   /** Stable identity for choosing between avatars under the same pointer. */
   playerHex?: string;
-  /** Panels do not change clickedOtherObject, but still consume a click. */
-  click?: 'panel';
+  /** Panels and immediate actions consume a click without changing clickedOtherObject. */
+  click?: 'panel' | 'action';
 }
 
 export type HoverTarget = HoverHint | ((point: Vector3) => HoverHint | null) | null;
@@ -56,4 +60,37 @@ export function groundHover(tile: Tile, me: Tile, blocked: Set<number>, hasStick
   return tileEquals(destination, tile)
     ? { title: 'Walk here', action: 'Click to move', tile: destination }
     : { title: 'Walk nearby', action: 'Click to move to the highlighted spot', detail: 'The way to that spot is blocked', tone: 'muted', tile: destination };
+}
+
+/** Match the server's building and gate rules in Meadows; coordinates remain local. */
+export function meadowBlockedTiles(state: Pick<FrontierSnapshot, 'buildings' | 'plots'>, me: Tile & { region?: string }, identity: string): Set<string> {
+  const claims = new Map(state.plots.filter(p => p.claim).map(p => [p.id, p]));
+  return new Set(state.buildings.filter(b => {
+    if (b.region !== 'settlement') return false;
+    if (PIECES[b.piece]?.solid) return true;
+    if (b.piece !== 'door' && b.piece !== 'gate') return false;
+    const plot = claims.get(b.claim), claim = plot?.claim;
+    if (!plot || !claim) return false;
+    const inside = me.region === 'settlement' && me.x >= plot.x && me.x < plot.x + 16 && me.z >= plot.z && me.z < plot.z + 16;
+    return !inside && !can(claim, identity, 1) && !can(claim, identity, 2);
+  }).map(b => `${b.x},${b.z}`));
+}
+
+/** A pointer is in the shared home frame even while the player row uses district-local coordinates. */
+export function connectedGroundHover(tile: Tile, me: Tile & { region?: string }, blocked: Set<number>, meadowBlocked: Set<string>, hasStick: boolean, hasClub: boolean): HoverHint {
+  const region = me.region || 'bramblewild', target = homeLocation(tile);
+  if (region === 'bramblewild' && target.region === 'bramblewild') return groundHover(tile, me, blocked, hasStick, hasClub);
+  if (!homeLand(tile)) return { title: 'Water', action: 'Choose a spot on land', tone: 'muted', tile };
+  const rule = enterRule(hasStick, hasClub);
+  const path = homePath(homePoint(me, region), tile,
+    p => p.region === 'bramblewild' ? blocked.has(tileKey(p)) : meadowBlocked.has(`${p.x},${p.z}`),
+    (a, b) => b.region !== 'bramblewild' || rule(a.region === 'bramblewild' ? a : HOME_JOIN.bramblewild, b));
+  if (path) return { title: 'Walk here', action: 'Click to move', tile };
+  if (!hasStick && region === 'bramblewild' && areaOf(me) === 'grove') {
+    return { title: 'Thorny brambles', action: 'Carry a sturdy stick to cross', tone: 'muted', tile };
+  }
+  if (!hasClub && target.region === 'bramblewild' && ['boulders', 'boulder-line'].includes(areaOf(target))) {
+    return { title: 'Boulder boundary', action: 'Carry a stone club to cross', tone: 'muted', tile };
+  }
+  return { title: 'Path blocked', action: 'Choose a clear spot', detail: 'A building or obstacle blocks this route', tone: 'muted', tile };
 }

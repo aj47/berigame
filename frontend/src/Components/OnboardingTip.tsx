@@ -80,7 +80,7 @@ export const OnboardingTip = ({ goal, onDone }: { goal: Goal; onDone: () => void
   const vw = window.innerWidth, vh = window.innerHeight;
   const below = rect.top + rect.height / 2 < vh / 2;
   const cx = rect.left + rect.width / 2;
-  const width = Math.min(240, vw - 24);
+  const width = Math.min(210, vw - 24);
   const left = Math.max(12, Math.min(cx - width / 2, vw - width - 12));
   const arrowX = Math.max(14, Math.min(cx - left, width - 14));
   const bubble: React.CSSProperties = below

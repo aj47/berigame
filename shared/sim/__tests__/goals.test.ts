@@ -20,6 +20,20 @@ const input = (over: Partial<GoalInput> = {}): GoalInput => ({
 });
 
 describe('First Day goal chip', () => {
+  it('keeps guaranteed first-stick progress visible while harvesting or waiting', () => {
+    for (const xp of [0, 8, 16, 24]) {
+      const { goal } = firstDayGoal(input({ foragingXp: xp, done: ['pick-berry', 'eat-berry'] }));
+      expect(goal?.text).toContain(`${xp / 8}/4 harvests`);
+    }
+    const { goal } = firstDayGoal(input({ foragingXp: 24, done: ['pick-berry', 'eat-berry'], me: player({ harvestTreeId: TREE_SEEDS[0].id, harvestEndTick: 20 }) }));
+    expect(goal).toMatchObject({ text: 'Gather for a sturdy stick · 3/4 harvests', action: null });
+    expect(goal?.hint).toContain('Picking');
+  });
+
+  it('does not promise another guaranteed first stick after a player has passed level two', () => {
+    expect(firstDayGoal(input({ foragingXp: 32, done: ['pick-berry', 'eat-berry'] })).goal?.text).not.toContain('/4');
+    expect(firstDayGoal(input({ foragingXp: 24, done: ['pick-berry', 'eat-berry'], slots: bag('stick') })).goal?.id).toBe('wield-stick');
+  });
   it('starts with "Pick a berry" and taps to the nearest ripe tree', () => {
     const { goal } = firstDayGoal(input());
     expect(goal).toMatchObject({ id: 'pick-berry', text: 'Pick a berry', action: { kind: 'harvest', treeId: 3 } });

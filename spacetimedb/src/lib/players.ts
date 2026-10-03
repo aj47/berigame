@@ -64,7 +64,7 @@ export function releaseTree(ctx: Ctx, p: PlayerRow): void {
 }
 
 /** Stop walking, fighting, following, harvesting and any queued interaction. Mutates `p`. */
-export function clearInteractions(ctx: Ctx, p: PlayerRow): void {
+export function clearInteractions(ctx: Ctx, p: PlayerRow, preserveFrontierGather = false): void {
   p.targetX = undefined;
   p.targetZ = undefined;
   p.combatTarget = undefined;
@@ -72,6 +72,16 @@ export function clearInteractions(ctx: Ctx, p: PlayerRow): void {
   p.pending = Pending.None;
   p.pendingId = 0n;
   releaseTree(ctx, p);
+  // Frontier resource reservations live in generic public rows, with no player schema change.
+  // Keep this alongside the original tree release so movement, death and disconnect cancel both.
+  if (!preserveFrontierGather && ctx.db.frontierObject) {
+    for (const row of ctx.db.frontierObject.kind.filter('resource')) {
+      const resource = JSON.parse(row.data);
+      if (resource.harvest?.by !== hex(p.identity)) continue;
+      delete resource.harvest;
+      ctx.db.frontierObject.key.update({ ...row, data: JSON.stringify(resource) });
+    }
+  }
 }
 
 export function clearMovement(p: PlayerRow): void {

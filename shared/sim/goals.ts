@@ -16,6 +16,7 @@ import { DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, getItemDef, OBSIDIAN_ITEM_ID, STICK_I
 import { countItem } from './inventory';
 import { canCraft, getRecipe, harvestTicksFor, isBerryNode, NodeKind, regrowTicksFor } from './nodes';
 import { Pending, PlayerState, type Slot, type Tile } from './types';
+import { harvestXp, xpForLevel } from './skills';
 
 export type GoalStepId = 'pick-berry' | 'eat-berry' | 'find-stick' | 'wield-stick' | 'reach-coast'
   // M2, after First Day:
@@ -82,6 +83,8 @@ export interface GoalInput {
   tick: number;
   /** Whether this player may fight; without it the wield step is skipped. */
   canFight: boolean;
+  /** Optional authoritative progress for the guaranteed first Stick. */
+  foragingXp?: number;
   done: readonly string[];
   /** The Giant's row, if known (its state decides between fighting it and chipping obsidian). */
   giant?: { id: number; state: number } | null;
@@ -250,8 +253,12 @@ export function firstDayGoal(input: GoalInput): GoalResult {
         action: food !== -1 ? { kind: 'eat', slot: food } : null,
       });
     }
-    case 'find-stick':
-      return result(gatherGoal(step, 'Gather for a sturdy stick', 'First stick at Foraging level 2 (four harvests); then a 25% chance of spares', input));
+    case 'find-stick': {
+      const xp = input.foragingXp;
+      const first = xp !== undefined && xp < xpForLevel(2);
+      const progress = first ? ` · ${Math.max(0, Math.floor(xp / harvestXp(NodeKind.Berry)))}/${Math.ceil(xpForLevel(2) / harvestXp(NodeKind.Berry))} harvests` : '';
+      return result(gatherGoal(step, `Gather for a sturdy stick${progress}`, 'First stick at Foraging level 2 (four harvests); then a 25% chance of spares', input));
+    }
     case 'wield-stick': {
       const slot = slots.findIndex((s, i) => i < HOTBAR_SIZE && s?.itemId === STICK_ITEM_ID);
       return result({

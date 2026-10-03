@@ -1,0 +1,9 @@
+{
+  "onlinePlayers": 256,
+  "extraConnectionRejected": true,
+  "onlineRenewalAtCapacity": true,
+  "disconnectedSlotReused": true,
+  "ticksObservedAtCapacity": 10,
+  "admissionMs": 570,
+  "scope": "Isolated local SpacetimeDB, minimal world/online-player subscriptions; no production or browser rendering benchmark."
+}

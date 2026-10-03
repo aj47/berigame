@@ -9,6 +9,8 @@ import DriftwoodPile from './DriftwoodPile';
 import TideRock from './TideRock';
 import ObsidianOutcrop from './ObsidianOutcrop';
 import HarvestRing from '../../../fx/HarvestRing';
+import { approachWorldInteraction } from '../../../frontier/worldInteraction';
+import { holdState } from '../tapAssist';
 
 interface Props { node: Tree; tick: number; harvester: Player | null; }
 
@@ -26,13 +28,17 @@ const CoastNode = ({ node, tick, harvester }: Props) => {
   const onClick = (e: any) => {
     if (e.delta > 5) return;
     e.stopPropagation();
-    setClickedOtherObject({ connectionId: kind.name, e, harvestNodeId: node.id });
+    if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
+    const event = { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() };
+    approachWorldInteraction({ region: 'bramblewild', x: node.x, z: node.z }, () => {
+      setClickedOtherObject({ connectionId: kind.name, e: event, harvestNodeId: node.id });
+    }, 1);
   };
   // Seeded per id so the four piles and rocks do not look stamped.
   const rotation = ((node.id * 2.399) % (Math.PI * 2));
   const Model = node.kind === NodeKind.TideRock ? TideRock : node.kind === NodeKind.Obsidian ? ObsidianOutcrop : DriftwoodPile;
   return <group position={[wx, wy, wz]} userData={{ hoverTarget: {
-    title: kind.name, action: 'Click for gathering options', detail: disabled ? `${label} · you can wait here` : label, tone: disabled ? 'muted' : 'ready', radius: .9,
+    title: kind.name, action: 'Walk over for gathering options', click: 'panel', detail: disabled ? `${label} · you can wait here` : label, tone: disabled ? 'muted' : 'ready', radius: .9,
   } }}>
     <Model position={[0, 0, 0]} ripe={ripe} rotation={rotation} onClick={onClick} />
     {busy && endTick > 0 && <HarvestRing endTick={endTick} totalTicks={total} color={item?.color} y={1.55} size={0.95} />}

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useFrontier } from "./useFrontier";
-import { useInventoryRows, useMyPlayer, usePlayers } from "../spacetime/hooks";
+import { useInventoryRows, useMyPlayer, usePlayers, useNow } from "../spacetime/hooks";
 import { useGameActions } from "../spacetime/actions";
 import { getItemDef, levelForXp } from "@sim";
 import {
@@ -12,9 +12,14 @@ import {
   type Point,
 } from "../../../shared/sim/frontier/catalog";
 import type { Command } from "../../../shared/sim/frontier/engine";
-import { exportRecovery, restoreRecovery } from "./recovery";
 import "./frontier.css";
 import type { FrontierRequest } from "./navigation";
+import { useSettingsStore } from "../spacetime/stores/settingsStore";
+import HideGuidanceButton from "../Components/HideGuidanceButton";
+import { deadlineLabel, defaultPlot, missingMaterials, plotName, unlockHint } from "./panelModel";
+import { wikiUrl } from "../site/siteUrls";
+import { isHomeRegion } from "../../../shared/sim/frontier/homeMap";
+import { renewalPrice } from "../../../shared/sim/frontier/model";
 export type BuildDraft = {
   plot: string;
   moving?: string;
@@ -28,27 +33,13 @@ const cost = (items: Record<string, number>) =>
   Object.entries(items)
     .map(([k, v]) => `${v} ${getItemDef(k)?.name ?? k}`)
     .join(" · ");
-const when = (n: number) => new Date(n).toLocaleString();
-const tabs = [
-  "Journal",
-  "Land",
-  "Build",
-  "Craft",
-  "Wildlife",
-  "Skills",
-  "Harbour",
-  "Bag",
-] as const;
-const tabIcons: Record<(typeof tabs)[number], string> = {
-  Journal: "📖",
-  Land: "🏡",
-  Build: "🔨",
-  Craft: "🧰",
-  Wildlife: "🐾",
-  Skills: "✨",
-  Harbour: "⛵",
-  Bag: "🎒",
+const when = (n: number) => new Date(n).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const tabTitles: Record<FrontierRequest["tab"], string> = {
+  Journal: "Quests", Land: "Your land", Build: "Build", Craft: "Workshop",
+  Wildlife: "Wildlife", Skills: "Disciplines", Harbour: "Sailing", Bag: "Bag & storage",
 };
+const primaryTabs = ["Journal", "Land", "Craft"] as const;
+const moreTabs = ["Wildlife", "Skills", "Harbour", "Bag"] as const;
 export default function FrontierPanel({
   draft,
   onDraft,
@@ -71,6 +62,9 @@ export default function FrontierPanel({
     inventory = useInventoryRows(),
     players = usePlayers(),
     actions = useGameActions();
+  const showGuidance = useSettingsStore(s => s.showGuidance);
+  const now = useNow(60_000);
+  const ordersRef = useRef<HTMLDetailsElement>(null);
   const tab = request.tab,
     setTab = onTab;
   const [busy, setBusy] = useState(false),
@@ -89,17 +83,57 @@ export default function FrontierPanel({
     region = me.region || "bramblewild",
     profile = state.profile,
     myPlot = state.plots.find((p) => p.claim?.owner === id),
-    plot = state.plots.find((p) => p.id === (selected || myPlot?.id)),
+    plot = defaultPlot(state.plots, { ...me, region }, id, selected),
     myBoat = state.boats.find((b) => b.owner === id),
     aboard = state.boats.find((b) => b.crew.includes(id));
   const activeQuest = state.quests.find((q) => q.available && !q.complete),
     selectedContainer = state.containers.find((c) => c.id === storage),
     bag = inventory.filter((row) => row.owner.toHexString() === id);
+  const canBuild = !!plot?.claim && (plot.claim.owner === id || !!((plot.claim.permissions[id] ?? 0) & 1));
+  const plotRegion = isHomeRegion(region) ? "settlement" : region;
+  const visiblePlots = state.plots.filter(p => p.region === plotRegion);
+  const canWalkTo = (destination: string) => destination === region || (isHomeRegion(destination) && isHomeRegion(region));
+  const walkTo = (point: Point, destination = region) => isHomeRegion(destination) && isHomeRegion(region)
+    ? run({ action: "walk", id: destination, ...point })
+    : destination === region ? go(point) : undefined;
+  const claimPrice = FRONTIER.deed + FRONTIER.taxes[0];
+  const claimUnlocked = profile.quests.includes("tools");
+  const recipeInputs = (inputs: Record<string, number>) => Object.fromEntries(Object.entries(inputs).map(([item, amount]) =>
+    [item, profile.active.includes(2) && levelForXp(profile.xp[2]) >= 10 && amount >= 4 ? amount - 1 : amount]));
+  const materialHint = (inputs: Record<string, number>) => {
+    const missing = missingMaterials(inputs, bag);
+    return Object.keys(missing).length ? `Need ${cost(missing)}` : "";
+  };
+  const materials = (inputs: Record<string, number>) => <span className="frontier-materials">
+    {Object.entries(inputs).map(([item, required]) => {
+      const held = bag.reduce((total, row) => total + (row.itemId === item ? row.quantity : 0), 0);
+      return <small key={item} data-enough={held >= required} title={`${held} held, ${required} needed`}>
+        {getItemDef(item)?.name ?? item} · {held}/{required}
+      </small>;
+    })}
+  </span>;
+  const questReady = !!activeQuest && (activeQuest.handIn
+    ? !materialHint(activeQuest.handIn) && (activeQuest.id !== "cinder" || profile.discoveries.includes("cinder"))
+    : activeQuest.progress >= activeQuest.amount);
+  const atSteward = region === "settlement" && Math.max(Math.abs(me.x - 31), Math.abs(me.z - 64)) <= 4;
+  const questDestination = isHomeRegion(region) ? { ...state.regions.settlement.spawn, region: "settlement" } : PORTS.find(port => port.region === region);
+  const atQuestGiver = atSteward
+    || PORTS.some(port => port.region === region && Math.max(Math.abs(me.x - port.x), Math.abs(me.z - port.z)) <= 4);
+  const recipeHint = (recipe: typeof state.recipes[number]) => unlockHint(profile, recipe) || materialHint(recipeInputs(recipe.inputs));
+  const readyRecipes = state.recipes.filter(recipe => !recipeHint(recipe));
+  const laterRecipes = state.recipes.filter(recipe => !!recipeHint(recipe));
+  const pieces = Object.entries(PIECES);
+  const pieceHint = (piece: typeof PIECES[string]) => unlockHint(profile, piece) || materialHint(piece.cost);
+  const readyPieces = pieces.filter(([, piece]) => !pieceHint(piece));
+  const laterPieces = pieces.filter(([, piece]) => !!pieceHint(piece));
   async function run(command: Command) {
     if (busy) return;
     setBusy(true);
+    setError("");
     try {
       await actions.frontier(command);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Please try again.");
     } finally {
       setBusy(false);
     }
@@ -159,11 +193,32 @@ export default function FrontierPanel({
       )}
     </div>
   );
+  const renderRecipe = (recipe: typeof state.recipes[number]) => (
+    <article className="frontier-recipe" key={recipe.id}>
+      <div>
+        <h3>{getItemDef(recipe.output)?.name} <small>×{recipe.quantity}</small></h3>
+        {materials(recipeInputs(recipe.inputs))}
+        <small>{recipeHint(recipe) || (recipe.station === "harbour" ? "Make at the harbour" : recipe.station ? "Use the town workshop or your own station" : "Make anywhere")}</small>
+      </div>
+      {button("Make", { action: "craft", id: recipe.id }, !!recipeHint(recipe))}
+    </article>
+  );
+  const renderPiece = ([key, piece]: typeof pieces[number]) => (
+    <button key={key} disabled={!canBuild || !!pieceHint(piece)} onClick={() => {
+      onDraft({ plot: plot!.id, piece: key, rotation: 0 });
+      setOpen(false);
+    }}>
+      <strong>{piece.name}</strong>
+      {materials(piece.cost)}
+      {unlockHint(profile, piece) && <small>{unlockHint(profile, piece)}</small>}
+    </button>
+  );
   return (
     <>
-      {region !== "bramblewild" && showGoal && !draft && activeQuest && (
+      {region !== "bramblewild" && showGoal && showGuidance && !draft && activeQuest && (
+        <div className="frontier-goal">
         <button
-          className="frontier-goal"
+          className="frontier-goal-action"
           onClick={() => {
             setTab("Journal");
             setOpen(true);
@@ -173,11 +228,13 @@ export default function FrontierPanel({
           {activeQuest.title}
           <span>{activeQuest.text}</span>
         </button>
+        <HideGuidanceButton />
+        </div>
       )}
       {draft && (
         <div className="frontier-build-confirm">
           <strong>{PIECES[draft.piece]?.name}</strong>
-          <span>{cost(PIECES[draft.piece].cost)}</span>
+          {draft.moving ? <span>Moving this piece uses no materials.</span> : materials(PIECES[draft.piece].cost)}
           <p>
             {draft.point
               ? `Place at ${draft.point.x}, ${draft.point.z}`
@@ -214,54 +271,33 @@ export default function FrontierPanel({
       )}
       {open && (
         <section className="frontier-panel game-panel" aria-label="Settlements">
-          <header>
-            <div>
-              <div className="frontier-stats">
-                <span>
-                  <span aria-hidden="true">🪙</span> {profile.coins} coins
-                </span>
-                <span>
-                  <span aria-hidden="true">♥</span> {me.hp} HP
-                </span>
-              </div>
-              <h2>{tab}</h2>
-            </div>
-            <button
-              aria-label="Close settlements"
-              onClick={() => setOpen(false)}
-            >
-              ×
-            </button>
+          <header className="panel-heading">
+            <h2>{tabTitles[tab]}</h2>
+            <span className="frontier-balance">{profile.coins} coins</span>
+            <button className="close-button" aria-label="Close settlements" onClick={() => setOpen(false)}>×</button>
           </header>
           <nav aria-label="Settlement activities">
-            {tabs.map((t) => (
-              <button
-                key={t}
-                aria-pressed={tab === t}
-                onClick={() => setTab(t)}
-              >
-                <span aria-hidden="true">{tabIcons[t]}</span>
-                {t}
+            {primaryTabs.map(t => (
+              <button key={t} aria-pressed={tab === t || (t === "Land" && tab === "Build")} onClick={() => setTab(t)}>
+                {tabTitles[t]}
               </button>
             ))}
+            <select aria-label="More activities" value={moreTabs.includes(tab as typeof moreTabs[number]) ? tab : ""}
+              onChange={e => { if (e.target.value) setTab(e.target.value as FrontierRequest["tab"]); }}>
+              <option value="" disabled>More…</option>
+              {moreTabs.map(t => <option key={t} value={t}>{tabTitles[t]}</option>)}
+            </select>
           </nav>
-          <div className="frontier-content">
+          <div className="frontier-content" key={tab}>
             {error && <p role="alert">{error}</p>}
-            {region === "bramblewild" && (
+            {region === "bramblewild" && tab === "Journal" && (
               <article>
-                <h3>Start your settlement</h3>
-                <p>Find the Meadows sign beside the camp workshop.</p>
-                <button onClick={() => void actions.setTarget(22, 18)}>
-                  Walk to camp
-                </button>
-                {button(
-                  "Enter the Meadows",
-                  { action: "enter" },
-                  Math.max(Math.abs(me.x - 22), Math.abs(me.z - 18)) > 4,
-                )}
+                <h3>Meet your neighbours</h3>
+                <p>Follow the east harbour trail to the Meadows. The steward will help you earn your first home.</p>
+                {button("Walk to Meadows town", { action: "enter" })}
               </article>
             )}
-            {tab === "Journal" && region !== "bramblewild" && (
+            {tab === "Journal" && (
               <>
                 <article className="frontier-feature">
                   <small>NEXT QUEST</small>
@@ -276,45 +312,41 @@ export default function FrontierPanel({
                     <>
                       <div className="frontier-stats">
                         <span>
-                          {activeQuest.progress}/{activeQuest.amount} complete
+                          {activeQuest.handIn ? cost(activeQuest.handIn) : `${activeQuest.progress}/${activeQuest.amount} complete`}
                         </span>
                         <span>+{activeQuest.coins} coins</span>
                       </div>
                       <progress
                         aria-label={`${activeQuest.title} progress`}
-                        value={activeQuest.progress}
+                        value={activeQuest.handIn ? (questReady ? activeQuest.amount : 0) : activeQuest.progress}
                         max={activeQuest.amount}
                       />
-                      {button("Finish quest", {
-                        action: "quest",
-                        id: activeQuest.id,
-                      })}
+                      {questReady && <>
+                        {!atQuestGiver && (questDestination ? <button onClick={() => void walkTo(questDestination, questDestination.region)}>{isHomeRegion(region) ? "Return to the steward" : "Walk to the port"}</button> : <p className="frontier-hint">Dock at a port to finish this quest.</p>)}
+                        {button(activeQuest.handIn ? `Deliver · ${activeQuest.coins} coins` : activeQuest.coins ? `Collect ${activeQuest.coins} coins` : "Complete quest", { action: "quest", id: activeQuest.id }, !atQuestGiver)}
+                      </>}
                     </>
                   )}
-                  <div className="frontier-controls">
-                    {button("Meet the steward", {
-                      action: "talk",
-                      id: "steward",
-                    })}
-                    <button
-                      onClick={() => void go(state.regions.settlement.spawn)}
-                    >
-                      Walk to town
-                    </button>
-                    {button("Return to Bramblewild", { action: "return" })}
-                  </div>
+                  {activeQuest && !questReady && (
+                    <div className="frontier-controls">
+                      {activeQuest.id === "steward" ? <>
+                        {atSteward ? button("Talk to the steward", { action: "talk", id: "steward" }) : <button disabled={!isHomeRegion(region)} onClick={() => void walkTo(state.regions.settlement.spawn, "settlement")}>Walk to the steward</button>}
+                      </> : activeQuest.id === "order" ? <button onClick={() => { if (ordersRef.current) { ordersRef.current.open = true; ordersRef.current.querySelector("summary")?.focus(); } }}>View supply orders</button>
+                        : activeQuest.id === "shipwright" ? <button onClick={() => setTab("Harbour")}>Visit the shipwright</button>
+                        : <button onClick={() => setTab(
+                        ["deed", "upkeep"].includes(activeQuest.id) ? "Land" : ["shelter", "stable"].includes(activeQuest.id) ? "Build" : ["observe", "tame"].includes(activeQuest.id) ? "Wildlife" : "Craft"
+                      )}>{["deed", "upkeep"].includes(activeQuest.id) ? "Find your home" : ["shelter", "stable"].includes(activeQuest.id) ? "Choose a building piece" : ["observe", "tame"].includes(activeQuest.id) ? "Find wildlife" : "Open workshop"}</button>}
+                    </div>
+                  )}
                 </article>
-                <h3>Supply orders</h3>
-                <p>10 coins each · up to 60 daily</p>
-                {state.orders.map((o) => (
-                  <article className="frontier-row" key={o.id}>
+                <details ref={ordersRef}>
+                  <summary>Earn coins · supply orders</summary>
+                  <p className="frontier-hint">Deliver to the steward. 10 coins each, up to 60 daily.</p>
+                  {state.orders.map(o => <article className="frontier-row" key={o.id}>
                     <strong>{cost(o.inputs)}</strong>
-                    {button("Deliver · 10 coins", {
-                      action: "order",
-                      id: o.id,
-                    })}
-                  </article>
-                ))}
+                    {button("Deliver · 10 coins", { action: "order", id: o.id }, !!materialHint(o.inputs))}
+                  </article>)}
+                </details>
                 <details>
                   <summary>
                     All quests · {state.quests.filter((q) => q.complete).length}
@@ -340,213 +372,88 @@ export default function FrontierPanel({
             )}
             {tab === "Land" && (
               <>
-                <article>
-                  <h3>Your home</h3>
-                  <p>Pay weekly tax to keep your plot protected.</p>
-                  {!profile.recoveryReady && (
-                    <>
-                      <p className="frontier-hint">
-                        Back up your character before claiming land.
-                      </p>
-                      <button
-                        onClick={() =>
-                          void exportRecovery().catch((e) =>
-                            setError(e.message),
-                          )
-                        }
-                      >
-                        Export character recovery
-                      </button>
-                    </>
-                  )}
-                  <details>
-                    <summary>Tax &amp; recovery</summary>
-                    <p>
-                      Unpaid plots have three days’ grace before a capture
-                      challenge.
-                    </p>
-                    {profile.recoveryReady && (
-                      <button
-                        onClick={() =>
-                          void exportRecovery().catch((e) =>
-                            setError(e.message),
-                          )
-                        }
-                      >
-                        Replace recovery backup
-                      </button>
-                    )}
-                    <label className="frontier-file">
-                      Restore a character
-                      <input
-                        type="file"
-                        accept="application/json"
-                        onChange={(e) => {
-                          if (e.target.files?.[0])
-                            void restoreRecovery(e.target.files[0]).catch((e) =>
-                              setError(e.message),
-                            );
-                        }}
-                      />
-                    </label>
-                  </details>
-                </article>
-                <select
-                  aria-label="Plot"
-                  value={selected || myPlot?.id || ""}
-                  onChange={(e) => setSelected(e.target.value)}
-                >
-                  <option value="">Choose a plot</option>
-                  {state.plots.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.id} · {p.claim?.owner === id ? "your home" : p.status}
-                    </option>
-                  ))}
-                </select>
-                {plot && (
-                  <article>
-                    <h3>{plot.id}</h3>
-                    <div className="frontier-stats">
-                      <span>{plot.status}</span>
-                      <span>
-                        {plot.claim
-                          ? `${FRONTIER.sizes[plot.claim.tier]} × ${FRONTIER.sizes[plot.claim.tier]}`
-                          : "8 × 8"}{" "}
-                        tiles
-                      </span>
-                    </div>
-                    <button
-                      disabled={region !== plot.region}
-                      onClick={() => void go(plot.marker)}
-                    >
-                      Walk to marker
-                    </button>
-                    {!plot.claim &&
-                      button("Claim · 50 coins", {
-                        action: "claim",
-                        id: plot.id,
-                      })}
-                    {plot.claim && (
-                      <>
-                        <p>
-                          Paid through {when(plot.claim.paidUntil)}
-                          <br />
-                          Grace ends{" "}
-                          {when(plot.claim.paidUntil + FRONTIER.grace)}
-                        </p>
-                        {plot.claim.challenge && (
-                          <p>
-                            Capture opens {when(plot.claim.challenge.opens)}.
-                            Pay overdue tax before capture to retain ownership.
-                          </p>
-                        )}
-                        {button(
-                          `Pay a week · ${FRONTIER.taxes[plot.claim.tier]} coins`,
-                          {
-                            action: "tax",
-                            id: plot.id,
-                            quantity: 1,
-                          },
-                        )}
-                        {plot.claim.owner === id ? (
-                          <>
-                            {button(
-                              "Expand plot",
-                              { action: "upgrade", id: plot.id },
-                              plot.claim.tier === 2,
-                            )}
-                            <details>
-                              <summary>Share &amp; manage plot</summary>
-                              {permissionEditor()}
-                              {button("Abandon empty plot", {
-                                action: "abandon",
-                                id: plot.id,
-                              })}
-                            </details>
-                          </>
-                        ) : (
-                          button(
-                            "Announce capture challenge",
-                            { action: "challenge", id: plot.id },
-                            plot.status !== "vulnerable",
-                          )
-                        )}
-                        {plot.claim.challenge && (
-                          <>
-                            <p className="frontier-hint">
-                              Joining either side enables contest combat.
-                            </p>
-                            {button("Join defense", {
-                              action: "join_contest",
-                              id: plot.id,
-                              target: "defend",
-                            })}
-                            {button("Join attackers", {
-                              action: "join_contest",
-                              id: plot.id,
-                              target: "attack",
-                            })}
-                            <select
-                              value={helper}
-                              onChange={(e) => setHelper(e.target.value)}
-                              aria-label="Invite attacker"
-                            >
-                              <option value="">Choose a helper</option>
-                              {players
-                                .filter((p) => p.identity.toHexString() !== id)
-                                .map((p) => (
-                                  <option
-                                    key={p.identity.toHexString()}
-                                    value={p.identity.toHexString()}
-                                  >
-                                    {p.name}
-                                  </option>
-                                ))}
-                            </select>
-                            {button(
-                              "Invite attacker",
-                              {
-                                action: "invite_contest",
-                                id: plot.id,
-                                target: helper,
-                              },
-                              !helper,
-                            )}
-                          </>
-                        )}
-                      </>
-                    )}
-                  </article>
-                )}
+                {plot ? <article className="frontier-feature">
+                  <small>{plot.claim?.owner === id ? "YOUR HOME" : !plot.claim ? "AVAILABLE LAND" : "HOMESTEAD"}</small>
+                  <h3>{plotName(plot)}</h3>
+                  <p className="frontier-hint">{plot.claim ? FRONTIER.sizes[plot.claim.tier] : 8} × {plot.claim ? FRONTIER.sizes[plot.claim.tier] : 8} tiles · {plot.claim?.owner === id ? "Yours to build on" : plot.status}</p>
+                  <div className="frontier-controls">
+                    <button disabled={!canWalkTo(plot.region)} onClick={() => void walkTo(plot.marker, plot.region)}>Walk to plot</button>
+                    {canBuild && <button onClick={() => setTab("Build")}>Build on this plot</button>}
+                  </div>
+                  {!plot.claim && <>
+                    <p><strong>{claimPrice} coins</strong> · includes your first week</p>
+                    {myPlot ? <p className="frontier-hint">You already have a home. You can own one plot at a time.</p>
+                      : !claimUnlocked ? <>
+                        <p className="frontier-hint">Complete the steward’s first three quests to earn your deed.</p>
+                        <button onClick={() => setTab("Journal")}>Continue quests</button>
+                      </> : profile.coins < claimPrice ? <>
+                        <p className="frontier-hint">Earn {claimPrice - profile.coins} more coins to claim this plot.</p>
+                        <button onClick={() => setTab("Journal")}>Earn coins</button>
+                      </> : button(`Claim · ${claimPrice} coins`, { action: "claim", id: plot.id })}
+                    <details><summary>How ownership works</summary>
+                      <p>After the first week, upkeep costs {FRONTIER.taxes[0]} coins per week. Unpaid plots have three days’ grace before another player can challenge ownership.</p>
+                    </details>
+                  </>}
+                  {plot.claim && <>
+                    {plot.claim.owner === id || !!((plot.claim.permissions[id] ?? 0) & 4) ? <>
+                      <p>Upkeep paid through {deadlineLabel(plot.claim.paidUntil, now)}.</p>
+                      {button(`Pay a week · ${renewalPrice(plot.claim, now, 1)} coins`, { action: "tax", id: plot.id, quantity: 1 }, profile.coins < renewalPrice(plot.claim, now, 1))}
+                      {profile.coins < renewalPrice(plot.claim, now, 1) && <p className="frontier-hint">Need {renewalPrice(plot.claim, now, 1) - profile.coins} more coins. <button onClick={() => { setTab("Journal"); requestAnimationFrame(() => { if (ordersRef.current) ordersRef.current.open = true; }); }}>View supply orders</button></p>}
+                    </> : <p className="frontier-hint">Owned by {players.find(p => p.identity.toHexString() === plot.claim!.owner)?.name ?? "another neighbour"}.</p>}
+                    {plot.claim.challenge && <p role="status">Ownership is being challenged. Capture opens {when(plot.claim.challenge.opens)}. Pay overdue upkeep before capture to keep your home.</p>}
+                    <details><summary>Manage plot</summary>
+                      <p className="frontier-hint">{plot.status} · Grace ends {when(plot.claim.paidUntil + FRONTIER.grace)}.</p>
+                      {plot.claim.owner === id ? <>
+                        {button(plot.claim.tier === 2 ? "Fully expanded" : `Expand · from ${FRONTIER.upgradeCoins[plot.claim.tier]} coins`, { action: "upgrade", id: plot.id }, plot.claim.tier === 2)}
+                        {plot.claim.tier < 2 && <p className="frontier-hint">Also needs {plot.claim.tier === 0 ? "10 planks and 10 stone" : "20 planks and 20 bricks"}. Prepaid upkeep is adjusted for the larger plot.</p>}
+                        <h4>Give someone access</h4>
+                        {permissionEditor()}
+                        {button("Abandon empty plot", { action: "abandon", id: plot.id })}
+                      </> : button("Announce capture challenge", { action: "challenge", id: plot.id }, plot.status !== "vulnerable")}
+                      {plot.claim.challenge && <>
+                        <p className="frontier-hint">Joining either side enables contest combat.</p>
+                        {button("Join defense", { action: "join_contest", id: plot.id, target: "defend" })}
+                        {button("Join attackers", { action: "join_contest", id: plot.id, target: "attack" })}
+                        <select value={helper} onChange={e => setHelper(e.target.value)} aria-label="Invite attacker">
+                          <option value="">Choose a helper</option>
+                          {players.filter(p => p.identity.toHexString() !== id).map(p => <option key={p.identity.toHexString()} value={p.identity.toHexString()}>{p.name}</option>)}
+                        </select>
+                        {button("Invite attacker", { action: "invite_contest", id: plot.id, target: helper }, !helper)}
+                      </>}
+                    </details>
+                  </>}
+                </article> : <p>Land becomes available when you reach an island.</p>}
+                <details>
+                  <summary>Browse other plots</summary>
+                  <label>Choose a plot nearby
+                    <select aria-label="Plot" value={visiblePlots.some(p => p.id === plot?.id) ? plot!.id : ""} onChange={e => { setSelected(e.target.value); }}>
+                      <option value="" disabled>Choose a plot</option>
+                      {visiblePlots.map(p => <option key={p.id} value={p.id}>{plotName(p)} · {p.claim?.owner === id ? "your home" : p.status}</option>)}
+                    </select>
+                  </label>
+                  {myPlot && myPlot.id !== plot?.id && <button onClick={() => setSelected(myPlot.id)}>Show my home</button>}
+                </details>
+
               </>
             )}
             {tab === "Build" && (
               <>
-                {!myPlot ? (
-                  <p>
-                    Choose a plot in Land. You need ownership or building
-                    access.
-                  </p>
-                ) : (
-                  <p>Choose a piece, then tap the ground to preview.</p>
-                )}
-                <div className="frontier-grid">
-                  {Object.entries(PIECES).map(([key, piece]) => (
-                    <button
-                      key={key}
-                      disabled={!plot?.claim}
-                      onClick={() => {
-                        onDraft({ plot: plot!.id, piece: key, rotation: 0 });
-                        setOpen(false);
-                      }}
-                    >
-                      <strong>{piece.name}</strong>
-                      <small>{cost(piece.cost)}</small>
-                      {piece.level && <small>Building Lv. {piece.level}</small>}
-                    </button>
-                  ))}
-                </div>
-                <h3>Placed pieces</h3>
+                <div className="frontier-subnav"><button onClick={() => setTab("Land")}>← Your land</button>{plot && <span>{plotName(plot)}</span>}</div>
+                {!canBuild ? <article>
+                  <h3>Start with a place of your own</h3>
+                  <p>Claim a plot, or ask a neighbour for building access.</p>
+                  <button onClick={() => setTab("Land")}>Find a plot</button>
+                </article> : <>
+                  <p>Choose a piece, then tap your plot to place it.</p>
+                  <p className="frontier-hint">Materials show what you have / what you need.</p>
+                  {readyPieces.length ? <div className="frontier-grid">{readyPieces.map(renderPiece)}</div> : <article>
+                    <h3>Gather building materials</h3>
+                    <p>Start with timber for a floor, walls and a roof.</p>
+                    <button onClick={() => setTab("Craft")}>Find materials</button>
+                  </article>}
+                  {laterPieces.length > 0 && <details><summary>More building pieces · {laterPieces.length}</summary><div className="frontier-grid">{laterPieces.map(renderPiece)}</div></details>}
+                </>}
+                {state.buildings.some(b => b.claim === plot?.id) && <h3>Placed pieces</h3>}
                 {state.buildings
                   .filter((b) => b.claim === plot?.id)
                   .map((b) => (
@@ -589,41 +496,28 @@ export default function FrontierPanel({
             )}
             {tab === "Craft" && (
               <>
+                {readyRecipes.length ? <>
+                  <p className="frontier-hint">You can make these now. Materials show what you have / what you need.</p>
+                  {readyRecipes.map(renderRecipe)}
+                </> : <article className="frontier-feature">
+                  <h3>Gather a few supplies</h3>
+                  <p>Collect timber, stone and plant fibre nearby to make your first tools.</p>
+                  <div className="frontier-controls">
+                    {["timber", "stone"].map(item => state.resources.filter(n => n.region === plotRegion && n.item === item).sort((a, b) =>
+                      Number(!!a.harvest || (a.regrowsAt ?? 0) > now) - Number(!!b.harvest || (b.regrowsAt ?? 0) > now)
+                      || Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z))[0]).filter((n): n is NonNullable<typeof n> => !!n).map(n => <button key={n.id}
+                      onClick={() => void walkTo({ x: n.x - 1, z: n.z }, n.region)}>Find {getItemDef(n.item)?.name.toLowerCase()}</button>)}
+                  </div>
+                </article>}
+                {laterRecipes.length > 0 && <details><summary>More recipes · {laterRecipes.length}</summary>{laterRecipes.map(renderRecipe)}</details>}
                 <details>
                   <summary>Gather nearby</summary>
-                  {state.resources
-                    .filter((n) => n.region === region)
-                    .map((n) => (
-                      <article className="frontier-row" key={n.id}>
-                        <strong>
-                          {getItemDef(n.item)?.name} · {n.x},{n.z}
-                        </strong>
-                        <button onClick={() => void go({ x: n.x - 1, z: n.z })}>
-                          Walk here
-                        </button>
-                        {button("Gather", { action: "gather", id: n.id })}
-                      </article>
-                    ))}
+                  {state.resources.filter(n => n.region === plotRegion).map(n => <article className="frontier-row" key={n.id}>
+                    <strong>{getItemDef(n.item)?.name}</strong>
+                    <button onClick={() => void walkTo({ x: n.x - 1, z: n.z }, n.region)}>Walk here</button>
+                    {button("Gather", { action: "gather", id: n.id })}
+                  </article>)}
                 </details>
-                <h3>Recipes</h3>
-                {state.recipes.map((recipe) => (
-                  <article className="frontier-recipe" key={recipe.id}>
-                    <div>
-                      <h3>
-                        {getItemDef(recipe.output)?.name}{" "}
-                        <small>×{recipe.quantity}</small>
-                      </h3>
-                      <p>{cost(recipe.inputs)}</p>
-                      <small>
-                        {recipe.station ?? "Craft by hand"}
-                        {recipe.discipline !== undefined
-                          ? ` · ${DISCIPLINES[recipe.discipline]} ${recipe.level}`
-                          : ""}
-                      </small>
-                    </div>
-                    {button("Craft", { action: "craft", id: recipe.id })}
-                  </article>
-                ))}
               </>
             )}
             {tab === "Wildlife" && (
@@ -699,7 +593,12 @@ export default function FrontierPanel({
             )}
             {tab === "Skills" && (
               <>
-                <p>Pick two disciplines for advanced abilities.</p>
+                <p>Choose two active disciplines to use their perks. All five keep earning XP.</p>
+                <details><summary>How disciplines relate to skills</summary>
+                  <p>Skills &amp; techniques tracks island gathering and camp abilities. Disciplines track Meadows activities and can improve combat, crafting and companions.</p>
+                  <p>Your existing skill and adventure XP gives disciplines a starting boost the first time you use a Meadows activity. After that, their XP grows separately.</p>
+                  <a href={wikiUrl('frontier-disciplines')} target="_blank" rel="noreferrer">Discipline guide ↗</a>
+                </details>
                 {DISCIPLINES.map((name, i) => (
                   <article key={name}>
                     <div className="frontier-row">

@@ -17,14 +17,14 @@
   overflow: hidden;
 }
 .frontier-panel header {
-  padding: 20px 22px 12px;
+  padding: 14px 16px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
 }
 .frontier-panel h2 {
-  font: 32px Georgia;
+  font: 23px Georgia;
   margin: 2px 0;
 }
 .frontier-panel h3 {
@@ -38,9 +38,9 @@
 }
 .frontier-panel nav {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1fr 1fr 1fr 0.9fr;
   gap: 4px;
-  padding: 0 16px 12px;
+  padding: 0 12px 10px;
   flex-shrink: 0;
 }
 .frontier-panel nav button {
@@ -48,17 +48,47 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
   gap: 2px;
   margin: 0;
-  padding: 7px 4px;
+  padding: 8px 4px;
   min-width: 0;
-  min-height: 44px;
+  min-height: 36px;
   font-size: 12px;
   line-height: 1.3;
 }
-.frontier-panel nav button > span {
-  font-size: 17px;
+.frontier-panel nav select {
+  margin: 0;
+  padding: 6px 3px;
+  font: 12px/1.3 system-ui;
+  min-width: 0;
+  height: 36px;
+  border-color: #ccd3b9;
+  background: #f6f8e9;
+}
+.frontier-panel .frontier-balance {
+  margin-left: auto;
+  margin-right: 10px;
+  color: #647452;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.frontier-panel .frontier-subnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.frontier-panel .frontier-subnav button {
+  margin-left: 0;
+  border: 0;
+  background: transparent;
+  padding-left: 0;
+}
+.frontier-panel .frontier-claim-setup {
+  padding: 12px 0 0;
+  margin-top: 12px;
+  border-top: 1px solid #dfe1cb;
 }
 .frontier-content {
   padding: 0 18px 24px;
@@ -70,7 +100,7 @@
   background: #ffffffa3;
   border: 1px solid #dfe1cb;
   border-radius: 12px;
-  padding: 14px;
+  padding: 12px;
   margin: 10px 0;
 }
 .frontier-panel .frontier-feature {
@@ -90,7 +120,8 @@
   margin: 3px;
   min-height: 40px;
 }
-.frontier-panel button[aria-pressed="true"] {
+.frontier-panel button[aria-pressed="true"],
+.ui-group .frontier-panel nav button[aria-pressed="true"] {
   background: #315a48;
   color: #fff;
 }
@@ -164,6 +195,15 @@
   font-size: 12px;
   color: #566c53;
 }
+.frontier-materials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin: 4px 0;
+}
+.frontier-materials small { font: 12px/1.4 system-ui; letter-spacing: 0; color: #526647; }
+.frontier-materials small[data-enough="false"] { color: #93492e; }
+.frontier-build-confirm .frontier-materials { display: flex; }
 .frontier-storage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 88px;
@@ -222,17 +262,30 @@
   max-width: min(420px, calc(100% - 48px));
   background: #fffaebef;
   border: 1px solid #d2d6bd;
-  border-radius: 16px;
-  padding: 15px 20px;
+  border-radius: 9px;
+  padding: 9px 32px 9px 11px;
   text-align: left;
   color: #294739;
-  font: 20px Georgia;
-  box-shadow: 0 6px 24px #14332330;
+  font: 15px Georgia;
+  box-shadow: 0 2px 8px #14332320;
 }
+.frontier-goal-action {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+.frontier-goal-action:hover:enabled { background: transparent; }
 .frontier-goal small,
 .frontier-goal span {
   display: block;
-  font: 12px/1.5 system-ui;
+  font: 11px/1.4 system-ui;
   margin: 4px 0;
 }
 .frontier-goal small {
@@ -269,11 +322,11 @@
 .frontier-label {
   pointer-events: none;
   white-space: nowrap;
-  background: #fff8e1e8;
-  padding: 3px 7px;
-  border-radius: 6px;
-  color: #2c493c;
-  font: 11px system-ui;
+  background: rgba(28, 36, 30, .78);
+  padding: 3px 6px;
+  border-radius: 5px;
+  color: #fff3d0;
+  font: 600 11px/1.3 system-ui, sans-serif;
 }
 @media (max-width: 540px) {
   .frontier-panel {
@@ -303,25 +356,27 @@
   pointer-events: auto;
   padding: 0;
   top: calc(max(16px, env(safe-area-inset-top)) + 56px);
-  bottom: 18px;
+  bottom: auto;
   right: max(18px, env(safe-area-inset-right));
   width: min(420px, calc(100% - 36px));
-  max-height: none;
+  max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - 74px);
   border-color: var(--line);
   background: var(--panel-surface);
   color: var(--ink);
   border-radius: 14px;
 }
 .frontier-world-action {
+  position: relative;
   pointer-events: auto;
   white-space: nowrap;
-  padding: 5px 9px;
+  min-height: 24px;
+  padding: 3px 6px;
   border: 1px solid #ae9b70;
   border-radius: 7px;
   background: #fff5dce8;
   color: #3a5139;
   font:
-    12px Georgia,
+    11px/1.3 Georgia,
     serif;
   cursor: pointer;
   box-shadow: 0 2px 6px #283b2420;
@@ -330,12 +385,34 @@
   background: #fff9e9;
   border-color: #557248;
 }
+.frontier-plot-label {
+  padding: 3px 6px;
+  border-color: #83956b;
+  border-radius: 7px;
+  background: #f4efd9ed;
+  font: 600 10px/1.3 system-ui, sans-serif;
+  box-shadow: 0 2px 8px #29412924;
+}
+.frontier-sign-label {
+  transform: translateX(-50%);
+}
+@media (pointer: coarse) {
+  .frontier-world-action::after {
+    content: "";
+    position: absolute;
+    left: -3px;
+    right: -3px;
+    top: 50%;
+    height: 44px;
+    transform: translateY(-50%);
+  }
+}
 .ui-group .frontier-goal {
   pointer-events: auto;
   bottom: 24px;
   left: 24px;
-  max-width: 280px;
-  font-size: 18px;
+  max-width: 240px;
+  font-size: 15px;
 }
 .ui-group .frontier-build-confirm {
   pointer-events: auto;
@@ -343,21 +420,21 @@
 @media (max-width: 900px), (max-height: 500px) {
   .ui-group .frontier-panel.game-panel {
     top: 84px;
-    bottom: calc(var(--hud-bottom) + var(--dock-height) + var(--dock-gap));
+    bottom: auto;
     left: 50%;
     right: auto;
     transform: translateX(-50%);
     width: calc(100% - var(--hud-left) - var(--hud-right));
     max-width: 480px;
-    max-height: none;
+    max-height: calc(100dvh - 84px - var(--hud-bottom) - var(--dock-height) - var(--dock-gap));
   }
   .ui-group .frontier-goal {
     left: var(--hud-left);
     top: 88px;
     bottom: auto;
     max-width: min(260px, calc(100% - 108px));
-    padding: 10px 12px;
-    font-size: 15px;
+    padding: 8px 32px 8px 10px;
+    font-size: 13px;
   }
   .ui-group .frontier-goal span {
     display: none;
@@ -404,6 +481,6 @@
     max-width: 640px;
   }
   .frontier-panel nav {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

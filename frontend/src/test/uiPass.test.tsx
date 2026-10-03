@@ -20,6 +20,7 @@ const mock = vi.hoisted(() => ({
 vi.mock("../spacetime/hooks", () => ({
   useInventoryRows: () => mock.rows,
   useMyPlayer: () => mock.player,
+  useMySkills: () => ({ foragingXp: 16 }),
   useTick: () => 100,
   useTrees: () => mock.trees,
   useGiants: () => [],
@@ -68,6 +69,9 @@ describe("settings panel", () => {
     expect(screen.getByRole("radio", { name: "Low" })).toHaveAttribute("aria-checked", "true");
     fireEvent.click(screen.getByLabelText("Show name plates"));
     expect(useSettingsStore.getState().showNameplates).toBe(false);
+    fireEvent.click(screen.getByLabelText("Show world labels"));
+    fireEvent.click(screen.getByLabelText("Show tips and quest reminders"));
+    expect(JSON.parse(localStorage.getItem("berigame.settings.v1")!)).toMatchObject({ showWorldLabels: false, showGuidance: false });
     fireEvent.change(screen.getByLabelText("Sensitivity"), { target: { value: "1.6" } });
     expect(useSettingsStore.getState().cameraSensitivity).toBe(1.6);
   });
@@ -195,6 +199,23 @@ describe("onboarding tips and the First Day celebration", () => {
     expect(screen.getByText(/walk to a berry tree/)).toBeInTheDocument();
     fireEvent.pointerDown(document.body);
     expect(screen.queryByText(/walk to a berry tree/)).not.toBeInTheDocument();
+  });
+
+  it("hides guidance without starting an action, stays hidden after remount, and restores from Settings", () => {
+    mock.startHarvest.mockClear();
+    const view = render(<GoalChip visible />);
+    const progress = [...useFirstDayStore.getState().done];
+    fireEvent.click(screen.getByRole('button', { name: 'Hide tips and quest reminders' }));
+    expect(view.container).toBeEmptyDOMElement();
+    expect(mock.startHarvest).not.toHaveBeenCalled();
+    expect(useFirstDayStore.getState().activeTip).toBeNull();
+    expect(useFirstDayStore.getState().done).toEqual(progress);
+    expect(JSON.parse(localStorage.getItem('berigame.settings.v1')!).showGuidance).toBe(false);
+    view.unmount();
+    render(<><GoalChip visible /><SettingsPanel open onClose={() => {}} /></>);
+    expect(screen.queryByRole('button', { name: /Pick a berry/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Show tips and quest reminders'));
+    expect(screen.getByRole('button', { name: /Pick a berry/ })).toBeInTheDocument();
   });
 
   it("celebrates First Day when it completes, once", () => {

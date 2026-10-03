@@ -21,7 +21,9 @@ export function subscribeFrontier(
     const self = [...conn.db.player.iter()].find(
       (p) => p.identity.toHexString() === identity,
     );
-    const region = self?.region || "bramblewild";
+    const actualRegion = self?.region || "bramblewild";
+    // Both districts share a scene; retain Meadows geometry across the walking seam.
+    const region = actualRegion === "bramblewild" ? "settlement" : actualRegion;
     if (
       current === region ||
       !["bramblewild", "settlement", "reedwake", "cinder", "sea"].includes(
@@ -35,7 +37,7 @@ export function subscribeFrontier(
       .subscriptionBuilder()
       .onError(onError)
       .subscribe(
-        ["building", "crop", "drop"].map(
+        ["building", "crop", "drop", "resource"].map(
           (kind) =>
             `SELECT * FROM frontier_object WHERE kind = '${kind}' AND region = '${region}'`,
         ),

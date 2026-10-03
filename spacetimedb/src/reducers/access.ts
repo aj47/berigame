@@ -2,6 +2,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { requireOwner } from '../lib/access';
 import { clearInteractions, sameId } from '../lib/players';
+import { hasWorldSpace, MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
 
 /** Only the publisher captured during init can configure admission. */
 export const configureAccess = spacetimedb.reducer(
@@ -25,10 +26,8 @@ export const grantAgent = spacetimedb.reducer(
       throw new SenderError('a fresh agent identity is required');
     }
     const now = ctx.timestamp.microsSinceUnixEpoch;
-    if (ctx.db.playerGrant.count() >= 10000n) throw new SenderError('world permit capacity reached');
-    let active = 0;
-    for (const grant of ctx.db.playerGrant.iter()) if (grant.agent && grant.expiresAtMicros > now) active++;
-    if (active >= 32) throw new SenderError('agent capacity reached');
+    if (ctx.db.playerGrant.count() >= BigInt(MAX_STORED_CHARACTERS)) throw new SenderError('world character capacity reached');
+    if (!hasWorldSpace(ctx.db.player.iter())) throw new SenderError('world is full');
     ctx.db.playerGrant.insert({ identity, issuer: ctx.sender, agent: true,
       expiresAtMicros: now + BigInt(lifetimeSeconds) * 1_000_000n, combat, chat });
   },
@@ -49,11 +48,9 @@ export const renewGrant = spacetimedb.reducer(
     if (!grant || !grant.agent || !sameId(grant.issuer, ctx.sender)) throw new SenderError('no renewable permit for this identity');
     if (grant.expiresAtMicros === 0n) throw new SenderError('this permit was revoked');
     const now = ctx.timestamp.microsSinceUnixEpoch;
-    if (grant.expiresAtMicros <= now) {
-      let active = 0;
-      for (const other of ctx.db.playerGrant.iter()) if (other.agent && other.expiresAtMicros > now) active++;
-      if (active >= 32) throw new SenderError('agent capacity reached');
-    }
+    // A player already online can always extend their permit at a full world.
+    const player = ctx.db.player.identity.find(identity);
+    if (!hasWorldSpace(ctx.db.player.iter(), !!player?.online)) throw new SenderError('world is full');
     ctx.db.playerGrant.identity.update({ ...grant, expiresAtMicros: now + BigInt(lifetimeSeconds) * 1_000_000n });
   },
 );

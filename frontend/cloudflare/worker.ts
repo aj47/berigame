@@ -1,9 +1,11 @@
+import { requestLane, MAX_AGENT_SESSIONS, REQUEST_BUDGET, JOIN_BUDGET, NETWORK_JOIN_BUDGET, RENEWAL_BUDGET, CHARACTER_RENEWAL_BUDGET } from '../agent-api/admissionPolicy';
+import { MAX_ONLINE_PLAYERS, MAX_STORED_CHARACTERS } from '../../shared/sim/admission';
 import { sealRecovery, openRecovery } from '../agent-api/recovery';
 import './codecs';
 import { DurableObject } from 'cloudflare:workers';
 import { timingSafeEqual } from 'node:crypto';
 import { ACTIONS, openapi, validateAction, validateObject } from '../agent-api/contract';
-import { ApiError, digest, secret, type Invite } from '../agent-api/portable';
+import { admissionError, ApiError, digest, secret, type Invite } from '../agent-api/portable';
 import { createGameService, deadline, type Credential, type GameSession } from '../agent-api/game';
 import { openCloudflareSocket } from './socket';
 import { issueRenewal, lookupRenewal, MAX_RENEWALS, renewedElsewhere, rotateRenewal, visitEnded, type RenewalRow, type RenewalStore } from '../agent-api/renewal';
@@ -99,12 +101,15 @@ export default {
       if (url.pathname.startsWith('/api/admin/')) { if (!isAdmin(request, env)) throw unauthorized(); }
       else if (!publicRead && !(request.method === 'POST' && [ `${PREFIX}/sessions`, '/api/play/v1/sessions' ].includes(url.pathname))) bearer(request);
       const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
-      if (!(await env.EDGE_LIMIT.limit({ key: `berigame-beta:${ip}` })).success) {
+      // A shared network is not one player. Bearers are authenticated again in the coordinator.
+      const credential = request.headers.get('Authorization');
+      const edgeKey = credential ? `credential:${digest(credential)}` : `network:${ip}`;
+      if (!(await env.EDGE_LIMIT.limit({ key: `berigame-beta:${edgeKey}` })).success) {
         throw new ApiError(429, 'rate_limited', 'Slow down and honor Retry-After.', 60);
       }
       return await env.AGENT_GATEWAY.get(env.AGENT_GATEWAY.idFromName('beta-v1')).fetch(request);
     } catch (error) {
-      const safe = error instanceof ApiError ? error : unavailable();
+      const safe = admissionError(error) ?? unavailable();
       return send(safe.status, errorBody(safe), safe.retryAfter);
     }
   },
@@ -118,7 +123,9 @@ export class AgentGateway extends DurableObject<Env> {
   private opening = new Map<string, Promise<GameSession>>();
   private busy = new Set<string>();
   private reaping?: Promise<void>;
+  private lastReaped = 0;
   private inflight = 0;
+  private joining = 0;
   private renewing = new Set<string>();
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -128,6 +135,9 @@ export class AgentGateway extends DurableObject<Env> {
     sql.exec('CREATE INDEX IF NOT EXISTS recovery_session ON recoveries(session_id)');
     sql.exec('CREATE TABLE IF NOT EXISTS invites (key TEXT PRIMARY KEY, kind TEXT NOT NULL, expires_at INTEGER NOT NULL, config TEXT NOT NULL)');
     sql.exec("CREATE TABLE IF NOT EXISTS sessions (key TEXT PRIMARY KEY, id TEXT NOT NULL, ip TEXT NOT NULL, kind TEXT NOT NULL, expires_at INTEGER NOT NULL, last_seen INTEGER NOT NULL, config TEXT NOT NULL, credential TEXT, state TEXT NOT NULL, actions_count INTEGER NOT NULL DEFAULT 0)");
+    sql.exec('CREATE INDEX IF NOT EXISTS sessions_kind ON sessions(kind)');
+    sql.exec('CREATE INDEX IF NOT EXISTS sessions_id ON sessions(id)');
+    sql.exec('CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires_at)');
     sql.exec('CREATE TABLE IF NOT EXISTS receipts (session_key TEXT NOT NULL, key TEXT NOT NULL, fingerprint TEXT NOT NULL, status INTEGER NOT NULL, body TEXT NOT NULL, PRIMARY KEY (session_key, key))');
     sql.exec('CREATE TABLE IF NOT EXISTS buckets (key TEXT PRIMARY KEY, tokens REAL NOT NULL, updated INTEGER NOT NULL, expires_at INTEGER NOT NULL)');
     sql.exec('CREATE TABLE IF NOT EXISTS daily (day TEXT PRIMARY KEY, joins INTEGER NOT NULL DEFAULT 0, requests INTEGER NOT NULL DEFAULT 0)');
@@ -150,11 +160,17 @@ export class AgentGateway extends DurableObject<Env> {
       removeIdentity: identity => { sql.exec('DELETE FROM renewals WHERE identity = ?', identity); },
     };
   }
-  private humanCapacity(ip: string) {
-    if (this.count("SELECT COUNT(*) AS n FROM sessions WHERE kind = 'human'") >= 16
-      || this.count('SELECT COUNT(*) AS n FROM sessions WHERE ip = ?', ip) >= 4) {
-      throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
+  private sessionCapacity(kind: Kind) {
+    // Browser visit records are credentials, not occupied world slots. The world
+    // enforces connected characters atomically in clientConnected.
+    const limit = kind === 'agent' ? MAX_AGENT_SESSIONS : MAX_STORED_CHARACTERS;
+    if (this.count('SELECT COUNT(*) AS n FROM sessions WHERE kind = ?', kind) >= limit) {
+      throw new ApiError(429, kind === 'agent' ? 'agent_capacity' : 'visit_capacity',
+        kind === 'agent' ? 'All agent connections are in use. Try again after a session ends.' : 'The sign-in service is busy. Try again shortly.', 30);
     }
+  }
+  private takeRenewal(identity: string, now: number) {
+    this.take(`renew:${identity}`, CHARACTER_RENEWAL_BUDGET.burst, CHARACTER_RENEWAL_BUDGET.perSecond, now);
   }
   private count(query: string, ...args: (string | number | null)[]) { return this.one<{ n: number }>(query, ...args)?.n ?? 0; }
   private take(key: string, capacity: number, perSecond: number, now: number) {
@@ -217,19 +233,23 @@ export class AgentGateway extends DurableObject<Env> {
     }
     this.purge(row.key);
   }
-  private async reap() {
+  private async reap(force = false) {
     if (this.reaping) return this.reaping;
+    if (!force && Date.now() - this.lastReaped < 30_000) return;
     this.reaping = (async () => {
       const now = Date.now();
       const rows = this.ctx.storage.sql.exec<SessionRow>("SELECT * FROM sessions WHERE expires_at <= ? OR state = 'closing' OR (kind = 'agent' AND last_seen <= ?) OR (state = 'pending' AND last_seen <= ?)", now, now - IDLE_MS, now - 30_000).toArray();
-      for (const row of rows) { try { await this.remove(row); } catch { /* Retry; the permit also expires in SpacetimeDB. */ } }
+      for (const row of rows) {
+        if (row.state === 'active' && row.credential && this.renewing.has((JSON.parse(row.credential) as Credential).identity)) continue;
+        if (row.kind === 'human' && row.state === 'active' && row.expires_at <= now) { this.purge(row.key); continue; }
+        try { await this.remove(row); } catch { /* Retry; the permit also expires in SpacetimeDB. */ } }
       this.ctx.storage.sql.exec('DELETE FROM invites WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM renewals WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM recoveries WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM buckets WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM daily WHERE day < ?', new Date(now - 7 * 86400_000).toISOString().slice(0, 10));
     })();
-    try { await this.reaping; } finally { this.reaping = undefined; }
+    try { await this.reaping; this.lastReaped = Date.now(); } finally { this.reaping = undefined; }
   }
   private async rest() {
     if (this.inflight !== 0 || this.connecting || this.opening.size) return;
@@ -239,17 +259,21 @@ export class AgentGateway extends DurableObject<Env> {
     if (this.count('SELECT COUNT(*) AS n FROM sessions')) await this.ctx.storage.setAlarm(Date.now() + 30_000);
     else await this.ctx.storage.deleteAlarm();
   }
-  async alarm() { await this.reap(); await this.rest(); }
+  async alarm() { await this.reap(true); await this.rest(); }
 
   async fetch(request: Request): Promise<Response> {
+    const path = new URL(request.url).pathname;
+    const lane = requestLane(path, request.method);
     this.inflight++;
+    if (lane === 'join') this.joining++;
     try {
-      if (this.inflight > 32) throw new ApiError(429, 'capacity', 'Request capacity reached.', 2);
+      if (this.inflight > 128) throw new ApiError(429, 'capacity', 'The sign-in service is busy. Retry shortly.', 2);
+      // Leave room for renewals and existing agents during a burst of new joins.
+      if (lane === 'join' && this.joining > 32) throw new ApiError(429, 'join_busy', 'Players are joining right now. Retry shortly.', 2);
       const now = Date.now();
-      const path = new URL(request.url).pathname;
       const ip = digest(request.headers.get('CF-Connecting-IP') ?? 'local');
-      this.take('global', 200, 20, now);
-      this.take(`ip:${ip}`, 60, 2, now);
+      const budget = lane === 'join' ? JOIN_BUDGET : lane === 'renew' ? RENEWAL_BUDGET : REQUEST_BUDGET;
+      this.take(`global:${lane}`, budget.burst, budget.perSecond, now);
       await this.reap();
       const day = new Date(now).toISOString().slice(0, 10);
       this.ctx.storage.sql.exec('INSERT OR IGNORE INTO daily (day) VALUES (?)', day);
@@ -280,36 +304,30 @@ export class AgentGateway extends DurableObject<Env> {
         this.ctx.storage.sql.exec('INSERT INTO invites VALUES (?, ?, ?, ?)', digest(code), value.kind, invite.expiresAt, JSON.stringify(invite));
         return send(201, { code, kind: value.kind, expiresAt: new Date(invite.expiresAt).toISOString(), permissions: { combat: invite.combat, chat: invite.chat } });
       }
-      if (this.count('SELECT requests AS n FROM daily WHERE day = ?', day) >= 50000) throw new ApiError(429, 'daily_capacity', 'The beta has reached its daily request budget. Try tomorrow.', 3600);
       this.ctx.storage.sql.exec('UPDATE daily SET requests = requests + 1 WHERE day = ?', day);
       if (request.method === 'GET' && [PREFIX, `${PREFIX}/`].includes(path)) {
         let ready = false;
         try { ready = (await this.game()).ready(); } catch { /* Public status is safe without credentials configured. */ }
         return send(200, { name: 'BeriGame', version: 1, ready, onboarding: '/agent', openapi: `${PREFIX}/openapi.json`,
-          access: 'open beta', pollIntervalMs: 1000, actionIntervalMs: 1000, idleTimeoutSeconds: 600 });
+          access: 'open beta', pollIntervalMs: 1000, actionIntervalMs: 1000, idleTimeoutSeconds: 600,
+          capacity: { maxOnlinePlayers: MAX_ONLINE_PLAYERS, maxAgentSessions: MAX_AGENT_SESSIONS, perNetworkPlayerLimit: null } });
       }
       if (path === `${PREFIX}/openapi.json` && request.method === 'GET') return send(200, { ...openapi, paths: { ...openapi.paths, '/sessions': { post: { ...openapi.paths['/sessions'].post, summary: 'Join the open beta', security: [] } } } });
       if ([`${PREFIX}/sessions`, '/api/play/v1/sessions'].includes(path) && request.method === 'POST') {
-        this.take(`join:${ip}`, 5, 1 / 60, now);
+        this.take(`join:${ip}`, NETWORK_JOIN_BUDGET.burst, NETWORK_JOIN_BUDGET.perSecond, now);
         const token = request.headers.has('Authorization') ? bearer(request) : null;
         validateObject(await readJson(request), {}, []);
         const kind: Kind = path === '/api/play/v1/sessions' ? 'human' : 'agent';
         const invitation = this.one<{ config: string; kind: Kind; expires_at: number }>('SELECT * FROM invites WHERE key = ?', digest(token ?? ''));
         if (token && (!invitation || invitation.kind !== kind || invitation.expires_at <= now)) throw new ApiError(401, 'invalid_invite', 'This invite is invalid, expired, already used, or intended for a different type of player.');
-        if (this.count('SELECT COUNT(*) AS n FROM sessions WHERE kind = ?', kind) >= 16
-          || this.count('SELECT COUNT(*) AS n FROM sessions WHERE ip = ?', ip) >= 4
-          || this.count('SELECT joins AS n FROM daily WHERE day = ?', day) >= 100) {
-          throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
-        }
+        this.sessionCapacity(kind);
         if (this.count('SELECT COUNT(*) AS n FROM renewals') >= MAX_RENEWALS) {
           throw new ApiError(429, 'renewal_capacity', 'Returning-player capacity reached.', 3600);
         }
         const service = await this.game();
         // Claim and reserve synchronously after the last await. Racing requests cannot reuse an invite or oversubscribe slots.
         if (token && !this.one('SELECT key FROM invites WHERE key = ?', digest(token))) throw new ApiError(401, 'invalid_invite', 'This invite has already been used.');
-        if (this.count('SELECT COUNT(*) AS n FROM sessions WHERE kind = ?', kind) >= 16
-          || this.count('SELECT COUNT(*) AS n FROM sessions WHERE ip = ?', ip) >= 4
-          || this.count('SELECT joins AS n FROM daily WHERE day = ?', day) >= 100) throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
+        this.sessionCapacity(kind);
         const sessionToken = secret('bgs_');
         const key = digest(sessionToken);
         const invite: Invite = token && invitation ? JSON.parse(invitation.config) : { expiresAt: now + 3600_000, lifetimeSeconds: 3600, combat: true, chat: true };
@@ -339,7 +357,6 @@ export class AgentGateway extends DurableObject<Env> {
         }
       }
       if ([`${PREFIX}/recovery`, '/api/play/v1/recovery'].includes(path) && request.method === 'POST') {
-        this.take(`recovery:${ip}`, 3, 1 / 60, now);
         const input = validateObject(await readJson(request), { token: {type:'string',minLength:1,maxLength:3000} }, []);
         const presented = bearer(request);
         let found: RenewalRow | undefined;
@@ -347,6 +364,7 @@ export class AgentGateway extends DurableObject<Env> {
         else { const session = this.one<SessionRow>("SELECT * FROM sessions WHERE key = ? AND state = 'active'", digest(presented));
           if (session && session.expires_at > now && session.last_seen > now-IDLE_MS) found = this.one<RenewalRow>('SELECT * FROM renewals WHERE session_id = ?', session.id); }
         if (!found || found.expires_at <= now) throw unauthorized();
+        this.take(`recovery:${found.identity}`, 3, 1 / 60, now);
         const config = JSON.parse(found.config) as Invite & {kind?:string;credential?:Credential};
         const credential = config.credential ?? {uri:this.env.SPACETIME_URI,database:this.env.SPACETIME_DB,identity:found.identity,token:input.token};
         if (!credential.token) throw unauthorized();
@@ -358,10 +376,11 @@ export class AgentGateway extends DurableObject<Env> {
         return send(200,{recoveryToken,playerId:found.identity,expiresAt:new Date(now+180*86400_000).toISOString()});
       }
       if ([`${PREFIX}/recover`, '/api/play/v1/recover'].includes(path) && request.method === 'POST') {
-        this.take(`recovery:${ip}`, 3, 1 / 60, now); validateObject(await readJson(request),{},[]);
+        validateObject(await readJson(request),{},[]);
         const key = digest(bearer(request));
         const row = this.one<{identity:string;key:string;payload:string;expires_at:number}>('SELECT * FROM recoveries WHERE key = ?',key);
         if (!row || row.expires_at<=now) throw unauthorized();
+        this.take(`recovery:${row.identity}`, 3, 1 / 60, now);
         const saved = openRecovery<{config:string;credential:Credential;sessionId:string}>(row.payload,this.env.RECOVERY_ENCRYPTION_KEY ?? this.env.GATEWAY_CREDENTIAL);
         const recoveryToken=secret('bgk_'),renewToken=secret('bgr_');
         // No awaits: one-time consumption and renewal replacement commit together.
@@ -372,30 +391,55 @@ export class AgentGateway extends DurableObject<Env> {
         return send(200,{recoveryToken,renewToken,playerId:row.identity,...saved.credential,expiresAt:new Date(now+180*86400_000).toISOString(),next:'Use the ordinary renewal endpoint to obtain a bounded play permit.'});
       }
       if (path === `${PREFIX}/renewals` && request.method === 'POST') {
-        this.take(`join:${ip}`, 5, 1 / 60, now);
         validateObject(await readJson(request), {}, []);
         const store = this.renewals(), found = lookupRenewal(store, bearer(request), now);
+        this.takeRenewal(found.identity, now);
         const config = JSON.parse(found.config) as Invite & { kind?: string; credential?: Credential };
         if (config.kind !== 'agent' || !config.credential) throw visitEnded();
         if (this.renewing.has(found.identity)) throw renewedElsewhere();
         this.renewing.add(found.identity);
         let reserved: SessionRow | undefined;
+        let retainedKey: string | undefined;
         try {
           const service = await this.game();
           const old = this.one<SessionRow>('SELECT * FROM sessions WHERE id = ?', found.session_id);
           if (old && this.busy.has(old.key)) throw new ApiError(409, 'action_in_progress', 'Wait for the current action before returning.');
+          const renewPermit = async () => {
+            try { await service.renew(found.identity, config.lifetimeSeconds); }
+            catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              if (/revoked|no renewable permit/.test(message)) { store.removeIdentity(found.identity); throw visitEnded(); }
+              throw admissionError(error) ?? unavailable();
+            }
+          };
+          if (old?.state === 'active') {
+            // Extend a playing agent in place. Disconnecting here would release
+            // its world slot and let a new arrival displace it during renewal.
+            this.busy.add(old.key); retainedKey = old.key;
+            await renewPermit();
+            const game = await this.sessionGame(old);
+            if (!this.one("SELECT key FROM sessions WHERE key = ? AND state = 'active'", old.key)) throw visitEnded();
+            const token = secret('bgs_'), key = digest(token), at = Date.now();
+            const expiresAt = at + config.lifetimeSeconds * 1000;
+            let renewToken = '';
+            this.ctx.storage.transactionSync(() => {
+              renewToken = rotateRenewal(store, found, at);
+              this.purge(old.key);
+              this.ctx.storage.sql.exec("INSERT INTO sessions (key,id,ip,kind,expires_at,last_seen,config,credential,state) VALUES (?,?,?,'agent',?,?,?,?,'active')",
+                key, old.id, ip, expiresAt, at, old.config, old.credential);
+            });
+            this.live.delete(old.key); this.live.set(key, game);
+            await this.ctx.storage.setAlarm(Date.now() + 30_000);
+            return send(200, { token, renewToken, sessionId: old.id, playerId: found.identity, expiresAt: new Date(expiresAt).toISOString(),
+              permissions: { combat: config.combat, chat: config.chat }, pollIntervalMs: 1000 });
+          }
           if (old) await this.remove(old);
-          if (this.count("SELECT COUNT(*) AS n FROM sessions WHERE kind = 'agent'") >= 16 || this.count('SELECT COUNT(*) AS n FROM sessions WHERE ip = ?', ip) >= 4) throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
+          this.sessionCapacity('agent');
           const token = secret('bgs_'), at = Date.now(), key = digest(token);
           const invite: Invite = { expiresAt: at + config.lifetimeSeconds * 1000, lifetimeSeconds: config.lifetimeSeconds, combat: config.combat, chat: config.chat };
           reserved = { key, id: found.session_id, ip, kind: 'agent', expires_at: invite.expiresAt, last_seen: at, config: JSON.stringify(invite), credential: JSON.stringify(config.credential), state: 'pending', actions_count: 0 };
           this.ctx.storage.sql.exec('INSERT INTO sessions (key,id,ip,kind,expires_at,last_seen,config,credential,state) VALUES (?,?,?,?,?,?,?,?,?)', key, reserved.id, ip, 'agent', reserved.expires_at, at, reserved.config, reserved.credential, 'pending');
-          try { await service.renew(found.identity, config.lifetimeSeconds); }
-          catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            if (/revoked|no renewable permit/.test(message)) { store.removeIdentity(found.identity); throw visitEnded(); }
-            throw unavailable();
-          }
+          await renewPermit();
           const game = await service.resume(invite, config.credential);
           this.live.set(key, game);
           const renewToken = rotateRenewal(store, found, Date.now());
@@ -403,20 +447,20 @@ export class AgentGateway extends DurableObject<Env> {
           await this.ctx.storage.setAlarm(Date.now() + 30_000);
           return send(200, { token, renewToken, sessionId: found.session_id, playerId: found.identity, expiresAt: new Date(reserved.expires_at).toISOString(), permissions: { combat: config.combat, chat: config.chat }, pollIntervalMs: 1000 });
         } catch (error) { if (reserved) { try { await this.remove(reserved); } catch { /* Alarm retries; permit also expires. */ } } throw error; }
-        finally { this.renewing.delete(found.identity); }
+        finally { this.renewing.delete(found.identity); if (retainedKey) this.busy.delete(retainedKey); }
       }
       if (path === '/api/play/v1/renewals' && request.method === 'POST') {
-        this.take(`join:${ip}`, 5, 1 / 60, now);
         const token = bearer(request);
         validateObject(await readJson(request), {}, []);
         const store = this.renewals();
         const found = lookupRenewal(store, token, now);
+        this.takeRenewal(found.identity, now);
         if (this.renewing.has(found.identity)) throw renewedElsewhere();
         const invite = JSON.parse(found.config) as Invite & { kind?: string };
         if (invite.kind === 'agent') throw visitEnded();
         const visit = () => this.one<SessionRow>("SELECT * FROM sessions WHERE id = ? AND kind = 'human'", found.session_id);
         if (visit() && visit()!.state !== 'active') throw visitEnded();
-        if (!visit()) this.humanCapacity(ip);
+        if (!visit()) this.sessionCapacity('human');
         this.renewing.add(found.identity);
         try {
           const service = await this.game();
@@ -424,15 +468,14 @@ export class AgentGateway extends DurableObject<Env> {
           catch (error) {
             if (error instanceof ApiError) throw error;
             const message = error instanceof Error ? error.message : String(error);
-            if (/capacity/.test(message)) throw new ApiError(429, 'session_capacity', 'Player session capacity reached. Try later.', 60);
             if (/revoked|no renewable permit/.test(message)) { store.removeIdentity(found.identity); throw visitEnded(); }
-            throw unavailable();
+            throw admissionError(error) ?? unavailable();
           }
           // Synchronous from here: rotation and the visit slot commit together.
           const at = Date.now();
           const current = visit();
           if (current && current.state !== 'active') throw visitEnded();
-          if (!current) this.humanCapacity(ip);
+          if (!current) this.sessionCapacity('human');
           const renewToken = rotateRenewal(store, found, at);
           const expiresAt = at + invite.lifetimeSeconds * 1000;
           if (current) this.ctx.storage.sql.exec('UPDATE sessions SET expires_at = ?, last_seen = ?, ip = ? WHERE key = ?', expiresAt, at, ip, current.key);
@@ -508,8 +551,8 @@ export class AgentGateway extends DurableObject<Env> {
       }
       throw new ApiError(404, 'not_found', 'Unknown endpoint or method. See openapi.json.');
     } catch (error) {
-      const safe = error instanceof ApiError ? error : unavailable();
+      const safe = admissionError(error) ?? unavailable();
       return send(safe.status, errorBody(safe), safe.retryAfter);
-    } finally { this.inflight--; await this.rest(); }
+    } finally { this.inflight--; if (lane === 'join') this.joining--; await this.rest(); }
   }
 }

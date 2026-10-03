@@ -1,5 +1,7 @@
+import { homePoint, homePath, homeTarget, homeDestination, homeLocation, isHomeRegion, isHomeTarget } from "./homeMap";
 import { addItem, countItem, removeFromSlot } from "../inventory";
 import { getItemDef } from "../items";
+import { facingFromDelta } from "../grid";
 import { levelForXp } from "../skills";
 import type { Slot } from "../types";
 import {
@@ -79,6 +81,7 @@ export const COMMANDS = [
   "enter",
   "return",
   "move",
+  "walk",
   "stop",
   "talk",
   "quest",
@@ -401,6 +404,31 @@ function storagePermission(w: World, a: Actor, c: Container) {
   } else
     check(c.owner === a.id && atTown(a), "Your vault is available in town");
 }
+function homeRoute(w: World, a: Actor, to: Point) {
+  const meadowBlocked = blocked(w, { ...a, ...(a.region === "settlement" ? a : { x: -1, z: -1 }), region: "settlement" });
+  return homePath(homePoint(a, a.region), to,
+    p => p.region === "bramblewild" ? (w.homeBlocked?.(p) ?? false) : meadowBlocked(p),
+    w.homeStepRule?.(a));
+}
+function queueHomeWalk(w: World, a: Actor, to: Location) {
+  check(isHomeRegion(a.region) && !onboard(w, a.id), "Walking is available on the home island");
+  check(to.region === a.region || (!a.hostile && (w.canLeaveHomeDistrict?.(a) ?? true)), "Finish your adventure or combat before taking the Meadows trail");
+  check(regionLand(to.region, to), "Choose dry ground in the requested district");
+  const target = homePoint(to, to.region);
+  check(homeRoute(w, a, target), "No walkable route. Carry a sturdy stick to pass the Bramblewild hedge");
+  a.target = homeTarget(target);
+}
+export function cancelGathering(w: World, actorId: string) {
+  for (const node of w.repo.all("resource")) {
+    if (node.harvest?.by !== actorId) continue;
+    delete node.harvest;
+    w.repo.put("resource", node);
+  }
+}
+function gatherYield(p: Profile, a: Actor, item: string) {
+  return item === "timber" && countItem(a.bag, "axe") ? 2
+    : unlocked(p, 0, 10) && ["stone", "iron_ore"].includes(item) && countItem(a.bag, "pick") ? 2 : 1;
+}
 export function perform(w: World, a: Actor, input: unknown): void {
   const cmd = validateCommand(input),
     r = w.repo,
@@ -413,6 +441,8 @@ export function perform(w: World, a: Actor, input: unknown): void {
     check(
       [
         "enter",
+        "walk",
+        "stop",
         "tax",
         "permit",
         "abandon",
@@ -432,30 +462,22 @@ export function perform(w: World, a: Actor, input: unknown): void {
       ].includes(cmd.action),
       "Use Bramblewild controls for this action",
     );
+  // A successful new action releases the previous resource. Reducer rollback preserves it on error.
+  if (cmd.action !== "gather") cancelGathering(w, a.id);
   switch (cmd.action) {
     case "enter":
-      check(
-        a.region === "bramblewild" &&
-          distance(a, { x: 22, z: 18 }) <= 4 &&
-          !a.hostile,
-        "Walk to Trailhead Camp with your hands free",
-      );
-      a.region =
-        (["bramblewild", "settlement", "reedwake", "cinder"] as const)[
-          p.events.frontierRespawnRegion ?? 1
-        ] ?? "settlement";
-      Object.assign(a, REGIONS[a.region].spawn);
-      delete p.events.frontierRespawnRegion;
-      a.target = undefined;
-      event(p, "visit:settlement");
+      check(a.region === "bramblewild", "You are already on the Meadows trail");
+      queueHomeWalk(w, a, { region: "settlement", ...REGIONS.settlement.spawn });
       break;
     case "return":
-      check(atTown(a) && !onboard(w, a.id), "Walk to the Meadows town square");
-      a.region = "bramblewild";
-      a.x = 22;
-      a.z = 18;
-      a.target = undefined;
+      check(a.region === "settlement", "Follow the home island trail from the Meadows");
+      queueHomeWalk(w, a, { region: "bramblewild", x: 22, z: 18 });
       break;
+    case "walk": {
+      check(cmd.id === "bramblewild" || cmd.id === "settlement", "Choose a home island district");
+      queueHomeWalk(w, a, { region: cmd.id, x: integer(cmd.x), z: integer(cmd.z) });
+      break;
+    }
     case "move": {
       check(
         a.region !== "bramblewild" && a.region !== "sea" && !onboard(w, a.id),
@@ -532,26 +554,30 @@ export function perform(w: World, a: Actor, input: unknown): void {
     case "gather": {
       const node = RESOURCE_PATCHES.find((n) => n.id === id);
       check(node && near(a, node), "Walk beside the resource patch");
-      check(w.now >= p.nextGather, "Finish gathering before gathering again");
-      p.nextGather =
-        w.now +
+      const state = r.get("resource", id) ?? { ...node };
+      check(!state.harvest, state.harvest?.by === a.id ? "Already gathering this resource" : "Someone is gathering this resource");
+      check(!state.regrowsAt || w.now >= state.regrowsAt, "This tree is regrowing");
+      // Check space now and again at completion; starting never grants an item or XP.
+      receive(a.bag, node.item, gatherYield(p, a, node.item));
+      cancelGathering(w, a.id);
+      const duration =
         (unlocked(p, 1, 5) &&
         ["fibre", "reeds", "berry_greenberry", "berry_strawberry"].includes(
           node.item,
         )
           ? 2400
-          : 3000);
-      const yieldCount =
-        node.item === "timber" && countItem(a.bag, "axe")
-          ? 2
-          : unlocked(p, 0, 10) &&
-              ["stone", "iron_ore"].includes(node.item) &&
-              countItem(a.bag, "pick")
-            ? 2
-            : 1;
-      a.bag = receive(a.bag, node.item, yieldCount);
-      event(p, `gather:${node.item}`);
-      xp(p, ["fibre", "reeds", "carrot_seed"].includes(node.item) ? 1 : 4, 8);
+          : FRONTIER.gatherDuration);
+      state.harvest = { by: a.id, startedAt: w.now, completesAt: w.now + duration,
+        origin: { x: a.x, z: a.z }, hp: a.hp, inputStamp: a.inputStamp,
+        tool: node.item === "timber" ? countItem(a.bag, "axe") ? "axe" : "hatchet"
+          : ["stone", "iron_ore", "clay"].includes(node.item) ? "pick" : "hands",
+        quantity: gatherYield(p, a, node.item) };
+      delete state.felledAt;
+      delete state.regrowsAt;
+      a.target = undefined;
+      if (distance(a, node) > 0) a.facing = facingFromDelta(node.x - a.x, node.z - a.z);
+      p.nextGather = w.now + duration;
+      r.put("resource", state);
       break;
     }
     case "craft": {
@@ -601,7 +627,6 @@ export function perform(w: World, a: Actor, input: unknown): void {
         p.quests.includes("tools"),
         "Earn your deed through the steward quests",
       );
-      check(p.recoveryReady, "Export character recovery before buying land");
       money(w, p, -FRONTIER.deed - FRONTIER.taxes[0], "deed and first week");
       r.put("claim", {
         id,
@@ -710,8 +735,8 @@ export function perform(w: World, a: Actor, input: unknown): void {
         "You already own or are challenging a plot",
       );
       check(
-        p.quests.includes("tools") && p.recoveryReady,
-        "Earn a deed and export recovery first",
+        p.quests.includes("tools"),
+        "Earn your deed through the steward quests",
       );
       const deposit = FRONTIER.taxes[land.tier];
       money(w, p, -deposit, "challenge deposit");
@@ -1380,6 +1405,7 @@ export function damage(p: Profile, a: Actor) {
   return result;
 }
 function defeat(w: World, a: Actor, p: Profile) {
+  cancelGathering(w, a.id);
   const id = nextId(w, "drop"),
     slots = a.bag.slice();
   const boat = onboard(w, a.id);
@@ -1434,6 +1460,44 @@ export function advance(w: World) {
   const r = w.repo,
     cfg = r.get("config", "world");
   if (!cfg?.enabled) return;
+  // Reservations and regrowth use the server clock; idle resources never write per tick.
+  for (const node of r.all("resource")) {
+    const h = node.harvest;
+    if (!h) {
+      if (node.regrowsAt && w.now >= node.regrowsAt) {
+        delete node.felledAt;
+        delete node.regrowsAt;
+        r.put("resource", node);
+      }
+      continue;
+    }
+    const a = w.actors.find(actor => actor.id === h.by);
+    if (!a || !a.online || !a.alive || a.target || !near(a, node)
+      || a.x !== h.origin.x || a.z !== h.origin.z || a.hp < h.hp
+      || a.inputStamp !== h.inputStamp) {
+      delete node.harvest;
+      r.put("resource", node);
+      continue;
+    }
+    if (w.now < h.completesAt) continue;
+    a.bag = w.loadBag?.(a) ?? a.bag;
+    const p = profile(w, a.id);
+    const quantity = gatherYield(p, a, node.item);
+    const result = addItem(a.bag, node.item, quantity);
+    delete node.harvest;
+    if (result.remaining === 0) {
+      a.bag = result.slots;
+      event(p, `gather:${node.item}`, quantity);
+      xp(p, ["fibre", "reeds", "carrot_seed"].includes(node.item) ? 1 : 4, 8);
+      if (node.item === "timber") {
+        node.felledAt = w.now;
+        node.regrowsAt = w.now + FRONTIER.timberRegrow;
+      }
+      r.put("profile", p);
+      w.save(a);
+    } else note(w, a.id, "Gathering stopped because your bag is full.");
+    r.put("resource", node);
+  }
   for (const a of w.actors.filter(
     (a) => !a.alive && a.region !== "bramblewild",
   )) {
@@ -1452,6 +1516,22 @@ export function advance(w: World) {
       w.save(a);
     }
   }
+  for (const a of w.actors.filter(a => a.online && a.alive && isHomeRegion(a.region) && isHomeTarget(a.target))) {
+    const destination = homeDestination(a.target!);
+    const canWalk = homeLocation(destination).region === a.region || (!a.hostile && (w.canLeaveHomeDistrict?.(a) ?? true));
+    const route = canWalk ? homeRoute(w, a, destination) : null;
+    if (route?.length) {
+      const previousRegion = a.region;
+      Object.assign(a, homeLocation(route[Math.min(1, route.length - 1)]));
+      if (a.region !== previousRegion && a.region === "settlement") {
+        const p = profile(w, a.id);
+        event(p, "visit:settlement");
+        r.put("profile", p);
+      }
+      if (distance(homePoint(a, a.region), destination) === 0) a.target = undefined;
+    } else a.target = undefined;
+    w.save(a);
+  }
   for (const a of w.actors.filter(
     (a) =>
       a.online &&
@@ -1459,6 +1539,7 @@ export function advance(w: World) {
       a.region !== "bramblewild" &&
       a.region !== "sea" &&
       a.target &&
+      !isHomeTarget(a.target) &&
       !onboard(w, a.id),
   )) {
     const route = regionalPath(a.region, a, a.target!, blocked(w, a));

@@ -38,3 +38,21 @@ test('a capacity rejection stays on the entry screen and allows retry', async ()
   expect(localStorage.getItem('open-beta-test')).toBeNull();
   expect((screen.getByRole('button', { name: 'Enter the island' }) as HTMLButtonElement).disabled).toBe(false);
 });
+
+test('returning players see capacity details and can pause retries', async () => {
+  vi.stubEnv('VITE_INVITE_REQUIRED', 'true');
+  vi.stubEnv('VITE_OPEN_BETA', 'true');
+  vi.resetModules();
+  localStorage.setItem('open-beta-test', 'saved-character');
+  localStorage.setItem('open-beta-test:renew', `bgr_${'a'.repeat(43)}`);
+  localStorage.setItem('open-beta-test:permit-expires', String(Date.now() - 1));
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { code: 'session_capacity' } }),
+    { status: 429, headers: { 'Retry-After': '120' } })));
+  const { default: BetaAdmission } = await import('../agent/BetaAdmission');
+  render(<BetaAdmission><p>Island loaded</p></BetaAdmission>);
+  await waitFor(() => expect(screen.getByText(/reached its player limit/)).toBeTruthy());
+  expect((screen.getByRole('button', { name: 'Try again' }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Pause automatic retry' }));
+  expect(screen.getByRole('button', { name: 'Resume automatic retry' })).toBeTruthy();
+  expect(localStorage.getItem('open-beta-test')).toBe('saved-character');
+});

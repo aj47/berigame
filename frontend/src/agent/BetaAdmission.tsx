@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SPACETIME_DB, SPACETIME_URI, TOKEN_KEY } from '../spacetime/connection';
-import { canRenew, expiryKey, renewalDelay, renewKey, renewVisit, RENEW_TOKEN, RETRY_MS, savedExpiry as readExpiry } from '../spacetime/visitRenewal';
+import { admissionIssue, AdmissionIssue, canRenew, expiryKey, renewalDelay, renewKey, renewVisit, RENEW_TOKEN, RETRY_MS, savedExpiry as readExpiry } from '../spacetime/visitRenewal';
 
 const EXPIRY_KEY = expiryKey(TOKEN_KEY);
 const RENEW_KEY = renewKey(TOKEN_KEY);
@@ -16,6 +16,12 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [returning, setReturning] = useState(renewable);
+  const [issue, setIssue] = useState<AdmissionIssue | null>(null);
+  const [clock, setClock] = useState(Date.now);
+  const [paused, setPaused] = useState(false);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => { if (!issue) return; const timer = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(timer); }, [issue]);
+  const remaining = issue ? Math.max(0, Math.ceil((issue.retryAt - clock) / 1000)) : 0;
   const issued = useRef<Admission>();
   // Another tab renewed or joined: adopt its permit instead of renewing again.
   useEffect(() => {
@@ -30,7 +36,7 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
   }, []);
   // Returning browsers keep their character: renew shortly before the permit ends (F1).
   useEffect(() => {
-    if (!required) return;
+    if (!required || paused) return;
     let cancelled = false;
     let timer = 0;
     const schedule = (delay: number) => { timer = window.setTimeout(run, delay); };
@@ -40,34 +46,45 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
         else if (expiry) { setExpiry(0); setReturning(false); setError('Your visit has ended. Enter again to return to the island.'); }
         return;
       }
+      let failure: AdmissionIssue | undefined;
       const outcome = await renewVisit({ storage: localStorage, tokenKey: TOKEN_KEY, fetch: window.fetch.bind(window),
-        locks: (navigator as any).locks });
+        locks: (navigator as any).locks, onIssue: value => { failure = value; } });
       if (cancelled) return;
-      if (outcome === 'renewed' || outcome === 'fresh') { setExpiry(savedExpiry()); return; }
+      if (outcome === 'renewed' || outcome === 'fresh') { setIssue(null); setExpiry(savedExpiry()); schedule(renewalDelay(savedExpiry(), Date.now())); return; }
       if (outcome === 'ended') {
         setReturning(false); setExpiry(savedExpiry());
         setError('Your island sign-in has ended. Enter again to return.');
         return;
       }
-      schedule(RETRY_MS); // unavailable: keep playing until the permit ends, then keep retrying on the gate.
+      failure ??= { message: 'The island could not be reached. Check your connection and try again.', retryAt: Date.now() + RETRY_MS };
+      setIssue(failure); setClock(Date.now());
+      schedule(Math.max(0, failure.retryAt - Date.now())); // unavailable: keep playing until the permit ends, then keep retrying on the gate.
       if (savedExpiry() <= Date.now()) setExpiry(0);
     };
     schedule(renewalDelay(expiry, Date.now()));
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [expiry]);
-  if (!required || expiry > Date.now()) return <>{children}</>;
+  }, [expiry, paused, retry]);
+  const notice = issue && <section role="status" aria-label="Island connection" style={{ background: '#18271f', color: '#fff', padding: '16px', border: '1px solid #b4cf8b', borderRadius: 12, maxWidth: 480 }}>
+    <strong>Waiting to connect</strong><p>{issue.message}</p>
+    <p>Your saved character is kept in this browser.</p>
+    <p>{remaining > 0 ? `Next attempt available in ${remaining}s.` : paused ? 'Automatic retry is paused.' : 'Ready to retry.'}</p>
+    {returning && <><button className="primary-button" disabled={remaining > 0} onClick={() => { setPaused(false); setRetry(value => value + 1); }}>Try again</button>
+    <button className="primary-button" onClick={() => setPaused(value => !value)}>{paused ? 'Resume automatic retry' : 'Pause automatic retry'}</button></>}
+  </section>;
+  if (!required) return <>{children}</>;
+  if (expiry > Date.now()) return <>{children}{notice && <div style={{ position: 'fixed', top: 16, left: 16, zIndex: 10000 }}>{notice}</div>}</>;
   if (returning) {
     return <main className="loading-screen beta-admission"><div className="loading-content">
       <img className="loading-berry" src="/items/blueberry.png" alt="" />
       <span className="eyebrow">The first island · {openBeta ? 'Open beta' : 'Private beta'}</span>
       <h1 className="game-title">BeriGame</h1>
-      <p className="game-subtitle" role="status">Welcome back. Returning you to the island…</p>
+      <p className="game-subtitle">{issue ? 'Your return is on hold.' : 'Welcome back. Returning you to the island…'}</p>{notice}
     </div></main>;
   }
 
   async function join(event: React.FormEvent) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || (issue && issue.retryAt > Date.now())) return;
     setPending(true); setError('');
     try {
       // Check storage before consuming an invite. Retain a received credential in
@@ -80,6 +97,7 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
           ...(!openBeta ? { Authorization: `Bearer ${code.trim()}` } : {}), 'Content-Type': 'application/json',
         }, body: '{}', cache: 'no-store' });
         const body = await response.json();
+        if (response.status === 429) { setIssue(admissionIssue(response, body)); setClock(Date.now()); return; }
         if (!response.ok) throw new Error(body?.error?.message ?? 'The island could not be reached. Try again shortly.');
         if (typeof body.token !== 'string' || (body.renewToken !== undefined && !RENEW_TOKEN.test(body.renewToken)) || body.uri !== SPACETIME_URI || body.database !== SPACETIME_DB
           || !(Date.parse(body.expiresAt) > Date.now())) throw new Error('The island returned an invalid sign-in. Contact the world operator.');
@@ -90,7 +108,7 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
       if (admission.renewToken) localStorage.setItem(RENEW_KEY, admission.renewToken);
       else localStorage.removeItem(RENEW_KEY);
       localStorage.setItem(EXPIRY_KEY, String(Date.parse(admission.expiresAt)));
-      setCode(''); setReturning(!!admission.renewToken); setExpiry(Date.parse(admission.expiresAt));
+      setIssue(null); setCode(''); setReturning(!!admission.renewToken); setExpiry(Date.parse(admission.expiresAt));
     } catch (cause) {
       setError(cause instanceof DOMException ? 'Enable browser storage to keep your island sign-in, then try again.'
         : cause instanceof Error ? cause.message : 'The island could not be reached. Try again shortly.');
@@ -110,8 +128,9 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
           aria-describedby={error ? 'invite-help invite-error' : 'invite-help'} aria-invalid={!!error}
           disabled={pending || !!issued.current} required={!issued.current} /></>}
         <p id="invite-help">{openBeta ? 'No invite needed. Enter and start playing.' : 'Ask the world operator for a player invite.'} This browser remembers your character for 30 days after your last visit.</p>
+        {notice}
         {error && <p id="invite-error" className="beta-invite-error" role="alert">{error}</p>}
-        <button className="primary-button" type="submit" disabled={pending}>
+        <button className="primary-button" type="submit" disabled={pending || remaining > 0}>
           {pending ? 'Opening the island…' : issued.current ? 'Continue to the island' : 'Enter the island'}
         </button>
       </form>

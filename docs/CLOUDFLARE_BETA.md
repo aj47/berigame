@@ -130,9 +130,9 @@ and no Authorization header. Subsequent API calls still require the returned ses
 bearer token. New public sessions allow combat and chat. Existing sessions and renewal
 records retain their original permissions.
 
-Admission still goes through the gateway: database admission, per-IP join limits,
-16 sessions per player kind, four per IP, 100 new visits per day, hourly permits,
-revocation and returning-browser renewal remain enforced. The database is not opened
+Admission still goes through the gateway: database admission, hourly permits,
+revocation and returning-browser renewal remain enforced. LANs share a generous
+new-character creation budget, with no per-IP player cap. The database is not opened
 to unpermitted direct connections. No database migration is needed for this change.
 
 `VITE_OPEN_BETA=true` selects the open-beta browser and agent onboarding text;
@@ -195,11 +195,12 @@ across renewals, so `npm run beta:revoke -- SESSION_ID` works at any time.
   owner-issued permits, so a revoked character cannot come back through a replay
   or a stale Worker. Changing the gateway invalidates every renewal.
 - *Expiry.* Renewal records expire 30 days after the last renewal, and are capped
-  at 10,000. Renewals count against the 16 browser visits and 4-per-IP limits and
-  the per-IP join rate limit, but not the 100 new visits per day.
-- *Agents* keep their own flow. `bgr_` tokens are rejected by agent endpoints,
-  agent sessions get no renewal token, and closing an agent session still revokes
-  its permit immediately.
+  at 10,000. Renewal is limited per character (burst 3, replenishing once per
+  30 seconds), independently of the network's new-character creation budget.
+  A saved permit or browser visit record does not occupy an online world slot.
+- *Agents* receive a renewal token too. Ending a session suspends its visit while
+  keeping the character renewable; operator revocation permanently ends access.
+  Agent and browser renewal endpoints reject tokens for the other player kind.
 - *Multiple tabs* serialize renewal through a Web Lock and re-read storage; other
   tabs adopt the result through `storage` events. Up to four tabs may connect as
   one character.
@@ -219,11 +220,28 @@ no renewal token and behave as before until their next invite.
 ## Abuse and persistence limits
 
 - Public sessions allow combat and chat; optional invites retain their chosen scopes. Permissions are enforced in the database.
-- At most 16 API sessions and 16 browser visits, four total per IP address.
-- At most 100 new visits and 50,000 non-admin API requests per UTC day.
+- At most **256 online characters per world**, counted in SpacetimeDB on connection.
+  Multiple tabs share one character slot (at most four connections per character).
+  The last disconnect frees the slot immediately; unexpired offline permits do
+  not reserve slots. Online characters can renew even when the world is full.
+- At most **64 agent API connections**, including pending connections. Browser
+  visit records have a 10,000-row storage bound, separate from online capacity.
+- **No per-IP player cap and no daily join/request shutdown.** Daily totals remain
+  counters only. New-character creation allows a burst of 256 per network and
+  replenishes at 4/second; the shared creation budget replenishes at 8/second.
+  Joining players, renewing players and ordinary requests have separate budgets.
+- Renewals allow a shared burst of 512, replenishing at 32/second, plus the
+  per-character limit above. Ordinary API traffic allows a burst of 1,024 and
+  replenishes at 256/second. Individual agent read/action limits still apply.
+- At most 128 requests in flight, of which at most 32 may create new characters,
+  leaving room for returning players during a join burst. `Retry-After` tells
+  waiting players when to try again; browser retries add a small random delay.
+- Edge limits allow 600 requests/minute per credential digest, or per network
+  for anonymous traffic. Credential-shaped requests still require server-side
+  authentication. An IP address is never evidence of character ownership.
 - At most 256 unredeemed invites and 1,024 action receipts per API session.
 - SpacetimeDB also caps the world at 10,000 lifetime guest permits/characters.
-- Edge rate limiting, durable global/IP/session budgets, 4 KiB bodies, strict
+- Edge rate limiting, durable request/creation/character budgets, 4 KiB bodies, strict
   action schemas and same-origin browser requests.
 - Limits count denied/invalid authenticated requests as well as successful ones.
 - Invite consumption and slot reservation commit together. Receipts persist
@@ -232,8 +250,49 @@ no renewal token and behave as before until their next invite.
 - Expired session credentials and receipts are removed by a Durable Object alarm.
   Database permits expire independently if the gateway is unavailable.
 - One coordinator limits the number of active Durable Objects. Its upstream
-  sockets close when no API session needs them. Logs do not include credentials,
+  sockets close when no API session needs them. Expiry cleanup runs at most once
+  every 30 seconds instead of scanning every table on every API call. Logs do not include credentials,
   request bodies or player chat; request observability is disabled.
+
+### Capacity verification and rollout
+
+The 256-player setting is an admission safety bound, **not a production load-test
+result**. Tests exercise 256 browser joins behind one address, 64 local and hosted
+agent sessions, pending-slot races, renewal during join saturation, direct world
+connection limits, and slot release after the last tab disconnects.
+
+`frontend/scripts/admission-smoke.ts` also verifies these checks with real SDK
+connections against a disposable loopback database. On 2026-10-02 it connected
+256 characters, rejected a 257th, renewed a connected character at capacity,
+reused a disconnected character's slot, and observed 10 more world ticks. This
+used minimal world/player subscriptions, not full browser clients or production
+infrastructure. A full gameplay load test is still needed.
+
+To repeat, start an isolated SpacetimeDB on `127.0.0.1:45991`, publish this module
+to a new `berigame-admission-check` database with an isolated CLI configuration,
+and write that disposable owner's token to an owner JSON file. Then run:
+
+```sh
+BERIGAME_ADMISSION_CHECK_URI=ws://127.0.0.1:45991 \
+BERIGAME_ADMISSION_CHECK_DB=berigame-admission-check \
+BERIGAME_ADMISSION_CHECK_OWNER=/path/to/disposable-owner.json \
+BERIGAME_ADMISSION_CHECK_OUTPUT=/path/to/result.json \
+frontend/node_modules/.bin/tsx frontend/scripts/admission-smoke.ts
+```
+
+Stop that isolated server afterwards. The script refuses production addresses.
+
+The current deployment still uses one world database and one admission coordinator.
+Larger MMO populations need multiple worlds or regions with separate coordinators,
+plus measurements of tick latency, subscription fan-out, client frame time and
+reconnect bursts. See [Cloudflare's scaling guidance](https://developers.cloudflare.com/durable-objects/best-practices/rules-of-durable-objects/)
+for the coordinator boundary. Do not raise the constant as a substitute for those measurements.
+
+This change does not add or reorder database columns. Publish the module with
+`--delete-data=never`, then the Worker and browser bundle together. Check the
+working tree first: an ordinary deploy includes all other local changes. The
+public `/api/agent/v1` status response reports configured capacity so a rollout
+can be verified without joining as a player.
 
 These controls limit game access and API work. They do not guarantee protection
 against every denial of service or provider quota exhaustion. Maincloud's public

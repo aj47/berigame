@@ -27,6 +27,11 @@ const flowerMat = withWind(new MeshStandardMaterial({ vertexColors: true, flatSh
 const palmMat = withWind(new MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: .9 }), .018, 1.5);
 const stoneMat = new MeshStandardMaterial({ color: '#b3aa8c', flatShading: true, roughness: 1 });
 const stoneGeo = new IcosahedronGeometry(1, 0);
+export {
+  tuftGeo as islandGrassGeometry, grassMat as islandGrassMaterial,
+  flowerGeo as islandFlowerGeometry, flowerMat as islandFlowerMaterial,
+  stoneGeo as islandStoneGeometry, stoneMat as islandStoneMaterial,
+};
 /** Berry-juice blossoms plus hibiscus pink and white. */
 const BLOSSOMS = [0xef4444, 0xf59e0b, 0xffffff, 0xf472b6, 0x818cf8, 0xfde68a].map(linear);
 

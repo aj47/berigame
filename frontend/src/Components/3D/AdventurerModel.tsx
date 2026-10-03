@@ -16,6 +16,9 @@ import { clubGeometry, clubMaterial } from './clubProp';
 import { HEAD_BONE, NECK_BONE, cosmeticGeometry, cosmeticMaterial, knifeGeometry } from './cosmeticProps';
 import { AvatarFx } from '../../fx/avatarFx';
 import { inHitstop, knockOffset } from '../../fx/hitReaction';
+import type { Resource } from '../../../../shared/sim/frontier/model';
+import { gatheringMotion, gatheringTool } from '../../frontier/resourcePresentation';
+import { gatheringToolGeometry, gatheringToolMaterial } from '../../frontier/gatheringTools';
 
 import { BODY_SCALES, FACE_SCALES, mountAppearanceDetails } from '../../appearance/details';
 
@@ -32,6 +35,7 @@ interface Props {
   /** The public player.weapon column: '' for bare fists, 'stick' while one is wielded. */
   weapon:string;
   carrying?:boolean;
+  gathering?:Resource;
   motion:React.MutableRefObject<{ moving:boolean; speed?:number; holdMs?:number }>;
   transient:React.MutableRefObject<AnimationCue|null>;
   /** Worn milestone cosmetics (player_cosmetic head / neck: cosmetic id + 1, 0 = none). */
@@ -41,7 +45,7 @@ interface Props {
 }
 const STICK_MOUNT=stickMount();
 
-const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=false,motion,transient,head=0,neck=0,preview=false}:Props) => {
+const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=false,gathering,motion,transient,head=0,neck=0,preview=false}:Props) => {
   const {scene,animations}=useGLTF(url) as any;
   // Every clip (the GLB's, the synthesized StickSwing, rest-pose channels pruned, both stances): built once per GLB.
   const clipSet=useMemo(()=>avatarClipSet(scene,animations),[scene,animations]);
@@ -55,6 +59,9 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=fal
   // Reused every frame: nothing is allocated per avatar per frame.
   const input=useRef<AnimatorInput>({now:0,dt:0,dead:false,cue:null,moving:false,speed:0,holdMs:0,x:0,z:0,yaw:0,weapon:''});
   const revision=useRef(-1);
+  const gatherKind = gathering ? gatheringMotion(gathering.item) : null;
+  const gatherTool = gatheringTool(gathering);
+  const gatherCue = useRef<AnimationCue>({ clip:'StickSwing',durationMs:620,at:0,seq:0,role:'action' });
   // This avatar's ground group, registered so defenders can tell a blow from behind (HitBack).
   const registered=useRef<Object3D|null>(null);
   useEffect(()=>()=>{if(registered.current)unregisterAvatarGroup(identity,registered.current);registered.current=null;},[identity]);
@@ -77,8 +84,8 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=fal
   },[model,base,colors,appearance.hairStyle,identity,url,fx]);
   useLayoutEffect(()=>{
     model.userData.berigameAvatar={...model.userData.berigameAvatar,weapon};
-    const armed=!carrying&&weapon===STICK_ITEM_ID;
-    const club=!carrying&&(weapon===STONE_CLUB_ITEM_ID||weapon===FLINT_KNIFE_ITEM_ID);
+    const armed=!carrying&&!gathering&&weapon===STICK_ITEM_ID;
+    const club=!carrying&&!gathering&&(weapon===STONE_CLUB_ITEM_ID||weapon===FLINT_KNIFE_ITEM_ID);
     // Baked rigs skin the stick into the body on the PropR bone (rest scale 0): show it by
     // scaling the bone, with no extra mesh or draw call. No clip keys PropR.
     // The club is never baked: the PropR stick stays hidden and the club mounts under HandR.
@@ -96,7 +103,17 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=fal
     held.quaternion.fromArray(STICK_MOUNT.quaternion);
     hand.add(held);
     return ()=>{hand.remove(held);};
-  },[model,weapon,carrying]);
+  },[model,weapon,carrying,!!gathering]);
+  useLayoutEffect(() => {
+    const hand = model.getObjectByName('HandR');
+    if (!hand || !gatherTool) return;
+    const tool = new Mesh(gatheringToolGeometry[gatherTool], gatheringToolMaterial);
+    tool.name = gatherTool === 'axe' ? 'GatheringAxe' : gatherTool === 'hatchet' ? 'StarterHatchet' : 'GatheringPick';
+    tool.position.fromArray(STICK_MOUNT.position);
+    tool.quaternion.fromArray(STICK_MOUNT.quaternion);
+    hand.add(tool);
+    return () => { hand.remove(tool); };
+  }, [model,gatherTool]);
   // Milestone cosmetics: one shared low-poly mesh per worn item on the Head / Neck bone.
   useLayoutEffect(()=>cosmeticMount(model,HEAD_BONE,head),[model,head]);
   useLayoutEffect(()=>cosmeticMount(model,NECK_BONE,neck),[model,neck]);
@@ -114,6 +131,15 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=fal
     frame.moving=travel.moving;
     frame.speed=travel.speed??0;
     frame.holdMs=travel.holdMs??0;
+    const harvest = gathering?.harvest, epoch = Date.now();
+    const working = !!harvest && epoch < harvest.completesAt && !frame.dead && !frame.moving;
+    if (working && gatherKind !== 'pluck' && !frame.cue) {
+      const cycle = Math.floor(Math.max(0,epoch - harvest!.startedAt) / 780);
+      const cue = gatherCue.current;
+      cue.at = frame.now - (epoch - harvest!.startedAt - cycle * 780);
+      cue.seq = harvest!.startedAt + cycle;
+      frame.cue = cue;
+    }
     // Hitstop: a heavy blow freezes this avatar's clips for a few frames.
     frame.dt=inHitstop(identity,frame.now)?0:delta;
     frame.weapon=weapon;
@@ -133,7 +159,7 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=fal
     animator.update(frame);
     headBone?.scale.fromArray(FACE_SCALES[complete.faceShape]);
     const director=animator.director;
-    if(!preview)fx.afterAnimate(frame.now,delta,frame.x,frame.z,frame.moving,frame.speed,frame.dead,director.clip==='Idle'||director.clip==='Stop');
+    if(!preview)fx.afterAnimate(frame.now,delta,frame.x,frame.z,frame.moving,frame.speed,frame.dead,director.clip==='Idle'||director.clip==='Stop',working && gatherKind === 'pluck');
     if(director.revision!==revision.current){
       revision.current=director.revision;
       model.userData.berigameAvatar.clip=director.clip;

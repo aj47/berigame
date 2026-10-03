@@ -9,6 +9,8 @@ import { identityHex } from '../../spacetime/identity';
 import { useUserInputStore } from '../../store';
 import { merged, part, withWind } from './envArt';
 import HarvestRing from '../../fx/HarvestRing';
+import { approachWorldInteraction } from '../../frontier/worldInteraction';
+import { holdState } from './tapAssist';
 
 type V3 = [number, number, number];
 const BARK = 0x8a6a45, BARK_DARK = 0x6b4a2e;
@@ -93,6 +95,8 @@ const berryMat = (color: string) => {
   if (!m) { m = withWind(new MeshStandardMaterial({ vertexColors: true, color, emissive: color, emissiveIntensity: .18, flatShading: true, roughness: .55 }), .03, .9); berryMats.set(color, m); }
   return m;
 };
+// Shared by settlement resources so the same berries retain their island silhouette.
+export { getShape as getBerryShape, bodyMat as berryBodyMaterial, berryMat as berryFruitMaterial };
 const shadowGeo = new CircleGeometry(.85, 10).rotateX(-Math.PI / 2);
 const shadowMat = new MeshBasicMaterial({ color: '#2f4a2a', transparent: true, opacity: .22, depthWrite: false });
 
@@ -111,12 +115,16 @@ const BerryTree = ({ tree, tick, harvester }: Props) => {
   const onClick = (e: any) => {
     if (e.delta > 5) return;
     e.stopPropagation();
-    setClickedOtherObject({ connectionId: def?.name ?? 'Berry tree', e, harvestNodeId: tree.id });
+    if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
+    const event = { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() };
+    approachWorldInteraction({ region: 'bramblewild', x: tree.x, z: tree.z }, () => {
+      setClickedOtherObject({ connectionId: def?.name ?? 'Berry tree', e: event, harvestNodeId: tree.id });
+    }, 1);
   };
   const s = getShape(tree.itemId);
   const ripe = regrowTicks === 0;
   return <group position={[wx, wy, wz]} onClick={onClick} userData={{ hoverTarget: {
-    title: `${def?.name ?? 'Berry'} tree`, action: 'Click for harvest options', detail: label, tone: disabled ? 'muted' : 'ready', radius: 1.2,
+    title: `${def?.name ?? 'Berry'} tree`, action: 'Walk over for harvest options', click: 'panel', detail: label, tone: disabled ? 'muted' : 'ready', radius: 1.2,
   } }}>
     <mesh geometry={s.body} material={faded ? bodyFaded : bodyMat} />
     <mesh geometry={shadowGeo} material={shadowMat} position={[0, .015, 0]} />

@@ -4,10 +4,11 @@ import { useFrame } from '@react-three/fiber';
 import { AnimationMixer, Group, LoopRepeat, Vector3, type Object3D } from 'three';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
 import { tileToWorld } from '@sim';
-import { openAdventure } from '../adventureNavigation';
+import { approachWorldInteraction } from '../../frontier/worldInteraction';
 import { adventureInteractionLabel, openAdventureInteraction } from './adventureInteraction';
 import { buildEmoteClip, CARRY_KEYS } from '../../animation/emotes';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
+import { holdState } from './tapAssist';
 const sin=Math.sin, cos=Math.cos;
 
 export const ADVENTURE_ASSETS = ['gardener','moss','pip','berry-giant','giant-berry','strange-seed','leaf-cover','scent-bait','market','feast','workshop','workshop-site','handcart'] as const;
@@ -76,13 +77,17 @@ export function AdventureModel({asset,mood='idle',motion,scale=1}: {asset:Advent
 
 class AssetBoundary extends React.Component<{children:React.ReactNode}, {failed:boolean}> {
   state={failed:false};static getDerivedStateFromError(){return {failed:true};}
-  render(){return this.state.failed?<Html center><button className="adventure-world-label" onClick={()=>openAdventure()}>Adventure · artwork unavailable</button></Html>:this.props.children;}
+  render(){return this.state.failed?<Html center style={{pointerEvents:'none'}}><span className="adventure-world-label">Adventure · artwork unavailable</span></Html>:this.props.children;}
 }
 export function AdventureAssetView(props:React.ComponentProps<typeof AdventureModel>){return <AssetBoundary><Suspense fallback={null}><AdventureModel {...props}/></Suspense></AssetBoundary>;}
 
 /** NPCs interpolate the server's 1.8-second steps; models never move authoritative state. */
-export function AdventureActor({asset,x,z,label,speech,mood='idle',height=2.7,registryKey,onInteract,hoverAction}: {asset:'gardener'|'moss'|'pip'|'berry-giant';x:number;z:number;label:string;speech?:string;mood?:ActorMood;height?:number;registryKey?:string;onInteract?:(event:{clientX:number;clientY:number})=>void;hoverAction?:string}) {
+export function AdventureActor({asset,x,z,label,speech,mood='idle',height=2.7,registryKey,onInteract,hoverAction,showLabel=true,showSpeech=true}: {asset:'gardener'|'moss'|'pip'|'berry-giant';x:number;z:number;label:string;speech?:string;mood?:ActorMood;height?:number;registryKey?:string;onInteract?:(event:{clientX:number;clientY:number})=>void;hoverAction?:string;showLabel?:boolean;showSpeech?:boolean}) {
   const group=useRef<Group>(null), moving=useRef(false);
+  const current=useRef({x,z,label,onInteract}),mounted=useRef(true);
+  current.current={x,z,label,onInteract};
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+  const showWorldLabels=useSettingsStore(state=>state.showWorldLabels);
   const initial=useRef(tileToWorld({x,z}));
   const move=useRef({from:new Vector3(...tileToWorld({x,z})),to:new Vector3(...tileToWorld({x,z})),elapsed:2,duration:1.8,yaw:Math.PI*.2});
   useEffect(()=>{
@@ -92,18 +97,32 @@ export function AdventureActor({asset,x,z,label,speech,mood='idle',height=2.7,re
   },[x,z]);
   useEffect(()=>{if(registryKey&&group.current)actors.set(registryKey,group.current);return()=>{if(registryKey)actors.delete(registryKey);};},[registryKey]);
   useFrame((_,dt)=>{const g=group.current;if(!g)return;const m=move.current;m.elapsed+=dt;const a=Math.min(1,m.elapsed/m.duration);g.position.lerpVectors(m.from,m.to,a);moving.current=a<1&&m.from.distanceToSquared(m.to)>.0001;const turn=Math.atan2(sin(m.yaw-g.rotation.y),cos(m.yaw-g.rotation.y));g.rotation.y+=turn*Math.min(1,dt*8);});
-  return <group ref={group} position={initial.current} onClick={e=>{if(e.delta>5)return;e.stopPropagation();if(onInteract)onInteract(e);else openAdventureInteraction(label.split(' · ')[0],e);}} userData={{hoverTarget:{title:label.split(' · ')[0],action:hoverAction??adventureInteractionLabel('expedition'),detail:label.split(' · ').slice(1).join(' · '),radius:asset==='berry-giant'?1.8:.65}}}>
+  return <group ref={group} position={initial.current} onClick={e=>{
+    if(e.delta>5)return;e.stopPropagation();
+    if(holdState.active||performance.now()<holdState.suppressClickUntil)return;
+    const event={clientX:e.clientX,clientY:e.clientY,ray:e.ray?.clone()};
+    const approach=()=>{
+      const target={x:current.current.x,z:current.current.z};
+      approachWorldInteraction({region:'bramblewild',...target},()=>{
+        if(!mounted.current)return;
+        const latest=current.current;
+        if(latest.x!==target.x||latest.z!==target.z){approach();return;}
+        if(latest.onInteract)latest.onInteract(event);else openAdventureInteraction(latest.label.split(' · ')[0],event);
+      });
+    };
+    approach();
+  }} userData={{hoverTarget:{title:label.split(' · ')[0],action:`Walk over · ${hoverAction??adventureInteractionLabel('expedition')}`,click:'panel',detail:label.split(' · ').slice(1).join(' · '),radius:asset==='berry-giant'?1.8:.65}}}>
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,.017,0]} scale={asset==='berry-giant'?[1.8,1.25,1]:asset==='pip'?[.65,.9,1]:[.65,.45,1]} raycast={()=>null}>
       <circleGeometry args={[1,16]}/><meshBasicMaterial color="#233c2a" transparent opacity={.18} depthWrite={false}/>
     </mesh>
     <AdventureAssetView asset={asset} mood={mood} motion={moving}/>
-    <Html position={[0,height,0]} center distanceFactor={12} zIndexRange={[3,0]} style={{pointerEvents:'none',textAlign:'center'}}>
-      {speech&&<div className="adventure-world-label" style={{marginBottom:5,fontSize:13}}>
-        {asset==='berry-giant'&&mood==='happy'&&<span aria-hidden="true" style={{display:'block',color:'#ffc0d3',fontSize:22,letterSpacing:6}}>♥ ♥ ♥</span>}
+    {showWorldLabels&&showLabel&&<Html position={[0,height,0]} center zIndexRange={[3,0]} style={{pointerEvents:'none',textAlign:'center'}}>
+      {speech&&showSpeech&&<div className="adventure-world-label adventure-world-speech">
+        {asset==='berry-giant'&&mood==='happy'&&<span className="adventure-world-hearts" aria-hidden="true">♥ ♥ ♥</span>}
         {speech}
       </div>}
-      <span className="adventure-world-label">{label}</span>
-    </Html>
+      <span className="adventure-world-label" title={label}>{label.split(' · ')[0]}</span>
+    </Html>}
   </group>;
 }
 const actors=new Map<string,Group>();

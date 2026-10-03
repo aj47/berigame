@@ -8,6 +8,8 @@ import { useGameActions } from '../../spacetime/actions';
 import { useSocialStore } from '../../spacetime/stores/socialStore';
 import { useUserInputStore } from '../../store';
 import DamageNumber from './DamageNumber';
+import { approachWorldInteraction } from '../../frontier/worldInteraction';
+import { holdState } from './tapAssist';
 
 const WOOD = '#7a5234', STRAW = '#d8b56a', SACK = '#c9a877', ROPE = '#6b4a2a';
 const WOBBLE_MS = 700;
@@ -41,14 +43,18 @@ const TrainingDummy = ({ dummy, tick }: { dummy: TrainingDummyRow; tick: number 
   const onClick = (e: any) => {
     if (e.delta > 5) return;
     e.stopPropagation();
-    setClickedOtherObject({ connectionId: 'Training dummy', e, dropdownOptions: [
-      { label: 'Attack Training dummy', onClick: () => { attackDummy(dummy.id); setClickedOtherObject(null); } },
-    ] });
+    if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
+    const event = { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() };
+    approachWorldInteraction({ region: 'bramblewild', x: dummy.x, z: dummy.z }, () => {
+      setClickedOtherObject({ connectionId: 'Training dummy', e: event, dropdownOptions: [
+        { label: 'Attack Training dummy', onClick: () => { attackDummy(dummy.id); setClickedOtherObject(null); } },
+      ] });
+    }, 1);
   };
 
   return (
     <group position={[x, 0, z]} onClick={onClick} name="training-dummy" userData={{ berigameDummy: dummy.id, hoverTarget: {
-      title: 'Training dummy', action: 'Click for practice options', detail: 'Train your combat skills', radius: .7,
+      title: 'Training dummy', action: 'Walk over for practice options', click: 'panel', detail: 'Train your combat skills', radius: .7,
     } }}>
       {/* Base stake and footing. */}
       <mesh position={[0, 0.04, 0]} receiveShadow><cylinderGeometry args={[0.32, 0.38, 0.08, 10]} /><meshStandardMaterial color="#8a7a5c" roughness={1} /></mesh>

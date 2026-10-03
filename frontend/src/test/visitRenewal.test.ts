@@ -88,3 +88,18 @@ describe('returning-browser visit renewal', () => {
     expect(renewalDelay(NOW - 5, NOW)).toBe(0);
   });
 });
+
+it('honors Retry-After across calls without losing the character', async () => {
+  saved(NOW - 1);
+  const fetch = vi.fn(async () => new Response(JSON.stringify({ error: { code: 'rate_limited' } }),
+    { status: 429, headers: { 'Retry-After': '120' } }));
+  const onIssue = vi.fn();
+  const options = { storage, tokenKey: KEY, fetch, now: () => NOW, onIssue };
+  expect(await renewVisit(options)).toBe('unavailable');
+  expect(onIssue.mock.lastCall?.[0].retryAt).toBeGreaterThanOrEqual(NOW + 120_000);
+  expect(onIssue.mock.lastCall?.[0].retryAt).toBeLessThan(NOW + 125_000);
+  expect(await renewVisit(options)).toBe('unavailable');
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(storage.getItem(KEY)).toBe('stdb-character-token');
+  expect(storage.getItem(renewKey(KEY))).toBe(token('a'));
+});

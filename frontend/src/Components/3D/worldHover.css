@@ -2,17 +2,17 @@
   position: fixed;
   z-index: 18;
   pointer-events: none;
-  padding: 9px 12px;
+  padding: 6px 8px;
   border: 1px solid #a88850;
   border-radius: 9px;
   background: rgba(28, 36, 30, .96);
   box-shadow: 0 3px 12px #0005;
   color: #fff4da;
-  font: 13px/1.4 system-ui, sans-serif;
+  font: 12px/1.35 system-ui, sans-serif;
 }
 .world-hover strong, .world-hover span { display: block; }
-.world-hover strong { font-size: 14px; }
+.world-hover strong { font-size: 12px; }
 .world-hover-action { color: #ffe3a0; margin-top: 2px; }
-.world-hover-detail { color: #cad3c5; font-size: 12px; margin-top: 3px; }
+.world-hover-detail { color: #cad3c5; font-size: 11px; margin-top: 3px; }
 .world-hover-muted { border-color: #82725e; }
 .world-hover-muted .world-hover-action { color: #dfc9a9; }

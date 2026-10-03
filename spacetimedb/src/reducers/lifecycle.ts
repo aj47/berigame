@@ -9,6 +9,7 @@ import { requireAdmission } from '../lib/access';
 import { seedMissingNodes } from '../lib/nodes';
 import { statsSessionEnd, statsSessionStart } from '../lib/stats';
 import { cancelTrade, tradesOf } from '../lib/social';
+import { hasWorldSpace, MAX_CHARACTER_CONNECTIONS, MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
 
 export const init = spacetimedb.init((ctx) => {
   if (!ctx.db.accessPolicy.id.find(0)) {
@@ -34,8 +35,8 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   if (sameId(policy?.owner, ctx.sender) || sameId(policy?.gateway, ctx.sender)) return;
   requireAdmission(ctx);
   const existing = findPlayer(ctx, ctx.sender);
-  if (existing && existing.connections >= 4) throw new SenderError('too many connections for this player');
-  if ((!existing || !existing.online) && [...ctx.db.player.iter()].filter(p => p.online).length >= 128) {
+  if (existing && existing.connections >= MAX_CHARACTER_CONNECTIONS) throw new SenderError('too many connections for this player');
+  if (!hasWorldSpace(ctx.db.player.iter(), !!existing?.online)) {
     throw new SenderError('world is full');
   }
   // Only a real live connection counts as "already online": after a module
@@ -50,7 +51,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     });
     return;
   }
-  if (ctx.db.player.count() >= 10000n) throw new SenderError('world character capacity reached');
+  if (ctx.db.player.count() >= BigInt(MAX_STORED_CHARACTERS)) throw new SenderError('world character capacity reached');
   ctx.db.player.insert({
     identity: ctx.sender,
     name: 'Player-' + hex(ctx.sender).slice(4, 8),

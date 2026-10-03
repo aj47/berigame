@@ -1,3 +1,4 @@
+import { PLAYER_ACTION } from '../frontier/worldInteraction';
 import { normalizeAppearance, type Appearance } from '@sim';
 import { useCallback } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
@@ -17,6 +18,7 @@ export function useGameActions() {
 
   const run = useCallback(
     async (label: string, fn: (conn: DbConnection) => Promise<unknown>) => {
+      window.dispatchEvent(new Event(PLAYER_ACTION));
       const loading = useLoadingStore.getState();
       if (!navigator.onLine || loading.worldUpdatesStalled || !loading.websocketConnected || !loading.gameDataLoaded) {
         show('Waiting for live world updates');

@@ -4,6 +4,9 @@ import {
 } from '@sim';
 import { itemArticles } from './itemArticles';
 import { changelogArticle } from './changelog';
+import { frontierLandArticles } from './frontierLandArticles';
+import { frontierSystemsArticles } from './frontierSystemsArticles';
+import { FRONTIER } from '../../../shared/sim/frontier/catalog';
 
 export interface WikiSection {
   id: string;
@@ -58,6 +61,8 @@ export const guideArticles: WikiArticle[] = [
       { id: 'choose-your-adventure', title: 'Choose your next adventure', paragraphs: [
         'The gardener camp at (22, 18) offers a giant berry expedition whenever you want one. Deliver enormous fruit to market or take it to the feast clearing, with other players or with help from Moss. An expedition lasts up to six minutes; losing its cargo does not take your bag or your skills.',
         'For a slower rhythm, plant a berry in your personal garden north-west of spawn. It keeps growing while you are away. For a bigger challenge, bring a Stone Club and food to a scheduled Giant raid in the Boulders.',
+        'When settlements are enabled in your world, follow the east harbour trail into Bramblewild Meadows. Meet the steward, chop Timber, make a Hammer and collect the first three quest rewards. Together they provide the 50 coins needed for a starter plot and its first week of upkeep.',
+        'Your progress saves automatically on the server. You can buy land and keep playing without downloading a save file. An optional recovery key in Settings helps you return to the same character from another browser.',
       ] },
       { id: 'early-survival', title: 'Stay safe while learning', paragraphs: [
         'New characters begin with up to three minutes of protection from ordinary player attacks. Starting an attack ends that protection. Finding or picking up a stick leaves six more seconds. The safe ring at the centre prevents ordinary attacks from starting or landing.',
@@ -65,8 +70,8 @@ export const guideArticles: WikiArticle[] = [
       ] },
       { id: 'handy-shortcuts', title: 'A few useful shortcuts', table: { headers: ['Key', 'Action'], rows: [['I', 'Open your bag'], ['C', 'Open crafting'], ['K', 'Open skills and techniques'], ['1 / 2 / 3', 'Use a quick slot'], ['Escape', 'Stop your current action / close a panel'], ['H or ?', 'Open in-game help']] } },
     ],
-    related: ['controls', 'gathering', 'crafting', 'expeditions', 'death-safety'],
-    sourceFiles: ['shared/sim/constants.ts', 'shared/sim/adventure.ts', 'spacetimedb/src/reducers/tick.ts', 'frontend/src/Components/UIComponents.tsx'],
+    related: ['controls', 'gathering', 'meadows', 'coins-quests', 'expeditions', 'death-safety'],
+    sourceFiles: ['shared/sim/constants.ts', 'shared/sim/adventure.ts', 'shared/sim/frontier/catalog.ts', 'spacetimedb/src/reducers/tick.ts', 'frontend/src/Components/UIComponents.tsx', 'frontend/src/Components/CharacterRecovery.tsx'],
   },
   {
     slug: 'controls',
@@ -82,8 +87,8 @@ export const guideArticles: WikiArticle[] = [
         'If the camera gets awkward, open Help → Keyboard & camera → Reset view. Camera sensitivity, graphics quality and reduced motion are available in Settings.',
       ] },
       { id: 'interacting', title: 'Interacting with the island', bullets: [
-        'Select an object or player to see its actions. Press and hold an object on touch screens to open its interaction menu.',
-        'Choose Harvest on trees and resource nodes. Waiting beside a busy or regrowing node is normal; it will be claimed when available.',
+        'Select a world object to approach it. Its interaction panel opens when you arrive within reach; choosing another destination cancels the pending interaction. Hover labels show what the object does before you walk there.',
+        'Choose Harvest on original island trees and resource nodes. These nodes can queue you beside a busy or regrowing resource. In the Meadows, select a resource to approach and begin gathering; Timber trees fall after a completed chop and regrow from their stumps.',
         'Choose an item in the bag to see its available actions. Food heals, weapons can be assigned to quick slots, and materials are used in crafting or camp contributions.',
         'Use the goal prompt for the next suggested milestone. Open the minimap to orient yourself and find named destinations.',
       ] },
@@ -99,25 +104,33 @@ export const guideArticles: WikiArticle[] = [
         'New weapons go into the bag without filling your quick slots. Drag one into a quick slot when you want it ready.',
         'When the emote palette is open, its number choices take priority over quick-slot keys. Shortcuts also stay out of the way while you are typing. You can always use the visible buttons instead.',
       ] },
+      { id: 'meadows-menus', title: 'Meadows menus', paragraphs: [
+        'When settlements are enabled, Meadows has three main choices: Quests, Your land and Workshop. Quests focuses on the next objective and supply orders; Your land shows the current plot; Workshop shows available recipes before later unlocks.',
+        'Open More for Wildlife, Disciplines, Sailing or Bag & storage. Plot and town controls still check your character’s location before performing an action. The toolbar lets you inspect your progress whenever you need it.',
+      ] },
       { id: 'performance', title: 'Comfort and performance', paragraphs: [
-        'Settings has Auto, High and Low graphics modes. Auto lowers rendering resolution when frames are slow; Low uses fewer pixels for older devices. You can also reduce motion, hide nameplates and adjust master, effects and ambient volume. These preferences are saved on the current device.',
+        'Settings has Auto, High and Low graphics modes. Auto lowers rendering resolution when frames are slow; Low uses fewer pixels for older devices. You can also reduce motion, hide nameplates or world labels, and adjust master, effects and ambient volume. These preferences are saved on the current device.',
+        'Use the × on a tip to hide tips and quest reminders. Restore them with Show tips and quest reminders in Settings. Hiding guidance or labels does not remove your quests or their progress.',
       ] },
     ],
-    related: ['getting-started', 'inventory-items', 'world-regions', 'connection-identity'],
+    related: ['getting-started', 'inventory-items', 'world-regions', 'meadows', 'connection-identity'],
     sourceFiles: ['frontend/src/Components/UIComponents.tsx', 'frontend/src/Components/CombatHud.tsx', 'frontend/src/Components/SocialHud.tsx', 'frontend/src/Components/SettingsPanel.tsx', 'frontend/src/Components/3D/HoldToWalk.tsx'],
   },
   {
     slug: 'world-regions',
     title: 'The island & its regions',
     category: 'World',
-    summary: 'A route through the Grove, the Coast and the remote Boulders.',
-    lead: 'The island is a connected tile-based world with three main regions. Access comes from the items you carry: a Stick opens the brambles and a Stone Club opens the boulder line. Levels do not directly unlock these crossings.',
-    facts: [{ label: 'World grid', value: '64 × 64 tiles' }, { label: 'Spawn', value: '(25, 25)' }, { label: 'Main regions', value: 'Grove · Coast · Boulders' }, { label: 'Water', value: 'Impassable' }],
+    summary: 'Explore Bramblewild, walk into the Meadows and sail beyond the home island.',
+    lead: 'Bramblewild begins with the Grove, Coast and Boulders. A Stick opens the brambles and a Stone Club opens the boulder line. When settlements are enabled, the east harbour trail continues into the connected Meadows district, while skiffs take you to Reedwake and Cinder Shoal.',
+    facts: [{ label: 'Original Bramblewild grid', value: '64 × 64 tiles' }, { label: 'Meadows district grid', value: '128 × 128 tiles' }, { label: 'Spawn', value: 'Bramblewild (25, 25)' }, { label: 'Water travel', value: 'Skiff routes when settlements are enabled' }],
     sections: [
       { id: 'region-overview', title: 'Regions at a glance', table: { headers: ['Region', 'Entry requirement', 'What you will find'], rows: [
         ['The Grove', 'Starting region', 'Berry trees, safe ring, gardener camp, garden, training dummy, expeditions'],
         ['The Coast', 'Carry a Stick to cross outward through brambles', 'Four driftwood piles and four tide rocks'],
         ['The Boulders', 'Carry a Stone Club to cross outward through the boulder line', 'Two obsidian outcrops and the scheduled Giant raid'],
+        ['Bramblewild Meadows', 'Settlements enabled; walk east from the Coast', 'Steward quests, coins, shared plots, building, a public workshop and Burrowbuns'],
+        ['Reedwake', 'Settlements enabled; sail and dock', 'Reeds, Resin, Carrot seeds, Reedhorns, Glowmoths and claim plots'],
+        ['Cinder Shoal', 'Settlements enabled; sail and dock', 'Iron ore, Shellbacks, Bristlebacks and claim plots'],
       ] } },
       { id: 'barriers', title: 'How area keys work', paragraphs: [
         'A Stick and a Stone Club are both equipment and route keys. They count while in your bag or wielded. They are not consumed when crossing. A Flint Knife deals the same damage as a Stick but does not open the brambles.',
@@ -133,14 +146,16 @@ export const guideArticles: WikiArticle[] = [
         ['Feast clearing', '(12, 36)', 'Feed the expedition Giant'],
         ['Boulders route target', '(51, 51)', 'Approach the south-east headlands'],
         ['Raid Giant', '(57, 57)', 'Scheduled cooperative boss encounter'],
+        ['Driftwood Harbour', 'Bramblewild (46, 29)', 'Shipwright, skiff construction and departures when settlements are enabled'],
+        ['Meadows steward', 'Meadows (31, 64)', 'Quests, supply orders, public workshop and disciplines'],
       ] } },
       { id: 'distances', title: 'Reading distances and coordinates', paragraphs: [
-        'Coordinates in this guide are server tile coordinates, written as (x, z). Most interaction ranges count the largest horizontal or vertical difference, so a diagonal neighbouring tile is also one tile away. A radius of one therefore covers a 3 × 3 square.',
+        'Coordinates are server tile coordinates, written as (x, z), local to the named region. Bramblewild and Meadows have different local grids but share continuous land and walking routes. Sea coordinates belong to the sailing map. Most interaction ranges count the largest horizontal or vertical difference, so a diagonal neighbouring tile is also one tile away.',
         'Normal movement allows up to two grid steps each 0.6-second tick. Carrying expedition cargo reduces that to one. Actual travel time also depends on the available path, blocked tiles and your destination.',
       ] },
     ],
-    related: ['grove', 'coast', 'boulders', 'expeditions', 'death-safety'],
-    sourceFiles: ['shared/sim/constants.ts', 'shared/sim/areas.ts', 'shared/sim/terrain.ts', 'shared/sim/adventure.ts'],
+    related: ['grove', 'coast', 'boulders', 'meadows', 'sailing-islands', 'death-safety'],
+    sourceFiles: ['shared/sim/constants.ts', 'shared/sim/areas.ts', 'shared/sim/terrain.ts', 'shared/sim/adventure.ts', 'shared/sim/frontier/catalog.ts', 'shared/sim/frontier/homeMap.ts'],
   },
   {
     slug: 'grove',
@@ -217,9 +232,9 @@ export const guideArticles: WikiArticle[] = [
     slug: 'gathering',
     title: 'Gathering & resources',
     category: 'Skills & activities',
-    summary: 'Harvest times, regrowth, XP and how to find your first Stick.',
-    lead: 'Gathering turns the island’s shared resource nodes into food and materials. Berry trees train Foraging. Driftwood piles, tide rocks and obsidian outcrops train Beachcombing. Each completed harvest gives one of the node’s primary resource.',
-    facts: [{ label: 'Interaction range', value: '1 tile, including diagonals' }, { label: 'First Stick', value: 'Foraging level 2' }, { label: 'Spare Stick chance', value: '25% per later berry-tree harvest' }, { label: 'Harvest speed perks', value: 'Levels 10 and 20' }],
+    summary: 'Harvest times, timber chopping, regrowth, XP and your first Stick.',
+    lead: 'Gathering turns the island’s shared resource nodes into food and materials. Original berry trees train Foraging; driftwood, tide rocks and obsidian train Beachcombing. The enabled settlements expansion adds timed chopping and gathering for building, tools and travel.',
+    facts: [{ label: 'Original harvest reach', value: '1 tile, including diagonals' }, { label: 'Settlement gather reach', value: '2 tiles' }, { label: 'First Stick', value: 'Foraging level 2' }, { label: 'Spare Stick chance', value: '25% per later berry-tree harvest' }],
     sections: [
       { id: 'node-reference', title: 'Resource reference', table: { headers: ['Resource node', 'Base gather', 'Regrow after harvest', 'XP', 'Skill'], rows: Object.entries(NODE_KINDS).map(([kind, node]) => [node.name, seconds(node.harvestTicks), seconds(node.regrowTicks), String(harvestXp(Number(kind))), Number(kind) === 0 ? 'Foraging' : 'Beachcombing']) } },
       { id: 'how-harvests-work', title: 'How a harvest works', paragraphs: [
@@ -236,22 +251,27 @@ export const guideArticles: WikiArticle[] = [
         'Level 10 in the relevant gathering skill removes one tick from the gather time. Level 20 removes a second tick. Harvests cannot be reduced below three ticks, or 1.8 seconds. Regrowth time is unchanged.',
         'The Goldberry tree is the exception: its gather time is never reduced by skill level. A high-level player therefore gathers ordinary berries faster, but does not gain faster access to the Goldberry tree.',
       ], table: { headers: ['Node', 'Level 1', 'Level 10', 'Level 20'], rows: [['Ordinary berry tree', '3.0 s', '2.4 s', '1.8 s'], ['Goldberry tree', '3.0 s', '3.0 s', '3.0 s'], ['Driftwood pile', '2.4 s', '1.8 s', '1.8 s'], ['Tide rock', '3.6 s', '3.0 s', '2.4 s'], ['Obsidian outcrop', '4.8 s', '4.2 s', '3.6 s']] } },
-      { id: 'bag-space', title: 'When your bag is full', paragraphs: ['Harvest rewards that do not fit in your bag drop onto the ground at your position. Make room before long gathering trips, and pick up overflow promptly. Ground items expire after five minutes and can be collected by other players.'] },
+      { id: 'meadows-resources', title: 'Chopping and gathering in the Meadows', paragraphs: [
+        `Approach a settlement resource and stay nearby while the action completes. Ordinary gathering takes ${FRONTIER.gatherDuration / 1000} seconds. Timber is awarded after the chopping animation finishes; the tree falls, leaves a stump and regrows after ${FRONTIER.timberRegrow / 1000} seconds. An Axe in your bag increases the timber yield from one to two.`,
+        'Resources are shared: only one character can gather a patch at a time. Moving away, stopping, taking damage or disconnecting cancels an unfinished gather. Materials and XP arrive only after completion.',
+        'Plant fibre, Reeds and Carrot seeds give Cultivation XP; the other settlement patches give Exploration XP. Active Cultivation level 5 reduces Plant fibre, Reeds, Greenberry and Strawberry gathering to 2.4 seconds. Resource locations, tools and recipes are listed in Meadows materials & crafting.',
+      ] },
+      { id: 'bag-space', title: 'When your bag is full', paragraphs: ['Original island harvest rewards that do not fit in your bag drop at your position. Ground items expire after five minutes and can be collected by other players. Settlement gathering instead requires room for the complete yield; if space disappears before completion, it stops without granting items or XP. Make room before gathering again.'] },
     ],
-    related: ['grove', 'coast', 'boulders', 'skills-progression', 'inventory-items'],
-    sourceFiles: ['shared/sim/nodes.ts', 'shared/sim/skills.ts', 'shared/sim/adventure.ts', 'spacetimedb/src/reducers/harvest.ts', 'spacetimedb/src/reducers/tick.ts', 'spacetimedb/src/lib/inventory.ts'],
+    related: ['grove', 'coast', 'frontier-materials-crafting', 'frontier-disciplines', 'skills-progression', 'inventory-items'],
+    sourceFiles: ['shared/sim/nodes.ts', 'shared/sim/skills.ts', 'shared/sim/adventure.ts', 'shared/sim/frontier/engine.ts', 'spacetimedb/src/reducers/harvest.ts', 'spacetimedb/src/reducers/tick.ts', 'spacetimedb/src/lib/inventory.ts'],
   },
   {
     slug: 'inventory-items',
     title: 'Inventory & item database',
     category: 'Items & equipment',
     summary: 'Every current item, its healing, damage, stack size and practical use.',
-    lead: 'Your bag has 28 slots, including three quick slots. Food and materials stack up to 99 per slot; each weapon takes a slot of its own. Wielded weapons remain in your quick bar and are still part of your inventory.',
+    lead: 'Your bag has 28 slots, including three quick slots. Food and materials stack up to 99 per slot; each weapon or tool takes a slot of its own. The table also covers settlement items, available when that expansion is enabled in your world.',
     facts: [{ label: 'Bag capacity', value: '28 slots' }, { label: 'Quick bar', value: 'First 3 bag slots' }, { label: 'Material / food stack', value: '99' }, { label: 'Weapon stack', value: '1' }],
     sections: [
       { id: 'item-table', title: 'Item statistics', table: { headers: ['Item', 'Healing', 'Weapon damage', 'Max stack'], rows: Object.values(ITEM_DEFS).map(item => [item.name, item.healthRestore ? `${item.healthRestore} HP` : '—', item.weaponDamage ? String(item.weaponDamage) : '—', String(item.maxStack)]) } },
       { id: 'food', title: 'Food and healing', paragraphs: [
-        'Greenberries restore 2 HP, Strawberries 3, Blueberries 5 and Goldberries 10. Berry Mash restores 7 HP in a single bite. Healing stops at your maximum of 30 HP; excess healing is lost.',
+        'Greenberries restore 2 HP, Strawberries 3, Blueberries 5 and Goldberries 10. Berry Mash restores 7 HP in a single bite. Settlement Carrots restore 3 and Travel rations 8. Your base maximum health is 30 HP; active Might and an equipped Padded vest can raise the settlement maximum to 36. Excess healing is lost.',
         'Eating consumes one item and starts a three-tick, 1.8-second cooldown. It also pushes back your next swing by three ticks. The bag and quick bar prevent eating at full health; when injured, healing beyond your missing HP is lost. Put food in a quick slot if you expect to need it during a fight.',
       ] },
       { id: 'weapons-keys', title: 'Weapons and route keys', table: { headers: ['Weapon', 'Obtain from', 'Special use'], rows: [
@@ -264,6 +284,12 @@ export const guideArticles: WikiArticle[] = [
         ['Flint Shard', 'Coast tide rocks', 'Club, knife and crown recipes'],
         ['Obsidian', 'Boulders outcrops or Giant raid rewards', 'Shared workshop donation'],
       ] } },
+      { id: 'settlement-storage', title: 'Settlement items and storage', paragraphs: [
+        'Open More → Bag & storage in the Meadows menu to use your carried items or transfer supplies to an accessible container. The town vault has six slots. A Storage chest or skiff has twelve; a trained Reedhorn provides six cargo slots while Beastcraft level 2 is active.',
+        'Containers check both your location and permissions. You must be at town for your personal vault, near a chest with storage access, or aboard or beside a boat with cargo access. Chest contents stay with a plot if that plot is captured; your personal vault and boat remain yours.',
+        'Settlement equipment has its own Equip action in Bag & storage. The Iron club deals 9 base damage and an equipped Padded vest adds 3 maximum HP while carried. The Stick and Stone Club still provide the original island’s route keys.',
+        'Coins are a server-saved balance rather than a bag item. Gathering produces supplies and XP; collect quest rewards or deliver supply orders to receive coins.',
+      ] },
       { id: 'moving-dropping', title: 'Moving, dropping and picking up', paragraphs: [
         'Drag items between bag and quick slots; on touch screens, hold an item before dragging. Matching stacks merge up to their limit, and different items swap places. You can also select an item and choose Move. Dropping creates a visible ground pile.',
         'Ground items last 500 server ticks, or five minutes. Pick-up works from an adjacent tile and can walk you towards the pile. If only part of a pile fits, the remainder stays on the ground. Items on the ground are not reserved for the player who dropped them.',
@@ -271,22 +297,22 @@ export const guideArticles: WikiArticle[] = [
         'Ordinary death drops your whole bag, including your wielded weapon. Skill progress and unlocked keepsakes persist. Friendly duels use separate practice health and do not drop your items.',
       ] },
     ],
-    related: ['crafting', 'gathering', 'combat', 'trading-social', 'death-safety'],
-    sourceFiles: ['shared/sim/items.ts', 'shared/sim/inventory.ts', 'shared/sim/constants.ts', 'spacetimedb/src/reducers/inventory.ts', 'spacetimedb/src/lib/inventory.ts', 'frontend/src/Components/Inventory.tsx', 'frontend/src/Components/CombatHud.tsx'],
+    related: ['crafting', 'frontier-materials-crafting', 'building-storage', 'coins-quests', 'trading-social', 'death-safety'],
+    sourceFiles: ['shared/sim/items.ts', 'shared/sim/inventory.ts', 'shared/sim/constants.ts', 'shared/sim/frontier/engine.ts', 'spacetimedb/src/reducers/inventory.ts', 'spacetimedb/src/lib/inventory.ts', 'frontend/src/Components/Inventory.tsx', 'frontend/src/Components/CombatHud.tsx'],
   },
   {
     slug: 'skills-progression',
     title: 'Skills & progression',
     category: 'Skills & activities',
-    summary: 'Experience thresholds, gathering perks, keepsakes and five adventure paths.',
-    lead: 'Progress is earned by doing things around the island. Gathering and Crafting have their own skills; five adventure paths unlock useful expedition techniques. Progress is tied to your character and survives ordinary death.',
+    summary: 'Core skills, adventure paths and five settlement disciplines with two active choices.',
+    lead: 'Progress is earned by doing things around the island. Gathering and Crafting have their own skills; adventure paths unlock expedition techniques. Worlds with settlements enabled also have five disciplines, of which two can be active. All XP belongs to your character and survives ordinary death.',
     facts: [{ label: 'Level cap', value: '30' }, { label: 'XP at level 30', value: '21,025' }, { label: 'Gathering / recipe skills', value: '3' }, { label: 'Adventure paths', value: '5' }],
     sections: [
       { id: 'core-skills', title: 'Gathering and recipe skills', table: { headers: ['Skill', 'How to train', 'Main unlocks'], rows: [
         ['Foraging', 'Wild berry trees and personal garden harvests', 'First Stick at level 2, fourth garden plot at level 5, Flower Crown at level 10'],
         ['Beachcombing', 'Driftwood, tide rocks and obsidian outcrops', 'Faster harvesting and Shell Necklace at level 10'],
         ['Crafting', 'Make recipes from your bag', 'Flint Knife at level 2, Driftwood Crown recipe at level 5, Woven Sash at level 10'],
-      ] }, paragraphs: ['Foraging and Beachcombing reduce harvesting by one tick at level 10 and another at level 20, with a three-tick minimum. The Goldberry tree keeps its original harvest time. Skill levels do not increase your maximum HP or weapon damage.'] },
+      ] }, paragraphs: ['Foraging and Beachcombing reduce harvesting by one tick at level 10 and another at level 20, with a three-tick minimum. The Goldberry tree keeps its original harvest time. These three core skills do not increase maximum HP or weapon damage; settlement disciplines have separate perks.'] },
       { id: 'xp-table', title: 'Experience thresholds', paragraphs: ['Total XP to reach a level is 25 × (level − 1)². All characters begin at level 1 with zero XP. XP stops accumulating at level 30. The table lists useful thresholds, rather than the extra XP needed from the preceding level.'], table: { headers: ['Level', 'Total XP'], rows: [1, 2, 3, 4, 5, 10, 15, 20, 25, 30].map(level => [String(level), xpForLevel(level).toLocaleString('en-US')]) } },
       { id: 'adventure-paths', title: 'The five adventure paths', table: { headers: ['Path', 'Typical activities', 'Technique theme'], rows: [
         ['Growing', 'Foraging, gardening, planting and hiding expedition fruit', 'Faster growth and scent control'],
@@ -295,10 +321,15 @@ export const guideArticles: WikiArticle[] = [
         ['Fighting', 'Resetting the training dummy, friendly duels and protecting cargo', 'Protecting and creating space'],
         ['Befriending', 'Gifts, helping Moss, bribing Pip and feeding the Giant', 'NPC cooperation'],
       ] }, paragraphs: ['Gathering and crafting also feed their matching adventure path. Techniques need both a path level and a matching milestone. Open Skills with K to see the exact requirement and select up to three unlocked techniques at camp. They change expedition options without increasing PvP damage or health.'] },
+      { id: 'settlement-disciplines', title: 'Settlement disciplines', paragraphs: [
+        'Might, Cultivation, Building, Beastcraft and Exploration track settlement activities. Open Meadows → More → Disciplines and activate two different disciplines at the town square. The first pair is free; changing it later costs 20 coins with a twenty-four-hour wait between changes.',
+        'You earn and retain XP in every discipline, but its advanced perks require it to be active. Might supports combat and mining, Cultivation improves crops and food, Building unlocks materials and batch bonuses, Beastcraft trains companions, and Exploration helps discovery and docking.',
+        'When you first use a Meadows activity, your matching island skill and adventure XP gives disciplines a one-time starting boost. After that, the five discipline totals grow separately from the original skills and adventure paths. See Five disciplines, two active choices for the exact XP sources and level 2, 5 and 10 abilities.',
+      ] },
       { id: 'keepsakes', title: 'Keepsakes and cosmetics', table: { headers: ['Keepsake', 'How to earn'], rows: COSMETICS.map(cosmetic => [cosmetic.name, cosmetic.how]) }, paragraphs: ['Keepsakes occupy head or neck appearance slots and are visual rewards. They are permanent unlocks rather than bag items. A newly earned keepsake is worn automatically if its appearance slot is empty; use Style to change what you wear.'] },
     ],
-    related: ['techniques', 'gathering', 'crafting', 'garden', 'expeditions'],
-    sourceFiles: ['shared/sim/skills.ts', 'shared/sim/adventure.ts', 'spacetimedb/src/lib/progress.ts', 'spacetimedb/src/lib/adventure.ts', 'frontend/src/Components/SkillsPanel.tsx'],
+    related: ['techniques', 'frontier-disciplines', 'gathering', 'crafting', 'garden', 'expeditions'],
+    sourceFiles: ['shared/sim/skills.ts', 'shared/sim/adventure.ts', 'shared/sim/frontier/catalog.ts', 'shared/sim/frontier/engine.ts', 'spacetimedb/src/lib/progress.ts', 'spacetimedb/src/lib/adventure.ts', 'frontend/src/Components/SkillsPanel.tsx'],
   },
   {
     slug: 'techniques',
@@ -336,9 +367,9 @@ export const guideArticles: WikiArticle[] = [
     slug: 'crafting',
     title: 'Crafting & recipes',
     category: 'Items & equipment',
-    summary: 'Every live recipe, ingredient cost, level requirement and XP reward.',
-    lead: 'Craft directly from your bag to turn gathered materials into weapons, food and a keepsake. Open Craft with C. Recipes complete instantly when you have their ingredients and Crafting level.',
-    facts: [{ label: 'Current recipes', value: String(RECIPES.length) }, { label: 'Crafting time', value: 'Instant' }, { label: 'Workbench required', value: 'No' }, { label: 'Shortcut', value: 'C' }],
+    summary: 'Original island recipes, with a guide to the Meadows workshop and new materials.',
+    lead: 'On Bramblewild, open Craft with C to turn gathered materials into weapons, food and a keepsake. These original recipes complete instantly with the required ingredients and Crafting level. When settlements are enabled, Workshop adds tools, refined materials, creature supplies and boat parts.',
+    facts: [{ label: 'Original island recipes', value: String(RECIPES.length) }, { label: 'Crafting time', value: 'Instant' }, { label: 'Original recipes need a station?', value: 'No' }, { label: 'Shortcut', value: 'C' }],
     sections: [
       { id: 'recipe-table', title: 'Recipe reference', table: { headers: ['Recipe', 'Ingredients', 'Crafting level', 'XP', 'Result'], rows: RECIPES.map(recipe => [recipe.name, recipe.inputs.map(input => `${input.quantity} ${itemName(input.itemId)}`).join(' + '), String(recipe.level), String(recipe.xp), recipe.output ? `${recipe.output.quantity} ${itemName(recipe.output.itemId)}` : 'Permanent cosmetic unlock']) } },
       { id: 'stone-club', title: 'Stone Club: your first major craft', paragraphs: [
@@ -356,9 +387,14 @@ export const guideArticles: WikiArticle[] = [
         'If the finished item still cannot fit, it drops at your feet. Pick it up before the ground-item timer expires.',
         'The shared camp workshop improves future expedition cargo. It is separate from the ability to make these four recipes.',
       ] },
+      { id: 'meadows-workshop', title: 'The Meadows workshop', paragraphs: [
+        'Settlement recipes use Workshop and train Building rather than the original Crafting skill. Start with an Axe, Pick and Hammer, then make Planks, Rope, Cloth and Bricks for building and travel.',
+        'Workbench, Kiln and Cooking station recipes work at the public Meadows workshop or a nearby private station you have permission to use. Skiff hulls require a harbour. Some advanced recipes also require an active discipline and level.',
+        'Settlement crafting checks bag space and completes only if the output fits. Read Meadows materials & crafting for all settlement recipes, workstation requirements and active Building bonuses.',
+      ] },
     ],
-    related: ['inventory-items', 'coast', 'skills-progression', 'expeditions'],
-    sourceFiles: ['shared/sim/nodes.ts', 'shared/sim/items.ts', 'spacetimedb/src/reducers/craft.ts'],
+    related: ['inventory-items', 'coast', 'skills-progression', 'frontier-materials-crafting', 'building-storage', 'expeditions'],
+    sourceFiles: ['shared/sim/nodes.ts', 'shared/sim/items.ts', 'shared/sim/frontier/catalog.ts', 'shared/sim/frontier/engine.ts', 'spacetimedb/src/reducers/craft.ts'],
   },
   {
     slug: 'garden',
@@ -434,8 +470,8 @@ export const guideArticles: WikiArticle[] = [
     title: 'Combat & friendly duels',
     category: 'Combat',
     summary: 'Weapon damage, swing timing, practice combat and the cost of eating.',
-    lead: 'Combat runs on the same 0.6-second clock as the rest of the island. Weapons determine damage, positioning determines whether a swing can land, and food restores health at the cost of time. Skill levels do not increase ordinary weapon damage or maximum HP.',
-    facts: [{ label: 'Maximum health', value: '30 HP' }, { label: 'Ordinary swing interval', value: '4 ticks · 2.4 seconds' }, { label: 'Melee reach', value: '1 tile, including diagonals' }, { label: 'Eating cooldown', value: '3 ticks · 1.8 seconds' }],
+    lead: 'Combat runs on the same 0.6-second clock as the rest of the island. Weapons determine damage, positioning determines whether a swing can land, and food restores health at the cost of time. The original Foraging, Beachcombing and Crafting skills do not change damage or HP; settlement disciplines and equipment have separate bounded bonuses.',
+    facts: [{ label: 'Base maximum health', value: '30 HP' }, { label: 'Ordinary swing interval', value: '4 ticks · 2.4 seconds' }, { label: 'Melee reach', value: '1 tile, including diagonals' }, { label: 'Eating cooldown', value: '3 ticks · 1.8 seconds' }],
     sections: [
       { id: 'damage', title: 'Weapon damage', table: { headers: ['Attack', 'Damage per swing', 'How to use'], rows: [['Punch', '3', 'No weapon wielded'], ['Stick', '6', 'Wield from quick slot 1–3'], ['Flint Knife', '6', 'Wield from quick slot 1–3'], ['Stone Club', '8', 'Wield from quick slot 1–3']] }, paragraphs: ['Weapons must be wielded to change damage. A club sitting in the bag opens its area route, but an unwielded character still punches. Changing your wielded weapon takes effect at the next swing without resetting the fight’s timing.'] },
       { id: 'ordinary-combat', title: 'Ordinary player combat', paragraphs: [
@@ -443,8 +479,13 @@ export const guideArticles: WikiArticle[] = [
         'Each attacker normally swings once every four ticks. Retaliation is offset to create alternating blows. Changing targets, stopping or moving does not erase an existing swing cooldown. Starting an accepted attack ends your own newcomer or respawn protection.',
         'Click ground or use Stop to leave your current action. Outside a friendly duel, reaching zero HP causes ordinary death and drops your entire inventory. Use the practice options first if you want to learn timing.',
       ] },
+      { id: 'settlement-combat', title: 'Combat in settlement regions', paragraphs: [
+        'With the expansion enabled, settlement player combat requires both characters to allow combat or join opposing teams in a valid land contest. Meadows town and paid homes are protected. An unpaid plot can only change hands through the announced challenge process described in Land ownership & upkeep.',
+        'The Iron club deals 9 base damage. Active Might level 2 adds 10% weapon damage within a shared cap of 10. Active Might adds 3 maximum HP, and an equipped, carried Padded vest adds 3 more, up to 36. Active Cultivation level 10 improves settlement food healing by two, capped at ten per portion.',
+        'Bristlebacks in Cinder Shoal are hostile wildlife encounters. Might level 5 unlocks Brace to reduce their retaliation for twelve seconds. Read Wildlife & companions before approaching them.',
+      ] },
       { id: 'food-timing', title: 'Food and recovery timing', paragraphs: [
-        'Eating restores the food’s listed HP, capped at 30. You must wait three ticks, or 1.8 seconds, before another bite. Eating also adds three ticks to your next swing, even if you cancel combat before eating.',
+        'Original island eating restores the food’s listed HP, capped at 30. You must wait three ticks, or 1.8 seconds, before another bite. Eating also adds three ticks to your next swing, even if you cancel combat before eating. Settlement food uses the equipment and discipline limits described above.',
         'A Goldberry gives the most healing per bite at 10 HP. Berry Mash restores 7 HP from ingredients that otherwise need three bites. Carrying food in quick slots makes it easier to react without opening the bag.',
       ] },
       { id: 'training-dummy', title: 'Training dummy', paragraphs: [
@@ -457,8 +498,8 @@ export const guideArticles: WikiArticle[] = [
         'Surrender at any time, or end the duel by entering safety or leaving the area. A duel also ends if someone disconnects, moves more than twelve tiles away or its time limit expires. Newcomer protection does not prevent a mutually accepted friendly duel.',
       ] },
     ],
-    related: ['inventory-items', 'death-safety', 'giant-raids', 'techniques', 'trading-social'],
-    sourceFiles: ['shared/sim/constants.ts', 'shared/sim/items.ts', 'shared/sim/social.ts', 'spacetimedb/src/reducers/combat.ts', 'spacetimedb/src/reducers/inventory.ts', 'spacetimedb/src/reducers/adventure.ts', 'spacetimedb/src/lib/adventure.ts'],
+    related: ['inventory-items', 'death-safety', 'giant-raids', 'frontier-disciplines', 'wildlife-companions', 'land-ownership'],
+    sourceFiles: ['shared/sim/constants.ts', 'shared/sim/items.ts', 'shared/sim/social.ts', 'shared/sim/frontier/engine.ts', 'spacetimedb/src/reducers/combat.ts', 'spacetimedb/src/reducers/inventory.ts', 'spacetimedb/src/reducers/adventure.ts', 'spacetimedb/src/lib/adventure.ts'],
   },
   {
     slug: 'giant-raids',
@@ -497,8 +538,8 @@ export const guideArticles: WikiArticle[] = [
     title: 'Death, protection & recovery',
     category: 'Combat',
     summary: 'Know what is safe, what drops, and how to recover after ordinary combat.',
-    lead: 'Ordinary death drops every item you carry, including your wielded weapon. You return to the Grove with full health after a short delay. Your skills, unlocked keepsakes and personal garden remain with your character.',
-    facts: [{ label: 'Respawn delay', value: '5 ticks · 3 seconds' }, { label: 'Respawn location', value: '(25, 25)' }, { label: 'Respawn health', value: '30 / 30 HP' }, { label: 'Post-respawn protection', value: '10 ticks · 6 seconds' }, { label: 'Ground-item lifetime', value: '500 ticks · 5 minutes' }],
+    lead: 'Death drops your carried supplies, including your wielded weapon, while your skills and permanent progress remain. In original Bramblewild combat you return to the Grove after three seconds. Settlement defeats return you to the current region’s spawn, or the spawn in your last harbour’s region after a sea defeat.',
+    facts: [{ label: 'Respawn delay', value: '3 seconds' }, { label: 'Original island respawn', value: '(25, 25) · 30 HP' }, { label: 'Original respawn protection', value: '10 ticks · 6 seconds' }, { label: 'Dropped supply lifetime', value: '5 minutes' }],
     sections: [
       { id: 'safe-ring', title: 'The safe ring', paragraphs: [
         'The safe ring extends two tiles in every direction from (25, 25), including diagonals. Ordinary player attacks cannot start or land when either participant is inside it. Step back into the ring to return to a protected area.',
@@ -506,7 +547,12 @@ export const guideArticles: WikiArticle[] = [
       ] },
       { id: 'grace', title: 'Newcomer and respawn protection', paragraphs: [
         'A new character begins with three minutes of ordinary attack protection. Finding or picking up a Stick shortens the remaining protection to six seconds. Starting an accepted ordinary player attack ends your protection immediately.',
-        'After an ordinary death, you respawn in three seconds and receive six seconds of protection. The Safe badge covers being in the ring or having active grace. Practice on the dummy and attacking the raid Giant do not by themselves end your grace.',
+        'After an original island death, you respawn in three seconds and receive six seconds of protection. The Safe badge covers being in the ring or having active grace. Practice on the dummy and attacking the raid Giant do not by themselves end your grace.',
+      ] },
+      { id: 'settlement-defeat', title: 'Settlement defeat and land ownership', paragraphs: [
+        'A settlement defeat leaves a dropped bag at your location for five minutes. Your active companion rests for one minute, and any Reedhorn pack contents join the drop. Return and pick up the bag promptly; other players can collect dropped supplies.',
+        'Coins, discipline XP, quests, land and placed buildings remain saved. Personal vaults and boats keep their ownership. A plot and its chest contents can transfer only through the separate land rules, including a successful challenge after unpaid upkeep and its warning periods.',
+        'After the three-second respawn delay, you return with your settlement maximum health at the current region’s spawn. If defeated at sea, you leave the boat and return to its last port region. Call your rested companion again from town or a stable.',
       ] },
       { id: 'what-drops', title: 'What happens to your items', paragraphs: [
         'At zero ordinary HP, the game drops every occupied inventory slot in piles around your body, clears your bag and puts your weapon away. The piles are visible ground items, not a protected storage chest.',
@@ -520,8 +566,8 @@ export const guideArticles: WikiArticle[] = [
       ] },
       { id: 'safe-activities', title: 'Activities without inventory loss', table: { headers: ['Activity', 'What is at risk'], rows: [['Training dummy', 'No damage from the dummy'], ['Friendly duel', 'Separate practice HP; no ordinary health or bag loss'], ['Giant berry expedition', 'Expedition cargo value; the pursuing NPCs do not damage ordinary HP'], ['Scheduled Giant raid', 'Ordinary HP and your carried inventory'], ['Ordinary player combat', 'Ordinary HP and your carried inventory']] } },
     ],
-    related: ['combat', 'inventory-items', 'world-regions', 'gathering', 'giant-raids'],
-    sourceFiles: ['shared/sim/constants.ts', 'shared/sim/areas.ts', 'spacetimedb/src/reducers/tick.ts', 'spacetimedb/src/reducers/combat.ts', 'spacetimedb/src/lib/inventory.ts', 'spacetimedb/src/lib/adventure.ts'],
+    related: ['combat', 'inventory-items', 'world-regions', 'land-ownership', 'building-storage', 'wildlife-companions'],
+    sourceFiles: ['shared/sim/constants.ts', 'shared/sim/areas.ts', 'shared/sim/frontier/engine.ts', 'spacetimedb/src/reducers/tick.ts', 'spacetimedb/src/reducers/combat.ts', 'spacetimedb/src/lib/inventory.ts', 'spacetimedb/src/lib/adventure.ts'],
   },
   {
     slug: 'trading-social',
@@ -565,16 +611,21 @@ export const guideArticles: WikiArticle[] = [
     slug: 'connection-identity',
     title: 'Your character & connection',
     category: 'Essentials',
-    summary: 'Returning to the same character, saved progress and reconnecting to the island.',
-    lead: 'Your inventory, skills, garden and appearance belong to your game identity. The browser stores the sign-in information used to reconnect to that identity. Returning from the same browser and world preserves that connection to your character.',
-    facts: [{ label: 'Character progress', value: 'Saved for your identity' }, { label: 'Browser sign-in', value: 'Scoped to server and world' }, { label: 'Preferences', value: 'Saved on this device' }, { label: 'Garden growth', value: 'Continues offline' }],
+    summary: 'Automatic server saving, returning to your character and optional access recovery.',
+    lead: 'The server saves your inventory, skills, garden, coins, land and buildings as you play. There is no manual save step. Your browser remembers the sign-in for that character; an optional recovery key helps you regain that access from another browser.',
+    facts: [{ label: 'Progress saving', value: 'Automatic · on the server' }, { label: 'Recovery key', value: 'Optional character access' }, { label: 'Preferences', value: 'Saved on this device' }, { label: 'Garden growth', value: 'Continues offline' }],
     sections: [
       { id: 'returning', title: 'Returning to your character', paragraphs: [
         'Use the same browser profile and the same game world when you return. The client saves a world-specific sign-in token locally and reuses it on refresh. A different browser, private window or world can have a different identity.',
         'On hosted visits that support renewal, a saved return token refreshes access to the same character. Renewal preserves inventory, skills and garden rather than creating a fresh character. Availability depends on the world’s admission setup.',
         'Clearing site storage or explicitly resetting sign-in can break the browser’s connection to the saved character. Reconnecting is the normal first step for a connection issue; a new identity is not a way to recover an old bag.',
       ] },
-      { id: 'what-persists', title: 'What is saved', table: { headers: ['Progress or preference', 'Where it belongs'], rows: [['Inventory and character state', 'Your identity in this world'], ['Skill XP and unlocked keepsakes', 'Your identity in this world'], ['Garden plants and ripening time', 'Your identity in this world'], ['Workshop contributions', 'Shared world project'], ['Graphics, sound and camera preferences', 'This browser / device']] } },
+      { id: 'what-persists', title: 'What is saved', table: { headers: ['Progress or preference', 'Where it belongs'], rows: [['Inventory and character state', 'Automatically saved on the world server'], ['Skill XP, disciplines, quests and unlocked keepsakes', 'Your character on the world server'], ['Coins, land, buildings, containers, companions and boats', 'The world server, with their ownership and permissions'], ['Garden plants and ripening time', 'Your character on the world server'], ['Workshop contributions', 'Shared world project'], ['Graphics, sound, camera and label preferences', 'This browser / device']] } },
+      { id: 'optional-recovery', title: 'Optional recovery when you change browsers', paragraphs: [
+        'You do not need a recovery download to buy land or save progress. When recovery is available in your world, open Settings → Your character → Restore access on another browser. Download recovery key creates a private access key for this character.',
+        'Use a recovery key accepts that file in another browser for the same world and returns you to the character’s current server-saved progress. It does not roll the world back to the date the key was downloaded.',
+        'A newly downloaded key replaces the previous one. Restoring also issues a replacement key, so keep the new file. Keep these files private: they grant character access, like a sign-in credential.',
+      ] },
       { id: 'connection-help', title: 'When the world stops responding', bullets: [
         'Check the connection message before repeating an action. A submitted action and a completed movement or harvest are different moments.',
         'Use the offered reconnect or rejoin control and allow the world state to load before trying again.',
@@ -583,8 +634,8 @@ export const guideArticles: WikiArticle[] = [
       ] },
       { id: 'sharing', title: 'Share an invitation, keep your identity', paragraphs: ['Use the Friends panel’s join-me link when inviting another player. It creates a shareable code without exposing your sign-in credentials. Agent session and renewal tokens also belong to one character and should be kept in their intended credential storage rather than placed in a URL.'] },
     ],
-    related: ['getting-started', 'controls', 'garden', 'trading-social', 'agent-play'],
-    sourceFiles: ['frontend/src/spacetime/connection.ts', 'frontend/src/spacetime/sessionToken.ts', 'frontend/src/spacetime/visitRenewal.ts', 'frontend/src/Components/LoadingScreen.tsx'],
+    related: ['getting-started', 'controls', 'land-ownership', 'garden', 'trading-social', 'agent-play'],
+    sourceFiles: ['frontend/src/spacetime/connection.ts', 'frontend/src/spacetime/sessionToken.ts', 'frontend/src/spacetime/visitRenewal.ts', 'frontend/src/Components/LoadingScreen.tsx', 'frontend/src/Components/CharacterRecovery.tsx', 'frontend/src/frontier/recovery.ts'],
   },
   {
     slug: 'agent-play',
@@ -606,17 +657,23 @@ export const guideArticles: WikiArticle[] = [
         'For a retry of the same intended action, keep the same idempotency key and payload. Honour Retry-After on rate-limit responses.',
       ] },
       { id: 'action-reference', title: 'Common actions', table: { headers: ['Action family', 'Examples', 'Useful state'], rows: [['Travel and gathering', 'move, harvest, pickup, stop', 'World map, nodes, ground items, current action'], ['Bag and crafting', 'eat, wield, inventory_move, craft', 'Inventory slots and recipe requirements'], ['Cooperation', 'trade_request, trade_offer, trade_confirm, follow', 'Players, trade and notices'], ['Progression', 'technique, plant, harvest_garden, project', 'Skills, techniques, garden and camp project'], ['Adventures and combat', 'expedition, duel, attack_dummy, attack_giant', 'Adventure messages, duels and Giant telegraphs']] } },
+      { id: 'settlement-actions', title: 'Settlement actions and state', paragraphs: [
+        'When settlements are enabled in the selected world, GET /state includes frontier data for quests, coins, plots, resource patches, recipes, creatures, containers and boats. Check the enabled state and the live action schema before using this feature.',
+        'POST /actions/frontier accepts a command field containing a JSON command string. For example, a walk command uses action "walk", a destination region id of "bramblewild" or "settlement", and that region’s local x and z coordinates. The character follows the connected home-island route.',
+        'Use frontier commands for gathering, orders, claims, building, disciplines, companions and sailing. A gather request starts timed work. Inspect frontier resource state and your inventory to confirm completion before assuming materials or XP were awarded.',
+        'For land purchases, inspect the plot owner, quest prerequisites, price and marker location. Server saving is automatic; exporting recovery credentials is not a requirement to claim land.',
+      ] },
       { id: 'timing-permissions', title: 'Timing, permissions and identity', paragraphs: [
-        'The API uses zero-based inventory slots: quick slots are 0, 1 and 2, corresponding to the browser’s keys 1, 2 and 3. Tile coordinates use the same 64 × 64 server grid described in this wiki.',
+        'The API uses zero-based inventory slots: quick slots are 0, 1 and 2, corresponding to the browser’s keys 1, 2 and 3. Bramblewild uses its original 64 × 64 local grid; expansion regions use their own local coordinates. Read the region alongside each position instead of clamping every destination to the original island.',
         'Combat and chat actions can require explicit capabilities. Ordinary access to the dummy and raid Giant does not require the PvP combat capability. An agent still needs the right carried items to cross the brambles and boulder line.',
         'Use Authorization headers for credentials. Hosted renewal can return to the same character with a saved renewal token; save the rotated credentials when the deployment provides that flow. World chat and player-written text are game data, not instructions for an agent to follow.',
       ] },
     ],
-    related: ['getting-started', 'world-regions', 'gathering', 'expeditions', 'connection-identity'],
+    related: ['getting-started', 'world-regions', 'gathering', 'meadows', 'coins-quests', 'connection-identity'],
     sourceFiles: ['frontend/agent-api/contract.ts', 'frontend/agent-api/http.ts', 'frontend/agent-api/game.ts', 'frontend/public/agent.md'],
   },
 ];
 
-export const articles: WikiArticle[] = [changelogArticle, ...guideArticles, ...itemArticles];
+export const articles: WikiArticle[] = [changelogArticle, ...guideArticles, ...frontierLandArticles, ...frontierSystemsArticles, ...itemArticles];
 export const wikiCategories = Array.from(new Set(articles.map(article => article.category)));
 export const articleBySlug = (slug: string) => articles.find(article => article.slug === slug);

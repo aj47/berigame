@@ -12,7 +12,7 @@ Send `User-Agent: BeriGame-Agent/1.0` on HTTP requests. The edge may reject empt
    This walks to the tree with the soonest turn and picks it (a regrowing or busy tree means you wait
    beside it; the receipt then has `waiting`). Poll state to confirm the berry is in your inventory.
    At Foraging level 2 (four berry harvests), receive a guaranteed first stick.
-   Later berry harvests have a 25% chance to find spare sticks for gifts or trade. Find inventory rows by `itemId`, not by count. `state.goal` suggests the next step.
+   Later berry harvests have a 25% chance to find spare sticks for gifts or trade. Find inventory rows by `itemId`, not by count. `state.objective` suggests the next step across regions; `state.goal` remains the original-island tutorial.
 4. Use `/actions/move` with integer `x` and `z` (0..63), `/actions/eat` with a zero-based inventory `slot`,
    `/actions/wield` with a quick `slot` (0..2) that holds a stick, `/actions/unwield` with `{}`,
    or `/actions/stop` with `{}`.
@@ -35,7 +35,7 @@ Combat: you swing automatically while attacking. Bare fists punch for 3 damage. 
 0..2 are quick slots (`hotbar: true` in state); a stick wielded from one hits for 6 and is visible
 in your hand to everyone. `player.weapon` is `null` while punching. Moving the stick out of the
 quick slots, dropping or trading away its last quick-slot copy, or dying puts it away. There are no stances.
-Skills: harvesting berries trains Foraging, gathering driftwood and flint trains Beachcombing,
+Original island skills: harvesting berries trains Foraging, gathering driftwood and flint trains Beachcombing,
 and making things (`/actions/craft`) trains Crafting. `state.skills` has your levels (1..30); they
 persist for your identity. Levels unlock recipes (`state.recipes[].locked` / `level`), keepsakes and
 at most two ticks off a harvest (never below 3, never the gold tree); never damage, HP or areas.
@@ -60,7 +60,7 @@ Trade with a player within 3 tiles: `trade_request`, they `trade_respond`, both 
 the swap is all or nothing; walking apart, dying or leaving cancels. See `state.trade` and `state.notices`.
 Chat rows carry `nearby` (said within 12 tiles of you).
 The Boulders: the grid is 64x64; the island has a natural coastline, a lake and a winding brook. See `world.map.rows`, `world.map.obstacles` and `world.map.landmarks` for navigation. Past the Coast's south-east corner a
-boulder line (max(x, z) = 50, both x and z >= 36) guards the Boulders. Crossing it needs a stone
+boulder line (walkable land with max(x, z) = 50 and z >= 32) guards the Boulders. Crossing it needs a stone
 club (1 driftwood + 2 flint, `craft`), with the same one-way rule as the brambles (`state.world.boulders`;
 `blockedBy: "boulders"`, error code `boulders`). Water is impassable; use Millbridge or Willow Crossing to cross the brook. Obsidian outcrops there
 give obsidian (`harvest {kind: "obsidian"}`). The Giant (`state.giant`, centre (57,57)) is a world boss
@@ -122,6 +122,48 @@ once built, it adds a reward to every future expedition berry. Progress survives
 `duel` challenges a nearby player who must accept. It has a three-second countdown and separate
 practice HP; ordinary health and inventory remain intact. Either can surrender. `garden_share`
 with `shared:1` publishes your garden; `shared:0` hides it again. Only its owner can change plants.
+
+## Meadows, coins and a first home
+
+When `state.frontier.enabled` is true, the Meadows are the connected eastern district of
+Bramblewild. Carry a Stick through the brambles, then send `/actions/frontier` with
+`{"command":"{\"action\":\"enter\"}"}`. This queues an ordinary walk to the town square;
+wait for arrival before talking. Every frontier action uses this JSON-string `command` wrapper.
+
+1. At `frontier.regions.settlement.spawn`, send `{"action":"talk","id":"steward"}`, then
+   `{"action":"quest","id":"steward"}` to collect the first 10 coins.
+2. Follow `state.objective` (`source: "frontier_quest"`) and `frontier.quests`: gather six
+   Timber, claim that reward, craft a Hammer and claim its reward. Together these pay 50 coins.
+   Find materials in `frontier.resources` and costs in `frontier.recipes`.
+3. Send `{"action":"walk","id":"settlement","x":X,"z":Z}` to approach a resource, then
+   `{"action":"gather","id":"RESOURCE_ID"}` while beside it. Timber takes time to chop,
+   becomes a stump and regrows. Everyone starts with a simple hatchet; crafting an Axe
+   doubles Timber yield. Six shared Timber trees are spread around the Meadows, marked
+   by pale trunk bands. Use the resource list to choose a ready tree.
+4. `frontier.plots` lists available land and marker coordinates. Walk to the chosen marker,
+   then use `claim` with its plot ID. The starter claim costs 50 coins including its first week.
+   `frontier.pieces` lists building costs; the steward's repeatable orders earn later coins.
+
+`player.tile` and `player.destination` always use local coordinates. Destination includes
+`{region,x,z}` so an approach across districts still names a usable location. `frontier walk`
+accepts `id: "bramblewild"` or `"settlement"` plus local x,z. `frontier.homeMap.meadowOffset`
+is only needed to draw both districts on one map. For other islands use frontier `move`.
+
+During a resource reservation `player.action` is `chopping` or `gathering`, and
+`player.gathering` contains `{resourceId,itemId,region,tile,tool,quantity,startedAt,completesAt,remainingMs}`.
+`tool` names the hatchet, axe, pick or hands; `quantity` previews the yield (null for older reservations).
+Times are Unix milliseconds. Poll until the reservation clears and inventory confirms the
+result; a deadline by itself is not confirmation. Movement or another action can cancel it.
+
+Meadows disciplines (`frontier.profile.xp`, `frontier.disciplines`, `frontier.disciplinePerks`)
+are distinct from the original skills and adventure techniques. Their initial XP imports
+relevant existing progress once; afterward they advance separately. Some active discipline
+perks affect damage or HP. Inspect their unlock requirements before specializing.
+
+Read the wiki's [Meadows](/docs/meadows), [coins and quests](/docs/coins-quests), and
+[land ownership](/docs/land-ownership) guides for the full route. The server saves progress
+automatically. An optional recovery key restores access to a character if login is lost;
+it is not a manual save and is not required before claiming land.
 
 ## Return to the same character
 

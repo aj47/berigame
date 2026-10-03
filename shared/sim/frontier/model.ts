@@ -93,6 +93,24 @@ export type GroundBag = Location & {
   slots: Slot[];
   expiresAt: number;
 };
+/** A shared resource reservation and the last completed timber felling. */
+export type Resource = Location & {
+  id: string;
+  item: string;
+  harvest?: {
+    by: string;
+    startedAt: number;
+    completesAt: number;
+    origin: Point;
+    hp: number;
+    inputStamp?: string;
+    /** Built-in starter tools are distinct from crafted upgrades. Optional for older reservations. */
+    tool?: "hatchet" | "axe" | "pick" | "hands";
+    quantity?: number;
+  };
+  felledAt?: number;
+  regrowsAt?: number;
+};
 export type Ledger = {
   id: string;
   owner: string;
@@ -117,6 +135,7 @@ export type EntityMap = {
   ledger: Ledger;
   config: Config;
   drop: GroundBag;
+  resource: Resource;
 };
 export type Kind = keyof EntityMap;
 export interface Repository {
@@ -136,12 +155,18 @@ export type Actor = Location & {
   target?: Point;
   hostile: boolean;
   combat: boolean;
+  inputStamp?: string;
+  facing?: number;
 };
 export interface World {
   repo: Repository;
   now: number;
   actors: Actor[];
   save(actor: Actor): void;
+  loadBag?(actor: Actor): Slot[];
+  homeStepRule?(actor: Actor): (from: Location, to: Location) => boolean;
+  homeBlocked?(point: Point): boolean;
+  canLeaveHomeDistrict?(actor: Actor): boolean;
 }
 export function newProfile(id: string): Profile {
   return {

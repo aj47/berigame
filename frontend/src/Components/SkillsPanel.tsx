@@ -4,6 +4,7 @@ import { ADVENTURE_CAMP, PATHS, PATH_FIELDS, TECHNIQUES, techniqueUnlocked, hasT
 import { useGameActions } from "../spacetime/actions";
 import { useAdventureProfiles, useMyPlayer, useMyCosmetics, useMySkills } from "../spacetime/hooks";
 import { useProgressStore } from "../spacetime/stores/progressStore";
+import { wikiUrl } from "../site/siteUrls";
 
 interface Props {
   open: boolean;
@@ -55,7 +56,7 @@ const SkillsPanel = memo(({ open, onClose, onStyle }: Props) => {
     <section className="game-panel skills-panel" aria-label="Skills">
       <header className="panel-heading">
         <div>
-          <h2>Skills</h2>
+          <h2>Skills &amp; techniques</h2>
         </div>
         <button className="close-button" onClick={onClose} aria-label="Close skills">×</button>
       </header>
@@ -140,6 +141,7 @@ const SkillsPanel = memo(({ open, onClose, onStyle }: Props) => {
       <details className="skills-about"><summary>About skills · {earned}/{COSMETICS.length} keepsakes</summary>
         <p>Progress is permanent. Unlock recipes, keepsakes and faster harvests as you play.</p>
         <p>Techniques never increase PvP damage or health.</p>
+        <p>Meadows disciplines have separate XP and two active perk choices. Your existing progress gives them a one-time starting boost. <a href={wikiUrl('frontier-disciplines')} target="_blank" rel="noreferrer">About disciplines ↗</a></p>
       </details>
       </div>
     </section>

@@ -1,8 +1,18 @@
+import { MAX_ONLINE_PLAYERS } from '../../shared/sim/admission';
+import { JOIN_BUDGET, NETWORK_JOIN_BUDGET, REQUEST_BUDGET } from './admissionPolicy';
 import { createHash, randomBytes } from 'node:crypto';
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public retryAfter?: number) { super(message); }
 }
+export function admissionError(error: unknown): ApiError | undefined {
+  if (error instanceof ApiError) return error;
+  const message = error instanceof Error ? error.message : String(error);
+  if (/world is full/.test(message)) return new ApiError(429, 'world_full', `This world has reached its ${MAX_ONLINE_PLAYERS}-player limit. Try again when a player leaves.`, 30);
+  if (/world (character|permit) capacity/.test(message)) return new ApiError(429, 'character_capacity', 'This world cannot create more characters. Existing characters can still return.', 3600);
+  return undefined;
+}
+
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 export const secret = (prefix: string) => prefix + randomBytes(32).toString('base64url');
 export type Invite = { expiresAt: number; lifetimeSeconds: number; combat: boolean; chat: boolean };
@@ -24,14 +34,16 @@ export class Budget {
 
 export class AddressLimits {
   private entries = new Map<string, { requests: Budget; joins: Budget; lastSeen: number }>();
-  private global = new Budget(200, 20);
+  private global = new Budget(REQUEST_BUDGET.burst, REQUEST_BUDGET.perSecond);
+  private globalJoins = new Budget(JOIN_BUDGET.burst, JOIN_BUDGET.perSecond);
   take(ip: string, joining: boolean, now = Date.now()) {
-    this.global.take(now);
+    if (joining) this.globalJoins.take(now);
+    else this.global.take(now);
     for (const [key, entry] of this.entries) if (now - entry.lastSeen > 300_000) this.entries.delete(key);
     let entry = this.entries.get(ip);
     if (!entry) {
       if (this.entries.size >= 4096) throw new ApiError(429, 'capacity', 'Request capacity reached.', 60);
-      entry = { requests: new Budget(60, 2, now), joins: new Budget(5, 1 / 60, now), lastSeen: now };
+      entry = { requests: new Budget(REQUEST_BUDGET.burst, REQUEST_BUDGET.perSecond, now), joins: new Budget(NETWORK_JOIN_BUDGET.burst, NETWORK_JOIN_BUDGET.perSecond, now), lastSeen: now };
       this.entries.set(ip, entry);
     }
     entry.lastSeen = now;

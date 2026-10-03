@@ -8,7 +8,7 @@ import { request as httpRequest } from 'node:http';
 import { createAgentServer } from './http';
 import { InviteStore } from './security';
 
-async function fixture(options: { maxSessions?: number; delayed?: boolean } = {}) {
+async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'berigame-agent-api-'));
   let now = Date.now();
   const calls: string[] = [];
@@ -17,7 +17,7 @@ async function fixture(options: { maxSessions?: number; delayed?: boolean } = {}
   let release: (() => void) | undefined;
   const gate = options.delayed ? new Promise<void>(r => { release = r; }) : Promise.resolve();
   const invites = new InviteStore(directory);
-  const api = createAgentServer({ invites, maxSessions: options.maxSessions, now: () => now, game: {
+  const api = createAgentServer({ invites, maxSessions: options.maxSessions, maxSessionsPerIp: options.maxSessionsPerIp, now: () => now, game: {
     ready: () => true,
     async create() {
       const identity = String(++created).padStart(64, '0');
@@ -152,8 +152,8 @@ test('session capacity includes connections still provisioning', async () => {
   } finally { await f.close(); }
 });
 
-test('untrusted forwarded addresses cannot evade per-address active session limits', async () => {
-  const f = await fixture();
+test('untrusted forwarded addresses cannot evade an explicitly configured address limit', async () => {
+  const f = await fixture({ maxSessionsPerIp: 4 });
   try {
     for (let i = 0; i < 4; i++) {
       const response = await f.request('/sessions', await f.issue(), {}, { 'X-Forwarded-For': `203.0.113.${i + 1}` });
@@ -186,4 +186,10 @@ test('invite replay and expiration cannot create another player', async () => {
     assert.equal((await f.request('/sessions', expired, {})).status, 401);
     assert.equal(f.created(), 1);
   } finally { await f.close(); }
+});
+
+test('a LAN can fill the default 64 agent slots without an address cap', async () => {
+  const f = await fixture();
+  try { for (let i = 0; i < 64; i++) await f.enter(); assert.equal(f.created(), 64); }
+  finally { await f.close(); }
 });

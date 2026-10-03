@@ -1,3 +1,4 @@
+import { homePoint, homePath, isHomeRegion } from "../../../shared/sim/frontier/homeMap";
 import { regionalPath } from '../../../shared/sim/frontier/regions';
 import type { RegionId } from '../../../shared/sim/frontier/catalog';
 import { useEffect, useRef } from 'react';
@@ -22,6 +23,7 @@ interface Motion {
   yaw: number;
   initialized: boolean;
   authoritative: Tile;
+  region: RegionId;
   /** How long the body has waited at its destination with the gait held (the arrival grace); 0 while travelling. */
   holdMs: number;
   /** This route set off from a standstill, so its first START_EASE_MS ease in. */
@@ -42,15 +44,16 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
   const motion = useRef<Motion>({
     from: new Vector3(), to: new Vector3(), points: [], stepLengths: [], segment: 0,
     durationMs: 0, startedAt: 0, moving: false, speed: 0,
-    yaw: facingToYaw(facing as Facing), initialized: false, authoritative: {x:tileX,z:tileZ},
+    yaw: facingToYaw(facing as Facing), initialized: false, authoritative: homePoint({x:tileX,z:tileZ}, region), region,
     holdMs: 0, fromRest: false, lastFrameAt: -1,
   });
   useEffect(() => {
     const m = motion.current, g = groupRef.current;
-    const tile = { x: tileX, z: tileZ };
+    const tile = homePoint({ x: tileX, z: tileZ }, region);
     const destination = new Vector3(...tileToWorld(tile));
     const previous = m.authoritative;
-    m.authoritative = tile;
+    const previousRegion = m.region;
+    m.authoritative = tile; m.region = region;
     const snap = () => {
       m.from.copy(destination); m.to.copy(destination); m.points=[]; m.stepLengths=[];
       m.segment=0; m.moving=false; m.speed=0; m.holdMs=0; m.initialized=true;
@@ -60,8 +63,8 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
     // A legal two-step diagonal is 2.83 world units, not a teleport. Anything
     // further than one tick of travel (e.g. a respawn) snaps.
     const maximum = MOVEMENT_STEPS_PER_TICK;
-    if (chebyshev(previous, tile) > maximum) { snap(); return; }
-    const route = region === 'bramblewild' ? bfsPath(previous, goalIsTile(tile), blocked) : regionalPath(region, previous, tile, p => frontierBlocked?.has(`${p.x},${p.z}`) ?? false);
+    if ((previousRegion !== region && !(isHomeRegion(previousRegion) && isHomeRegion(region))) || chebyshev(previous, tile) > maximum) { snap(); return; }
+    const route = region === 'bramblewild' && previousRegion === 'bramblewild' ? bfsPath(previous, goalIsTile(tile), blocked) : isHomeRegion(region) ? homePath(previous, tile, p => p.region === 'bramblewild' ? blocked.has(p.z * 64 + p.x) : frontierBlocked?.has(`${p.x},${p.z}`) ?? false) : regionalPath(region, previous, tile, p => frontierBlocked?.has(`${p.x},${p.z}`) ?? false);
     if (!route || route.length > maximum) { snap(); return; }
     // Finish any unrendered corner of the previous update before following
     // this update. Early network delivery must not make us cut across a tree.
@@ -80,7 +83,7 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
       m.yaw=Math.atan2(next.x-m.from.x,next.z-m.from.z);
       m.speed=m.from.distanceTo(next)/(m.stepLengths[0]*tickClock.period/MOVEMENT_STEPS_PER_TICK/1000);
     } else m.speed=0;
-  }, [tileX, tileZ]);
+  }, [tileX, tileZ, region]);
 
   useFrame(() => {
     const m=motion.current, g=groupRef.current;

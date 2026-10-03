@@ -143,11 +143,13 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
           tables.gardenPlot, tables.adventureProfile, tables.expedition, tables.expeditionMember, tables.islandProject, tables.gardenShowcase, tables.friendlyDuel,
         ]);
     })
-    .onConnectError((ctx, _err) => {
+    .onConnectError((ctx, error) => {
       console.error('Game server connection failed');
       markConnectionLost(ctx, seq < connectedSeq);
       useLoadingStore.getState().setConnectionIssue(
-        visiblyInvalidToken(savedToken)
+        /world is full/.test(error instanceof Error ? error.message : String(error))
+          ? 'This world is full. Your character is saved; we will retry when a place is available.'
+          : visiblyInvalidToken(savedToken)
           ? 'Your saved sign-in is invalid or expired. Rejoin to retry, or use sign-in recovery below.'
           : 'Cannot reach the game server. Rejoin to try again.',
         Boolean(savedToken),

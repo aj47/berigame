@@ -1,3 +1,5 @@
+import { MAX_AGENT_SESSIONS } from './admissionPolicy';
+import { admissionError } from './portable';
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage } from 'node:http';
 import { isIP } from 'node:net';
@@ -47,8 +49,8 @@ export function createAgentServer(options: Options) {
   const pending = new Map<string, number>();
   const limits = new AddressLimits();
   let inflight = 0;
-  const maxSessions = options.maxSessions ?? 16;
-  const maxPerIp = options.maxSessionsPerIp ?? 4;
+  const maxSessions = options.maxSessions ?? MAX_AGENT_SESSIONS;
+  const maxPerIp = options.maxSessionsPerIp ?? maxSessions;
   const idleMs = options.idleMs ?? 10 * 60_000;
   const publicOrigin = options.publicOrigin ? new URL(options.publicOrigin).origin : undefined;
 
@@ -184,7 +186,7 @@ export function createAgentServer(options: Options) {
         throw error;
       }
     } catch (error) {
-      const safe = error instanceof ApiError ? error : new ApiError(503, 'unavailable', 'The request could not be completed.');
+      const safe = admissionError(error) ?? new ApiError(503, 'unavailable', 'The request could not be completed.');
       send(safe.status, errorBody(safe), safe.retryAfter);
     } finally { inflight--; }
   });

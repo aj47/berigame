@@ -16,6 +16,8 @@ export const FRONTIER = {
   repeatCap: 60,
   switchCost: 20,
   switchCooldown: DAY,
+  gatherDuration: 3000,
+  timberRegrow: 12000,
 } as const;
 export const DISCIPLINES = [
   "Might",
@@ -410,14 +412,6 @@ export const QUESTS: QuestDef[] = [
     coins: 0,
   },
   {
-    id: "upkeep",
-    title: "Plan for next week",
-    text: "Earn and prepay a second week of tax.",
-    event: "upkeep",
-    amount: 1,
-    coins: 0,
-  },
-  {
     id: "observe",
     title: "Quiet neighbours",
     text: "Observe a wild creature.",
@@ -442,18 +436,26 @@ export const QUESTS: QuestDef[] = [
     coins: 10,
   },
   {
-    id: "stable",
-    title: "Room for friends",
-    text: "Build a stable.",
-    event: "build:stable",
-    amount: 1,
-    coins: 10,
-  },
-  {
     id: "order",
     title: "Useful work",
     text: "Complete an NPC supply order.",
     event: "order",
+    amount: 1,
+    coins: 10,
+  },
+  {
+    id: "upkeep",
+    title: "Plan for next week",
+    text: "Earn and prepay a second week of tax.",
+    event: "upkeep",
+    amount: 1,
+    coins: 0,
+  },
+  {
+    id: "stable",
+    title: "Room for friends",
+    text: "Build a stable.",
+    event: "build:stable",
     amount: 1,
     coins: 10,
   },
@@ -554,7 +556,13 @@ export const RESOURCE_PATCHES = (
     x: region === "settlement" ? [33, 33, 33, 33, 29, 29][i] : 113,
     z: region === "settlement" ? [52, 56, 72, 76, 54, 74][i] : 12 + i * 14,
   }));
-});
+}).concat(
+  // Keep the original IDs/positions. Additional shared trees appear for existing
+  // worlds through the catalog; reservations are created lazily on first use.
+  // The central woodland strip stays outside every plot's maximum 16×16 bounds.
+  [{ x: 29, z: 47 }, { x: 29, z: 58 }, { x: 29, z: 70 }, { x: 33, z: 82 }, { x: 29, z: 94 }]
+    .map((point, i) => ({ id: `settlement-timber-${i + 2}`, region: "settlement" as const, item: "timber", ...point })),
+);
 
 export const DISCIPLINE_PERKS = [
   [

@@ -187,7 +187,7 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft =
             aria-expanded={panel === "appearance" || panel === "skills"}
             onClick={() => toggle("skills")}
           >
-            Skills
+            {inFrontier ? 'Disciplines' : 'Skills & techniques'}
           </button>
           <button data-panel="appearance" aria-expanded={panel === "appearance"} onClick={() => toggle("appearance")}>Character</button>
           <button
@@ -225,8 +225,8 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, draft =
       <FriendsPanel key={`friends-${friendsRequest.id}`} open={panel === "friends"} initialAdding={friendsRequest.adding} initialSearch={friendsRequest.search} initialPlayerHex={friendsRequest.playerHex} onClose={close} onOpenChat={() => setPanel("chat")} />
       <AppearancePanel open={panel === "appearance"} onClose={close} onSkills={() => setPanel("skills")} />
       <SkillsPanel open={panel === "skills"} onClose={close} onStyle={() => setPanel("appearance")} />
-      <SettingsPanel open={panel === "settings"} onClose={close} />
-      {!inFrontier && <Minimap hidden={panel !== null} />}
+      <SettingsPanel open={panel === "settings"} onClose={close} recoveryEnabled={frontierEnabled} />
+      {(!inFrontier || me?.region === "settlement") && <Minimap hidden={panel !== null} />}
       {panel === "help" && <HelpPanel onClose={close} />}
       {!inFrontier && <CombatHud quickKeysEnabled={panel === null} onOpenBag={openBag} />}
       <TradeWindow />

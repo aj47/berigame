@@ -57,7 +57,7 @@ export class AvatarFx {
     }
   }
 
-  afterAnimate(now: number, dt: number, x: number, z: number, moving: boolean, speed: number, dead: boolean, idle: boolean): void {
+  afterAnimate(now: number, dt: number, x: number, z: number, moving: boolean, speed: number, dead: boolean, idle: boolean, frontierReach = false): void {
     // ---- hit flash
     if (this.palette) {
       const stage = flashStage(this.identity, now);
@@ -82,7 +82,7 @@ export class AvatarFx {
     if (this.wasDead === true && !dead) audio.play('respawn', { volume: this.isSelf ? 0.9 : 0.6, x, z });
     this.wasDead = dead;
     // ---- harvest reach
-    const reaching = idle && !moving && !dead && harvesting.has(this.identity);
+    const reaching = idle && !moving && !dead && (frontierReach || harvesting.has(this.identity));
     this.reachWeight = Math.min(1, Math.max(0, this.reachWeight + (reaching ? dt * 4 : -dt * 6)));
     const w = this.reachWeight;
     if (w > 0 && this.reaches.length === 3) {

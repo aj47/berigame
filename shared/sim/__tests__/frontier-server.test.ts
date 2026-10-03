@@ -1,8 +1,9 @@
+import { homeTarget } from "../frontier/homeMap";
 import { describe, expect, it, vi } from "vitest";
 import { Identity } from "../../../spacetimedb/node_modules/spacetimedb/dist/index.mjs";
 import { adventureTables, testTable } from "./adventureHarness";
 import { newProfile } from "../frontier/model";
-import { DAY, PLOTS, WEEK } from "../frontier/catalog";
+import { DAY, PLOTS, WEEK, RESOURCE_PATCHES } from "../frontier/catalog";
 vi.mock(
   "../../../spacetimedb/node_modules/spacetimedb/dist/server/index.mjs",
   () => ({
@@ -23,6 +24,8 @@ import {
   setTradeCoins,
   confirmTradeCoins,
 } from "../../../spacetimedb/src/reducers/trade";
+import { frontierAction } from "../../../spacetimedb/src/reducers/frontier";
+import { clearInteractions } from "../../../spacetimedb/src/lib/players";
 
 const id = (n: number) => Identity.fromString(n.toString(16).padStart(64, "0"));
 function harness() {
@@ -73,6 +76,36 @@ function harness() {
 }
 
 describe("frontier database boundary", () => {
+  it("completes timed gathering against the live inventory and persists its shared stump", () => {
+    const h = harness(), node = RESOURCE_PATCHES.find(n => n.id === 'settlement-timber')!;
+    const player = h.db.player.identity.find(id(1));
+    h.db.player.identity.update({...player,x:node.x-1,z:node.z});
+    (frontierAction as any)(h.ctx,{command:JSON.stringify({action:'gather',id:node.id})});
+    expect([...h.db.inventorySlot.iter()]).toHaveLength(0);
+    expect(JSON.parse(h.db.frontierObject.key.find(`resource:${node.id}`).data).harvest.by).toBe(id(1).toHexString());
+    h.db.inventorySlot.insert({id:0n,owner:id(1),slot:0,itemId:'stone',quantity:7});
+    h.ctx.timestamp.microsSinceUnixEpoch += 3000000n;
+    tickFrontier(h.ctx);
+    expect([...h.db.inventorySlot.iter()]).toEqual(expect.arrayContaining([
+      expect.objectContaining({itemId:'stone',quantity:7}),expect.objectContaining({itemId:'timber',quantity:1}),
+    ]));
+    const resource = JSON.parse(h.db.frontierObject.key.find(`resource:${node.id}`).data);
+    expect(resource.harvest).toBeUndefined();
+    expect(resource.regrowsAt - resource.felledAt).toBe(12000);
+    tickFrontier(h.ctx);
+    expect([...h.db.inventorySlot.iter()].find((s:any)=>s.itemId==='timber')?.quantity).toBe(1);
+  });
+  it("releases frontier reservations through the same cancellation used by movement and disconnect", () => {
+    const h = harness(), node = RESOURCE_PATCHES.find(n => n.id === 'settlement-timber')!;
+    const player = h.db.player.identity.find(id(1));
+    h.db.player.identity.update({...player,x:node.x-1,z:node.z});
+    (frontierAction as any)(h.ctx,{command:JSON.stringify({action:'gather',id:node.id})});
+    clearInteractions(h.ctx,h.db.player.identity.find(id(1)));
+    expect(JSON.parse(h.db.frontierObject.key.find(`resource:${node.id}`).data).harvest).toBeUndefined();
+    h.ctx.timestamp.microsSinceUnixEpoch += 3000000n;
+    tickFrontier(h.ctx);
+    expect([...h.db.inventorySlot.iter()]).toHaveLength(0);
+  });
   it("revokes projected chest access immediately and preserves the personal vault on capture", () => {
     const h = harness(),
       a = id(1).toHexString(),
@@ -113,6 +146,14 @@ describe("frontier database boundary", () => {
     expect(
       h.db.frontierView.key.find(`${b}:container:vault-${a}`),
     ).toBeUndefined();
+  });
+
+  it("disabling cancels a home island walk still on the Bramblewild side", () => {
+    const h=harness(), p=h.db.player.identity.find(id(1)), target=homeTarget({x:95,z:25});
+    h.db.player.identity.update({...p, region:'bramblewild',x:46,z:25,targetX:target.x,targetZ:target.z});
+    configureFrontier(h.ctx,false,true);
+    const result=h.db.player.identity.find(id(1));
+    expect(result.x).toBe(46);expect(result.z).toBe(25);expect(result.targetX).toBeUndefined();
   });
 
   it("disabling safely returns players and boats, freezes tax and resumes without consuming hold time", () => {

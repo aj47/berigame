@@ -1,10 +1,12 @@
 import React, { useId } from "react";
 import "./menuGuide.css";
+import CharacterRecovery from './CharacterRecovery';
 import { useSettingsStore, type Settings } from "../spacetime/stores/settingsStore";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  recoveryEnabled?: boolean;
 }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -55,7 +57,7 @@ const GRAPHICS: { value: Settings["graphics"]; label: string; hint: string }[] =
 ];
 
 /** Player preferences, bound to settingsStore (saved in this browser only). */
-const SettingsPanel = ({ open, onClose }: Props) => {
+const SettingsPanel = ({ open, onClose, recoveryEnabled = false }: Props) => {
   const s = useSettingsStore();
   if (!open) return null;
   return (
@@ -99,6 +101,14 @@ const SettingsPanel = ({ open, onClose }: Props) => {
           <span>Show name plates</span>
         </label>
         <label className="settings-toggle">
+          <input type="checkbox" checked={s.showWorldLabels} onChange={(e) => s.set({ showWorldLabels: e.target.checked })} />
+          <span>Show world labels</span>
+        </label>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={s.showGuidance} onChange={(e) => s.set({ showGuidance: e.target.checked })} />
+          <span>Show tips and quest reminders</span>
+        </label>
+        <label className="settings-toggle">
           <input type="checkbox" checked={s.reduceMotion} onChange={(e) => s.set({ reduceMotion: e.target.checked })} />
           <span>Reduce motion</span>
         </label>
@@ -115,6 +125,7 @@ const SettingsPanel = ({ open, onClose }: Props) => {
           onChange={(v) => s.set({ cameraSensitivity: v })}
         />
       </fieldset>
+      {recoveryEnabled && <CharacterRecovery />}
       <button className="settings-reset" onClick={() => s.reset()}>
         Reset to defaults
       </button>

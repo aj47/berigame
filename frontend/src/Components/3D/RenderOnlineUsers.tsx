@@ -56,7 +56,7 @@ const SHARED_LAYERS = <><AvatarDecals /><AvatarOverlay /><AnimationCulling /></>
 // so later ticks cannot change what it shows (TrainingDummy: 25-tick bar, dummyHpAt).
 const DUMMY_SETTLED_TICKS = Math.max(25, DUMMY_IDLE_RESET_TICKS);
 
-const RenderOnlineUsers = () => {
+const RenderOnlineUsers = ({ frontierBlocked }: { frontierBlocked?: Set<string> }) => {
   const players = usePlayers();
   const me = useMyIdentityHex();
   const chat = useRecentChatBySender();
@@ -72,11 +72,11 @@ const RenderOnlineUsers = () => {
       {giants.map((g) => <Giant key={g.id} giant={g} tick={g.state === GiantState.Defeated ? Math.min(tick, g.respawnTick) : Math.min(tick, g.lastHitTick + GIANT_REGEN_IDLE_TICKS)} />)}
       {MARKERS}
       {players.map((p) => {
-        if (!p.online || (p.region && p.region !== 'bramblewild')) return null;
+        if (!p.online || (p.region && p.region !== 'bramblewild' && p.region !== 'settlement')) return null;
         const hex = identityHex(p.identity);
         if (hex === me) return null;
         return (
-          <PlayerAvatar key={hex} row={p} isSelf={false} saved={appearances.get(hex)} targeted={hex === target} chatText={chat.get(hex)?.text} />
+          <PlayerAvatar frontierBlocked={frontierBlocked} key={hex} row={p} isSelf={false} saved={appearances.get(hex)} targeted={hex === target} chatText={chat.get(hex)?.text} />
         );
       })}
       {SHARED_LAYERS}

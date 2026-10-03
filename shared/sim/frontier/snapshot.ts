@@ -1,3 +1,4 @@
+import { HOME_MAP } from "./homeMap";
 import { COMMANDS } from "./engine";
 import {
   DISCIPLINES,
@@ -43,6 +44,7 @@ export function frontierSnapshot(
   const claims = of("claim");
   return {
     commands: COMMANDS,
+    homeMap: HOME_MAP,
     enabled: objects.find((r) => r.kind === "config")?.value.enabled ?? false,
     pausedAt: objects.find((r) => r.kind === "config")?.value.pausedAt ?? 0,
     profile,
@@ -65,7 +67,7 @@ export function frontierSnapshot(
     quests: questProgress(profile),
     regions: REGIONS,
     ports: PORTS,
-    resources: RESOURCE_PATCHES,
+    resources: RESOURCE_PATCHES.map(node => ({ ...node, ...of("resource").find(row => row.id === node.id) })),
     recipes: FRONTIER_RECIPES,
     pieces: PIECES,
     species: SPECIES,

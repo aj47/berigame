@@ -1,5 +1,6 @@
 import { subscribeFrontier } from '../src/spacetime/frontierSubscription';
-import { frontierSnapshot } from '../../shared/sim/frontier/snapshot';
+import { frontierSnapshot, type FrontierSnapshot } from '../../shared/sim/frontier/snapshot';
+import { describeAction, describeDestination, describeGathering, describeObjective } from './statePresentation';
 import { validateCommand } from '../../shared/sim/frontier/engine';
 import { ADVENTURE_CAMP, BERRY_MARKET, GIANT_FEAST, BERRY_PATCH, TECHNIQUES, PATHS, PATH_FIELDS, techniqueUnlocked, hasTechnique } from '../../shared/sim';
 import { Identity } from 'spacetimedb';
@@ -7,7 +8,7 @@ import { DbConnection, tables } from '../src/module_bindings';
 import {
   TERRAIN_MAP, brambleTiles,
   areaOf, bestTree, BRAMBLE_KEY_ITEM, chebyshev, RESPAWN_GRACE_TICKS, BRAMBLE_MESSAGE, worldBlockedSet, DUMMY_ID, dummyHpAt, emoteByKey, GROUND_ITEM_TTL_TICKS, emptySlots, enterRule, firstDayGoal, getItemDef, GRID_SIZE, HEDGE_RING,
-  holdsItem, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, isSafe, nearestReachableTile, Pending, PlayerState, PUNCH_DAMAGE, SAFE_RADIUS, SPAWN_TILE,
+  holdsItem, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, isSafe, nearestReachableTile, PlayerState, PUNCH_DAMAGE, SAFE_RADIUS, SPAWN_TILE,
   STICK_DROP_CHANCE, STICK_ITEM_ID, swingDamage, TICK_MS, treeReadyTick, type Slot,
   NodeKind, nodeKindDef, recipeStatus,
   CHAT_NEARBY_RADIUS, INVITE_PARAM, TRADE_BREAK_RANGE, TRADE_RANGE, chatVisible, normalizeInviteCode, parseOffer, formatOffer,
@@ -18,7 +19,8 @@ import {
 } from '../../shared/sim';
 import { GARDEN_EXTRA_PLOT_LEVEL, GARDEN_PLOT_TILES, GARDEN_STAGE_NAMES, gardenPlotCountForXp, gardenRemainingMs, gardenStage, getGardenCrop, inGardenReach } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
-import { ApiError, type Invite } from './portable';
+import { admissionError, ApiError, type Invite } from './portable';
+import { MAX_ONLINE_PLAYERS } from '../../shared/sim/admission';
 
 /** Extra fields merged into an accepted action's receipt (e.g. blockedBy, waiting). */
 export type ActionResult = Record<string, unknown> | void;
@@ -64,13 +66,13 @@ export function connect(credential: Credential, control = false, options: Connec
     let lastTick = Date.now();
     let settled = false;
     let conn: DbConnection | undefined;
-    const fail = () => { if (!settled) { settled = true; clearTimeout(timer); reject(unavailable()); } if (conn) disconnect(conn); };
+    const fail = (error?: unknown) => { if (!settled) { settled = true; clearTimeout(timer); reject(admissionError(error) ?? unavailable()); } if (conn) disconnect(conn); };
     const timer = setTimeout(fail, 8000);
     const builder = DbConnection.builder();
     if (options.webSocketFactory) builder.withWSFn(options.webSocketFactory).withCompression('none');
     try {
       conn = builder.withUri(credential.uri).withDatabaseName(credential.database).withToken(credential.token)
-        .onConnectError(fail)
+        .onConnectError((_ctx, error) => fail(error))
         .onDisconnect(() => { active = false; if (!settled) fail(); })
         .onConnect((connection, identity) => {
           if (identity.toHexString() !== credential.identity) { fail(); return; }
@@ -158,16 +160,18 @@ export async function createGameService(credential: Credential, options: Connect
         const rows = [...conn.db.trade.iter()];
         return rows.find(t => t.accepted) ?? rows.sort((a, b) => b.createdTick - a.createdTick)[0];
       };
-      const describePlayer = (p: ReturnType<typeof me>) => ({ id: p.identity.toHexString(), name: p.name,
+      const describePlayer = (p: ReturnType<typeof me>, frontier: FrontierSnapshot, now: number) => {
+        const gathering = describeGathering(frontier, p.identity.toHexString(), now);
+        return { id: p.identity.toHexString(), name: p.name,
         tile: { x: p.x, z: p.z }, health: p.hp, maxHealth: p.maxHp, alive: p.state === PlayerState.Alive,
         weapon: p.weapon ? { itemId: p.weapon, name: getItemDef(p.weapon)?.name ?? p.weapon, damage: swingDamage(p.weapon) } : null,
         combatTarget: p.combatTarget?.toHexString() ?? null, hostile: p.hostile,
-        destination: p.targetX === undefined ? null : { x: p.targetX, z: p.targetZ },
+        destination: describeDestination(p),
         region: p.region || 'bramblewild', area: p.region && p.region !== 'bramblewild' ? p.region : areaOf(p),
-        action: p.pending === Pending.Trade ? 'walking to trade' : p.harvestEndTick ? 'harvesting' : p.pending === Pending.Harvest ? (chebyshev(p, conn.db.tree.id.find(Number(p.pendingId)) ?? p) <= 1 ? 'waiting at tree' : 'walking to tree')
-          : p.pending === Pending.Giant ? (p.targetX === undefined ? 'fighting the giant' : 'walking to the giant')
-          : p.pending === Pending.Pickup ? 'walking to item' : p.pending === Pending.Dummy ? (p.targetX === undefined ? 'training at dummy' : 'walking to dummy') : p.combatTarget ? (p.hostile ? 'combat' : 'following') : p.targetX === undefined ? 'idle' : 'moving',
-      });
+        gathering,
+        action: describeAction(p, gathering, conn.db.tree.id.find(Number(p.pendingId))),
+        };
+      };
       // The First Day chip's memory for this session (see shared/sim/goals.ts).
       let goalDone: string[] = [];
       let ate = false;
@@ -179,7 +183,8 @@ export async function createGameService(credential: Credential, options: Connect
       const others = (self: ReturnType<typeof me>) => [...conn.db.player.iter()].filter(p => p.online && (p.region || 'bramblewild') === (self.region || 'bramblewild') && p.identity.toHexString() !== player.identity);
       const goalFor = (self: ReturnType<typeof me>, tick: number) => {
         const result = firstDayGoal({ me: self, slots: slotsOf(), trees: [...conn.db.tree.iter()], others: others(self), tick,
-          canFight: invite.combat, done: goalDone, seen: { ate }, giant: conn.db.giant.id.find(GIANT_ID) ?? null });
+          canFight: invite.combat, done: goalDone, seen: { ate }, giant: conn.db.giant.id.find(GIANT_ID) ?? null,
+          foragingXp: conn.db.playerSkill.identity.find(id)?.foragingXp ?? 0 });
         goalDone = result.done;
         return result.goal;
       };
@@ -215,17 +220,20 @@ export async function createGameService(credential: Credential, options: Connect
           const inventory = [...conn.db.inventorySlot.iter()].filter(row => row.owner.toHexString() === player.identity).sort((a, b) => a.slot - b.slot);
           const home = !self.region || self.region === 'bramblewild';
           const goal = home ? goalFor(self, tick) : null;
+          const now = Date.now();
+          const frontier = frontierSnapshot(conn.db.frontierObject.iter(), conn.db.frontierView.iter(), player.identity, now);
           const hasKey = holdsItem(slotsOf(), self.weapon, BRAMBLE_KEY_ITEM);
           const hasBoulderKey = holdsItem(slotsOf(), self.weapon, BOULDER_KEY_ITEM);
           const g = conn.db.giant.id.find(GIANT_ID);
           const raid = conn.db.giantRaid.id.find(GIANT_ID);
           const mentees = (hex: string) => [...conn.db.mentorStat.iter()].find(r => r.identity.toHexString() === hex)?.mentees ?? 0;
           return {
-            tick, tickMs: TICK_MS, gridSize: self.region && self.region !== 'bramblewild' ? 128 : GRID_SIZE, player: { ...describePlayer(self), region: self.region || 'bramblewild' },
-            frontier: frontierSnapshot(conn.db.frontierObject.iter(), conn.db.frontierView.iter(), player.identity, Date.now()),
-            me: { area: areaOf(self), safe: isSafe(self, tick), graceTicks: inGrace(self, tick) ? Math.max(0, self.respawnTick + RESPAWN_GRACE_TICKS - tick) : 0,
+            tick, tickMs: TICK_MS, gridSize: self.region && self.region !== 'bramblewild' ? 128 : GRID_SIZE, player: describePlayer(self, frontier, now),
+            frontier,
+            me: { area: home ? areaOf(self) : self.region, safe: home && isSafe(self, tick), graceTicks: inGrace(self, tick) ? Math.max(0, self.respawnTick + RESPAWN_GRACE_TICKS - tick) : 0,
               hasBrambleKey: hasKey, hasBoulderKey },
             goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action, ...(goal.waiting ? { waiting: goal.waiting } : {}) } : null,
+            objective: describeObjective(self.region || 'bramblewild', goal, frontier),
             world: {
               region: self.region || 'bramblewild',
               map: home ? TERRAIN_MAP : null,
@@ -234,7 +242,7 @@ export async function createGameService(credential: Credential, options: Connect
               safeRing: { center: { ...SPAWN_TILE }, radius: SAFE_RADIUS, rule: 'No attack starts or lands while either player is within this Chebyshev radius.' },
               stickChance: STICK_DROP_CHANCE, stickUnlockLevel: 2, firstStickGuaranteed: true,
               boulders: { line: BOULDER_LINE, min: BOULDERS_MIN, entry: { ...BOULDERS_ENTRY }, key: BOULDER_KEY_ITEM,
-                rule: `The Boulders are the land with both x and z >= ${BOULDERS_MIN} and max(x, z) > ${BOULDER_LINE}. The boulder line (max(x, z) = ${BOULDER_LINE}) can be entered only while holding a stone club (bag or wielded), or from the Boulders; stepping off is always allowed, so you can always walk home. Check world.map.rows for the coastline, river and crossings.` },
+                rule: `The Boulders are walkable land with z >= 32 and max(x, z) > ${BOULDER_LINE}. The boulder line is walkable land with z >= 32 and max(x, z) = ${BOULDER_LINE}; enter it only while holding a stone club (bag or wielded), or from the Boulders. Stepping off is always allowed, so you can always walk home. Check world.map.rows for the coastline, river and crossings.` },
             },
             giant: home && g ? {
               id: g.id, tile: { x: g.x, z: g.z }, footprint: 1, reach: GIANT_REACH, aggroRange: GIANT_AGGRO_RANGE,
@@ -266,7 +274,7 @@ export async function createGameService(credential: Credential, options: Connect
             inventory: inventory.map(row => ({ slot: row.slot, itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity,
               healthRestored: getItemDef(row.itemId)?.healthRestore, weaponDamage: getItemDef(row.itemId)?.weaponDamage ?? 0,
               hotbar: row.slot < HOTBAR_SIZE, wielded: !!self.weapon && row.slot < HOTBAR_SIZE && row.itemId === self.weapon })),
-            players: [...conn.db.player.iter()].filter(p => p.online && (p.region || 'bramblewild') === (self.region || 'bramblewild')).slice(0, 128).map(describePlayer),
+            players: [...conn.db.player.iter()].filter(p => p.online && (p.region || 'bramblewild') === (self.region || 'bramblewild')).slice(0, MAX_ONLINE_PLAYERS).map(p => describePlayer(p, frontier, now)),
             nodes: (home ? [...conn.db.tree.iter()] : []).map(tree => ({ id: tree.id, kind: NODE_KIND_NAMES[tree.kind] ?? 'berry', name: nodeKindDef(tree.kind).name,
               tile: { x: tree.x, z: tree.z }, gives: { itemId: tree.itemId, name: getItemDef(tree.itemId)?.name },
               ready: tree.cooldownUntilTick <= tick && !tree.harvester, regrowTicks: Math.max(0, tree.cooldownUntilTick - tick), harvesting: !!tree.harvester })),

@@ -36,7 +36,7 @@ const AlphaIsland = () => (
   <>
     <color attach="background" args={[HORIZON]} />
     <fog attach="fog" args={[HORIZON, 55, 150]} />
-    <mesh geometry={skyGeo} material={skyMat} renderOrder={-1} raycast={() => null} frustumCulled={false} />
+    <mesh position={[64,0,0]} geometry={skyGeo} material={skyMat} renderOrder={-1} raycast={() => null} frustumCulled={false} />
     {/* Warm late-morning sun as the key, cool sky bounce as the fill. */}
     <directionalLight position={[-12, 24, 10]} intensity={1.0} color="#ffe2b8" />
     <hemisphereLight args={['#cfe8ff', '#8c7a52', 0.55]} />

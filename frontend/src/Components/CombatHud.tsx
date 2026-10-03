@@ -263,7 +263,11 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag }: Props) => {
           ? "Eat or wield from your quick slots between swings."
           : weaponDef
             ? `${weaponName} wielded. Press its key again to punch instead.`
-            : "Punching. Harvest berry trees to find a sturdy stick."}
+            : slots.some(slot => slot?.itemId === STICK_ITEM_ID)
+              ? slots.slice(0, HOTBAR_SIZE).some(slot => slot?.itemId === STICK_ITEM_ID)
+                ? "Punching. Tap your stick in the quick bar to wield it."
+                : "Punching. Move your stick from the bag to a quick slot to wield it."
+              : "Punching. Harvest berries to find a sturdy stick."}
       </p>
       {drag.preview}
     </section>

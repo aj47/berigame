@@ -14,6 +14,8 @@ export interface Settings {
   /** 'auto' lets the renderer lower resolution on slow devices. */
   graphics: 'auto' | 'high' | 'low';
   showNameplates: boolean;
+  showWorldLabels: boolean;
+  showGuidance: boolean;
   /** Multiplier for camera drag/zoom speed, 0.5..2 */
   cameraSensitivity: number;
   /** Skip knockback, hitstop and fleeing wildlife bursts. Defaults to the OS preference. */
@@ -31,6 +33,8 @@ export const DEFAULT_SETTINGS: Settings = {
   muted: false,
   graphics: 'auto',
   showNameplates: true,
+  showWorldLabels: true,
+  showGuidance: true,
   cameraSensitivity: 1,
   reduceMotion: prefersReduced(),
 };

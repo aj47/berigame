@@ -4,16 +4,24 @@ The expansion is implemented behind the world owner's `configure_expansion` flag
 
 ## Play loop
 
-1. Visit Trailhead Camp at **22,18** in Bramblewild and click the **Meadows trail** sign, or choose **Adventure → Make a home in the Meadows → Enter the Meadows**.
+1. Carry a sturdy stick through the grove hedge, then follow the east road past Driftwood Harbour at **46,29** into the Meadows. **Map → Meadows town** or **Adventure → Make a home in the Meadows → Walk to Meadows town** queues the same walk.
 2. Meet the steward at **31,64**, gather six timber, and craft a hammer. Hand in the three quests for 50 coins.
-3. Export a character recovery file from **Land**. Claim an available parcel for a 20-coin deed and 30 coins of prepaid upkeep.
+3. Walk to an available parcel and claim it for a 20-coin deed and 30 coins of prepaid upkeep. The server saves your progress automatically; no save or recovery export is required to own land.
 4. Build a shelter, complete supply orders, choose two disciplines, and befriend a companion.
-5. Return to Bramblewild. Reach Driftwood Harbour at **46,29**, craft a hull and sail, and assemble a skiff.
+5. Walk west back to Driftwood Harbour at **46,29**, craft a hull and sail, and assemble a skiff.
 6. Board, take the helm, and sail to Reedwake or Cinder Shoal. Dock before disembarking. Islands offer different resources, wildlife and plots.
 
-The Meadows uses the same Adventure/Meadows, Bag, Chat and Menu controls as Bramblewild. Only one activity panel opens at a time. The town workshop, market, return trail and six starter resource patches sit around a central clearing; gathering routes stay within 16 steps without crossing reserved plots. Click resource labels to walk or gather, and homestead signs to inspect that parcel. Unclaimed expansion land is wooded, while claimed parcels clear their decorative vegetation. Existing plot IDs, coordinates and buildings are preserved.
+The Meadows uses the same Adventure/Meadows, Bag, Chat and Menu controls as Bramblewild. Only one activity panel opens at a time. The town workshop, market and return trail sit around a central clearing. Six marked timber pines form a route along the town lane, with other materials nearby; resource locations stay outside reserved plots. Click resources to walk over and gather, and homestead signs to approach and inspect a parcel. Unclaimed expansion land is wooded, while claimed parcels clear their decorative vegetation. Existing plot IDs, coordinates and buildings are preserved.
 
 The journal contains 18 ordered quests. Completion events accumulate before hand-in. NPC orders award 10 coins each, up to 60 coins per UTC day per character.
+
+Gathering takes three seconds, with items and XP awarded only when the server completes the action. Timber trees fall when chopping finishes, leave a stump, and regrow after 12 seconds. Starter characters can cut timber before crafting an axe; the crafted axe doubles timber yield. Moving, taking damage, disconnecting or choosing another action cancels gathering without granting items. One player can gather a resource at a time. Plants use a reach-and-pluck animation, stone and ore use a tool swing, and timber uses a hatchet chop. The Cultivation gathering perk reduces eligible plant gathering to 2.4 seconds.
+
+## One connected home island
+
+Bramblewild and the Meadows share one scene, camera, ocean and island map. The harbour road crosses from Bramblewild **63,25** to Meadows **0,64**, two neighboring ground tiles. Clicking either district queues a continuous walk, including from one side of the boundary to the other. The expanded map includes town and your owned homestead as walking destinations.
+
+Saved parcels, buildings and local coordinates remain unchanged. `homeMap.ts` places Meadows local coordinates at **+64 x, −39 z** relative to Bramblewild. The authoritative path spans both districts, rechecking buildings, door permissions, original terrain blockers and progression gates. `enter` and `return` now queue walking; `walk` accepts `id: "bramblewild" | "settlement"` and destination-local `x,z`. Normal movement and stop cancel a queued cross-district route. Journeys cannot carry an active expedition or duel across the boundary. Reedwake and Cinder remain islands reached by sailing.
 
 ## Rules
 
@@ -42,7 +50,7 @@ No naval combat, sinking, wind simulation, guild ownership, terrain editing, mul
 - `spacetimedb/src/lib/frontier.ts`: persistent repository, legacy progression migration, authorized private projections and scheduled simulation.
 - `spacetimedb/src/reducers/frontier.ts`: player commands, owner controls and gateway recovery attestation.
 - `frontend/src/frontier`: scene, journal and control panels, placement previews, recovery download/import.
-- `frontend/src/spacetime/frontierSubscription.ts`: region-specific building, crop and drop subscriptions. The smaller land/boat/creature directory remains shared.
+- `frontend/src/spacetime/frontierSubscription.ts`: district-specific building, crop and drop subscriptions; Meadows geometry stays subscribed throughout the connected home island. The smaller land/boat/creature directory remains shared.
 - HTTP agents use `frontier` with a JSON `command`; WebMCP uses `inspect_settlements` and `settlement_action`. Both reach the same authoritative reducer. Coin trades use confirmations bound to both item and coin offers.
 
 Player region defaults to `bramblewild`, so existing coordinates remain valid. Public objects and private wallet/container/ledger records are stored separately. `frontier_view` exposes only authorized projections. Permission revocation and ownership changes update those projections in the same transaction.
@@ -50,6 +58,8 @@ Player region defaults to `bramblewild`, so existing coordinates remain valid. P
 ### Command examples
 
 ```json
+{"action":"walk","id":"settlement","x":31,"z":64}
+{"action":"walk","id":"bramblewild","x":46,"z":29}
 {"action":"move","x":11,"z":8}
 {"action":"claim","id":"settlement-1"}
 {"action":"build","id":"settlement-1","item":"wall","x":13,"z":9,"rotation":0}
@@ -64,7 +74,11 @@ Player region defaults to `bramblewild`, so existing coordinates remain valid. P
 
 Use IDs returned by state; the piece/boat numbers above are examples. Rotation is 0–3. Land permission bits are build=1, storage=2, upkeep=4. Boat permission bits are board=1, helm=2, cargo=4. `quantity` means weeks for tax and item count for storage. `join_contest` takes target `attack` or `defend`; `invite_contest` takes the invited character ID in `target`.
 
-## Recovery and operation
+## Server persistence, account recovery and operation
+
+The central SpacetimeDB server stores character progress, coins, inventory, land and buildings automatically. Reconnecting with the same character credential restores access to that server state. Players do not need to save their game or download a backup before buying land or starting an eligible land challenge.
+
+Recovery export is optional and protects access to the character if its browser credential is lost. It is an access key, not a copy of the game world or character progress. Server backups remain an operator responsibility.
 
 The hosted gateway exports a separate `bgk_` recovery key after checking the character credential. It stores a digest of that key and an AES-256-GCM encrypted credential. Restoring rotates the key and creates a renewal token; the ordinary admission path still enforces expiry, capacity and revocation. Backup keys expire after 180 days. Exporting another backup invalidates the previous one.
 
@@ -86,7 +100,7 @@ Run `npm test`, `npm run test:frontier-load`, the module and Worker TypeScript c
 
 Additional checks are intentionally restricted to isolated local databases:
 
-- `frontend/scripts/frontier-smoke.ts`: fresh-character gathering → hammer → three rewards → recovery gate → paid claim → floor/wall; private-view isolation and reconnect persistence.
+- `frontend/scripts/frontier-smoke.ts`: fresh-character gathering → hammer → three rewards → paid claim without recovery export → floor/wall; private-view isolation and reconnect persistence.
 - `frontend/scripts/frontier-gateway-setup.ts` and `frontier-recovery-smoke.ts`: local Worker configuration and recovery export, restore, replay rejection, bounded renewal and admin revocation. Credentials stay under ignored `.spacetime-data` files.
 - `shared/sim/__tests__/frontier-server.test.ts`: projection revocation, ownership transfer, safe disable/resume, coin trades, and 32 active characters / 48 full parcels / eight moving boats.
 

@@ -5,10 +5,11 @@ import { Mesh, MeshBasicMaterial, Plane, Raycaster, Vector2, Vector3 } from 'thr
 import { create } from 'zustand';
 import { BOULDER_KEY_ITEM, holdsItem, STICK_ITEM_ID, tileToWorld } from '@sim';
 import { useInventoryRows, useMyPlayer, useWorldBlocked } from '../../spacetime/hooks';
+import { useFrontier } from '../../frontier/useFrontier';
 import { useLoadingStore, useUserInputStore } from '../../store';
 import { slotsFromRows } from '../itemUi';
 import { clickableNear, holdState, MOUSE_TAP_RADIUS } from './tapAssist';
-import { groundHover, hoverRoots, hoverTargetOf, hoverTile, isWorldSurface, type HoverHint } from './hoverTarget';
+import { connectedGroundHover, groundHover, hoverRoots, hoverTargetOf, hoverTile, isWorldSurface, meadowBlockedTiles, type HoverHint } from './hoverTarget';
 import './worldHover.css';
 
 interface Preview { hint: HoverHint; x: number; y: number }
@@ -21,13 +22,17 @@ export default function WorldHover() {
   const { gl, scene, camera } = useThree();
   const connected = useThree(s => s.events.connected);
   const me = useMyPlayer(), inventory = useInventoryRows(), blocked = useWorldBlocked();
+  const frontier = useFrontier();
+  // Snapshot arrays update every tick. Preserve this set while the actual obstacles stay the same.
+  const meadowKey = me && frontier.enabled ? Array.from(meadowBlockedTiles(frontier, me, me.identity.toHexString())).sort().join(';') : '';
+  const meadowBlocked = useMemo(() => new Set(meadowKey ? meadowKey.split(';') : []), [meadowKey]);
   const slots = useMemo(() => slotsFromRows(inventory), [inventory]);
   const hasStick = holdsItem(slots, me?.weapon ?? '', STICK_ITEM_ID);
   const hasClub = holdsItem(slots, me?.weapon ?? '', BOULDER_KEY_ITEM);
   const ring = useRef<Mesh>(null);
   const pointer = useRef({ x: 0, y: 0, active: false });
   const lastProbe = useRef(0), lastPreview = useRef('');
-  const groundCache = useRef<{ key: string; blocked: Set<number>; hint: HoverHint }>();
+  const groundCache = useRef<{ key: string; blocked: Set<number>; meadowBlocked: Set<string>; hint: HoverHint }>();
   const scratch = useMemo(() => ({ ray: new Raycaster(), ndc: new Vector2(), plane: new Plane(new Vector3(0, 1, 0), 0), point: new Vector3() }), []);
 
   const clear = () => {
@@ -78,8 +83,11 @@ export default function WorldHover() {
       scratch.ray.setFromCamera(scratch.ndc, camera);
       if (!scratch.ray.ray.intersectPlane(scratch.plane, scratch.point)) { clear(); return; }
       const tile = hoverTile(scratch.point.x, scratch.point.z);
-      const key = `${tile.x},${tile.z}:${me.x},${me.z}:${hasStick}:${hasClub}`;
-      if (groundCache.current?.key !== key || groundCache.current.blocked !== blocked) groundCache.current = { key, blocked, hint: groundHover(tile, me, blocked, hasStick, hasClub) };
+      const key = `${tile.x},${tile.z}:${me.region}:${me.x},${me.z}:${hasStick}:${hasClub}:${frontier.enabled}`;
+      if (groundCache.current?.key !== key || groundCache.current.blocked !== blocked || groundCache.current.meadowBlocked !== meadowBlocked) groundCache.current = {
+        key, blocked, meadowBlocked,
+        hint: frontier.enabled ? connectedGroundHover(tile, me, blocked, meadowBlocked, hasStick, hasClub) : groundHover(tile, me, blocked, hasStick, hasClub),
+      };
       hint = groundCache.current.hint;
       scratch.point.set(...tileToWorld(hint.tile!));
     }
@@ -89,7 +97,7 @@ export default function WorldHover() {
       ring.current.scale.setScalar(hint.radius ?? (target ? .8 : .44));
       (ring.current.material as MeshBasicMaterial).color.set(hint.tone === 'muted' ? mutedColor : readyColor);
     }
-    canvas.style.cursor = target ? 'pointer' : hint.title === 'Water' ? 'not-allowed' : 'crosshair';
+    canvas.style.cursor = target ? 'pointer' : ['Water', 'Path blocked'].includes(hint.title) ? 'not-allowed' : 'crosshair';
     if (canvas.parentElement) canvas.parentElement.style.cursor = canvas.style.cursor;
     const signature = JSON.stringify([p.x, p.y, hint]);
     if (signature !== lastPreview.current) {
@@ -107,7 +115,7 @@ export function WorldHoverTooltip() {
   const preview = useHoverPreview(s => s.preview);
   if (!preview) return null;
   const { hint, x, y } = preview;
-  const width = Math.min(240, window.innerWidth - 16);
+  const width = Math.min(210, window.innerWidth - 16);
   return createPortal(<div className={`world-hover${hint.tone === 'muted' ? ' world-hover-muted' : ''}`} role="tooltip" data-testid="world-hover"
     style={{ left: Math.max(8, Math.min(x + 18, window.innerWidth - width - 8)), top: y > window.innerHeight - 140 ? y - 16 : y + 20, transform: y > window.innerHeight - 140 ? 'translateY(-100%)' : undefined, maxWidth: width }}>
     <strong>{hint.title}</strong>

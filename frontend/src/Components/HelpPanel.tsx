@@ -23,7 +23,8 @@ export default function HelpPanel({ onClose }: { onClose: () => void }) {
       <ul><li>Tap your goal for the next step. At a busy or regrowing tree, you wait for the next harvest.</li>
         <li>Your first stick arrives at Foraging level 2. Later berry harvests have a 25% chance to find another.</li>
         <li>On the Coast, collect driftwood from piles and flint from tide rocks. A Stone Club costs 1 driftwood + 2 flint and deals 8 damage.</li>
-        <li>Gathering and crafting raise your skills. Levels unlock recipes, keepsakes and faster harvests, without changing damage or health.</li></ul>
+        <li>Island skills and adventure techniques unlock recipes, keepsakes and faster harvests without increasing PvP damage or health. Meadows disciplines have separate perks, including Might’s damage and health bonuses.</li>
+        <li>In the Meadows, chop marked timber trees with your starter hatchet. Craft an Axe to collect two Timber per cut. Try another tree while a stump regrows.</li></ul>
     </details>
     <details className="menu-guide-details"><summary>Bag & quick slots</summary>
       <ul><li>Drag to move or swap items. On touch, hold then drag. You can also select an item and choose Move.</li>

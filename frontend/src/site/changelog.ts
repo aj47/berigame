@@ -15,6 +15,21 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-02-connected-meadows', date: '2026-10-02', period: 'Oct 2, 2026',
+    title: 'A connected Meadows and clearer next steps',
+    note: 'Prepared in the local preview; this is not a public release announcement. Settlement features require the world owner to enable the expansion.',
+    changes: [
+      'Walk from Bramblewild along the east harbour trail into the Meadows, with matching trees, terrain and smaller object labels. Land hovering and navigation continue across the district boundary.',
+      'The Meadows menu starts with Quests, Your land and Workshop. Wildlife, Disciplines, Sailing and Bag & storage sit under More, while plot names and claim costs are easier to read.',
+      'District maps make landmarks readable on desktop and phone screens. Six marked timber pines offer a gathering route; the crafted Axe yields two Timber and both count toward quests. Camera movement preserves interactions queued for arrival.',
+      'World object panels open after your character approaches. Timber gathering takes time: the character chops, the tree falls, a stump remains, and the tree regrows. Materials arrive when the action completes.',
+      'Hide tips with their × control, or manage tips, world labels and nameplates in Settings.',
+      'Progress, coins and land save automatically on the server. Buying land no longer requires a recovery download; optional character-access recovery is in Settings.',
+      'Eight new wiki guides cover the Meadows, coins and quests, land and upkeep, building and storage, materials and recipes, wildlife, disciplines and sailing. Item pages and the original guides now link to those systems.',
+    ],
+    commits: [],
+  },
+  {
     id: '2026-10-02-everyday-adventures', date: '2026-10-02', period: 'Oct 2, 2026',
     title: 'Easier everyday adventures',
     note: 'Live beta update',
@@ -35,7 +50,7 @@ export const changelogEntries: ChangelogEntry[] = [
     changes: [
       'Land claims, building, quests, coins and five disciplines lay the foundations for settlements.',
       'Skiffs, new islands, creature companions and 25 new items expand what you can explore and make.',
-      'Character recovery files help protect settlement progress.',
+      'Optional character recovery restores access to an existing character; world progress is saved on the server.',
     ],
     commits: ['7526a16'],
   },
@@ -165,6 +180,6 @@ export const changelogArticle: WikiArticle = {
     paragraphs: entry.note ? [entry.note] : undefined,
     bullets: entry.changes,
   })),
-  related: ['getting-started', 'controls', 'expeditions', 'trading-social'],
+  related: ['getting-started', 'controls', 'meadows', 'coins-quests', 'land-ownership', 'connection-identity'],
   sourceFiles: ['frontend/src/site/changelog.ts'],
 };

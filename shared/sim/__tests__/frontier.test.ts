@@ -1,3 +1,5 @@
+import { homePoint, homePath, HOME_JOIN, isHomeTarget, homeDestination } from "../frontier/homeMap";
+import { regionLand } from "../frontier/regions";
 import { describe, expect, it } from "vitest";
 import {
   advance,
@@ -11,6 +13,7 @@ import { FRONTIER, DAY, PLOTS, PORTS, WEEK, RESOURCE_PATCHES, REGIONS } from "..
 import {
   claimStatus,
   newProfile,
+  questProgress,
   type Actor,
   type EntityMap,
   type Kind,
@@ -54,7 +57,6 @@ function harness() {
     const p = newProfile(a.id);
     p.coins = 1000;
     p.quests = ["steward", "supplies", "tools"];
-    p.recoveryReady = true;
     repo.put("profile", p);
   }
   const act = (c: unknown, who = a) => {
@@ -100,16 +102,26 @@ describe("settlements ownership and transactions", () => {
       "already",
     );
   });
-  it("requires a recovery backup and completed deed quests", () => {
+  it("buys land without an optional recovery export and still charges the deed and first week", () => {
+    const h = harness();
+    expect(h.repo.get("profile", "a")?.recoveryReady).toBe(false);
+    h.buy();
+    expect(h.repo.get("claim", PLOTS[0].id)?.owner).toBe("a");
+    expect(h.repo.get("profile", "a")?.coins).toBe(950);
+    expect(h.repo.get("profile", "a")?.recoveryReady).toBe(false);
+  });
+  it("still requires completed deed quests before buying land", () => {
     const h = harness();
     h.atPlot();
     h.repo.put("profile", {
       ...h.repo.get("profile", "a")!,
-      recoveryReady: false,
+      quests: ["steward", "supplies"],
     });
     expect(() => h.act({ action: "claim", id: PLOTS[0].id })).toThrow(
-      "recovery",
+      "Earn your deed",
     );
+    expect(h.repo.get("profile", "a")?.coins).toBe(1000);
+    expect(h.repo.get("claim", PLOTS[0].id)).toBeUndefined();
   });
   it("rolls back money if plot upgrade materials are missing", () => {
     const h = harness();
@@ -147,6 +159,25 @@ describe("settlements ownership and transactions", () => {
     expect(h.repo.get("profile", "b")?.coins).toBe(1000);
     expect(h.repo.get("claim", PLOTS[0].id)?.challenge).toBeUndefined();
     expect(h.repo.all("building")).toHaveLength(1);
+  });
+  it("requires deed quests for a challenge but makes recovery export optional", () => {
+    const h = harness();
+    h.buy();
+    h.w.now += WEEK + FRONTIER.grace;
+    h.atPlot(h.b);
+    const challenger = h.repo.get("profile", "b")!;
+    expect(challenger.recoveryReady).toBe(false);
+    h.repo.put("profile", { ...challenger, quests: [] });
+    expect(() => h.act({ action: "challenge", id: PLOTS[0].id }, h.b)).toThrow(
+      "Earn your deed",
+    );
+    expect(h.repo.get("profile", "b")?.coins).toBe(1000);
+    expect(h.repo.get("claim", PLOTS[0].id)?.challenge).toBeUndefined();
+    h.repo.put("profile", challenger);
+    h.act({ action: "challenge", id: PLOTS[0].id }, h.b);
+    expect(h.repo.get("claim", PLOTS[0].id)?.challenge?.by).toBe("b");
+    expect(h.repo.get("profile", "b")?.coins).toBe(970);
+    expect(h.repo.get("profile", "b")?.recoveryReady).toBe(false);
   });
   it("requires the entire hold interval and transfers ordinary storage without transferring the vault", () => {
     const h = harness();
@@ -331,6 +362,108 @@ describe("construction, quests and progression", () => {
     ).toBeNull();
   });
 });
+
+describe("timed frontier gathering", () => {
+  const timber = RESOURCE_PATCHES.find(n => n.id === 'settlement-timber')!;
+  const begin = () => {
+    const h = harness();
+    Object.assign(h.a, { x: timber.x - 1, z: timber.z });
+    h.act({ action:'gather',id:timber.id });
+    return h;
+  };
+  it("awards timber only after chopping, exposes the reservation, then regrows the stump", () => {
+    const h = begin(), start = h.w.now;
+    expect(h.a.bag.every(slot => slot === null)).toBe(true);
+    expect(h.repo.get('profile','a')?.events['gather:timber']).toBeUndefined();
+    expect(h.repo.get('resource',timber.id)?.harvest).toMatchObject({by:'a',startedAt:start,completesAt:start+3000});
+    h.w.now += 2999;
+    advance(h.w);
+    expect(h.a.bag.every(slot => slot === null)).toBe(true);
+    h.w.now++;
+    advance(h.w);
+    expect(h.a.bag[0]).toEqual({itemId:'timber',quantity:1});
+    expect(h.repo.get('resource',timber.id)).toMatchObject({felledAt:h.w.now,regrowsAt:h.w.now+12000});
+    expect(h.repo.get('resource',timber.id)?.harvest).toBeUndefined();
+    expect(h.repo.get('profile','a')?.events['gather:timber']).toBe(1);
+    advance(h.w);
+    expect(h.a.bag[0]?.quantity).toBe(1);
+    expect(() => h.act({action:'gather',id:timber.id})).toThrow('regrowing');
+    h.w.now += 12000;
+    advance(h.w);
+    expect(h.repo.get('resource',timber.id)?.regrowsAt).toBeUndefined();
+    h.act({action:'gather',id:timber.id});
+    expect(h.repo.get('resource',timber.id)?.harvest?.by).toBe('a');
+  });
+  it("reserves one tree for one player and preserves the first harvest on competing clicks", () => {
+    const h = begin();
+    Object.assign(h.b,{x:timber.x+1,z:timber.z});
+    expect(() => h.act({action:'gather',id:timber.id},h.b)).toThrow('Someone');
+    expect(() => h.act({action:'gather',id:timber.id})).toThrow('Already');
+    expect(h.repo.get('resource',timber.id)?.harvest?.by).toBe('a');
+    h.w.now += 3000;
+    advance(h.w);
+    expect(h.a.bag[0]?.quantity).toBe(1);
+    expect(h.b.bag.every(slot => slot === null)).toBe(true);
+  });
+  it.each(['move','stop','disconnect','death','damage','input'])("cancels safely on %s without items or a felled tree", reason => {
+    const h = begin();
+    if (reason === 'move') h.act({action:'move',x:timber.x-2,z:timber.z});
+    if (reason === 'stop') h.act({action:'stop'});
+    if (reason === 'disconnect') h.a.online = false;
+    if (reason === 'death') h.a.alive = false;
+    if (reason === 'damage') h.a.hp--;
+    if (reason === 'input') h.a.inputStamp = 'new-action';
+    h.w.now += 3000;
+    advance(h.w);
+    expect(h.a.bag.every(slot => slot === null)).toBe(true);
+    expect(h.repo.get('resource',timber.id)?.harvest).toBeUndefined();
+    expect(h.repo.get('resource',timber.id)?.felledAt).toBeUndefined();
+  });
+  it("advances timber quests by the doubled axe yield and keeps ordinary gathering timed", () => {
+    const h = harness();
+    h.repo.put('profile', { ...newProfile('a'), quests:['steward'], events:{'gather:timber':3} });
+    h.supplies(h.a,{axe:1});
+    Object.assign(h.a,{x:timber.x-1,z:timber.z});
+    h.act({action:'gather',id:timber.id});
+    expect(h.repo.get('resource',timber.id)?.harvest).toMatchObject({tool:'axe',quantity:2});
+    h.w.now += 3000;
+    advance(h.w);
+    expect(h.a.bag.find(slot => slot?.itemId === 'timber')?.quantity).toBe(2);
+    expect(questProgress(h.repo.get('profile','a')!).find(q=>q.id==='supplies')?.progress).toBe(5);
+    const stone = RESOURCE_PATCHES.find(n => n.id === 'settlement-stone')!;
+    Object.assign(h.a,{x:stone.x-1,z:stone.z});
+    h.act({action:'gather',id:stone.id});
+    expect(h.a.bag.some(slot => slot?.itemId === 'stone')).toBe(false);
+    h.w.now += 3000;
+    advance(h.w);
+    expect(h.a.bag.find(slot => slot?.itemId === 'stone')?.quantity).toBe(1);
+    expect(h.repo.get('resource',stone.id)?.regrowsAt).toBeUndefined();
+  });
+  it("lets two newcomers cut different trees at the same time with starter hatchets", () => {
+    const h = harness(), other = RESOURCE_PATCHES.find(n => n.id === 'settlement-timber-2')!;
+    Object.assign(h.a,{x:timber.x-1,z:timber.z});
+    Object.assign(h.b,{x:other.x-1,z:other.z});
+    h.act({action:'gather',id:timber.id});
+    h.act({action:'gather',id:other.id},h.b);
+    expect(h.repo.get('resource',timber.id)?.harvest).toMatchObject({by:'a',tool:'hatchet',quantity:1});
+    expect(h.repo.get('resource',other.id)?.harvest).toMatchObject({by:'b',tool:'hatchet',quantity:1});
+    h.w.now += FRONTIER.gatherDuration;
+    advance(h.w);
+    for (const actor of [h.a,h.b]) expect(actor.bag[0]).toEqual({itemId:'timber',quantity:1});
+    for (const node of [timber,other]) expect(h.repo.get('resource',node.id)?.regrowsAt).toBe(h.w.now+FRONTIER.timberRegrow);
+  });
+  it("checks inventory capacity again at completion without losing a resource or partially awarding", () => {
+    const h = begin();
+    h.a.bag = Array.from({length:28},()=>({itemId:'axe',quantity:1}));
+    h.w.now += 3000;
+    advance(h.w);
+    expect(h.a.bag.every(slot => slot?.itemId === 'axe')).toBe(true);
+    expect(h.repo.get('resource',timber.id)?.felledAt).toBeUndefined();
+    expect(h.repo.get('resource',timber.id)?.harvest).toBeUndefined();
+    expect(h.repo.get('profile','a')?.events['gather:timber']).toBeUndefined();
+    expect(h.repo.get('profile','a')?.notes.at(-1)).toContain('bag is full');
+  });
+});
 describe("creatures and a complete crewed crossing", () => {
   it("requires observation, food and time to tame; ownership survives resting", () => {
     const h = harness();
@@ -461,13 +594,103 @@ describe("frontier combat bounds and recovery", () => {
 });
 
 
-it('keeps starter gathering routes short and outside every fully expanded plot', () => {
+it('keeps gathering routes reachable and outside every fully expanded plot', () => {
   const plots = PLOTS.filter(p => p.region === 'settlement');
   for (const node of RESOURCE_PATCHES.filter(p => p.region === 'settlement')) {
     const inPlot = (point: {x:number;z:number}) => plots.some(p => point.x >= p.x && point.x < p.x + 16 && point.z >= p.z && point.z < p.z + 16);
     expect(inPlot(node)).toBe(false);
     const route = regionalPath('settlement', REGIONS.settlement.spawn, node, inPlot);
     expect(route).not.toBeNull();
-    expect(route!.length).toBeLessThanOrEqual(16);
+    expect(route!.length).toBeLessThanOrEqual(node.id.startsWith('settlement-timber-') ? 32 : 16);
   }
+});
+
+it('adds six catalog-backed timber trees to saved worlds without resetting claims or stumps', () => {
+  const h = harness(); h.buy();
+  const savedClaim = h.repo.get('claim',PLOTS[0].id)!;
+  const tree = RESOURCE_PATCHES.find(n => n.id === 'settlement-timber')!;
+  const stump = {...tree,felledAt:h.w.now-1000,regrowsAt:h.w.now+11000};
+  h.repo.put('resource',stump);
+  const state = frontierSnapshot([
+    {kind:'claim',data:JSON.stringify(savedClaim)},
+    {kind:'resource',data:JSON.stringify(stump)},
+  ],[],h.a.id,h.w.now);
+  const trees = state.resources.filter(n=>n.region==='settlement' && n.item==='timber');
+  expect(trees).toHaveLength(6);
+  expect(trees.find(n=>n.id===tree.id)).toEqual(stump);
+  expect(trees.filter(n=>n.id!==tree.id).every(n=>!n.harvest && !n.regrowsAt)).toBe(true);
+  expect(state.plots.find(p=>p.id===savedClaim.id)?.claim).toEqual(savedClaim);
+  const added = trees.find(n=>n.id==='settlement-timber-2')!;
+  Object.assign(h.a,{x:added.x-1,z:added.z});
+  h.act({action:'gather',id:added.id});
+  expect(h.repo.get('resource',added.id)?.harvest?.by).toBe(h.a.id);
+  expect(h.repo.get('resource',tree.id)).toEqual(stump);
+  expect(h.repo.get('claim',savedClaim.id)).toEqual(savedClaim);
+});
+
+it('introduces creatures after shelter and preserves earlier upkeep and quest completions', () => {
+  const h = harness(), p = {...newProfile('a'),quests:['steward','supplies','tools','deed','shelter'],events:{observe:1}};
+  h.repo.put('profile',p);
+  expect(questProgress(p).find(q=>q.id==='observe')?.available).toBe(true);
+  expect(questProgress(p).find(q=>q.id==='upkeep')?.available).toBe(false);
+  h.act({action:'quest',id:'observe'});
+  expect(h.repo.get('profile','a')?.coins).toBe(10);
+  const returning = {...p,quests:[...p.quests,'upkeep']};
+  expect(questProgress(returning).find(q=>q.id==='upkeep')?.complete).toBe(true);
+  expect(questProgress(returning).find(q=>q.id==='observe')?.available).toBe(true);
+});
+
+describe("connected home island", () => {
+  it("joins adjacent dry tiles and keeps every existing parcel buildable", () => {
+    const west=homePoint(HOME_JOIN.bramblewild, 'bramblewild'), east=homePoint(HOME_JOIN.settlement, 'settlement');
+    expect(east).toEqual({x:west.x+1,z:west.z});
+    expect(homePath(west,east)).toEqual([east]);
+    for(const p of PLOTS.filter(p=>p.region==='settlement')) {
+      for(let x=p.x;x<p.x+16;x++)for(let z=p.z;z<p.z+16;z++) expect(regionLand('settlement',{x,z})).toBe(true);
+      expect(homePath(homePoint(REGIONS.settlement.spawn,'settlement'),homePoint(p.marker,'settlement'))).not.toBeNull();
+    }
+  });
+  it("walks from the harbour into the Meadows at two tiles per tick without relocating claims", () => {
+    const h=harness();h.buy();const savedClaims=h.repo.all('claim');
+    Object.assign(h.a,{region:'bramblewild',x:46,z:25});
+    h.act({action:'enter'});
+    expect(h.a.region).toBe('bramblewild');expect(h.a.x).toBe(46);
+    expect(isHomeTarget(h.a.target)).toBe(true);
+    let previous=homePoint(h.a,h.a.region), crossed=false;
+    for(let i=0;i<80 && h.a.target;i++) {
+      h.w.now+=600;advance(h.w);
+      const next=homePoint(h.a,h.a.region);
+      expect(Math.max(Math.abs(next.x-previous.x),Math.abs(next.z-previous.z))).toBeLessThanOrEqual(2);
+      crossed ||= h.a.region==='settlement';previous=next;
+    }
+    expect(crossed).toBe(true);expect(h.a.target).toBeUndefined();
+    expect({x:h.a.x,z:h.a.z}).toEqual(REGIONS.settlement.spawn);
+    expect(h.repo.get('profile','a')!.events['visit:settlement']).toBeGreaterThan(0);
+    expect(h.repo.all('claim')).toEqual(savedClaims);
+  });
+  it("walks back across the same seam and ordinary movement or stop replaces the route", () => {
+    const h=harness();Object.assign(h.a,{region:'settlement',x:0,z:64});
+    h.act({action:'walk',id:'bramblewild',x:62,z:25});advance(h.w);
+    expect(h.a.region).toBe('bramblewild');expect(h.a.x).toBe(62);expect(h.a.target).toBeUndefined();
+    h.act({action:'enter'});h.act({action:'stop'});advance(h.w);expect(h.a.x).toBe(62);
+    Object.assign(h.a,{region:'settlement',...REGIONS.settlement.spawn});
+    h.act({action:'return'});expect(homeDestination(h.a.target!)).toEqual({x:22,z:18});
+    h.act({action:'move',x:31,z:65});advance(h.w);expect(h.a.region).toBe('settlement');expect(h.a.z).toBe(65);
+  });
+  it("still allows combat movement within the Meadows while preventing a combat escape across districts", () => {
+    const h=harness();h.a.hostile=true;
+    h.act({action:'walk',id:'settlement',x:31,z:65});advance(h.w);
+    expect(h.a.z).toBe(65);expect(h.a.target).toBeUndefined();
+    expect(()=>h.act({action:'return'})).toThrow('Finish your adventure or combat');
+  });
+  it("rechecks barriers and blocks invalid cross-district destinations", () => {
+    const h=harness();Object.assign(h.a,{region:'bramblewild',x:63,z:25});
+    h.w.homeStepRule=()=> (_from,to)=>to.region!=='settlement';
+    expect(()=>h.act({action:'enter'})).toThrow('No walkable route');
+    h.w.homeStepRule=()=>()=>true;h.act({action:'enter'});
+    h.w.homeStepRule=()=> (_from,to)=>to.region!=='settlement';advance(h.w);
+    expect(h.a.region).toBe('bramblewild');expect(h.a.target).toBeUndefined();
+    expect(()=>h.act({action:'walk',id:'sea',x:5,z:64})).toThrow();
+    expect(()=>h.act({action:'walk',id:'bramblewild',x:90,z:25})).toThrow();
+  });
 });

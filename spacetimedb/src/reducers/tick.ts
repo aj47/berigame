@@ -1,3 +1,4 @@
+import { isHomeTarget } from "../../../shared/sim/frontier/homeMap";
 import { tickFrontier, frontierRepository, projectFrontier } from '../lib/frontier';
 import { damage as frontierDamage } from '../../../shared/sim/frontier/engine';
 import { reconcileTerrain } from '../lib/terrain';
@@ -202,6 +203,7 @@ function phaseMovement(s: TickState): void {
   for (const h of s.order) {
     const p = s.players.get(h)!;
     if (!alive(p)) continue;
+    if (p.targetX !== undefined && isHomeTarget({ x: p.targetX, z: p.targetZ! })) continue;
     if (p.pending === Pending.Trade) {
       resolvePending(s, p);
       if (!p.combatTarget) continue;

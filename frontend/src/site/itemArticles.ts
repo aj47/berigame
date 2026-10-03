@@ -4,7 +4,7 @@ import {
   SWING_INTERVAL_TICKS, TICK_MS, TREE_SEEDS, harvestXp,
 } from '@sim';
 import type { ItemDef, Recipe } from '@sim';
-import { DISCIPLINES, FRONTIER_RECIPES, MATERIALS, PIECES, REGIONS, RESOURCE_PATCHES } from '../../../shared/sim/frontier/catalog';
+import { DISCIPLINES, FRONTIER, FRONTIER_RECIPES, MATERIALS, PIECES, REGIONS, RESOURCE_PATCHES } from '../../../shared/sim/frontier/catalog';
 import type { WikiArticle, WikiSection } from './wikiContent';
 
 export const itemArticleSlug = (itemId: string) => `item-${itemId.replaceAll('_', '-')}`;
@@ -33,25 +33,26 @@ const notes: Record<string, ItemNotes> = {
     related: ['garden', 'gathering', 'item-berry-goldberry', 'item-berry-mash', 'inventory-items'],
   },
   berry_strawberry: {
-    summary: 'Three-HP food and the red ingredient in Berry Mash.',
-    lead: 'Strawberries restore 3 HP and grow on two wild trees in the Grove. They are also a crafting ingredient: one strawberry and two greenberries make a portion of Berry Mash.',
+    summary: 'Three-HP food for Berry Mash and settlement Travel rations.',
+    lead: 'Strawberries restore 3 HP and grow on two wild trees in the Grove. One Strawberry and two Greenberries make Berry Mash. When settlements are enabled, Strawberries also grow at a Meadows patch and combine with Carrots into Travel rations.',
     source: 'Two Grove trees · personal garden',
     sections: [{ id: 'practical-uses', title: 'Eat, plant or make mash', paragraphs: [
       'Use a strawberry for a small top-up, or combine it with two greenberries when you want a larger single bite. Those ingredients restore 7 HP when eaten separately, exactly the same as the resulting mash. Crafting changes how quickly you can consume that healing and awards Crafting XP; it does not create extra HP.',
       'Both strawberry trees give the same item and Foraging XP. If one is busy or regrowing, the other is an alternative. Planting a strawberry consumes it immediately, so reserve food for your next journey before filling your garden.',
     ] }],
-    related: ['item-berry-mash', 'item-berry-greenberry', 'crafting', 'garden', 'gathering'],
+    related: ['item-berry-mash', 'item-berry-greenberry', 'item-travel-rations', 'frontier-materials-crafting', 'garden', 'gathering'],
   },
   berry_greenberry: {
-    summary: 'Food, fast-growing garden crops, mash ingredients and expedition bait.',
+    summary: 'Food, garden crops, expedition bait and settlement Taming feed.',
     lead: 'Greenberries restore 2 HP, the smallest heal of the island’s food items. Their other uses make them valuable expedition supplies: they can bribe Pip, distract the pursuing Giant or become Berry Mash.',
     source: 'Two Grove trees · personal garden',
     sections: [{ id: 'expedition-uses', title: 'Expedition uses', paragraphs: [
       'Bribing Pip consumes one greenberry. Stand within three tiles of him during an active hauling expedition; the bribe leaves the cargo alone for 30 seconds. Equipping Favourite snack extends this to 90 seconds.',
       'Ordinary bait consumes one greenberry and leaves a scent at your position for 15 seconds. Put down any cargo you are carrying before preparing it. With Scent decoy equipped, bait instead consumes one driftwood and lasts 30 seconds.',
       'Keep a few greenberries in reserve before making mash or planting. Two greenberries and one strawberry make a 7-HP meal, but those consumed berries can no longer be used for a bribe or bait.',
+      'When settlements are enabled, two Greenberries and one Plant fibre make two Taming feed before Building bonuses. Greenberries are also accepted in repeatable supply orders: deliver six for 10 coins, within your daily order allowance.',
     ] }],
-    related: ['expeditions', 'techniques', 'item-berry-mash', 'item-driftwood', 'garden'],
+    related: ['expeditions', 'wildlife-companions', 'item-taming-feed', 'coins-quests', 'item-berry-mash', 'garden'],
     sourceFiles: ['shared/sim/adventure.ts', 'spacetimedb/src/reducers/adventure.ts'],
   },
   berry_goldberry: {
@@ -62,6 +63,7 @@ const notes: Record<string, ItemNotes> = {
       'A delivery normally awards four Goldberries per qualifying member; a feast adds two bonus Goldberries. Giant fruit starts cargo at six, and a completed workshop adds one more. Splitting cargo and first hiring Moss each reduce cargo value by one unless Berry basket or Porter pact prevents that cost.',
       'Remain in the expedition until completion and earn contribution credit by an action such as carrying, hiding or delivering cargo. Simply joining or tracking the hidden cache does not earn completion credit.',
       'Read tracks unlocks a hidden seed cache at (14, 15). With the technique equipped, stand within two tiles of the cache and track it during hauling to receive one goldberry and 25 Exploring XP. Each character can claim that cache once per expedition.',
+      'Enabled settlement worlds have separate region caches. With Exploration active at level 2, survey within three tiles of (118, 112) in the Meadows, Reedwake or Cinder Shoal for one Goldberry and 25 Exploration XP, once per region per character.',
     ] }, { id: 'practical-uses', title: 'Use the full heal', paragraphs: [
       'A goldberry gives its full 10 HP only when at least that much health is missing. Healing stops at your maximum HP, so any excess is lost. Keep one accessible before a dangerous trip.',
       'The wild tree always takes three seconds to harvest: Foraging levels do not shorten this tree’s gather time. It has the same Foraging XP reward as ordinary berry trees.',
@@ -167,12 +169,13 @@ const notes: Record<string, ItemNotes> = {
 };
 
 const frontierUses: Record<string, string> = {
-  axe: 'Keep an Axe in your bag to gather two Timber per action from settlement resource patches.',
+  timber: `Chop a settlement tree for ${FRONTIER.gatherDuration / 1000} seconds to receive Timber, then wait ${FRONTIER.timberRegrow / 1000} seconds for the stump to regrow. Carrying an Axe increases the yield from one to two. Timber makes tools, Planks and building pieces.`,
+  axe: 'Keep an Axe in your bag to receive two Timber when a settlement tree-chopping action completes.',
   pick: 'With Might active at level 10, carrying a Pick doubles Stone and Iron ore gathered from resource patches.',
   hammer: 'Craft a Hammer to complete the steward’s Tools of the trade quest and progress towards a land deed.',
   watering_can: 'Carry a Watering can when planting carrots to shorten growth from two hours to ninety minutes.',
   taming_feed: 'Observe a tameable creature, then offer Taming feed nearby. Befriending normally takes two feedings; active Beastcraft level 5 reduces this to one.',
-  travel_rations: 'Travel rations restore 8 HP per portion. Eat from the settlement bag or store them as boat provisions.',
+  travel_rations: 'Travel rations restore 8 base HP per portion. Eat from Bag & storage or store them as boat provisions; sailing does not automatically consume them.',
   skiff_hull: 'Combine one Skiff hull and one Sail at a harbour to launch your own skiff.',
   sail: 'Combine one Sail and one Skiff hull at a harbour to launch your own skiff.',
   harness: 'With Beastcraft active at level 2, spend a Creature harness to train a companion. A trained Reedhorn gains six cargo slots.',
@@ -196,6 +199,7 @@ function frontierNotes(item: ItemDef): ItemNotes {
   const sections: WikiSection[] = [{ id: 'settlement-use', title: 'Settlement use', paragraphs: [summary] }];
   if (patches.length) sections.push({
     id: 'resource-patches', title: 'Resource patches',
+    paragraphs: [`Gather within two tiles and wait for the action to finish. The base duration is ${FRONTIER.gatherDuration / 1000} seconds; qualifying plants take 2.4 seconds with Cultivation active at level 5. Resources are shared, and an interrupted action gives no items or XP.`],
     table: { headers: ['Region', 'Tile'], rows: patches.map(patch => [REGIONS[patch.region].name, `(${patch.x}, ${patch.z})`]) },
   });
   if (recipes.length) sections.push({
@@ -217,7 +221,7 @@ function frontierNotes(item: ItemDef): ItemNotes {
     lead: `${item.name} belongs to the settlement expansion, available when settlements are enabled in your world. ${item.healthRestore ? `Each portion restores ${item.healthRestore} base HP.` : item.weaponDamage ? `Its base weapon damage is ${item.weaponDamage}.` : `Each bag slot holds up to ${item.maxStack}.`}`,
     source: making ? 'Settlement crafting' : patches.length ? [...new Set(patches.map(patch => REGIONS[patch.region].name))].join(' · ') : item.id === 'carrot' ? 'Settlement planters' : 'Settlement expansion',
     sections,
-    related: [...new Set(['inventory-items', ...recipes.flatMap(recipe => [recipe.output, ...Object.keys(recipe.inputs)]).filter(id => id !== item.id).map(itemArticleSlug)])].slice(0, 6),
+    related: [...new Set(['frontier-materials-crafting', 'building-storage', 'frontier-disciplines', ...recipes.flatMap(recipe => [recipe.output, ...Object.keys(recipe.inputs)]).filter(id => id !== item.id).map(itemArticleSlug)])].slice(0, 6),
     sourceFiles: ['shared/sim/frontier/catalog.ts', 'shared/sim/frontier/engine.ts', 'frontend/src/frontier/FrontierPanel.tsx'],
   };
 }
@@ -271,7 +275,8 @@ function recipeSection(item: ItemDef): WikiSection | undefined {
 function useSection(item: ItemDef): WikiSection | undefined {
   if (item.healthRestore > 0) return {
     id: 'eating', title: 'Eating and combat timing',
-    paragraphs: [`Eating consumes one ${item.name.toLowerCase()} and restores up to ${item.healthRestore} HP, capped at your maximum health. The bag and quick bar prevent eating at full health; when injured, any healing beyond your missing HP is lost. Each bite starts a ${seconds(EAT_COOLDOWN_TICKS)} eating cooldown and delays your next melee swing by ${seconds(EAT_SWING_DELAY_TICKS)}. Put down giant berry cargo before eating.`],
+    paragraphs: [`Eating consumes one ${item.name.toLowerCase()} and restores up to ${item.healthRestore} base HP, capped at your maximum health. The original bag and quick bar prevent eating at full health; when injured, any healing beyond your missing HP is lost. Each bite starts a ${seconds(EAT_COOLDOWN_TICKS)} eating cooldown and delays your next melee swing by ${seconds(EAT_SWING_DELAY_TICKS)}. Put down giant berry cargo before eating.`,
+      'When eating through settlement Bag & storage, active Cultivation level 10 adds two healing, capped at ten HP per portion.'],
   };
   if (item.weaponDamage > 0) return {
     id: 'wielding', title: 'Wielding and combat',
@@ -280,7 +285,7 @@ function useSection(item: ItemDef): WikiSection | undefined {
   return undefined;
 }
 
-/** Facts and reference tables follow the same definitions as the live game.
+/** Facts and reference tables follow the current shared game definitions.
  * Server-only behaviours are documented above with their reducer sources. */
 export const itemArticles: WikiArticle[] = Object.values(ITEM_DEFS).map(item => {
   const detail = notes[item.id] ?? frontierNotes(item);
@@ -288,11 +293,14 @@ export const itemArticles: WikiArticle[] = Object.values(ITEM_DEFS).map(item => 
   const garden = gardenSection(item);
   const recipe = recipeSection(item);
   const use = MATERIALS[item.id] ? undefined : useSection(item);
+  const settlementSections = MATERIALS[item.id] ? [] : frontierNotes(item).sections.filter(section =>
+    section.id === 'resource-patches' || section.id === 'settlement-recipes');
   const sources = new Set([
     'shared/sim/items.ts', 'shared/sim/constants.ts',
     ...(gathering ? ['shared/sim/nodes.ts', 'shared/sim/skills.ts', 'spacetimedb/src/reducers/tick.ts'] : []),
     ...(garden ? ['shared/sim/garden.ts', 'spacetimedb/src/reducers/garden.ts'] : []),
     ...(recipe ? ['shared/sim/nodes.ts', 'spacetimedb/src/reducers/craft.ts'] : []),
+    ...(settlementSections.length ? ['shared/sim/frontier/catalog.ts', 'shared/sim/frontier/engine.ts'] : []),
     ...(use ? ['spacetimedb/src/reducers/inventory.ts'] : []),
     ...(item.healthRestore ? ['frontend/src/Components/Inventory.tsx', 'frontend/src/Components/CombatHud.tsx'] : []),
     ...(item.weaponDamage ? ['spacetimedb/src/reducers/combat.ts'] : []),
@@ -310,7 +318,7 @@ export const itemArticles: WikiArticle[] = Object.values(ITEM_DEFS).map(item => 
       ...(item.id === 'stick' ? [{ label: 'Route key', value: 'Grove → Coast' }] : []),
       ...(item.id === 'stone_club' ? [{ label: 'Route key', value: 'Coast → Boulders' }] : []),
     ],
-    sections: [gathering, recipe, ...detail.sections, garden, use].filter((section): section is WikiSection => !!section),
+    sections: [gathering, recipe, ...detail.sections, ...settlementSections, garden, use].filter((section): section is WikiSection => !!section),
     related: detail.related, sourceFiles: [...sources],
   };
 });

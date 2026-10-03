@@ -2,7 +2,7 @@
 import { GRID_SIZE } from './constants';
 import type { Tile } from './types';
 
-export const TERRAIN_VERSION = 'coves-and-crossings-v1';
+export const TERRAIN_VERSION = 'connected-meadows-v2';
 export const ISLAND_NAME = 'Bramblewild';
 const ellipse = (x: number, z: number, cx: number, cz: number, rx: number, rz: number) =>
   (1 - Math.hypot((x - cx) / rx, (z - cz) / rz)) * Math.min(rx, rz);
@@ -34,9 +34,11 @@ export function terrainField(x: number, z: number): number {
     -ellipse(x, z, 49, 38, 5, 5), -ellipse(x, z, 4, 44, 6, 5));
   land = Math.max(land, ellipse(x, z, 54, 54, 9, 9), ellipse(x, z, 58, 44, 5, 8),
     ellipse(x, z, 43, 58, 8, 5), ellipse(x, z, 46, 46, 8, 8));
+  // A grassy headland, wide enough for the harbour road, reaches the Meadows seam.
+  land = Math.max(land, 4.5 - segmentDistance(x, z, { x: 46, z: 25 }, { x: 65, z: 25 }));
   let water = ellipse(x, z, 17, 13, 3.2, 2.8);
   for (let i = 1; i < BROOK.length; i++) water = Math.max(water, 1.05 - segmentDistance(x, z, BROOK[i - 1], BROOK[i]));
-  return Math.min(land, -water, x + .4, z + .4, GRID_SIZE - .6 - x, GRID_SIZE - .6 - z);
+  return Math.min(land, -water, x + .4, z + .4, (x >= 46 && Math.abs(z-25) <= 4.5 ? Infinity : GRID_SIZE - .5 - x), GRID_SIZE - .6 - z);
 }
 export function terrainLand(t: Tile): boolean {
   return t.x >= 0 && t.z >= 0 && t.x < GRID_SIZE && t.z < GRID_SIZE && (terrainField(t.x, t.z) >= 0 || isBridge(t));
@@ -63,6 +65,7 @@ export const LANDMARKS = [
 ] as const;
 export const TRAILS: readonly (readonly Tile[])[] = [
   [{ x: 25, z: 5 }, { x: 25, z: 11 }, { x: 27, z: 18 }, { x: 25, z: 25 }],
+  [{ x: 46, z: 29 }, { x: 49, z: 25 }, { x: 64, z: 25 }],
   [{ x: 25, z: 25 }, { x: 32, z: 27 }, { x: 39, z: 26 }, { x: 46, z: 29 }],
   [{ x: 25, z: 25 }, { x: 29, z: 32 }, { x: 35, z: 37 }, { x: 41, z: 40 }, { x: 45, z: 46 }, { x: 52, z: 52 }],
   [{ x: 25, z: 25 }, { x: 23, z: 23 }, { x: 20, z: 22 }, { x: 14, z: 22 }, { x: 12, z: 24 }, { x: 7, z: 25 }, { x: 3, z: 25 }],

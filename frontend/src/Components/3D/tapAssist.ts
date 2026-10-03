@@ -11,8 +11,9 @@ export type ClickHandler = (e: any) => void;
 /** The nearest ancestor's R3F onClick handler, skipping the ground itself. */
 export function clickHandlerOf(object: Object3D | null): { handler: ClickHandler; object: Object3D } | null {
   for (let o: Object3D | null = object; o; o = o.parent) {
+    if (o.name === 'land_mesh' || o.userData.worldSurface) return null;
     const handler = (o as any).__r3f?.handlers?.onClick as ClickHandler | undefined;
-    if (handler) return o.name === 'land_mesh' ? null : { handler, object: o };
+    if (handler) return { handler, object: o };
   }
   return null;
 }
@@ -85,7 +86,7 @@ export function openMenuNear(
     const before = store.getState().clickedOtherObject;
     t.handler(syntheticClick(t, clientX, clientY, nativeEvent, originalRay));
     const after = store.getState().clickedOtherObject;
-    opened = (!!after && after !== before) || target?.hint.click === 'panel';
+    opened = (!!after && after !== before) || target?.hint.click === 'panel' || target?.hint.click === 'action';
     return !opened;
   });
   return opened;

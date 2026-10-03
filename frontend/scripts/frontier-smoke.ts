@@ -39,6 +39,7 @@ async function connect(
               ? [tables.world]
               : [
                   tables.world,
+                  tables.tree,
                   tables.player,
                   tables.inventorySlot,
                   tables.frontierObject,
@@ -96,8 +97,17 @@ async function main() {
       enabled: true,
       pauseCaptures: false,
     });
-    await walk(22, 18);
+    // The Meadows are reached on foot, through the same progression hedge as the harbour.
+    const inventory = () => [...a.conn.db.inventorySlot.iter()].filter(s=>s.owner.toHexString()===a.identity.toHexString());
+    for(let i=0;i<8 && !inventory().some(s=>s.itemId==='stick');i++) {
+      const before=inventory().reduce((sum,s)=>sum+s.quantity,0);
+      const tree=[...a.conn.db.tree.iter()].filter(t=>t.itemId.startsWith('berry_')).sort((a,b)=>a.cooldownUntilTick-b.cooldownUntilTick)[0];
+      await a.conn.reducers.startHarvest({treeId:tree.id});
+      await wait('harvest for the trail key',()=>inventory().reduce((sum,s)=>sum+s.quantity,0)>before);
+    }
+    assert.ok(inventory().some(s=>s.itemId==='stick'));
     await act({ action: "enter" });
+    await wait('walk to Meadows town',()=>self().region==='settlement' && self().x===REGIONS.settlement.spawn.x && self().z===REGIONS.settlement.spawn.z);
     assert.equal(self().region, "settlement");
     await assert.rejects(
       () => a.conn.reducers.startHarvest({ treeId: 1 }),
@@ -109,13 +119,14 @@ async function main() {
     await walk(timber.x, timber.z);
     for (let i = 0; i < 8; i++) {
       await act({ action: "gather", id: "settlement-timber" });
-      if (i < 7) await delay(3000);
+      await wait('timber felling completes', () => !state().resources.find(n=>n.id==='settlement-timber')?.harvest);
+      if (i < 7) await wait('timber tree regrows', () => !state().resources.find(n=>n.id==='settlement-timber')?.regrowsAt);
     }
     const stone = RESOURCE_PATCHES.find(n => n.id === "settlement-stone")!;
     await walk(stone.x, stone.z);
     for (let i = 0; i < 2; i++) {
       await act({ action: "gather", id: "settlement-stone" });
-      if (i < 1) await delay(3000);
+      await wait('stone gathering completes', () => !state().resources.find(n=>n.id==='settlement-stone')?.harvest);
     }
     await act({ action: "craft", id: "hammer" });
     await walk(REGIONS.settlement.spawn.x, REGIONS.settlement.spawn.z);
@@ -126,17 +137,10 @@ async function main() {
       (p) => !p.claim && p.region === "settlement",
     )!;
     await walk(plot.marker.x, plot.marker.z);
-    await assert.rejects(
-      () =>
-        a.conn.reducers.frontierAction({
-          command: JSON.stringify({ action: "claim", id: plot.id }),
-        }),
-      /recovery/,
-    );
-    // Hosted recovery issues a separate credential before making this gateway attestation.
-    await owner.conn.reducers.attestRecovery({ identity: a.identity });
+    assert.equal(state().profile.recoveryReady, false);
     await act({ action: "claim", id: plot.id });
     assert.equal(state().profile.coins, 0);
+    assert.equal(state().profile.recoveryReady, false);
     assert.equal(
       state().plots.find((p) => p.id === plot.id)?.claim?.owner,
       a.identity.toHexString(),
@@ -163,7 +167,7 @@ async function main() {
       false,
     );
     console.log(
-      "PASS fresh character: region isolation, gathering, hammer, three quest rewards, recovery gate, paid claim, modular building, private views",
+      "PASS fresh character: region isolation, gathering, hammer, three quest rewards, paid claim without recovery export, modular building, private views",
     );
     const saved = a.token;
     a.conn.disconnect();

@@ -1,9 +1,14 @@
+import { isHomeTarget } from "../../../shared/sim/frontier/homeMap";
+import { blockedTiles } from "./blocked";
+import { playerEnterRule } from "./brambles";
+import { carrying, duelFor } from "./adventure";
 import { Identity } from "spacetimedb";
 import { SenderError } from "spacetimedb/server";
 import {
   advance,
   seedCreatures,
   maxHealth,
+  cancelGathering,
 } from "../../../shared/sim/frontier/engine";
 import {
   can,
@@ -25,6 +30,7 @@ const PUBLIC = new Set<Kind>([
   "boat",
   "crop",
   "drop",
+  "resource",
 ]);
 /** Small entities persist separately; inventories, wallets and audit records never enter public rows. */
 export function frontierRepository(ctx: Ctx): Repository {
@@ -91,6 +97,8 @@ export function frontierWorld(ctx: Ctx): World {
     hp: p.hp,
     bag: [],
     weapon: p.weapon,
+    facing: p.facing,
+    inputStamp: `${p.lastInputTick}:${p.inputsThisTick}`,
     target:
       p.targetX === undefined ? undefined : { x: p.targetX, z: p.targetZ! },
     hostile: p.hostile,
@@ -98,10 +106,22 @@ export function frontierWorld(ctx: Ctx): World {
       ctx.db.playerGrant.identity.find(p.identity)?.combat ??
       !ctx.db.accessPolicy.id.find(0)?.requireAdmission,
   }));
+  let homeObstacles: Set<number> | undefined;
   return {
     repo,
     now: Number(ctx.timestamp.microsSinceUnixEpoch / 1000n),
     actors,
+    loadBag(a) { return readSlots(ctx, Identity.fromString(a.id)).slots; },
+    homeBlocked(point) { return (homeObstacles ??= blockedTiles(ctx)).has(point.z * 64 + point.x); },
+    homeStepRule(a) {
+      const row = ctx.db.player.identity.find(Identity.fromString(a.id))!;
+      const rule = playerEnterRule(ctx, row);
+      return (from, to) => to.region !== "bramblewild" || rule(from.region === "bramblewild" ? from : { x: 63, z: 25 }, to);
+    },
+    canLeaveHomeDistrict(a) {
+      const identity = Identity.fromString(a.id);
+      return !ctx.db.expeditionMember.identity.find(identity) && !duelFor(ctx, identity) && !carrying(ctx, identity);
+    },
     save(a) {
       const identity = Identity.fromString(a.id),
         p = ctx.db.player.identity.find(identity);
@@ -131,6 +151,7 @@ export function frontierWorld(ctx: Ctx): World {
           bag: a.bag.length ? a.bag : readSlots(ctx, identity).slots,
         }),
         weapon: a.weapon,
+        facing: a.facing ?? p.facing,
         targetX: a.target?.x,
         targetZ: a.target?.z,
       };
@@ -144,6 +165,7 @@ export function frontierWorld(ctx: Ctx): World {
           "hp",
           "maxHp",
           "weapon",
+          "facing",
           "targetX",
           "targetZ",
         ].some((key) => (next as any)[key] !== (p as any)[key])
@@ -299,6 +321,7 @@ export function configureFrontier(ctx: Ctx, enabled: boolean, pause: boolean) {
   w.repo.put("config", cfg);
   if (enabled) seedCreatures(w);
   else {
+    for (const actor of w.actors) cancelGathering(w, actor.id);
     // Keep property intact, freeze upkeep and return stranded characters safely.
     for (const boat of w.repo.all("boat")) {
       const port = PORTS.find((p) => p.region === boat.lastPort)!;
@@ -321,6 +344,9 @@ export function configureFrontier(ctx: Ctx, enabled: boolean, pause: boolean) {
           z: 18,
           target: undefined,
         });
+        w.save(actor);
+      } else if (isHomeTarget(actor.target)) {
+        actor.target = undefined;
         w.save(actor);
       }
   }

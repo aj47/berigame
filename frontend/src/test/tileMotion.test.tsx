@@ -85,3 +85,20 @@ describe('confirmed faster tile motion', () => {
     expect(h.result.current.current.speed).toBe(0);
   });
 });
+
+describe('connected home island motion', () => {
+  it('keeps the same avatar moving through the district seam in both directions', () => {
+    const group=new Group(), ref={current:group};
+    const h=renderHook(({x,z,region})=>useTileMotion(x,z,6,ref,region as any), {initialProps:{x:63,z:25,region:'bramblewild'}});
+    expect(group.position.toArray()).toEqual([38,0,0]);
+    h.rerender({x:1,z:64,region:'settlement'});
+    expect(group.position.toArray()).toEqual([38,0,0]);
+    act(()=>{harness.now=300;harness.frame();});
+    expect(group.position.x).toBeCloseTo(39);
+    act(()=>{harness.now=600;harness.frame();});
+    expect(group.position.toArray()).toEqual([40,0,0]);
+    h.rerender({x:63,z:25,region:'bramblewild'});
+    act(()=>{harness.now=1200;harness.frame();});
+    expect(group.position.toArray()).toEqual([38,0,0]);
+  });
+});

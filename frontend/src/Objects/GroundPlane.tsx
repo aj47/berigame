@@ -1,6 +1,8 @@
+import { homeCoastTexture } from "../frontier/homeCoast";
+import { useFrontier } from "../frontier/useFrontier";
 import { useFrame, useThree } from '@react-three/fiber';
 import { MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, holdState, openMenuNear } from '../Components/3D/tapAssist';
-import { PlaneGeometry, ShaderMaterial, UniformsLib, UniformsUtils } from 'three';
+import { PlaneGeometry, ShaderMaterial, Vector2, UniformsLib, UniformsUtils } from 'three';
 import { envTime } from '../Components/3D/envArt';
 import { terrainGeometry, terrainMaterial, coastTexture } from '../Components/3D/islandTerrainArt';
 import IslandLandmarks from '../Components/3D/IslandLandmarks';
@@ -15,7 +17,7 @@ import { useUserInputStore } from '../store';
 const oceanGeo = new PlaneGeometry(400, 400);
 const oceanMat = new ShaderMaterial({
   fog: true,
-  uniforms: UniformsUtils.merge([UniformsLib.fog, { uTime: { value: 0 }, uCoast: { value: coastTexture } }]),
+  uniforms: UniformsUtils.merge([UniformsLib.fog, { uTime: { value: 0 }, uCoast: { value: coastTexture }, uMapOrigin: {value:new Vector2(-.5,-.5)}, uMapSize: {value:new Vector2(64,64)} }]),
   vertexShader: `varying vec2 vW;
     #include <fog_pars_vertex>
     void main(){
@@ -23,12 +25,12 @@ const oceanMat = new ShaderMaterial({
       vec4 mvPosition = viewMatrix * w; gl_Position = projectionMatrix * mvPosition;
       #include <fog_vertex>
     }`,
-  fragmentShader: `uniform float uTime; uniform sampler2D uCoast; varying vec2 vW;
+  fragmentShader: `uniform float uTime; uniform sampler2D uCoast; uniform vec2 uMapOrigin; uniform vec2 uMapSize; varying vec2 vW;
     #include <fog_pars_fragment>
     void main(){
-      vec2 uv = (vW + 25.5) / 64.0;
+      vec2 uv = (vW + 25.0 - uMapOrigin) / uMapSize;
       float d = texture2D(uCoast, clamp(uv, 0.0, 1.0)).r * 32.0 - 8.0;
-      d += length(max(vec2(0.0), max(-uv, uv-1.0))) * 64.0;
+      d += length(max(vec2(0.0), max(-uv, uv-1.0)) * uMapSize);
       float wob = sin(vW.x * 0.9 + uTime * 0.8) * 0.12 + sin(vW.y * 1.1 - uTime * 0.7) * 0.12;
       vec3 shallow = vec3(0.30, 0.80, 0.76), mid = vec3(0.05, 0.56, 0.66), deep = vec3(0.0, 0.33, 0.52);
       vec3 c = mix(shallow, mid, smoothstep(0.0, 5.0, d + wob));
@@ -47,13 +49,19 @@ const oceanMat = new ShaderMaterial({
 });
 oceanMat.uniforms.uTime = envTime;
 
+const homeOceanMat = oceanMat.clone();
+homeOceanMat.uniforms.uTime=envTime;
+homeOceanMat.uniforms.uCoast.value=homeCoastTexture;
+homeOceanMat.uniforms.uMapOrigin.value=new Vector2(-.5,-39.5);
+homeOceanMat.uniforms.uMapSize.value=new Vector2(192,128);
 /** The ocean plane, shaded around the island and the Boulders. */
-export const Ocean = () => <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.34, 0]} geometry={oceanGeo} material={oceanMat} />;
+export const Ocean = ({connected=false}:{connected?:boolean}) => <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.34, 0]} geometry={oceanGeo} material={connected?homeOceanMat:oceanMat} />;
 
 /** The terrain exactly covers the server grid; its coastline never hides walkable tiles. */
 const GroundPlane = () => {
-  const { setTarget } = useGameActions();
+  const { setTarget, frontier } = useGameActions();
   const me = useMyPlayer();
+  const expansion = useFrontier();
   const rows = useInventoryRows();
   const marker = useRef<any>(null);
   const clickedAt = useRef(-Infinity);
@@ -90,6 +98,10 @@ const GroundPlane = () => {
     const [x, , z] = tileToWorld(tile);
     marker.current.position.set(x, 0.045, z);
     clickedAt.current = performance.now();
+    if (me?.region === 'settlement') {
+      void frontier({action:'walk', id:'bramblewild', ...tile});
+      return;
+    }
     setTarget(tile.x, tile.z);
     // Without a stick the server stops you at the hedge; say why.
     if (me && areaOf(me) === 'grove' && areaOf(tile) !== 'grove'
@@ -104,7 +116,7 @@ const GroundPlane = () => {
   return <>
     <mesh name="land_mesh" onClick={onClick} geometry={terrainGeometry} material={terrainMaterial} />
     <IslandLandmarks onGroundClick={onClick} />
-    <Ocean />
+    <Ocean connected={expansion.enabled} />
     <mesh ref={marker} visible={false} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.28, 0.36, 24]} /><meshBasicMaterial color="#fff2bd" transparent depthWrite={false} />
     </mesh>

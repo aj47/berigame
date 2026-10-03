@@ -8,9 +8,11 @@ vi.mock('../../../spacetimedb/src/schema', () => ({ default: {
   clientConnected: (fn: unknown) => fn, clientDisconnected: (fn: unknown) => fn,
 } }));
 import { configureAccess, grantAgent, grantPlayer, renewGrant, revokePlayer, endVisit } from '../../../spacetimedb/src/reducers/access';
-import { onConnect } from '../../../spacetimedb/src/reducers/lifecycle';
+import { onConnect, onDisconnect } from '../../../spacetimedb/src/reducers/lifecycle';
 import { requirePlayer } from '../../../spacetimedb/src/lib/players';
 import { sendChat } from '../../../spacetimedb/src/reducers/chat';
+
+import { MAX_ONLINE_PLAYERS } from '../admission';
 
 const id = (hex: string) => ({ toHexString: () => hex });
 const owner = id('owner'), gateway = id('gateway'), guest = id('guest');
@@ -26,7 +28,7 @@ function world() {
   const ctx = { sender: guest, timestamp: { microsSinceUnixEpoch: 100_000_000n }, db: {
     accessPolicy: { id: { find: (key: number) => policies.get(key), update: (row: any) => policies.set(row.id, row) } },
     playerGrant: keyed(grants), player: keyed(players), tree: { id: { find: () => undefined } },
-    world: { id: { find: () => ({ tick: 20 }) } }, chatMessage: { iter: () => [] },
+    world: { id: { find: () => ({ tick: 20 }) } }, chatMessage: { iter: () => [] }, trade: { a: { filter: () => [] }, b: { filter: () => [] } },
   } };
   return { ctx, grants, players, policies };
 }
@@ -67,10 +69,11 @@ describe('world admission and operator authority', () => {
     expect(() => call(sendChat, w.ctx, { text: 'scope bypass' })).toThrow('chat is not enabled');
   });
 
-  it('caps active grants even if callers bypass the HTTP API', () => {
+  it('allows a LAN-sized batch of permits without treating offline characters as online slots', () => {
     const w = world(); w.ctx.sender = gateway;
-    for (let i = 0; i < 32; i++) call(grantAgent, w.ctx, { identity: id(String(i)), lifetimeSeconds: 60, combat: false, chat: false });
-    expect(() => call(grantAgent, w.ctx, { identity: guest, lifetimeSeconds: 60, combat: false, chat: false })).toThrow('capacity');
+    for (let i = 0; i < 512; i++) call(grantAgent, w.ctx, { identity: id(String(i)), lifetimeSeconds: 60, combat: false, chat: false });
+    expect(w.grants.size).toBe(512);
+    expect(w.players.size).toBe(0);
   });
 
   it('revocation cannot be performed by another player and immediately blocks the old identity', () => {
@@ -137,12 +140,34 @@ describe('world admission and operator authority', () => {
     expect(() => call(onConnect, w.ctx)).toThrow('access required');
   });
 
-  it('renewing a lapsed permit respects the active permit cap', () => {
+  it('enforces the online cap on direct connections, frees a slot on disconnect, and admits a waiting character', () => {
+    const w = world(); w.ctx.sender = gateway;
+    const args = { lifetimeSeconds: 60, combat: false, chat: false };
+    // Issue before anyone connects: the final connection check must be authoritative.
+    for (let i = 0; i <= MAX_ONLINE_PLAYERS; i++) call(grantAgent, w.ctx, { ...args, identity: id(String(i)) });
+    for (let i = 0; i < MAX_ONLINE_PLAYERS; i++) { w.ctx.sender = id(String(i)); call(onConnect, w.ctx); }
+    w.ctx.sender = id(String(MAX_ONLINE_PLAYERS));
+    expect(() => call(onConnect, w.ctx)).toThrow('world is full');
+    // A second tab of an online character uses the same world slot.
+    w.ctx.sender = id('0'); call(onConnect, w.ctx); call(onDisconnect, w.ctx);
+    expect(w.players.get('0').online).toBe(true);
+    call(onDisconnect, w.ctx);
+    expect(w.players.get('0').online).toBe(false);
+    w.ctx.sender = id(String(MAX_ONLINE_PLAYERS)); call(onConnect, w.ctx);
+    expect([...w.players.values()].filter(p => p.online)).toHaveLength(MAX_ONLINE_PLAYERS);
+  });
+
+  it('keeps online players renewing at capacity while returning offline players wait', () => {
     const w = world(); w.ctx.sender = gateway;
     call(grantAgent, w.ctx, { identity: guest, lifetimeSeconds: 60, combat: false, chat: false });
-    w.ctx.timestamp = { microsSinceUnixEpoch: 200_000_000n };
-    for (let i = 0; i < 32; i++) call(grantAgent, w.ctx, { identity: id(String(i)), lifetimeSeconds: 60, combat: false, chat: false });
-    expect(() => call(renewGrant, w.ctx, { identity: guest, lifetimeSeconds: 3600 })).toThrow('capacity');
+    for (let i = 0; i < MAX_ONLINE_PLAYERS; i++) {
+      const identity = id(String(i)); w.ctx.sender = gateway;
+      call(grantAgent, w.ctx, { identity, lifetimeSeconds: 60, combat: false, chat: false });
+      w.ctx.sender = identity; call(onConnect, w.ctx);
+    }
+    w.ctx.sender = gateway;
+    expect(() => call(grantAgent, w.ctx, { identity: id('new'), lifetimeSeconds: 60, combat: false, chat: false })).toThrow('world is full');
+    expect(() => call(renewGrant, w.ctx, { identity: guest, lifetimeSeconds: 3600 })).toThrow('world is full');
     call(renewGrant, w.ctx, { identity: id('0'), lifetimeSeconds: 3600 });
   });
 });

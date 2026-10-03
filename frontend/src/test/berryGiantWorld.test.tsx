@@ -7,6 +7,7 @@ import { useUserInputStore } from '../store';
 
 const mock = vi.hoisted(() => ({ expeditions: [] as any[], tick: 100 }));
 vi.mock('../spacetime/hooks', () => ({
+  useMyPlayer: () => null,
   useExpeditions: () => mock.expeditions, useIslandProjects: () => [], usePlayers: () => [], useTick: () => mock.tick,
 }));
 vi.mock('@react-three/fiber', () => ({ useFrame: () => {} }));

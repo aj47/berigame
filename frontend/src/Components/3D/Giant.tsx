@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { BufferGeometry, Group, Mesh, MeshBasicMaterial, PlaneGeometry, RingGeometry, Vector3 } from 'three';
 import {
-  EventKind, GIANT_SLAM_WINDUP_TICKS, GIANT_STOMP_WINDUP_TICKS, GiantAttack, GiantState, TICK_MS, attackRadius, giantHpAt, tileToWorld,
+  EventKind, GIANT_REACH, GIANT_SLAM_WINDUP_TICKS, GIANT_STOMP_WINDUP_TICKS, GiantAttack, GiantState, TICK_MS, attackRadius, giantHpAt, tileToWorld,
   formatCountdown,
 } from '@sim';
 import { useGiantRaid, useNow } from '../../spacetime/hooks';
@@ -14,6 +14,8 @@ import { tickClock } from '../../spacetime/tickClock';
 import { useUserInputStore } from '../../store';
 import DamageNumber from './DamageNumber';
 import { LowPolyBuilder, coastMaterial, linear } from './nodes/lowPoly';
+import { approachWorldInteraction } from '../../frontier/worldInteraction';
+import { holdState } from './tapAssist';
 
 /*
  * F3 "The Giant": a mossy stone giant, about 4.3 units tall over its 3x3
@@ -244,16 +246,20 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
   const onClick = (e: any) => {
     if (e.delta > 5) return;
     e.stopPropagation();
-    const down = row.current.state === GiantState.Defeated;
-    const asleep = row.current.state === GiantState.Asleep;
-    setClickedOtherObject({ connectionId: 'The Giant', e, dropdownOptions: [
-      { label: asleep ? 'The Giant is asleep' : down ? 'The Giant is resting' : 'Attack The Giant', disabled: down || asleep, onClick: () => { onAttack(row.current.id); setClickedOtherObject(null); } },
-    ] });
+    if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
+    const event = { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() };
+    approachWorldInteraction({ region: 'bramblewild', x: row.current.x, z: row.current.z }, () => {
+      const down = row.current.state === GiantState.Defeated;
+      const asleep = row.current.state === GiantState.Asleep;
+      setClickedOtherObject({ connectionId: 'The Giant', e: event, dropdownOptions: [
+        { label: asleep ? 'The Giant is asleep' : down ? 'The Giant is resting' : 'Attack The Giant', disabled: down || asleep, onClick: () => { onAttack(row.current.id); setClickedOtherObject(null); } },
+      ] });
+    }, GIANT_REACH);
   };
 
   return (
     <group position={[x, 0, z]} name="giant" userData={{ berigameGiant: giant.id, hoverTarget: {
-      title: 'The Giant', action: 'Click for Giant options', radius: 2.1,
+      title: 'The Giant', action: 'Walk over for Giant options', click: 'panel', radius: 2.1,
       detail: giant.state === GiantState.Asleep ? 'Asleep' : giant.state === GiantState.Defeated ? 'Resting' : 'Ready to battle',
       tone: giant.state === GiantState.Asleep || giant.state === GiantState.Defeated ? 'muted' : 'ready',
     } }}>

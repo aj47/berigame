@@ -1,0 +1,32 @@
+.minimap-card.minimap-district-card { width: min(860px, calc(100vw - 24px)); padding: 16px; }
+.minimap-district-card .panel-heading { margin-bottom: 12px; }
+.minimap-district-card .map-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(245px, 1fr); gap: 18px; align-items: start; }
+.minimap-district-card .minimap-big-wrap { width: 100%; }
+.minimap-district-card .minimap-big-wrap canvas { box-sizing: border-box; }
+.minimap-district-card .map-districts { display: flex; gap: 6px; margin-bottom: 12px; }
+.minimap-district-card .map-districts button { min-height: 36px; padding: 7px 12px; font-size: 13px; }
+.minimap-district-card .map-districts button[aria-pressed=true] { background: #345a45; border-color: #345a45; color: #fff7df; }
+.minimap-district-card .map-places { grid-template-columns: 1fr 1fr; gap: 7px; }
+.minimap-district-card .map-places button { padding: 8px; font-size: 12px; gap: 7px; min-height: 53px; }
+.minimap-district-card .map-places small { font-size: 10px; line-height: 1.3; }
+.minimap-district-card .map-destinations h3 { margin: 0 0 9px; font-size: 14px; }
+.minimap-district-card .map-resources { margin-top: 20px; }
+.minimap-district-card .map-resource-swatch { display: grid; place-items: center; border: 1px solid #fff9; width: 19px; height: 19px; border-radius: 4px; flex-shrink: 0; color: #e8ead2; }
+.minimap-district-card .map-key { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; }
+.minimap-district-card .map-key i { display: inline-block; vertical-align: -1px; width: 10px; height: 10px; border: 1px solid #365344; border-radius: 50%; margin-right: 5px; }
+.minimap-district-card .map-key-you { background: #fff3b3; }
+.minimap-district-card .map-key-player { background: #e1eada; }
+.minimap-district-card .map-key-land { background: #f4de9c; border-radius: 2px !important; }
+.minimap-district-card .map-more-key { margin-top: 16px; font-size: 12px; }
+.minimap-district-card .map-more-key summary { cursor: pointer; color: #506b4c; }
+.minimap-district-card .minimap-legend { grid-template-columns: 1fr; font-size: 11px; }
+@media (max-width: 680px) {
+  .minimap-card.minimap-district-card { padding: 12px; }
+  .minimap-district-card .map-layout { grid-template-columns: 1fr; gap: 18px; }
+  .minimap-district-card .minimap-big-wrap { max-width: 420px; }
+  .minimap-district-card .map-districts button { flex: 1; padding: 7px 4px; font-size: 12px; }
+}
+@media (max-height: 540px) and (min-width: 681px) {
+  .minimap-district-card .map-layout { grid-template-columns: minmax(220px, .9fr) minmax(0, 1.1fr); }
+  .minimap-district-card .minimap-big-wrap { max-width: 300px; }
+}

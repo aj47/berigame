@@ -1,3 +1,6 @@
+import { MATERIALS } from "../../../shared/sim/frontier/catalog";
+import { homePoint, isHomeRegion } from "../../../shared/sim/frontier/homeMap";
+import { drawHomeMap, type HomeMapView } from "../frontier/homeMapArt";
 import {
   terrainField, trailDistance, isBridge, areaOf, LANDMARKS, SCENERY_BLOCKERS,
   GiantState,
@@ -17,8 +20,10 @@ import {
 
 /** Everything the minimap draws, in tile coordinates (x right, z down: north up). */
 export interface MinimapModel {
+  home?: { claims: { id: string; mine: boolean }[] };
   me: { x: number; z: number; yaw: number } | null;
   others: { x: number; z: number; hostile: boolean }[];
+  resources?: { x: number; z: number; item: string; color: string; ready: boolean }[];
   nodes: { x: number; z: number; kind: number; color: string; ripe: boolean }[];
   bags: { x: number; z: number }[];
   /** The Boulders' Giant (null until seeded). */
@@ -28,7 +33,7 @@ export interface MinimapModel {
 }
 
 interface Row { x: number; z: number }
-interface PlayerRow extends Row { identity: { toHexString(): string }; facing: number; state: number; online: boolean; hostile: boolean }
+interface PlayerRow extends Row { region?: string; identity: { toHexString(): string }; facing: number; state: number; online: boolean; hostile: boolean }
 interface TreeRow extends Row { itemId: string; kind: number; cooldownUntilTick: number }
 interface GroundRow extends Row { droppedBy: { toHexString(): string }; droppedOnDeath: boolean }
 
@@ -40,8 +45,10 @@ const KIND_COLOR: Record<number, string> = {
 
 export function minimapModel(input: {
   meHex: string | null;
+  home?: MinimapModel["home"];
   players: readonly PlayerRow[];
   trees: readonly TreeRow[];
+  resources?: readonly { region: string; x: number; z: number; item: string; regrowsAt?: number }[];
   groundItems: readonly GroundRow[];
   tick: number;
   giants?: readonly { x: number; z: number; state: number }[];
@@ -54,9 +61,11 @@ export function minimapModel(input: {
   let me: MinimapModel["me"] = null;
   const others: MinimapModel["others"] = [];
   for (const p of input.players) {
+    if (!isHomeRegion(p.region || "bramblewild")) continue;
+    const point = input.home ? homePoint(p, p.region || "bramblewild") : p;
     const hex = p.identity.toHexString();
-    if (hex === meHex) me = { x: p.x, z: p.z, yaw: facingToYaw(p.facing as Facing) };
-    else if (p.online && p.state !== PlayerState.Dead) others.push({ x: p.x, z: p.z, hostile: p.hostile });
+    if (hex === meHex) me = { x: point.x, z: point.z, yaw: facingToYaw(p.facing as Facing) };
+    else if (p.online && p.state !== PlayerState.Dead) others.push({ x: point.x, z: point.z, hostile: p.hostile });
   }
   const nodes = input.trees.map((t) => ({
     x: t.x,
@@ -80,7 +89,11 @@ export function minimapModel(input: {
   const status = input.raid ? raidStatus(input.raid, input.nowMs ?? Date.now()) : null;
   const label = !status ? undefined : status.awake ? "RAID" : formatCountdown(status.targetMs, input.nowMs ?? Date.now());
   const giant = g ? { x: g.x, z: g.z, down: g.state === GiantState.Defeated || asleep, asleep, label } : null;
-  return { me, others, nodes, bags, giant, garden: { x: GARDEN_CENTER.x - 0.5, z: GARDEN_CENTER.z - 0.5, ripe: input.gardenRipe ?? 0 } };
+  const resources = input.resources?.filter(n => isHomeRegion(n.region)).map(n => ({
+    ...homePoint(n, n.region), item: n.item, color: MATERIALS[n.item]?.color ?? getItemDef(n.item)?.color ?? '#7c8794',
+    ready: !n.regrowsAt || n.regrowsAt <= (input.nowMs ?? Date.now()),
+  }));
+  return { home: input.home, me, others, nodes, resources, bags, giant, garden: { x: GARDEN_CENTER.x - 0.5, z: GARDEN_CENTER.z - 0.5, ripe: input.gardenRipe ?? 0 } };
 }
 
 const mapTiles = Array.from({length:GRID_SIZE*GRID_SIZE},(_,k)=>{
@@ -96,7 +109,8 @@ const mapTiles = Array.from({length:GRID_SIZE*GRID_SIZE},(_,k)=>{
 });
 
 /** Paint the map into a square canvas `size` CSS pixels wide (the context is already DPR-scaled). */
-export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size: number): void {
+export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size: number, view: HomeMapView = 'overview'): void {
+  if (m.home) { drawHomeMap(ctx, m, size, view); return; }
   const s = size / GRID_SIZE;
   const px = (t: number) => (t + 0.5) * s;
   ctx.clearRect(0, 0, size, size);
@@ -210,4 +224,12 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
     ctx.stroke();
     ctx.restore();
   }
+}
+
+/** Destination copy reflects both the carried keys and the district already reached. */
+export function mapAccessLabel(access: 'grove' | 'coast' | 'boulders', keys: { stick: boolean; club: boolean }, currentArea: string): string {
+  if (access === 'grove') return 'Walk here';
+  const outsideGrove = ['coast', 'boulder-line', 'boulders', 'settlement'].includes(currentArea);
+  if (access === 'coast') return keys.stick || outsideGrove ? 'Accessible · walk here' : 'Stick required';
+  return (keys.stick || outsideGrove) && (keys.club || currentArea === 'boulders') ? 'Accessible · walk here' : !keys.stick && !outsideGrove ? 'Stick + stone club required' : 'Stone club required';
 }

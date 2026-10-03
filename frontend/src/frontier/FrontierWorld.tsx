@@ -1,12 +1,25 @@
+import { createTerrainGeometry, terrainMaterial } from "../Components/3D/islandTerrainArt";
+import { meadowField } from "../../../shared/sim/frontier/regions";
+import { linear } from "../Components/3D/nodes/lowPoly";
+import { homePoint, MEADOW_OFFSET } from "../../../shared/sim/frontier/homeMap";
 import MeadowScenery, { ResourceModel } from "./MeadowScenery";
+import MeadowTownSquare from "./MeadowTownSquare";
+import { approachWorldInteraction } from "./worldInteraction";
 import { openSettlement } from "./navigation";
+import { plotName } from "./panelModel";
+import { resourceHover } from "./resourcePresentation";
+import { meadowTrailDistance } from "./meadowPathArt";
+import { holdState, MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, openMenuNear } from "../Components/3D/tapAssist";
+import { useUserInputStore } from "../store";
 import { previewIssue } from "./preview";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
-import { BufferGeometry, Float32BufferAttribute, Group } from "three";
+import { BufferGeometry, Float32BufferAttribute, Group, Vector3 } from "three";
+import { avatarGroup } from "../animation/avatarRegistry";
+import { useSettingsStore } from "../spacetime/stores/settingsStore";
 import { useFrontier } from "./useFrontier";
-import { useMyPlayer, usePlayers } from "../spacetime/hooks";
+import { useInventoryRows, useMyPlayer, usePlayers } from "../spacetime/hooks";
 import { useGameActions } from "../spacetime/actions";
 import {
   PIECES,
@@ -165,7 +178,7 @@ function PieceModel({
     piece === "chest" ? "#99704b" : piece === "kitchen" ? "#859087" : "#c6a77b",
   );
 }
-function Animal({ creature }: { creature: Creature }) {
+function Animal({ creature, showLabel }: { creature: Creature; showLabel: boolean }) {
   const ref = useRef<Group>(null);
   const def = SPECIES.find((s) => s.id === creature.species)!;
   useFrame(({ clock }, dt) => {
@@ -225,16 +238,16 @@ function Animal({ creature }: { creature: Creature }) {
           </mesh>
         </group>
       ))}
-      <Html zIndexRange={[3, 0]} position={[0, 1.6, 0]} center distanceFactor={20}>
+      {showLabel && <Html style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]} position={[0, 1.6, 0]} center>
         <span className="frontier-label">
           {def.name}
           {creature.owner ? " ♡" : ""}
         </span>
-      </Html>
+      </Html>}
     </group>
   );
 }
-function Skiff({ boat }: { boat: Boat }) {
+function Skiff({ boat, showLabel }: { boat: Boat; showLabel: boolean }) {
   return (
     <group position={[boat.x - 25, 0.12, boat.z - 25]}>
       <mesh scale={[1, 1, 1.7]} rotation={[0, Math.PI / 4, 0]}>
@@ -246,27 +259,51 @@ function Skiff({ boat }: { boat: Boat }) {
         <planeGeometry args={[1.3, 1.7]} />
         <meshStandardMaterial color="#f8edce" side={2} />
       </mesh>
-      <Html zIndexRange={[3, 0]} position={[0, 3, 0]} center distanceFactor={22}>
+      {showLabel && <Html style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]} position={[0, 3, 0]} center>
         <span className="frontier-label">Skiff · {boat.crew.length}/4</span>
-      </Html>
+      </Html>}
     </group>
   );
 }
-function Scene({
+export function FrontierScene({
   draft,
   onDraft,
+  embedded = false,
 }: {
   draft: BuildDraft | null;
   onDraft: (d: BuildDraft | null) => void;
+  embedded?: boolean;
 }) {
   const state = useFrontier(),
-    me = useMyPlayer()!,
+    self = useMyPlayer()!,
     players = usePlayers(),
     actions = useGameActions(),
     appearances = useAppearanceByHex();
+  const hasAxe = useInventoryRows().some(slot => slot.itemId === 'axe' && slot.quantity > 0);
+  const showWorldLabels = useSettingsStore(s => s.showWorldLabels);
+  const { scene, camera, gl } = useThree();
   const [playerRef, setPlayerRef] = useState<any>();
-  const region = (me.region || "bramblewild") as RegionId;
+  const region = (embedded ? "settlement" : self.region || "bramblewild") as RegionId;
+  const worldMe = homePoint(self, self.region || "bramblewild");
+  const me = embedded ? { ...self, x: worldMe.x - MEADOW_OFFSET.x, z: worldMe.z - MEADOW_OFFSET.z } : self;
   const def = state.regions[region];
+  const identity = me.identity.toHexString();
+  const plotLabelPosition = useMemo<NonNullable<React.ComponentProps<typeof Html>['calculatePosition']>>(() => {
+    const marker = new Vector3(), player = new Vector3();
+    return (object, camera, size) => {
+      object.getWorldPosition(marker).project(camera);
+      let x = (marker.x + 1) * size.width / 2;
+      const y = (1 - marker.y) * size.height / 2;
+      const avatar = avatarGroup(identity);
+      if (avatar) {
+        avatar.getWorldPosition(player); player.y += 1.2; player.project(camera);
+        const px = (player.x + 1) * size.width / 2, py = (1 - player.y) * size.height / 2;
+        // Keep the nearest plot action beside the body as the camera or player moves.
+        if (Math.abs(x - px) < 135 && Math.abs(y - py) < 110) x = px + (x < px ? -135 : 135);
+      }
+      return [Math.max(75, Math.min(size.width - 75, x)), y];
+    };
+  }, [identity]);
   const pieces = state.buildings.filter((b) => b.region === region);
   const solids = useMemo(
     () =>
@@ -276,12 +313,20 @@ function Scene({
     [state.buildings, region],
   );
   const terrain = useMemo(() => {
-    const vertices: number[] = [];
+    if(region === 'settlement') return createTerrainGeometry(meadowField, meadowTrailDistance,128,MEADOW_OFFSET,1,false);
+    const vertices: number[] = [], colors: number[] = [];
     for (let z = 0; z < 128; z++)
       for (let x = 0; x < 128; x++)
         if (regionLand(region, { x, z })) {
           const a = x - 25.5,
             b = z - 25.5;
+          const coast = [[-1,0],[1,0],[0,-1],[0,1],[-2,0],[2,0],[0,-2],[0,2]].some(([dx,dz]) => !regionLand(region,{x:x+dx,z:z+dz}));
+          const patch = .5 + .25 * Math.sin((x + MEADOW_OFFSET.x) * .38 + Math.sin((z + MEADOW_OFFSET.z) * .23)) + .25 * Math.sin((z + MEADOW_OFFSET.z) * .51 - (x + MEADOW_OFFSET.x) * .14);
+          const tint = linear(0x4b803c).lerp(linear(0x73a44c), patch);
+          const road = Math.abs(x - def.spawn.x) < 1 || (x <= 102 && Array.from({length:6}, (_,i) => Math.abs(z - (6+i*19))).some(d => d < 1));
+          if (coast) tint.lerp(linear(0xecd099), .85);
+          else if (road) tint.lerp(linear(0xc7ad7b), .83);
+          for(let i=0;i<6;i++) tint.toArray(colors,colors.length);
           vertices.push(
             a,
             0,
@@ -305,6 +350,7 @@ function Scene({
         }
     const g = new BufferGeometry();
     g.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+    g.setAttribute("color", new Float32BufferAttribute(colors, 3));
     g.computeVertexNormals();
     return g;
   }, [region]);
@@ -313,24 +359,44 @@ function Scene({
     aboard = state.boats.find((b) =>
       b.crew.includes(me.identity.toHexString()),
     );
+  const nearbyPlots = state.plots.filter(p => p.region === region && distance(me, p.marker) < 30);
+  const nearestPlot = nearbyPlots.filter(p => distance(me, p.marker) < 9)
+    .sort((a, b) => distance(me, a.marker) - distance(me, b.marker))[0];
+  const nearbyResources = state.resources.filter(n => n.region === region && distance(me, n) < 35);
+  const nearestResource = nearbyResources.filter(n => distance(me, n) < 8)
+    .sort((a, b) => distance(me, a) - distance(me, b))[0];
+  const approachResource = (n: typeof state.resources[number]) => {
+    if (n.harvest || (n.regrowsAt && n.regrowsAt > Date.now())) return;
+    approachWorldInteraction(n, () => void actions.frontier({ action: 'gather', id: n.id }), 1);
+  };
   const click = (e: any) => {
+    if (e.delta > 5) return;
     if (e.nativeEvent?.target instanceof Element && e.nativeEvent.target.closest('button')) return;
     e.stopPropagation();
+    if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
+    const native = e.nativeEvent as PointerEvent | undefined;
+    if (!draft && native && typeof native.clientX === 'number') {
+      const radius = native.pointerType === 'mouse' ? MOUSE_TAP_RADIUS : TOUCH_TAP_RADIUS;
+      if (openMenuNear(scene, camera, gl.domElement.getBoundingClientRect(), native.clientX, native.clientY, radius, native)) return;
+    }
+    useUserInputStore.getState().setClickedOtherObject(null);
     const point = {
-      x: Math.round(e.point.x + 25),
-      z: Math.round(e.point.z + 25),
+      x: Math.round(e.point.x + 25 - (embedded ? MEADOW_OFFSET.x : 0)),
+      z: Math.round(e.point.z + 25 - (embedded ? MEADOW_OFFSET.z : 0)),
     };
-    if (draft) {
+    if (draft && self.region === region) {
       const reason = previewIssue(state, { ...draft, point }, players);
       onDraft({ ...draft, point, valid: !reason, reason });
     } else
       void actions.frontier({
-        action: region === "sea" ? "sail" : "move",
+        action: embedded ? "walk" : region === "sea" ? "sail" : "move",
+        ...(embedded ? { id: "settlement" } : {}),
         ...point,
       });
   };
   return (
     <>
+      {!embedded && <>
       <color attach="background" args={["#d9eadf"]} />
       <fog attach="fog" args={["#d9eadf", 32, 76]} />
       <hemisphereLight args={["#fff7de", "#788e7d", .9]} />
@@ -340,6 +406,7 @@ function Scene({
         color="#ffeaca"
       />
       <mesh
+        userData={{ worldSurface: true }}
         rotation={[-Math.PI / 2, 0, 0]}
         position={[38.5, -0.04, 38.5]}
         onClick={click}
@@ -351,36 +418,25 @@ function Scene({
           roughness={0.4}
         />
       </mesh>
+      </>}
       {region !== "sea" && (
-        <mesh geometry={terrain} onClick={click}>
-          <meshStandardMaterial color={def.color} roughness={1} />
-        </mesh>
+        <mesh name="land_mesh" geometry={terrain} onClick={click} material={terrainMaterial} />
       )}
       {region !== "sea" && (
         <>
           <MeadowScenery region={region} claimed={state.plots.filter(p=>!!p.claim).map(p=>p.id)}/>
-          <Box at={[def.spawn.x - 25, 0.018, 39]} size={[2, 0.02, 114]} color="#cdbb8c" />
-          <Box at={[def.spawn.x - 24, 0.025, 39]} size={[7, 0.025, 7]} color="#d8c69a" />
-          {Array.from({ length: 6 }, (_, i) => (
-            <Box
-              key={i}
-              at={[30, 0.016, -19 + i * 19]}
-              size={[100, 0.02, 1.3]}
-              color="#c5bd91"
-            />
-          ))}
-          <group position={[def.spawn.x - 25, 0, 39]} onClick={e => { if (!draft) { e.stopPropagation(); openSettlement(); } }}>
+          <MeadowTownSquare x={def.spawn.x - 24} />
+          <group position={[def.spawn.x - 25, 0, 39]} userData={{ hoverTarget: { title: 'Steward', action: 'Open quests & workshop', click: 'panel' } }} onClick={e => { if (!draft && e.delta <= 5) { e.stopPropagation(); if (holdState.active || performance.now() < holdState.suppressClickUntil) return; approachWorldInteraction({ region, ...def.spawn }, () => openSettlement()); } }}>
             <AdventureAssetView asset="gardener" />
-            <Html zIndexRange={[3, 0]} position={[0, 3, 0]} center>
-              <button className="frontier-world-action" onClick={e => { e.stopPropagation(); openSettlement(); }}>Steward · quests & workshop</button>
-            </Html>
+            {showWorldLabels && distance(me,def.spawn)<10 && <Html style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]} position={[0, 3, 0]} center>
+              <span className="frontier-label">Steward</span>
+            </Html>}
           </group>
-          {region === 'settlement' && <group position={[def.spawn.x - 27, 0, 41]}>
+          {region === 'settlement' && distance(me,def.spawn)<18 && <group position={[def.spawn.x - 27, 0, 41]} userData={{ hoverTarget: { title: 'Harbour', action: 'Walk to Bramblewild', click: 'action' } }} onClick={e => { if (!draft && e.delta <= 5) { e.stopPropagation(); if (holdState.active || performance.now() < holdState.suppressClickUntil) return; void actions.frontier({action:'return'}); } }}>
             <PieceModel piece="sign"/>
-            <Html position={[0,1.5,0]} center zIndexRange={[3,0]}><button className="frontier-world-action" onClick={e => { e.stopPropagation(); void actions.frontier({action:'return'}); }}>← Trailhead Camp</button></Html>
+            {showWorldLabels && distance(me,def.spawn)<10 && <Html style={{ pointerEvents: 'none' }} position={[0,1.5,0]} center zIndexRange={[3,0]}><span className="frontier-label">← Harbour</span></Html>}
           </group>}
-          {state.plots
-            .filter((p) => p.region === region && distance(me, p.marker) < 30)
+          {nearbyPlots
             .map((p) => (
               <group key={p.id} position={[p.x - 25, 0, p.z - 25]}>
                 {(p.claim || draft?.plot === p.id) && <mesh
@@ -406,30 +462,32 @@ function Scene({
                           : "#b1c193"
                     }
                     transparent
-                    opacity={0.55}
+                    opacity={draft?.plot === p.id ? 0.4 : 0.12}
                   />
                 </mesh>}
-                <Box
-                  at={[-1, 0.55, 0]}
-                  size={[0.16, 1.1, 0.16]}
-                  color="#957145"
-                />
-                {distance(me, p.marker) < 12 && (
-                  <Html zIndexRange={[3, 0]} position={[-1, 1.5, 0]} center>
-                    <button className="frontier-world-action" onClick={e => { e.stopPropagation(); openSettlement("Land", p.id); }}>{p.claim ? "Homestead" : "Make your home here"} · {p.id.split("-").at(-1)}</button>
+                <group position={[-1, 0, 0]} userData={{ hoverTarget: { title: p.claim?.owner === identity ? 'Your home' : plotName(p), action: 'View land', detail: p.claim ? 'Claimed homestead' : `Available to claim · ${FRONTIER.deed + FRONTIER.taxes[0]} coins`, click: 'panel' } }} onClick={e => { if (!draft && e.delta <= 5) { e.stopPropagation(); if (holdState.active || performance.now() < holdState.suppressClickUntil) return; approachWorldInteraction({ region, ...p.marker }, () => openSettlement("Land", p.id)); } }}>
+                  <Box at={[0, .5, 0]} size={[.13, 1, .13]} color="#886948" />
+                  <Box at={[0, 1, 0]} size={[.68, .46, .12]} color={p.claim ? "#5b7954" : "#c4a779"} />
+                  <mesh position={[0, 1.33, 0]} rotation={[0, Math.PI / 4, 0]}>
+                    <coneGeometry args={[.51, .25, 4]} />
+                    <meshStandardMaterial color="#70815b" roughness={1} />
+                  </mesh>
+                  <Box at={[0, 1.02, .075]} size={[.16, .18, .025]} color={p.claim ? "#e5d8a6" : "#6d7e52"} />
+                </group>
+                {p.claim && [[-.4,-.4], [FRONTIER.sizes[p.claim.tier]-.6,-.4], [-.4,FRONTIER.sizes[p.claim.tier]-.6], [FRONTIER.sizes[p.claim.tier]-.6,FRONTIER.sizes[p.claim.tier]-.6]].map(([x,z],i) => <Box key={i} at={[x,.18,z]} size={[.12,.36,.12]} color="#b2a080" />)}
+                {showWorldLabels && nearestPlot?.id === p.id && (
+                  <Html style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]} position={[-1, 2.1, 0]} calculatePosition={plotLabelPosition} center>
+                    <span className="frontier-label">{p.claim?.owner === identity ? "Your home" : `Plot ${p.id.split("-").at(-1)}`}</span>
                   </Html>
                 )}
               </group>
             ))}
-          {state.resources
-            .filter((n) => n.region === region && distance(me, n) < 35)
+          {nearbyResources
             .map((n) => (
-              <group key={n.id} position={[n.x - 25, 0, n.z - 25]}>
-                <ResourceModel item={n.item}/>
-                {distance(me, n) < 18 && <Html zIndexRange={[3, 0]} position={[0, n.item === 'timber' || n.item.startsWith('berry_') ? 3.2 : 1.3, 0]} center>
-                  <button className="frontier-world-action" onClick={e => { e.stopPropagation(); void actions.frontier(distance(me,n) <= 2 ? {action:'gather',id:n.id} : {action:'move',x:n.x,z:n.z}); }}>
-                    {distance(me,n) <= 2 ? 'Gather' : 'Walk to'} {n.item.replace('berry_', '').replaceAll('_', ' ')}
-                  </button>
+              <group key={n.id} position={[n.x - 25, 0, n.z - 25]} userData={{ hoverTarget: resourceHover(n, Date.now(), hasAxe) }} onClick={e => { if (!draft && e.delta <= 5) { e.stopPropagation(); if (holdState.active || performance.now() < holdState.suppressClickUntil) return; approachResource(n); } }}>
+                <ResourceModel item={n.item} resource={n}/>
+                {showWorldLabels && !n.harvest && nearestResource?.id === n.id && <Html style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]} position={[0, n.regrowsAt && n.regrowsAt > Date.now() ? 1 : n.item === 'timber' || n.item.startsWith('berry_') ? 3.2 : 1.3, 0]} center>
+                  <span className="frontier-label">{n.regrowsAt && n.regrowsAt > Date.now() ? 'Regrowing' : n.item.replace('berry_', '').replaceAll('_', ' ').replace(/^./, c => c.toUpperCase())}</span>
                 </Html>}
               </group>
             ))}
@@ -488,20 +546,20 @@ function Scene({
         .map((d) => (
           <group key={d.id} position={[d.x - 25, 0.2, d.z - 25]}>
             <Box size={[0.5, 0.4, 0.5]} color="#947551" />
-            <Html zIndexRange={[3, 0]} position={[0, 0.8, 0]} center>
+            {showWorldLabels && distance(me,d)<10 && <Html style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]} position={[0, 0.8, 0]} center>
               <span className="frontier-label">Dropped supplies</span>
-            </Html>
+            </Html>}
           </group>
         ))}
       {state.creatures
         .filter((c) => c.region === region && distance(me, c) < 35)
         .map((c) => (
-          <Animal key={c.id} creature={c} />
+          <Animal key={c.id} creature={c} showLabel={showWorldLabels && distance(me,c)<10} />
         ))}
       {state.boats
         .filter((b) => b.region === region)
         .map((b) => (
-          <Skiff key={b.id} boat={b} />
+          <Skiff key={b.id} boat={b} showLabel={showWorldLabels && distance(me,b)<12} />
         ))}
       {region === "sea" &&
         state.ports.map((p) => (
@@ -510,13 +568,14 @@ function Scene({
               <cylinderGeometry args={[2, 3, 0.6, 12]} />
               <meshStandardMaterial color="#c8bb8d" />
             </mesh>
-            <Html zIndexRange={[3, 0]} position={[0, 2, 0]} center>
+            {showWorldLabels && <Html style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]} position={[0, 2, 0]} center>
               <span className="frontier-label">
                 Dock · {state.regions[p.region].name}
               </span>
-            </Html>
+            </Html>}
           </group>
         ))}
+      {!embedded && <>
       {players
         .filter((p) => p.online && p.region === region)
         .map((p) => (
@@ -537,6 +596,7 @@ function Scene({
       <AvatarOverlay />
       <AnimationCulling />
       <CameraController playerRef={playerRef} />
+      </>}
     </>
   );
 }
@@ -556,7 +616,7 @@ export default function FrontierWorld(props: {
       gl={{ antialias: true }}
     >
       <React.Suspense fallback={null}>
-        <Scene {...props} />
+        <FrontierScene {...props} />
       </React.Suspense>
     </Canvas>
   );

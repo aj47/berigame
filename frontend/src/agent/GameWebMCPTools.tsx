@@ -1,5 +1,6 @@
 import { exportRecovery } from '../frontier/recovery';
 import { frontierSnapshot } from '../../../shared/sim/frontier/snapshot';
+import { describeAction, describeDestination, describeGathering, describeObjective } from '../../../shared/sim/agentState';
 import { validateCommand } from '../../../shared/sim/frontier/engine';
 import { useFrontierObjects, useFrontierViews, useTradeRows } from '../spacetime/hooks';
 import { useToastStore } from "../spacetime/stores/toastStore";
@@ -30,7 +31,6 @@ import {
   HOTBAR_SIZE,
   INVENTORY_SIZE,
   isWeapon,
-  Pending,
   PlayerState,
   PUNCH_DAMAGE,
   swingDamage,
@@ -160,7 +160,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
       result ? success : useToastStore.getState().message ?? "The action was not accepted. Inspect state before retrying.";
 
     const tools = [
-      tool('export_character_recovery', 'Download a private recovery backup for this character. Required before owning land. Replaces the prior recovery backup.', {}, [], async () => { await exportRecovery(); return 'Recovery backup downloaded. Keep the file privately.'; }),
+      tool('export_character_recovery', 'Download an optional private recovery key to restore access to this character. Progress is saved automatically on the server. Replaces the prior recovery key.', {}, [], async () => { await exportRecovery(); return 'Recovery backup downloaded. Keep the file privately.'; }),
       tool('inspect_trades', 'Read the exact item and coin offers before confirming. Only your own trades are visible.', {}, [], () => live.current.trades.map((t: any) => ({...t,id:t.id.toString(),a:t.a.toHexString(),b:t.b.toHexString()})), {readOnlyHint:true}),
       tool('trade_action', 'Request, accept, decline, offer items, confirm or cancel a trade. Confirm requires the exact aOffer, bOffer, aCoins and bCoins returned by inspect_trades.',
         { action:{type:'string',enum:['request','accept','decline','offer','confirm','cancel']}, playerId:{type:'string',pattern:'^[0-9a-fA-F]{64}$'}, tradeId:{type:'string',pattern:'^[0-9]{1,20}$'}, offer:{type:'string',maxLength:2048}, aOffer:{type:'string'},bOffer:{type:'string'},aCoins:{type:'integer',minimum:0},bCoins:{type:'integer',minimum:0} }, ['action'], async (input:any) => {
@@ -192,6 +192,11 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
         () => {
           const state = live.current;
           const player = state.me;
+          const region = player?.region || 'bramblewild';
+          const home = region === 'bramblewild';
+          const now = Date.now();
+          const frontier = frontierSnapshot(state.frontierObjects, state.frontierViews, player ? identityHex(player.identity) : '', now);
+          const gathering = player ? describeGathering(frontier, identityHex(player.identity), now) : null;
           const byIdentity = new Map(state.players.map((row: any) => [identityHex(row.identity), row]));
           const targetId = player?.combatTarget ? identityHex(player.combatTarget) : null;
           const sortedInventory = [...state.inventory].sort((a: any, b: any) => a.slot - b.slot);
@@ -210,20 +215,23 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           });
           const slots = slotsFromRows(state.inventory);
           const memory = useFirstDayStore.getState();
-          const goal = player
-            ? firstDayGoal({ me: player, slots, trees: state.trees, others: state.players.filter((row: any) => row !== player), tick: state.tick, canFight: true, done: memory.done, seen: memory.seen, giant: state.giants?.[0] ?? null }).goal
+          const goal = player && home
+            ? firstDayGoal({ me: player, slots, trees: state.trees, others: state.players.filter((row: any) => row !== player), tick: state.tick, canFight: true, foragingXp: state.skills?.foragingXp ?? 0, done: memory.done, seen: memory.seen, giant: state.giants?.[0] ?? null }).goal
             : null;
           return JSON.stringify({
             goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action } : null,
+            objective: player ? describeObjective(region, goal, frontier) : null,
+            frontier,
             world: {
-              map: TERRAIN_MAP,
+              region,
+              map: home ? TERRAIN_MAP : null,
               brambles: { center: SPAWN_TILE, ring: HEDGE_RING, tiles: brambleTiles(), key: STICK_ITEM_ID, rule: "The rounded woodland boundary is thorny brambles (see tiles): step onto one only while holding a stick, or from the Coast. You can always walk home." },
               safeRing: { center: SPAWN_TILE, radius: SAFE_RADIUS },
-              boulders: { key: BOULDER_KEY_ITEM, rule: "Past the Coast's south-east corner, a boulder line (max(x, z) = 50, both x and z >= 36) guards the Boulders: step onto it only while holding a stone club, or from the Boulders. You can always walk home. Check world.map.rows for the coastline, river and crossings." },
+              boulders: { key: BOULDER_KEY_ITEM, rule: "Past the Coast's south-east corner, a boulder line on walkable land with max(x, z) = 50 and z >= 32 guards the Boulders: step onto it only while holding a stone club, or from the Boulders. You can always walk home. Check world.map.rows for the coastline, river and crossings." },
             },
             giant: (() => {
               const g = state.giants?.[0];
-              if (!g) return null;
+              if (!home || !g) return null;
               const windup = g.state === GiantState.Windup;
               return {
                 tile: { x: g.x, z: g.z },
@@ -251,26 +259,18 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                   id: identityHex(player.identity),
                   name: player.name,
                   tile: { x: player.x, z: player.z },
+                  destination: describeDestination(player),
                   health: player.hp,
                   maxHealth: player.maxHp,
                   ...describeWeapon(player.weapon ?? ""),
                   alive: player.state === PlayerState.Alive,
                   region: player.region || "bramblewild",
                   area: player.region && player.region !== "bramblewild" ? player.region : areaOf(player),
-                  safe: isSafe(player, state.tick),
+                  safe: home && isSafe(player, state.tick),
                   hostile: player.hostile,
                   target: targetId ? byIdentity.get(targetId)?.name ?? targetId : null,
-                  action: player.pending === Pending.Trade ? "walking to trade" : player.harvestEndTick > state.tick
-                    ? "harvesting"
-                      : player.pending === Pending.Harvest
-                      ? "walking to a tree"
-                      : player.pending === Pending.Dummy
-                      ? "training at the dummy"
-                      : player.pending === Pending.Giant
-                      ? "fighting the giant"
-                      : player.combatTarget
-                        ? "combat"
-                        : "idle",
+                  gathering,
+                  action: describeAction(player, gathering, state.trees.find((tree: any) => tree.id === Number(player.pendingId))),
                 }
               : null,
             onlinePlayers: state.players
@@ -279,13 +279,14 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                 id: identityHex(row.identity),
                 name: row.name,
                 tile: { x: row.x, z: row.z },
+                region: row.region || 'bramblewild',
                 health: row.hp,
                 maxHealth: row.maxHp,
                 ...describeWeapon(row.weapon ?? ""),
                 alive: row.state === PlayerState.Alive,
                 isYou: player ? identityHex(row.identity) === identityHex(player.identity) : false,
               })),
-            berryTrees: state.trees.map((tree: any) => ({
+            berryTrees: (home ? state.trees : []).map((tree: any) => ({
               id: tree.id,
               berry: getItemDef(tree.itemId)?.name ?? tree.itemId,
               tile: { x: tree.x, z: tree.z },

@@ -5,7 +5,7 @@ import { useMyPlayer } from '../../spacetime/hooks';
 import { identityHex } from '../../spacetime/identity';
 
 /** Your own avatar. It is driven by the same server rows as everyone else's. */
-const PlayerController = (props: { setPlayerRef: (ref: React.MutableRefObject<any>) => void }) => {
+const PlayerController = (props: { frontierBlocked?: Set<string>; setPlayerRef: (ref: React.MutableRefObject<any>) => void }) => {
   const me = useMyPlayer();
   const chat = useRecentChatBySender();
   const appearances = useAppearanceByHex();
@@ -16,6 +16,7 @@ const PlayerController = (props: { setPlayerRef: (ref: React.MutableRefObject<an
       // A new identity is a new character: remount so animation and motion state start fresh.
       key={hex}
       row={me}
+      frontierBlocked={props.frontierBlocked}
       isSelf
       saved={appearances.get(hex)}
       chatText={chat.get(hex)?.text}

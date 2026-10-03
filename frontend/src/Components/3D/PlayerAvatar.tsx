@@ -11,7 +11,7 @@ import { useAvatarLabels } from './AvatarOverlay';
 import AdventurerModel, { BASE_MODEL_URL, modelUrl } from './AdventurerModel';
 import { useAppearancePreview } from '../../appearance/store';
 import { useToastStore } from '../../spacetime/stores/toastStore';
-import { useWornCosmetics, useExpeditions } from '../../spacetime/hooks';
+import { useWornCosmetics, useExpeditions, useMyPlayer } from '../../spacetime/hooks';
 import { useProgressStore, XP_FLOAT_KIND } from '../../spacetime/stores/progressStore';
 import type { AnimationCue } from '../../animation/combatPresentation';
 import { identityHex } from '../../spacetime/identity';
@@ -19,6 +19,10 @@ import { useSocialStore } from '../../spacetime/stores/socialStore';
 import { emoteCue } from '../../animation/emotes';
 import { avatarSelection } from './playerSelection';
 import { holdState } from './tapAssist';
+import { homePoint } from '../../../../shared/sim/frontier/homeMap';
+import { openSettlement } from '../../frontier/navigation';
+import { useResourceHarvest } from '../../frontier/useResourceHarvest';
+import { approachWorldInteraction } from '../../frontier/worldInteraction';
 
 class HairBoundary extends React.Component<{ children:React.ReactNode; fallback:React.ReactNode }, { failed:boolean }> {
   state={failed:false};
@@ -59,6 +63,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const groupRef = useRef<any>(null);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const hex = identityHex(row.identity);
+  const gathering = useResourceHarvest(hex);
   const expeditions=useExpeditions();
   const carrying=expeditions.some(e=>e.stage==='hauling' && e.carrier?.toHexString()===hex);
   const preview = useAppearancePreview((value) => isSelf ? value.draft : null);
@@ -77,9 +82,11 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   // XP floaters are yours alone (other players' XP is not broadcast as events).
   const xpFloat = useProgressStore((s) => (isSelf ? s.xpFloat : null));
   const dead = row.state === PlayerState.Dead;
+  const me = useMyPlayer();
+  const regionalActions = !isSelf && ((row.region && row.region !== 'bramblewild') || (me?.region && me.region !== 'bramblewild'));
   const selfGroundActions = isSelf && (!row.region || row.region === 'bramblewild');
   // Moving, fighting, harvesting or dying ends an emote (a Sit holds until then).
-  const activity = `${row.x},${row.z},${row.hostile},${row.pending},${row.harvestTreeId},${row.state}`;
+  const activity = `${row.x},${row.z},${row.hostile},${row.pending},${row.harvestTreeId},${row.state},${gathering?.harvest?.startedAt ?? ''}`;
   const lastActivity = useRef(activity);
   useEffect(() => {
     if (lastActivity.current === activity) return;
@@ -107,6 +114,11 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
     if (dead || e.delta > 5 || (isSelf && !selfGroundActions)) return;
     e.stopPropagation();
     if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
+    if (regionalActions) {
+      setClickedOtherObject(null);
+      approachWorldInteraction({ ...row, region: (row.region || 'bramblewild') as any }, () => openSettlement('Wildlife'));
+      return;
+    }
     setClickedOtherObject({
       ...avatarSelection({ hex, name: row.name, x: row.x, z: row.z, isSelf }, e.intersections ?? []),
       e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray },
@@ -117,18 +129,18 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   return (
     <group ref={groupRef} onClick={onClick} userData={{ hoverTarget: dead || (isSelf && !selfGroundActions) ? null : {
       title: isSelf ? 'You' : row.name,
-      action: isSelf ? 'Click for ground actions' : 'Click for player actions',
-      detail: isSelf ? 'Pick up items · walk here' : 'Follow · trade · attack',
-      radius: .65, tile: { x: row.x, z: row.z },
-      ...(isSelf ? {} : { playerHex: hex }),
+      action: isSelf ? 'Click for ground actions' : regionalActions ? 'View player actions' : 'Click for player actions',
+      detail: isSelf ? 'Pick up items · walk here' : regionalActions ? undefined : 'Follow · trade · attack',
+      radius: .65, tile: homePoint(row, row.region || 'bramblewild'),
+      ...(isSelf ? {} : regionalActions ? { click: 'panel' } : { playerHex: hex }),
     } }}>
       <mesh position={[0, 1.05, 0]} visible={false}><boxGeometry args={[0.9, 2.1, 0.8]} /><meshBasicMaterial /></mesh>
       {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} itemId={floating.itemId} appearAt={floating.at + floating.delayMs} />}
       {found && <DamageNumber key={`find-${hex}-${found.seq}`} playerPosition={origin} yOffset={1.8} kind={found.kind} text={found.text} itemId={found.itemId} appearAt={found.at + found.delayMs} />}
       {xpFloat && <DamageNumber key={`xp-${xpFloat.seq}`} playerPosition={origin} yOffset={2.25} kind={XP_FLOAT_KIND} text={xpFloat.text} appearAt={xpFloat.at} />}
       <Suspense fallback={<mesh position={[0,1,0]}><capsuleGeometry args={[.25,1,4,6]} /><meshStandardMaterial color="#42699c" /></mesh>}>
-        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} motion={motion} transient={transient} head={head} neck={neck} />}>
-          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} motion={motion} transient={transient} head={head} neck={neck} />
+        <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} gathering={gathering} motion={motion} transient={transient} head={head} neck={neck} />}>
+          <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} gathering={gathering} motion={motion} transient={transient} head={head} neck={neck} />
         </HairBoundary>
       </Suspense>
     </group>

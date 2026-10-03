@@ -149,12 +149,54 @@ progress; read state to observe completion.
 
 ### Gameplay through the API
 
+`state.player.tile` and `state.player.destination` use local coordinates.
+Destinations include `{region, x, z}`, including while crossing from Bramblewild
+to the Meadows. Reuse that destination with `frontier walk` (`id` is its region).
+For drawing a connected map only, `frontier.homeMap.meadowOffset` converts a
+Meadows local point to the original island's frame. Internal route tags are
+never coordinates a client should send.
+
+`state.objective` gives the current region's next step: `source: "first_day"`
+on Bramblewild, or `source: "frontier_quest"` with quest progress in the Meadows
+and outer islands. `state.goal` remains the original-island tutorial for
+existing clients; `frontier.quests` is the complete expansion quest list.
+
+While gathering an expansion resource, `player.action` is `chopping` for
+timber or `gathering` for other materials. `player.gathering` contains
+`resourceId`, `itemId`, `region`, `tile`, `tool`, `quantity`, `startedAt`,
+`completesAt` and `remainingMs`. `tool` is `hatchet`, `axe`, `pick` or `hands`;
+`quantity` previews the yield (both can be null for an older reservation).
+The timestamps are Unix milliseconds. Keep polling until the
+server clears the reservation and confirms the inventory change; reaching the
+deadline alone does not confirm success. A new action may cancel gathering.
+
 Actions mirror the browser controls: `move`, `harvest`, `craft`, `eat`, `wield`, `unwield`,
 `stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`, `wear`,
 `attack_dummy`, `attack_giant`, `plant`, `harvest_garden`, `emote`, the social actions `invite_create`, `invite_redeem`,
 `friend_add`, `friend_remove`, `trade_request`, `trade_respond`, `trade_offer`,
 `trade_confirm`, `trade_cancel`, and the scoped `attack` and `chat`. OpenAPI has
 the exact schemas.
+
+**Meadows onboarding (when `state.frontier.enabled` is true):** carry a Stick
+through the brambles, then POST `/actions/frontier` with
+`{"command":"{\"action\":\"enter\"}"}` to walk along the connected harbour
+trail. Wait for arrival at `frontier.regions.settlement.spawn`. Use
+`{"action":"talk","id":"steward"}`, then `{"action":"quest","id":"steward"}`
+inside the same `command` string to collect 10 coins. The next two quests ask
+for six Timber and a crafted Hammer; their rewards bring you to 50 coins,
+enough for a starter plot including its first week. Walk beside resource
+coordinates from `frontier.resources` before `gather`; inspect recipes and
+quest progress instead of guessing costs or IDs. Claim quest rewards near the
+steward or shipwright, then walk to an available plot's marker before `claim`.
+Repeatable supply orders provide later coins. Progress saves on the server;
+a recovery export is optional access recovery, never a land-purchase step.
+See the wiki's [coins and quests](/docs/coins-quests),
+[land ownership](/docs/land-ownership), and [Meadows](/docs/meadows) guides.
+
+Starter characters already use a simple hatchet for Timber: no crafted tool
+is required. Timber trees have a pale band around their trunks, and six
+shared trees are spread around the Meadows. Crafting an Axe doubles Timber
+per cut. All current IDs and positions are in `frontier.resources`.
 
 - **Invite links.** `invite_create` makes (or replaces) your 8-character code,
   valid for one hour (`state.invite`: `code`, `expiresInSeconds`, `linkQuery`
@@ -201,19 +243,21 @@ the exact schemas.
   the same slots behind the game's 1/2/3 keys. State reports `hotbarSize`,
   `punchDamage`, and a `hotbar`, `wielded` and `weaponDamage` value on every
   inventory row.
-- **Getting a stick.** While you hold no stick (bag or wielded), each completed
-  berry harvest has a `STICK_DROP_CHANCE` (25%, about 1 in 4) chance to add a
-  sturdy stick next to the berry. It is pure luck: no meter, no guarantee. A
-  player already holding a stick never finds a spare. One harvest can add two
-  inventory rows, so find rows by `itemId`.
+- **Getting a stick.** Each completed berry harvest earns Foraging XP.
+  Reaching Foraging level 2 (four berry harvests) awards your first sturdy
+  stick. After that, berry harvests have a `STICK_DROP_CHANCE` (25%) chance
+  to find spare sticks, including while you already carry one. One harvest
+  can add two inventory rows, so find rows by `itemId`. Non-berry nodes do
+  not find sticks.
 - **The Grove and the bramble hedge.** You spawn at (25,25) in the Grove.
-  `ring(t)` is the Chebyshev distance from (25,25). Ring 17 (x or z = 8 or 42,
-  136 tiles) is a thorny bramble hedge; ring 18 and beyond is the Coast.
+  Its rounded thorny boundary is listed exactly in `world.brambles.tiles`;
+  the old `center` and `ring` fields describe its extent, not a square wall.
+  Use `world.map.rows` and `world.map.obstacles` to find walkable ground.
   You may step onto a bramble tile only while holding a stick, or when stepping
   in from the Coast. Stepping off is always allowed, so brambles keep a
   stickless player in the Grove but never keep anyone out: you can always walk
   home. Diagonals also need both orthogonal tiles to be enterable. State
-  reports `world.brambles {center, ring: 17, key: 'stick', rule}`,
+  reports `world.brambles {center, ring, tiles, key: 'stick', rule}`,
   `player.area` (`grove`, `hedge` or `coast`, also on every listed player) and
   `me {area, safe, graceTicks, hasBrambleKey}`.
 - **Moving into the hedge.** `move` beyond the hedge without a stick is accepted
@@ -224,10 +268,11 @@ the exact schemas.
   queues nothing. Dropping the stick mid-walk stops you where you are.
 - **The Coast: nodes and the stone club (M2).** `state.nodes` lists every
   gathering node: `{id, kind, name, tile, gives, ready, regrowTicks, harvesting}`
-  with `kind` `berry`, `driftwood` or `tide_rock`. Four driftwood piles lie on
-  the beach straight past the path crossings, (25,3), (46,25), (25,46), (3,25):
-  4 ticks to gather, 25 to wash up again, 1 driftwood. Four tide rocks sit in
-  the corners, (3,3), (46,3), (3,46), (46,46): 6 ticks, 40 to regrow, 1 flint.
+  with `kind` `berry`, `driftwood`, `tide_rock` or `obsidian`. Read each node's
+  current `tile` rather than relying on old coastline coordinates. Driftwood
+  piles take 4 ticks to gather and 25 to wash up again, giving 1 driftwood.
+  Tide rocks take 6 ticks to gather and 40 to regrow, giving 1 flint. These
+  are base gathering times before skill bonuses.
   Only berry trees find sticks. `harvest {nodeId}` gathers a given node
   (`treeId` still works); `harvest {kind: "tide_rock"}` picks the node of that
   kind with the soonest claim. You need a stick to reach them (they are past the
@@ -236,14 +281,16 @@ the exact schemas.
   1 driftwood + 2 flint into a stone club instantly (rejected while dead or
   attacking; a full bag drops it at your feet). Wield it like the stick: 8
   damage a swing. `state.trees` (berry trees only) is kept for one release.
-- **The Boulders (M3).** The grid is now 64x64 (`state.gridSize`); the old
-  island keeps tiles 0-49 unchanged. Past its south-east corner lies the
-  Boulders: land with both x and z >= 36 and `max(x, z) > 50` (an L, 559
-  tiles). A one-tile **boulder line** (`max(x, z) = 50`, 29 tiles) guards it
+- **The Boulders (M3).** Bramblewild uses a 64x64 local grid. Its coastline,
+  lake and brook are described in `world.map`; water is impassable and the
+  named bridges cross the brook. The Boulders are walkable land with z >= 32
+  and `max(x, z) > 50`. A one-tile **boulder line** on walkable land with
+  z >= 32 and `max(x, z) = 50` guards it
   with the same one-way rule as the brambles, keyed by the **stone club** (bag
   or wielded): you may step onto it only while holding a club, or from the
-  Boulders; stepping off is always allowed, so you can always walk home. Every
-  other tile with x or z >= 50 is sea and never walkable. `state.world.boulders
+  Boulders; stepping off is always allowed, so you can always walk home.
+  Read the terrain map for sea and the east harbour trail; coordinates above
+  49 are not automatically water. `state.world.boulders
   {line: 50, min: 36, entry: {x: 51, z: 51}, key: 'stone_club', rule}`,
   `player.area` (`boulder-line`, `boulders`, `sea` join `grove`, `hedge`,
   `coast`) and `me.hasBoulderKey`. `move` past the line without a club is
@@ -378,13 +425,17 @@ permit expiration if the API process crashes.
 | Session | At most 1 hour total, 10 minutes idle, 1024 distinct action receipts |
 | Actions | 1 attempt/second, burst 4; invalid arguments and denied scopes consume the same budget |
 | Session requests | 2/second, burst 10 |
-| IP requests | 2/second, burst 60; all paths and failed authentication count |
-| IP joins | 1/minute, burst 5, including invalid invite attempts |
-| Global requests | 20/second, burst 200; 64 requests in flight; 128 HTTP connections |
-| API sessions | 16 total, 4 per IP, including pending connections |
-| Database | 32 active agent permits; 128 online players; 4 connections per identity; 10,000 historical players/permits |
+| IP requests (local API) | 256/second, burst 1,024; all paths and failed authentication count |
+| IP joins | 4/second, burst 256, including invalid invite attempts; no default per-IP player cap |
+| Global requests (local API) | 256/second, burst 1,024; separate joins at 8/second, burst 256; 64 requests in flight; 128 HTTP connections |
+| API sessions | 64 total, including pending connections; local operators can configure a smaller cap |
+| Database | 256 online characters; offline permits do not occupy slots; 4 connections per identity; 10,000 historical players/permits |
 | Existing gameplay | 5 committed inputs/tick, server movement/combat/harvest/eating rules; 3-second chat cooldown |
 | Payloads | 4 KiB JSON bodies; 8 KiB headers; strict fields, types, bounds and action allowlist; body deadline 3 seconds |
+
+Hosted request lanes, renewal limits and rollout checks are documented in
+[Cloudflare beta limits](CLOUDFLARE_BETA.md#abuse-and-persistence-limits). The configured
+player cap is not a measured performance guarantee.
 
 Tokens contain 256 random bits. Only session-token hashes are retained by the
 HTTP service. Credentials are accepted only in Authorization headers; query

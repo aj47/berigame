@@ -22,19 +22,18 @@ export function isBramble(t: Tile): boolean {
 
 /** The one-tile boulder line on the old south-east shoreline (max(x, z) = 50, both >= 36). */
 export function isBoulderLine(t: Tile): boolean {
-  return isLandTile(t) && Math.max(t.x, t.z) === BOULDER_LINE;
+  return isLandTile(t) && t.z >= 32 && Math.max(t.x, t.z) === BOULDER_LINE;
 }
 
 /** The Boulders (M3): land past the boulder line. */
 export function inBoulders(t: Tile): boolean {
-  return isLandTile(t) && Math.max(t.x, t.z) > BOULDER_LINE;
+  return isLandTile(t) && t.z >= 32 && Math.max(t.x, t.z) > BOULDER_LINE;
 }
 
 export function areaOf(t: Tile): Area {
   if (!isLandTile(t)) return 'sea';
-  const m = Math.max(t.x, t.z);
-  if (m > BOULDER_LINE) return 'boulders';
-  if (m === BOULDER_LINE) return 'boulder-line';
+  if (inBoulders(t)) return 'boulders';
+  if (isBoulderLine(t)) return 'boulder-line';
   return isBramble(t) ? 'hedge' : insideGrove(t) ? 'grove' : 'coast';
 }
 

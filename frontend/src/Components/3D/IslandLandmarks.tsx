@@ -39,6 +39,7 @@ const forestGeo=merged([
   ...[0,1,2].map(i=>part(new ConeGeometry(1.45-i*.29,2.25-i*.25,7),[0x355e40,0x477e4e,0x669656][i],[0,2+i*.72,0],[1,1,1],[0,i*.7,0],.13,i+1)),
 ]);
 const forestMat=withWind(mat.clone(),.013,1.6);
+export { forestGeo as islandForestGeometry, forestMat as islandForestMaterial };
 const archGeo=merged([
   ...[-2,2].flatMap(x=>[0,1,2,3,4].map(i=>box(i%2?0x899482:stone,[x,.25+i*.5,0],[.8,.46,.85],[0,(i%2)*.04,0]))),
   box(stone,[0,2.75,0],[4.9,.65,1]),box(0x62785b,[-1,3.14,0],[1.8,.16,1.05]),

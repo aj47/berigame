@@ -1,9 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, Vector3 } from 'three';
 import { GARDEN_PLOT_TILES, SPAWN_TILE, TILE_ORIGIN, tileKey, tileToWorld, gardenPlotAt, worldToTile } from '@sim';
-import { groundHover, hoverRoots, hoverTargetOf, hoverTile, isWorldSurface } from '../Components/3D/hoverTarget';
+import { connectedGroundHover, groundHover, hoverRoots, hoverTargetOf, hoverTile, isWorldSurface, meadowBlockedTiles } from '../Components/3D/hoverTarget';
 import { clickableNear, MOUSE_TAP_RADIUS, openMenuNear } from '../Components/3D/tapAssist';
 import { useUserInputStore } from '../store';
+import { homePoint } from '../../../shared/sim/frontier/homeMap';
+import { frontierSnapshot } from '../../../shared/sim/frontier/snapshot';
 
 const rect = { left: 0, top: 0, width: 200, height: 200 };
 function fixture() {
@@ -65,9 +67,9 @@ describe('world hover targeting', () => {
     expect(back.handler).toHaveBeenCalledTimes(1);
   });
 
-  it('counts an adventure panel click as handled instead of also walking', () => {
+  it.each(['panel', 'action'])('counts a %s click as handled instead of also walking', click => {
     const f = fixture(), target = f.object();
-    target.root.userData.hoverTarget.click = 'panel';
+    target.root.userData.hoverTarget.click = click;
     target.handler.mockImplementation(() => {});
     expect(openMenuNear(f.scene, f.camera, rect, 100, 100, MOUSE_TAP_RADIUS)).toBe(true);
     expect(target.handler).toHaveBeenCalledTimes(1);
@@ -92,6 +94,69 @@ describe('world hover targeting', () => {
     expect(hoverTargetOf(root, new Vector3())).toBeUndefined();
     root.userData.hoverTarget = null;
     expect(hoverTargetOf(root, new Vector3())).toBeNull();
+  });
+
+  it.each(['land_mesh', 'worldSurface'])('never invokes connected terrain as a nearby object (%s)', marker => {
+    const f = fixture(), terrain = f.object();
+    delete terrain.root.userData.hoverTarget;
+    if (marker === 'land_mesh') terrain.root.name = marker;
+    else terrain.root.userData.worldSurface = true;
+    terrain.root.position.set(64, 0, -39);
+    f.camera.position.set(64, 0, -34); f.camera.updateMatrixWorld();
+    f.scene.updateMatrixWorld(true);
+    expect(openMenuNear(f.scene, f.camera, rect, 100, 100, MOUSE_TAP_RADIUS)).toBe(false);
+    expect(terrain.handler).not.toHaveBeenCalled();
+  });
+});
+
+describe('connected home walking previews', () => {
+  const outside = { x: 61, z: 25, region: 'bramblewild' };
+  const inside = { x: 4, z: 64, region: 'settlement' };
+  const noBlocks = new Set<number>(), noBuildings = new Set<string>();
+  const meadow = homePoint({ x: 5, z: 64 }, 'settlement');
+
+  it('recognizes Meadows land beyond the original grid while approaching from the harbour', () => {
+    const tile = hoverTile(meadow.x - TILE_ORIGIN, meadow.z - TILE_ORIGIN);
+    expect(tile).toEqual(meadow);
+    expect(connectedGroundHover(tile, outside, noBlocks, noBuildings, true, false)).toMatchObject({ title: 'Walk here', tile: meadow });
+  });
+
+  it('uses the player district coordinates when walking back into Bramblewild', () => {
+    expect(connectedGroundHover({ x: 61, z: 25 }, inside, noBlocks, noBuildings, false, false)).toMatchObject({ title: 'Walk here', tile: { x: 61, z: 25 } });
+    const farNorth = homePoint({ x: 31, z: 6 }, 'settlement');
+    expect(farNorth.z).toBeLessThan(0);
+    expect(connectedGroundHover(farNorth, inside, noBlocks, noBuildings, false, false)).toMatchObject({ title: 'Walk here', tile: farNorth });
+  });
+
+  it('keeps actual water on either side of the crossing non-walkable', () => {
+    for (const tile of [{ x: 63, z: 15 }, homePoint({ x: 0, z: 50 }, 'settlement'), { x: 194, z: 25 }]) {
+      expect(connectedGroundHover(tile, outside, noBlocks, noBuildings, true, true)).toMatchObject({ title: 'Water', tone: 'muted', tile });
+    }
+  });
+
+  it('reports blocked building destinations rather than promising a nearby walk', () => {
+    const blocked = new Set(['5,64']);
+    expect(connectedGroundHover(meadow, outside, noBlocks, blocked, true, true)).toMatchObject({ title: 'Path blocked', tile: meadow, tone: 'muted' });
+    expect(connectedGroundHover(homePoint({ x: 6, z: 64 }, 'settlement'), outside, noBlocks, blocked, true, true).title).toBe('Walk here');
+  });
+
+  it('checks the whole route and original-island barriers across the join', () => {
+    const wall = new Set(Array.from({ length: 128 }, (_, z) => `2,${z}`));
+    expect(connectedGroundHover(meadow, outside, noBlocks, wall, true, true).title).toBe('Path blocked');
+    expect(connectedGroundHover(meadow, { ...SPAWN_TILE, region: 'bramblewild' }, noBlocks, noBuildings, false, false).title).toBe('Thorny brambles');
+    expect(connectedGroundHover(meadow, { ...SPAWN_TILE, region: 'bramblewild' }, noBlocks, noBuildings, true, false).title).toBe('Walk here');
+    expect(connectedGroundHover({ x: 54, z: 40 }, inside, noBlocks, noBuildings, true, false).title).toBe('Boulder boundary');
+  });
+
+  it('blocks solid pieces and private gates but allows an owner, permitted visitor or occupant to pass', () => {
+    const state = frontierSnapshot([
+      { kind: 'claim', data: JSON.stringify({ id: 'settlement-13', owner: 'owner', permissions: { guest: 1 }, tier: 0, paidUntil: 0, cooldownUntil: 0 }) },
+      ...['wall', 'gate', 'floor'].map((piece, i) => ({ kind: 'building', data: JSON.stringify({ id: piece, region: 'settlement', x: 12 + i, z: 65, claim: 'settlement-13', piece, rotation: 0, label: '' }) })),
+    ], [], 'visitor', 0);
+    expect(meadowBlockedTiles(state, outside, 'visitor')).toEqual(new Set(['12,65', '13,65']));
+    expect(meadowBlockedTiles(state, outside, 'owner')).toEqual(new Set(['12,65']));
+    expect(meadowBlockedTiles(state, outside, 'guest')).toEqual(new Set(['12,65']));
+    expect(meadowBlockedTiles(state, { region: 'settlement', x: 14, z: 66 }, 'visitor')).toEqual(new Set(['12,65']));
   });
 });
 
