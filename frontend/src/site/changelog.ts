@@ -15,6 +15,15 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-03-meadows-icons', date: '2026-10-03', period: 'Oct 3, 2026',
+    title: 'New artwork for every Meadows item',
+    changes: [
+      'All 25 Meadows materials, tools, provisions, boat parts and equipment now have illustrated icons matching the original berries and island artwork.',
+      'The new artwork appears throughout the bag, quick slots, crafting, storage and trading, and on the wiki item pages.',
+    ],
+    commits: ['4452505'],
+  },
+  {
     id: '2026-10-03-controls-building-travel', date: '2026-10-03', period: 'Oct 3, 2026',
     title: 'Familiar controls, better building and quicker travel',
     changes: [
