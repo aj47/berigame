@@ -22,6 +22,7 @@ import { BufferGeometry, Float32BufferAttribute, Group, Vector3 } from "three";
 import { avatarGroup } from "../animation/avatarRegistry";
 import { useSettingsStore } from "../spacetime/stores/settingsStore";
 import { useFrontier } from "./useFrontier";
+import { avatarFrontierState } from './avatarFrontierState';
 import { useInventoryRows, useMyPlayer, usePlayers } from "../spacetime/hooks";
 import { useGameActions } from "../spacetime/actions";
 import {
@@ -328,6 +329,7 @@ export function FrontierScene({
     players = usePlayers(),
     actions = useGameActions(),
     appearances = useAppearanceByHex();
+  const avatarFrontier = avatarFrontierState(state);
   const hasAxe = useInventoryRows().some(slot => slot.itemId === 'axe' && slot.quantity > 0);
   const showWorldLabels = useSettingsStore(s => s.showWorldLabels);
   const { scene, camera, gl } = useThree();
@@ -632,7 +634,7 @@ export function FrontierScene({
                 ? setPlayerRef
                 : undefined
             }
-            frontier={state}
+            frontier={avatarFrontier}
           />
         ))}
       <AvatarDecals />

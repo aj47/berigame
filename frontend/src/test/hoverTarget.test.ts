@@ -56,6 +56,42 @@ describe('world hover targeting', () => {
     expect(target.handler).toHaveBeenCalledTimes(1);
   });
 
+  it('does not raycast terrain and scenery 17 times before an empty-ground click', () => {
+    const f = fixture(), target = f.object();
+    const terrain = new Mesh(new BoxGeometry(20, 20, .1), new MeshBasicMaterial());
+    terrain.name = 'land_mesh'; terrain.position.z = -1;
+    (terrain as any).__r3f = { handlers: { onClick: vi.fn() } };
+    const scenery = new Mesh(new BoxGeometry(20, 20, .1), new MeshBasicMaterial());
+    scenery.position.z = -2;
+    f.scene.add(terrain, scenery); f.scene.updateMatrixWorld(true);
+    const terrainRaycast = vi.spyOn(terrain, 'raycast'), sceneryRaycast = vi.spyOn(scenery, 'raycast');
+    const targetRaycast = vi.spyOn(target.mesh, 'raycast');
+    // The original full-scene path does all 17 probes, including geometry
+    // that can never supply an object action, before falling back to walking.
+    expect(clickableNear(f.scene, f.camera, rect, 180, 100, MOUSE_TAP_RADIUS, undefined, f.scene.children)).toBeNull();
+    expect(terrainRaycast).toHaveBeenCalledTimes(17);
+    expect(sceneryRaycast).toHaveBeenCalledTimes(17);
+    vi.clearAllMocks();
+    expect(openMenuNear(f.scene, f.camera, rect, 180, 100, MOUSE_TAP_RADIUS)).toBe(false);
+    expect(terrainRaycast).not.toHaveBeenCalled();
+    expect(sceneryRaycast).not.toHaveBeenCalled();
+    expect(targetRaycast).toHaveBeenCalledTimes(17);
+    expect(target.handler).not.toHaveBeenCalled();
+  });
+
+  it('preserves unannotated and nested clickable objects when filtering scenery', () => {
+    const f = fixture(), target = f.object();
+    delete target.root.userData.hoverTarget;
+    const wrapper = new Group();
+    f.scene.add(wrapper); wrapper.add(target.root);
+    const nestedHandler = vi.fn(() => useUserInputStore.getState().setClickedOtherObject({ connectionId: 'Nested' }));
+    (target.mesh as any).__r3f = { handlers: { onClick: nestedHandler } };
+    f.scene.updateMatrixWorld(true);
+    expect(openMenuNear(f.scene, f.camera, rect, 100, 100, MOUSE_TAP_RADIUS)).toBe(true);
+    expect(nestedHandler).toHaveBeenCalledOnce();
+    expect(target.handler).not.toHaveBeenCalled();
+  });
+
   it('chooses the front target and skips self/dead players for both hover and clicks', () => {
     const f = fixture(), back = f.object(), front = f.object(1);
     const pick = () => clickableNear(f.scene, f.camera, rect, 100, 100, MOUSE_TAP_RADIUS, t => !hoverTargetOf(t.hit.object, t.hit.point), hoverRoots(f.scene));

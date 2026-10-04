@@ -41,9 +41,11 @@ function attach(connection: any, accessor: string, store: TableStore): void {
   // One notification per transaction; the snapshot is rebuilt lazily on read.
   const changed = (ctx: any) => {
     const id = ctx?.event?.id;
-    store.dirty = true;
     if (id !== undefined && id === lastEvent) return;
     lastEvent = id;
+    // The SDK applies every row before dispatching the transaction's callbacks.
+    // A later callback for this same transaction must not invalidate that full snapshot again.
+    store.dirty = true;
     for (const listener of [...store.listeners]) listener();
   };
   const onUpdate = (ctx: any) => changed(ctx);
@@ -119,6 +121,12 @@ export function useTick(): number {
   return useWorld()?.tick ?? 0;
 }
 
+/** Subscribe only to the tick-derived value a component displays (for example, a protection deadline). */
+export function useTickSelector<T>(select: (tick: number) => T): T {
+  const fromWorld = useCallback((rows: readonly any[]) => select(rows[0]?.tick ?? 0), [select]);
+  return useTableSelector(tables.world, fromWorld);
+}
+
 export function usePlayers(): readonly Player[] {
   return useRows<Player>(tables.player);
 }
@@ -135,17 +143,22 @@ export function usePlayersByHex(): Map<string, Player> {
   return derived(byHexCache, rows, buildByHex);
 }
 
-export function useMyPlayer(): Player | null {
+/** Select a stable value from your row without rerendering for unrelated HP, movement, or action changes. */
+export function useMyPlayerSelector<T>(selectPlayer: (player: Player | null) => T): T {
   const { identity } = useSpacetimeDB<DbConnection>();
   const id = identity?.__identity__;
   // Identity.isEqual also formats both operands in SDK 2.10; compare its
   // public u256 value directly instead of allocating strings for every row.
-  const select = useCallback((rows: readonly any[]): Player | null => {
-    if (id === undefined) return null;
-    for (const p of rows) if (p.identity.__identity__ === id) return p;
-    return null;
-  }, [id]);
+  const select = useCallback((rows: readonly any[]): T => {
+    if (id !== undefined) for (const p of rows) if (p.identity.__identity__ === id) return selectPlayer(p);
+    return selectPlayer(null);
+  }, [id, selectPlayer]);
   return useTableSelector(tables.player, select);
+}
+
+const selectPlayerRow = (player: Player | null) => player;
+export function useMyPlayer(): Player | null {
+  return useMyPlayerSelector(selectPlayerRow);
 }
 
 /** One player's row by identity hex (null: nobody). Re-renders only when that row changes. */
@@ -314,4 +327,7 @@ export function useGardenShowcases() { return useRows<any>(tables.gardenShowcase
 export function useFriendlyDuels() { return useRows<any>(tables.friendlyDuel) as readonly import('../module_bindings/types').FriendlyDuel[]; }
 
 export function useFrontierObjects() { return useRows<import('../module_bindings/types').FrontierObject>(tables.frontierObject); }
+export function useFrontierObjectsSelector<T>(select: (rows: readonly import('../module_bindings/types').FrontierObject[]) => T): T {
+  return useTableSelector(tables.frontierObject, select);
+}
 export function useFrontierViews() { return useRows<import('../module_bindings/types').FrontierView>(tables.frontierView); }

@@ -1,5 +1,6 @@
 import WorldInteractionController from '../../frontier/WorldInteractionController';
 import { useFrontier } from "../../frontier/useFrontier";
+import { avatarFrontierState } from '../../frontier/avatarFrontierState';
 import { type BuildDraft } from '../../frontier/FrontierPanel';
 import FrontierWorld, { FrontierScene } from '../../frontier/FrontierWorld';
 import HarbourApproach from '../../frontier/HarbourApproach';
@@ -70,6 +71,7 @@ const WorldObjects = () => {
 const GameComponent = () => {
   const me = useMyPlayer();
   const frontier = useFrontier();
+  const avatarFrontier = avatarFrontierState(frontier);
   const [draft, setDraft] = useState<BuildDraft | null>(null);
   const homeScene = !me?.region || me.region === 'bramblewild' || (frontier.enabled && me.region === 'settlement');
   const inFrontier = !!me?.region && me.region !== 'bramblewild';
@@ -102,8 +104,8 @@ const GameComponent = () => {
           {frontier.enabled && me && <group position={[MEADOW_OFFSET.x, 0, MEADOW_OFFSET.z]}>
             <FrontierScene embedded draft={draft} onDraft={setDraft} />
           </group>}
-          <RenderOnlineUsers frontier={frontier} />
-          <PlayerController setPlayerRef={setPlayerRef} frontier={frontier} />
+          <RenderOnlineUsers frontier={avatarFrontier} />
+          <PlayerController setPlayerRef={setPlayerRef} frontier={avatarFrontier} />
           <CameraController playerRef={playerRef} />
           {!draft && <HoldToWalk />}
           {!draft && <WorldHover />}

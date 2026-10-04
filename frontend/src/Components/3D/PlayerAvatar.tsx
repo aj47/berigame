@@ -1,5 +1,5 @@
-import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_APPEARANCE, normalizeAppearance, APPEARANCE_KEYS, PlayerState, type Appearance } from '@sim';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DEFAULT_APPEARANCE, normalizeAppearance, APPEARANCE_KEYS, PlayerState, RESPAWN_GRACE_TICKS, type Appearance } from '@sim';
 import type { Player } from '../../module_bindings/types';
 import { useTileMotion } from '../../hooks/useTileMotion';
 import { useCombatFxStore } from '../../spacetime/stores/combatFxStore';
@@ -11,7 +11,7 @@ import { useAvatarLabels } from './AvatarOverlay';
 import AdventurerModel, { BASE_MODEL_URL, modelUrl } from './AdventurerModel';
 import { useAppearancePreview } from '../../appearance/store';
 import { useToastStore } from '../../spacetime/stores/toastStore';
-import { useWornCosmetics, useExpeditions, useMyPlayer, useTick } from '../../spacetime/hooks';
+import { useWornCosmetics, useExpeditions, useMyPlayerSelector, useTickSelector } from '../../spacetime/hooks';
 import { useGameActions } from '../../spacetime/actions';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
 import { useProgressStore, XP_FLOAT_KIND } from '../../spacetime/stores/progressStore';
@@ -87,12 +87,19 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   // XP floaters are yours alone (other players' XP is not broadcast as events).
   const xpFloat = useProgressStore((s) => (isSelf ? s.xpFloat : null));
   const dead = row.state === PlayerState.Dead;
-  const me = useMyPlayer();
-  const tick = useTick();
+  // Only the grace boundary can change a Bramblewild target's availability.
+  // Regional protection also uses wall-clock claim/challenge windows, so it still checks each tick.
+  const tick = useTickSelector(useCallback((currentTick: number) => {
+    if (isSelf) return 0;
+    if (row.region && row.region !== 'bramblewild') return currentTick;
+    const graceEnds = row.respawnTick + RESPAWN_GRACE_TICKS;
+    return currentTick < graceEnds ? graceEnds - 1 : graceEnds;
+  }, [isSelf, row.region, row.respawnTick]));
+  const attackAllowed = useMyPlayerSelector(useCallback(me => !isSelf && !playerAttackProblem(me, row, frontierState, tick), [isSelf, row, frontierState, tick]));
   const { attack } = useGameActions();
   const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
   const selfGroundActions = isSelf && (!row.region || row.region === 'bramblewild');
-  const directAttack = oneClickAttack && !isSelf && !playerAttackProblem(me, row, frontierState, tick);
+  const directAttack = oneClickAttack && attackAllowed;
   // Moving, fighting, harvesting or dying ends an emote (a Sit holds until then).
   const activity = `${row.x},${row.z},${row.hostile},${row.pending},${row.harvestTreeId},${row.state},${gathering?.harvest?.startedAt ?? ''}`;
   const lastActivity = useRef(activity);
@@ -123,8 +130,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
     e.stopPropagation();
     if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
     // The toolbar can commit before the separate 3D renderer updates its handler.
-    const attackNow = useSettingsStore.getState().oneClickAttack && !isSelf
-      && !playerAttackProblem(me, row, frontierState, tick);
+    const attackNow = useSettingsStore.getState().oneClickAttack && attackAllowed;
     if (isDirectAttackClick(e, attackNow)) {
       setClickedOtherObject(null);
       void attack(row.identity);

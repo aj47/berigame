@@ -102,7 +102,7 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
   const row = useRef(giant);
   row.current = giant;
   // performance.now() of the transitions this client saw (wind-up start, rise).
-  const seen = useRef({ windupAt: -Infinity, riseAt: -Infinity, state: giant.state, yaw: 0, sleep: giant.state === GiantState.Asleep ? 1 : 0 });
+  const seen = useRef({ windupAt: -Infinity, windupUntilTick: -1, riseAt: -Infinity, state: giant.state, yaw: 0, sleep: giant.state === GiantState.Asleep ? 1 : 0 });
   const eyes = useRef<Group>(null);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
@@ -113,11 +113,12 @@ export const GiantModel = ({ giant, tick, onAttack }: { giant: GiantRow; tick: n
 
   useEffect(() => {
     const s = seen.current;
-    if (giant.state === GiantState.Windup && s.state !== GiantState.Windup) {
+    if (giant.state === GiantState.Windup && (s.state !== GiantState.Windup || s.windupUntilTick !== giant.stateUntilTick)) {
       // Back-date to the tick the wind-up started, so a late joiner sees the right progress.
       const windTicks = giant.attack === GiantAttack.Stomp ? GIANT_STOMP_WINDUP_TICKS : GIANT_SLAM_WINDUP_TICKS;
       const startTick = giant.stateUntilTick - windTicks;
       s.windupAt = performance.now() - Math.max(0, tickClock.tick - startTick) * tickClock.period;
+      s.windupUntilTick = giant.stateUntilTick;
     }
     if (s.state === GiantState.Defeated && giant.state !== GiantState.Defeated) s.riseAt = performance.now();
     s.state = giant.state;

@@ -40,6 +40,22 @@ const ndc = new Vector2();
 
 export interface TapHit { handler: ClickHandler; object: Object3D; hit: Intersection; intersections: Intersection[] }
 
+/** Collect interactive subtrees once, excluding terrain and decorative geometry. */
+function clickableRoots(scene: Object3D): Object3D[] {
+  const roots: Object3D[] = [];
+  const visit = (object: Object3D) => {
+    if (object.name !== 'land_mesh' && !object.userData.worldSurface && (object as any).__r3f?.handlers?.onClick) {
+      roots.push(object);
+      // Descendant handlers still resolve through clickHandlerOf; raycast the
+      // subtree only once so overlapping avatars retain their original hits.
+      return;
+    }
+    for (const child of object.children) visit(child);
+  };
+  visit(scene);
+  return roots;
+}
+
 /**
  * Find a clickable object (tree, node, item, adventurer) within `radius` px of
  * a screen point, so a finger that lands just beside a small target still
@@ -53,8 +69,9 @@ export function clickableNear(
   clientY: number,
   radius: number,
   skip: (hit: TapHit) => boolean = () => false,
-  roots: Object3D[] = scene.children,
+  roots: Object3D[] = clickableRoots(scene),
 ): TapHit | null {
+  if (!roots.length) return null;
   const tried = new Set<Object3D>();
   for (const [dx, dy] of tapSamples(radius)) {
     ndc.set(((clientX + dx - rect.left) / rect.width) * 2 - 1, -((clientY + dy - rect.top) / rect.height) * 2 + 1);

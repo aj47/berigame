@@ -11,6 +11,7 @@ import { holdState } from '../Components/3D/tapAssist';
 const mock = vi.hoisted(() => ({ me: null as any, tick: 100, attack: vi.fn(), frontier: vi.fn(), approach: vi.fn(), openSettlement: vi.fn() }));
 vi.mock('../spacetime/hooks', () => ({
   useMyPlayer: () => mock.me, useTick: () => mock.tick, useExpeditions: () => [], useWornCosmetics: () => 0,
+  useMyPlayerSelector: (select: any) => select(mock.me), useTickSelector: (select: any) => select(mock.tick),
 }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => mock }));
 vi.mock('../frontier/worldInteraction', () => ({ approachWorldInteraction: mock.approach }));

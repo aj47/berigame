@@ -35,6 +35,36 @@ interface Motion {
 }
 const stepLength = (a: Vector3, b: Vector3) => Math.max(Math.abs(b.x-a.x), Math.abs(b.z-a.z));
 
+/** Advance confirmed travel to this instant, including between animation frames. */
+function advanceMotion(m: Motion, g: { position: Vector3 }, now: number): void {
+  if (m.moving) {
+    const elapsed=now-m.startedAt;
+    // From rest the body eases in, and is exactly on schedule from START_EASE_MS on.
+    const ease=m.fromRest ? Math.min(START_EASE_MS, m.durationMs) : 0;
+    const alpha=Math.min(1,Math.max(0,easedElapsed(elapsed,ease)/m.durationMs));
+    const totalSteps=m.stepLengths.reduce((sum,value)=>sum+value,0);
+    let progress=alpha*totalSteps, segment=0;
+    while (segment < m.stepLengths.length-1 && progress >= m.stepLengths[segment]) { progress-=m.stepLengths[segment]; segment++; }
+    m.segment=segment;
+    const from=m.points[segment], to=m.points[segment+1], length=m.stepLengths[segment];
+    g.position.lerpVectors(from,to,Math.min(1,progress/length));
+    m.yaw=Math.atan2(to.x-from.x,to.z-from.z);
+    m.speed=from.distanceTo(to)/(length*m.durationMs/totalSteps/1000)*easedSpeedFactor(elapsed,ease);
+    m.holdMs=0;
+    if (alpha>=1) {
+      g.position.copy(m.to);
+      // Keep "moving" and the last travel direction through this hold, so a
+      // late next step continues the run; the position still stops exactly
+      // at the confirmed destination, and holdMs lets the animation stop the
+      // stride with it instead of running in place.
+      m.holdMs=Math.max(0,elapsed-m.durationMs);
+      if (elapsed >= m.durationMs+MOVEMENT_ANIMATION_GRACE_MS) {
+        m.moving=false; m.speed=0; m.holdMs=0;
+      }
+    }
+  }
+}
+
 /**
  * Interpolate confirmed server travel along valid tile edges, including turns
  * within a tick. Never predict movement through obstacles. The same movement
@@ -84,6 +114,10 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
     const route = region === 'bramblewild' && previousRegion === 'bramblewild' ? bfsPath(previous, goalIsTile(tile), blocked) : isHomeRegion(region) ? homePath(previous, tile, homeObstacle) : regionalPath(region, previous, tile, frontierObstacle);
     if (!route) { snap('route-invalid'); return; }
     if (route.length > maximum) { snap('route-too-long', route.length); return; }
+    // A packet can arrive between RAF callbacks. Advance the previous route
+    // first so elapsed travel is not added to the queue again on every tick.
+    const now = performance.now();
+    advanceMotion(m, g, now);
     // Finish any unrendered corner of the previous update before following
     // this update. Early network delivery must not make us cut across a tree.
     const remaining = m.moving ? m.points.slice(m.segment + 1) : [];
@@ -95,7 +129,7 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
     m.durationMs = steps * tickClock.period / Math.max(MOVEMENT_STEPS_PER_TICK, route.length);
     // Continuing travel (or resuming within the arrival grace) keeps full speed.
     m.fromRest = !m.moving;
-    m.startedAt = performance.now(); m.moving = steps > 0.01; m.holdMs = 0;
+    m.startedAt = now; m.moving = steps > 0.01; m.holdMs = 0;
     if (m.moving) {
       diagnose('movement-interpolate', { routeLength: route.length, durationMs: Math.round(m.durationMs) });
       const next=m.points[1];
@@ -110,32 +144,7 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
     const now=performance.now();
     const dt=m.lastFrameAt<0 ? 1/60 : Math.min(0.1, Math.max(0, (now-m.lastFrameAt)/1000));
     m.lastFrameAt=now;
-    if (m.moving) {
-      const elapsed=now-m.startedAt;
-      // From rest the body eases in, and is exactly on schedule from START_EASE_MS on.
-      const ease=m.fromRest ? Math.min(START_EASE_MS, m.durationMs) : 0;
-      const alpha=Math.min(1,Math.max(0,easedElapsed(elapsed,ease)/m.durationMs));
-      const totalSteps=m.stepLengths.reduce((sum,value)=>sum+value,0);
-      let progress=alpha*totalSteps, segment=0;
-      while (segment < m.stepLengths.length-1 && progress >= m.stepLengths[segment]) { progress-=m.stepLengths[segment]; segment++; }
-      m.segment=segment;
-      const from=m.points[segment], to=m.points[segment+1], length=m.stepLengths[segment];
-      g.position.lerpVectors(from,to,Math.min(1,progress/length));
-      m.yaw=Math.atan2(to.x-from.x,to.z-from.z);
-      m.speed=from.distanceTo(to)/(length*m.durationMs/totalSteps/1000)*easedSpeedFactor(elapsed,ease);
-      m.holdMs=0;
-      if (alpha>=1) {
-        g.position.copy(m.to);
-        // Keep "moving" and the last travel direction through this hold, so a
-        // late next step continues the run; the position still stops exactly
-        // at the confirmed destination, and holdMs lets the animation stop the
-        // stride with it instead of running in place.
-        m.holdMs=Math.max(0,elapsed-m.durationMs);
-        if (elapsed >= m.durationMs+MOVEMENT_ANIMATION_GRACE_MS) {
-          m.moving=false; m.speed=0; m.holdMs=0;
-        }
-      }
-    }
+    advanceMotion(m, g, now);
     const targetYaw=m.moving?m.yaw:facingToYaw(facing as Facing);
     // Same feel as the old 0.2 per frame at 60fps, at any frame rate.
     g.rotation.y=dampAngle(g.rotation.y,targetYaw,turnFactor(dt));

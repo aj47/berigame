@@ -80,6 +80,20 @@ describe('confirmed faster tile motion', () => {
     h.frame(600); expect(h.group.position.toArray()).toEqual([1, 0, 2]);
     h.frame(1200); expect(h.group.position.toArray()).toEqual([3, 0, 2]);
   });
+  it('does not accumulate movement lag when each update arrives between rendered frames', () => {
+    const h = setup();
+    h.rerender({ x: 27, z: 25, facing: 6 });
+    for (let step = 1; step < 10; step++) {
+      h.frame(step * 600 - 20);
+      // The packet arrives 20 ms after the last rendered frame. That elapsed
+      // travel must not be queued again on every tick.
+      harness.now = step * 600;
+      h.rerender({ x: 27 + step * 2, z: 25, facing: 6 });
+      expect(h.result.current.current.durationMs).toBeCloseTo(600);
+    }
+    h.frame(6000);
+    expect(h.group.position.x).toBeCloseTo(20);
+  });
   it('snaps a long authoritative correction rather than running across the map', () => {
     const h = setup(); h.rerender({ x: 40, z: 40, facing: 7 });
     expect(h.group.position.toArray()).toEqual([15, 0, 15]);
