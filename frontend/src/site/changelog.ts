@@ -15,6 +15,18 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-05-menus-crafting-drop', date: '2026-10-05', period: 'Oct 5, 2026',
+    title: 'Menus open where you click, a sorted crafting panel and drag to drop',
+    note: 'Live beta update.',
+    changes: [
+      'Clicking a tree, ground pile, garden plot, adventure prop or creature opens its menu straight away. The action you choose walks you over first, so you can change your mind before moving.',
+      'Meadows timber pines, rocks and plants open the same kind of menu as island berry trees, with one Chop, Mine, Harvest or Gather action that shows who is already gathering or the regrowth countdown.',
+      'Craft groups recipes into Gear, Food, Tools and Materials. Use Ready to see only what your bag can make now; each group shows how many of its recipes are ready, and level-locked recipes stay at the bottom in a compact card.',
+      'In Bramblewild, drag an item out of the bag or a quick slot and release it over the island to drop the whole stack.',
+    ],
+    commits: ['57b78a9', '8bbfaa6', 'f9699d3', '38adf72', '7cb6500'],
+  },
+  {
     id: '2026-10-03-discord-links', date: '2026-10-03', period: 'Oct 3, 2026',
     title: 'Join the BeriGame community on Discord',
     changes: [
