@@ -20,6 +20,8 @@ export const FRONTIER = {
   switchCooldown: DAY,
   gatherDuration: 3000,
   timberRegrow: 12000,
+  /** One active companion plus the rest resting in a stable. */
+  maxCompanions: 6,
 } as const;
 export const DISCIPLINES = [
   "Might",
@@ -331,7 +333,21 @@ export const FRONTIER_RECIPES: Recipe[] = [
     station: "workbench",
   },
 ];
-export const SPECIES = [
+export type Species = {
+  id: string;
+  name: string;
+  color: string;
+  region: RegionId;
+  tameable: boolean;
+  hint: string;
+  utility: string;
+  /** Wild members wander within `roam` tiles of home, never onto plot land. */
+  home: Point;
+  roam: number;
+  flying?: boolean;
+};
+/** Stable IDs are persisted on creatures: append new species, never rename. */
+export const SPECIES: readonly Species[] = [
   {
     id: "burrowbun",
     name: "Burrowbun",
@@ -340,6 +356,8 @@ export const SPECIES = [
     tameable: true,
     hint: "Walk within three tiles, observe, then approach slowly with taming feed.",
     utility: "Find a nearby seed cache.",
+    home: { x: 55, z: 67 },
+    roam: 3,
   },
   {
     id: "reedhorn",
@@ -349,6 +367,8 @@ export const SPECIES = [
     tameable: true,
     hint: "Observe from three tiles away. Feed twice at close range.",
     utility: "Carry six cargo slots with a harness.",
+    home: { x: 115, z: 102 },
+    roam: 3,
   },
   {
     id: "glowmoth",
@@ -358,6 +378,9 @@ export const SPECIES = [
     tameable: true,
     hint: "Observe its flight before offering feed.",
     utility: "Reveal the nearest resource patch.",
+    home: { x: 98, z: 112 },
+    roam: 3,
+    flying: true,
   },
   {
     id: "shellback",
@@ -367,6 +390,8 @@ export const SPECIES = [
     tameable: true,
     hint: "Observe patiently, then offer taming feed.",
     utility: "Protect expedition cargo briefly.",
+    home: { x: 115, z: 102 },
+    roam: 3,
   },
   {
     id: "bristleback",
@@ -376,8 +401,78 @@ export const SPECIES = [
     tameable: false,
     hint: "Territorial. Approach with food and a weapon ready.",
     utility: "A hostile wildlife encounter.",
+    home: { x: 96, z: 108 },
+    roam: 3,
   },
-] as const;
+  {
+    id: "thistlefox",
+    name: "Thistlefox",
+    color: "#d9894a",
+    region: "bramblewild",
+    tameable: true,
+    hint: "Roams Eastreach Heath. Observe it, then feed it quietly from beside it.",
+    utility: "Forage a fresh berry.",
+    home: { x: 90, z: 14 },
+    roam: 3,
+  },
+  {
+    id: "puddlefrog",
+    name: "Puddlefrog",
+    color: "#7fb069",
+    region: "bramblewild",
+    tameable: true,
+    hint: "Lives on the west shore of Reedmere in the southern wilds. Observe, then feed.",
+    utility: "Gather two plant fibre.",
+    home: { x: 30, z: 104 },
+    roam: 3,
+  },
+  {
+    id: "bumblewisp",
+    name: "Bumblewisp",
+    color: "#f2c14e",
+    region: "settlement",
+    tameable: true,
+    hint: "Hums through the eastern Meadows woods. Observe its flight, then offer feed.",
+    utility: "Collect a drop of resin.",
+    home: { x: 112, z: 60 },
+    roam: 3,
+    flying: true,
+  },
+  {
+    id: "hootling",
+    name: "Hootling",
+    color: "#a98467",
+    region: "settlement",
+    tameable: true,
+    hint: "Perches in the north-east Meadows woods. Observe it, then feed it twice.",
+    utility: "Scout the wild creatures in your region.",
+    home: { x: 118, z: 30 },
+    roam: 3,
+  },
+  {
+    id: "driftgull",
+    name: "Driftgull",
+    color: "#e8eef2",
+    region: "reedwake",
+    tameable: true,
+    hint: "Circles the east shore of Reedwake. Observe, then feed it from beside it.",
+    utility: "Bring back a piece of driftwood.",
+    home: { x: 120, z: 47 },
+    roam: 3,
+    flying: true,
+  },
+  {
+    id: "emberling",
+    name: "Emberling",
+    color: "#e2603c",
+    region: "cinder",
+    tameable: true,
+    hint: "Basks on warm stones in western Cinder Shoal. Observe, then feed.",
+    utility: "Warm you, restoring six health.",
+    home: { x: 50, z: 80 },
+    roam: 3,
+  },
+];
 export type QuestDef = {
   id: string;
   title: string;

@@ -50,6 +50,7 @@ import {
   type Building,
   type Claim,
   type Container,
+  type Creature,
   type Profile,
   type World,
 } from "./model";
@@ -492,6 +493,9 @@ export function perform(w: World, a: Actor, input: unknown): void {
         "quest",
         "container",
         "ability",
+        "observe",
+        "tame",
+        "train",
         "equip",
         "eat",
       ].includes(cmd.action),
@@ -1028,7 +1032,7 @@ export function perform(w: World, a: Actor, input: unknown): void {
       );
       check(w.now >= p.nextAbility, "Give the creature time to approach");
       const owned = r.all("creature").filter((c) => c.owner === a.id).length;
-      check(owned < 4, "Your companion and stable are full");
+      check(owned < FRONTIER.maxCompanions, "Your companion and stable are full");
       if (owned)
         check(
           r
@@ -1099,7 +1103,16 @@ export function perform(w: World, a: Actor, input: unknown): void {
       );
       check(w.now >= p.nextAbility, "Companion ability is resting");
       p.nextAbility = w.now + (unlocked(p, 3, 10) ? 30000 : 60000);
-      if (c.species === "burrowbun") a.bag = receive(a.bag, "carrot_seed", 1);
+      const found = companionFind(c.species, w.now);
+      if (found) a.bag = receive(a.bag, found.item, found.quantity);
+      else if (c.species === "emberling") a.hp = Math.min(maxHealth(p, a), a.hp + 6);
+      else if (c.species === "hootling")
+        p.notes = [
+          ...p.notes.slice(-19),
+          `Wild creatures: ${r.all("creature").filter((n) => !n.owner && n.region === a.region)
+            .map((n) => `${SPECIES.find((s) => s.id === n.species)?.name ?? n.species} (${n.x},${n.z})`)
+            .join("; ") || "none nearby"}`,
+        ];
       else
         p.notes = [
           ...p.notes.slice(-19),
@@ -1621,6 +1634,8 @@ export function advance(w: World) {
       }
     if (changed) r.put("boat", b);
   }
+  // New species join saved worlds, and wild strays find their way home.
+  seedCreatures(w);
   for (const c of r.all("creature")) {
     if (w.now < c.nextMove) continue;
     if (
@@ -1635,26 +1650,21 @@ export function advance(w: World) {
       : undefined;
     if (c.owner && (!c.active || !owner || owner.region === "sea")) continue;
     if (owner) {
-      if (owner.region !== c.region) {
+      // Companions keep pace: up to three steps a tick, stopping beside you.
+      if (owner.region !== c.region || distance(c, owner) > PET_LEASH) {
         c.region = owner.region;
         c.x = owner.x;
         c.z = owner.z;
       } else if (distance(c, owner) > 1) {
         const path = regionalPath(c.region, c, owner, blocked(w, owner));
-        if (path?.length) Object.assign(c, path[0]);
+        if (path && path.length > 1) Object.assign(c, path[Math.min(PET_STEPS, path.length - 1) - 1]);
       }
+      c.nextMove = w.now + PET_STEP_MS;
     } else {
-      const d = Math.floor(w.now / 3000) % 4,
-        dirs = [
-          [1, 0],
-          [0, 1],
-          [-1, 0],
-          [0, -1],
-        ],
-        next = { x: c.x + dirs[d][0], z: c.z + dirs[d][1] };
-      if (regionLand(c.region, next)) Object.assign(c, next);
+      const next = wildStep(c, w.now);
+      if (next) Object.assign(c, next);
+      c.nextMove = w.now + 3000;
     }
-    c.nextMove = w.now + 3000;
     r.put("creature", c);
   }
   for (const drop of r.all("drop"))
@@ -1711,14 +1721,53 @@ export function advance(w: World) {
     r.put("claim", land);
   }
 }
+const PET_STEPS = 3, PET_STEP_MS = 600, PET_LEASH = 24;
+const SPAWN_OFFSETS = [[0, 0], [2, 1], [-1, 2], [1, -2], [-2, -1]] as const;
+/** Ability gifts; the rest of the abilities change the profile or the actor. */
+export function companionFind(species: string, now: number): { item: string; quantity: number } | undefined {
+  if (species === "burrowbun") return { item: "carrot_seed", quantity: 1 };
+  if (species === "thistlefox") return { item: ["berry_strawberry", "berry_greenberry", "berry_blueberry"][Math.floor(now / 60000) % 3], quantity: 1 };
+  if (species === "puddlefrog") return { item: "fibre", quantity: 2 };
+  if (species === "bumblewisp") return { item: "resin", quantity: 1 };
+  if (species === "driftgull") return { item: "driftwood", quantity: 1 };
+}
+const onPlotLand = (p: Location) => PLOTS.some((plot) => plot.region === p.region
+  && p.x >= plot.x - 1 && p.x < plot.x + FRONTIER.sizes[2] && p.z >= plot.z - 1 && p.z < plot.z + FRONTIER.sizes[2]);
+/**
+ * Wild creatures amble about their home: a fresh nearby goal every few moves,
+ * one step at a time, never onto water or anyone's plot. Deterministic per id.
+ */
+export function wildStep(c: Creature, now: number): Point | undefined {
+  const species = SPECIES.find((s) => s.id === c.species);
+  const home = species?.home ?? { x: c.x, z: c.z }, roam = species?.roam ?? 3;
+  let seed = Math.floor(now / 9000) * 31;
+  for (const ch of c.id) seed = (seed * 33 + ch.charCodeAt(0)) >>> 0;
+  const pick = (n: number) => ((seed = (seed * 1103515245 + 12345) >>> 0) >>> 8) % n;
+  const goal = distance(c, home) > roam ? home : { x: home.x + pick(roam * 2 + 1) - roam, z: home.z + pick(roam * 2 + 1) - roam };
+  if (goal.x === c.x && goal.z === c.z) return;
+  const next = { region: c.region, x: c.x + Math.sign(goal.x - c.x), z: c.z + Math.sign(goal.z - c.z) };
+  if (!regionLand(c.region, next) || onPlotLand(next)) return;
+  return { x: next.x, z: next.z };
+}
+function spawnSpot(species: (typeof SPECIES)[number], i: number): Point {
+  const spots = SPAWN_OFFSETS.map(([dx, dz]) => ({ region: species.region, x: species.home.x + dx, z: species.home.z + dz }))
+    .filter((p) => regionLand(p.region, p) && !onPlotLand(p));
+  return spots.length ? spots[i % spots.length] : species.home;
+}
 export function seedCreatures(w: World) {
+  const creatures = w.repo.all("creature");
   for (const species of SPECIES) {
-    const wild = w.repo
-      .all("creature")
-      .filter((c) => c.species === species.id && !c.owner);
+    const wild = creatures.filter((c) => c.species === species.id && !c.owner);
+    for (const c of wild) {
+      if (c.region === species.region && distance(c, species.home) <= species.roam + 8) continue;
+      const spot = spawnSpot(species, wild.indexOf(c));
+      Object.assign(c, { region: species.region, x: spot.x, z: spot.z });
+      w.repo.put("creature", c);
+    }
     for (let i = wild.length; i < 3; i++) {
       const initial = `${species.id}-${i}`,
         id = w.repo.get("creature", initial) ? nextId(w, species.id) : initial;
+      const spot = spawnSpot(species, i);
       w.repo.put("creature", {
         id,
         species: species.id,
@@ -1726,8 +1775,8 @@ export function seedCreatures(w: World) {
         trained: false,
         active: false,
         region: species.region,
-        x: 112 + i * 3,
-        z: 98 + i * 4,
+        x: spot.x,
+        z: spot.z,
         nextMove: w.now + 3000,
         hp: 30,
         restUntil: 0,

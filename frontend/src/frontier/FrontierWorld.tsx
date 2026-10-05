@@ -36,8 +36,10 @@ import type {
   Building,
   Creature,
   Boat,
+  Profile,
 } from "../../../shared/sim/frontier/model";
 import type { BuildDraft } from "./FrontierPanel";
+import type { Command } from "../../../shared/sim/frontier/engine";
 import PlayerAvatar from "../Components/3D/PlayerAvatar";
 import CameraController from "../Components/3D/CameraController";
 import { useAppearanceByHex } from "../Components/3D/RenderOnlineUsers";
@@ -47,6 +49,7 @@ import AnimationCulling from "../Components/3D/AnimationCulling";
 import { AdventureAssetView } from "../Components/3D/AdventureModels";
 import { WebGLContextWatch } from "../Components/3D/webgl";
 import { FacingArrow, FADING_PIECES, isCentred, PieceMesh, RoofMesh } from "./pieceArt";
+import { CREATURE_HEIGHT, CreatureModel, type CreatureMotion } from "./creatureArt";
 import { can } from "../../../shared/sim/frontier/model";
 const Box = ({
   at = [0, 0, 0],
@@ -75,14 +78,18 @@ export function PieceModel({ piece, ghost = false, cutaway = false, edge = false
 }
 /** Pieces that open a build menu when clicked; floors, rugs and doorways stay walkable. */
 const MENU_PIECES = (piece: string) => !["floor", "rug", "roof", "door", "gate"].includes(piece);
-export function Animal({ creature, showLabel, disabled = false }: { creature: Creature; showLabel: boolean; disabled?: boolean }) {
+export function Animal({ creature, showLabel, disabled = false, profile }: { creature: Creature; showLabel: boolean; disabled?: boolean; profile?: Profile }) {
   const ref = useRef<Group>(null);
-  const def = SPECIES.find((s) => s.id === creature.species)!;
+  const motion = useRef<CreatureMotion>({ speed: 0 });
+  const def = SPECIES.find((s) => s.id === creature.species);
+  const name = def?.name ?? creature.species;
   const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
   const me = useMyPlayer();
+  const myId = me?.identity.toHexString() ?? '';
   const { frontier } = useGameActions();
   const setSelected = useUserInputStore((s: any) => s.setClickedOtherObject);
-  const hostile = creature.species === 'bristleback';
+  const hostile = !!def && !def.tameable;
+  const mine = !!creature.owner && creature.owner === myId;
   const attackable = hostile && creature.restUntil <= Date.now() && me?.state === PlayerState.Alive;
   const live = useRef({ creature, alive: me?.state === PlayerState.Alive, mounted: true });
   live.current = { creature, alive: me?.state === PlayerState.Alive, mounted: true };
@@ -90,102 +97,93 @@ export function Animal({ creature, showLabel, disabled = false }: { creature: Cr
     live.current.mounted = true;
     return () => { live.current.mounted = false; };
   }, []);
+  /** Walk beside the creature first, then send the command. */
+  const approach = (command: Command, reach = 1) => {
+    setSelected(null);
+    approachWorldInteraction(live.current.creature, () => {
+      const current = live.current;
+      if (!current.mounted || !current.alive) return;
+      // A creature defeated or resting by the time you arrive is no longer a target.
+      if (command.action === 'attack' && current.creature.restUntil > Date.now()) return;
+      void frontier(command);
+    }, reach);
+  };
+  const options = () => {
+    const c = live.current.creature, resting = c.restUntil > Date.now();
+    if (hostile) return [{ label: resting ? `${name} is resting` : `Attack ${name}`, disabled: resting || !live.current.alive, onClick: () => approach({ action: 'attack', id: c.id }) }];
+    if (mine) return [
+      { label: `Use ${name}'s ability`, disabled: !c.trained, onClick: () => approach({ action: 'ability' }) },
+      ...(!c.trained ? [{ label: `Train ${name} (harness)`, onClick: () => approach({ action: 'train', id: c.id }) }] : []),
+    ];
+    if (c.owner) return [{ label: `${name} is someone's companion`, disabled: true, onClick: () => {} }];
+    const observed = !!profile?.observed.includes(c.species);
+    return [
+      { label: observed ? `Watch the ${name} again` : `Observe the ${name}`, onClick: () => approach({ action: 'observe', id: c.id }, 4) },
+      { label: observed ? `Offer taming feed` : 'Offer feed (observe first)', disabled: !observed, onClick: () => approach({ action: 'tame', id: c.id }) },
+    ];
+  };
   const onClick = (e: any) => {
-    if (disabled || !hostile || e.delta > 5) return;
+    if (disabled || e.delta > 5) return;
     e.stopPropagation();
     if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
-    const attack = () => {
-      const current = live.current;
-      if (!current.mounted || !current.alive || current.creature.restUntil > Date.now()) return;
-      setSelected(null);
-      void frontier({ action: 'attack', id: current.creature.id });
-    };
-    const attackNow = useSettingsStore.getState().oneClickAttack && live.current.alive
+    const attackNow = hostile && useSettingsStore.getState().oneClickAttack && live.current.alive
       && live.current.creature.restUntil <= Date.now();
-    if (isDirectAttackClick(e, attackNow)) {
-      setSelected(null);
-      approachWorldInteraction(creature, attack, 1);
+    if (hostile && isDirectAttackClick(e, attackNow)) {
+      approach({ action: 'attack', id: live.current.creature.id });
       return;
     }
-    // Choose first; Attack walks over from wherever the creature is by then.
-    const resting = creature.restUntil > Date.now();
-    setSelected({ connectionId: def.name, e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() }, dropdownOptions: [
-      { label: resting ? `${def.name} is resting` : `Attack ${def.name}`, disabled: resting || !live.current.alive, onClick: () => {
-        setSelected(null);
-        approachWorldInteraction(live.current.creature, attack, 1);
-      } },
-    ] });
+    // Choose first; the action walks over from wherever the creature is by then.
+    setSelected({ connectionId: name, e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() }, dropdownOptions: options() });
   };
-  useFrame(({ clock }, dt) => {
-    if (ref.current) {
-      ref.current.position.x +=
-        (creature.x - 25 - ref.current.position.x) * Math.min(1, dt * 7);
-      ref.current.position.z +=
-        (creature.z - 25 - ref.current.position.z) * Math.min(1, dt * 7);
-      ref.current.position.y =
-        creature.species === "glowmoth"
-          ? 1.1 + Math.sin(clock.elapsedTime * 3) * 0.15
-          : Math.sin(clock.elapsedTime * 2 + creature.x) * 0.025;
-    }
+  const facing = useRef(0);
+  useFrame((_, dt) => {
+    const group = ref.current;
+    if (!group) return;
+    const tx = creature.x - 25, tz = creature.z - 25;
+    const dx = tx - group.position.x, dz = tz - group.position.z;
+    const step = Math.min(1, dt * 6);
+    group.position.x += dx * step;
+    group.position.z += dz * step;
+    const speed = Math.hypot(dx, dz) * step / Math.max(dt, 1e-3);
+    motion.current.speed += (speed - motion.current.speed) * Math.min(1, dt * 8);
+    // Face the way it is walking; turn the short way round.
+    if (Math.hypot(dx, dz) > .05) facing.current = Math.atan2(dx, dz);
+    let turn = facing.current - group.rotation.y;
+    turn = Math.atan2(Math.sin(turn), Math.cos(turn));
+    group.rotation.y += turn * Math.min(1, dt * 8);
   });
+  const tile = homePoint(creature, creature.region);
+  const hover = disabled || !def ? null : hostile ? {
+    title: name, action: oneClickAttack && attackable ? 'Click to attack' : 'Click for combat options',
+    detail: creature.restUntil > Date.now() ? 'Resting' : attackable && oneClickAttack ? 'Hold for combat options' : 'Hostile wildlife',
+    click: oneClickAttack && attackable ? 'action' : 'panel', radius: .7, tile,
+  } : {
+    title: mine ? `${name} · your companion` : name, action: mine ? 'Click for companion options' : creature.owner ? 'A companion' : 'Click to observe or befriend',
+    detail: def.utility, click: 'panel', radius: .7, tile,
+  };
   return (
-    <group ref={ref} position={[creature.x - 25, 0, creature.z - 25]} onClick={hostile ? onClick : undefined} userData={{ hoverTarget: hostile && !disabled ? {
-      title: def.name, action: oneClickAttack && attackable ? 'Click to attack' : 'Click for combat options',
-      detail: creature.restUntil > Date.now() ? 'Resting' : attackable && oneClickAttack ? 'Hold for combat options' : 'Hostile wildlife',
-      click: oneClickAttack && attackable ? 'action' : 'panel', radius: .7,
-      tile: homePoint(creature, creature.region),
-    } : null }}>
-      <mesh
-        position={[0, 0.42, 0]}
-        scale={
-          creature.species === "shellback"
-            ? [0.8, 0.35, 0.9]
-            : [0.45, 0.45, 0.7]
-        }
-      >
-        <icosahedronGeometry args={[0.8, 1]} />
-        <meshStandardMaterial color={def.color} />
-      </mesh>
-      <mesh position={[0, 0.6, 0.48]}>
-        <icosahedronGeometry args={[0.27, 1]} />
-        <meshStandardMaterial color={def.color} />
-      </mesh>
-      {[-1, 1].map((side) => (
-        <group key={side}>
-          {creature.species === "burrowbun" ? (
-            <mesh position={[side * 0.14, 1, 0.5]}>
-              <capsuleGeometry args={[0.06, 0.4, 2, 5]} />
-              <meshStandardMaterial color={def.color} />
-            </mesh>
-          ) : creature.species === "glowmoth" ? (
-            <mesh
-              position={[side * 0.55, 0.55, 0]}
-              rotation={[0, 0, side * 0.3]}
-            >
-              <sphereGeometry args={[0.4, 8, 6]} />
-              <meshStandardMaterial color="#fff2b9" transparent opacity={0.7} />
-            </mesh>
-          ) : (
-            <Box
-              at={[side * 0.25, 0.15, 0.2]}
-              size={[0.12, 0.3, 0.16]}
-              color={def.color}
-            />
-          )}
-          <mesh position={[side * 0.12, 0.66, 0.69]}>
-            <sphereGeometry args={[0.035, 6, 4]} />
-            <meshStandardMaterial color="#243a33" />
-          </mesh>
-        </group>
-      ))}
-      {showLabel && <Html style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]} position={[0, 1.6, 0]} center>
+    <group ref={ref} position={[creature.x - 25, 0, creature.z - 25]} onClick={onClick} userData={{ hoverTarget: hover }}>
+      <CreatureModel species={creature.species} color={def?.color} motion={motion} tamed={!!creature.owner} ownerColor={mine ? '#e4574a' : '#6c8fd6'} />
+      {showLabel && <Html style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]} position={[0, (CREATURE_HEIGHT[creature.species] ?? 1) + .5, 0]} center>
         <span className="frontier-label">
-          {def.name}
+          {name}
           {creature.owner ? " ♡" : ""}
         </span>
       </Html>}
     </group>
   );
+}
+/** Wildlife and companions on Bramblewild itself, drawn in the home scene's own frame. */
+export function BramblewildCreatures({ disabled = false }: { disabled?: boolean }) {
+  const state = useFrontier(), self = useMyPlayer();
+  const showWorldLabels = useSettingsStore(s => s.showWorldLabels);
+  if (!self) return null;
+  const me = homePoint(self, self.region || 'bramblewild');
+  return <>
+    {state.creatures
+      .filter((c) => c.region === 'bramblewild' && distance(me, c) < 35)
+      .map((c) => <Animal key={c.id} creature={c} profile={state.profile} showLabel={showWorldLabels && distance(me, c) < 10} disabled={disabled} />)}
+  </>;
 }
 function Skiff({ boat, showLabel }: { boat: Boat; showLabel: boolean }) {
   return (
@@ -519,7 +517,7 @@ export function FrontierScene({
       {state.creatures
         .filter((c) => c.region === region && distance(me, c) < 35)
         .map((c) => (
-          <Animal key={c.id} creature={c} showLabel={showWorldLabels && distance(me,c)<10} disabled={!!draft} />
+          <Animal key={c.id} creature={c} profile={state.profile} showLabel={showWorldLabels && distance(me,c)<10} disabled={!!draft} />
         ))}
       {state.boats
         .filter((b) => b.region === region)
