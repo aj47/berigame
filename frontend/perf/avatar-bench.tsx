@@ -4,11 +4,11 @@
  * ?n=32   avatars including your own (a grid around spawn; the outer ones are off screen)
  * ?spread=3  tiles between neighbours (default 3: at 32+ avatars the outer rows are off screen)
  * ?still  nobody walks (for screenshots)
- * ?adaptive  the game's adaptive pixel ratio (PerformanceMonitor, 1.5 -> 1.0)
+ * ?quality=low|medium|high|auto  the graphics tier (default medium); auto adapts like the game
+ * ?dpr=2  pins the pixel ratio over the tier's
  * Exposes window.__bench = { ready, frames(ms) } and the game's __berigameRender.
  */
-import React, { Suspense, useEffect, useState } from 'react';
-import { PerformanceMonitor } from '@react-three/drei';
+import React, { Suspense, useEffect } from 'react';
 import * as animator from '../src/animation/avatarAnimator';
 import { createRoot } from 'react-dom/client';
 import { Canvas, addAfterEffect, addEffect, useFrame, useThree } from '@react-three/fiber';
@@ -21,6 +21,9 @@ import RenderOnlineUsers from '../src/Components/3D/RenderOnlineUsers';
 import PlayerController from '../src/Components/3D/PlayerController';
 import DebugBridge from '../src/Components/3D/DebugBridge';
 import AlphaIsland from '../src/Components/3D/AlphaIsland';
+import AdaptiveQuality from '../src/Components/3D/AdaptiveQuality';
+import { QUALITY, useGraphicsTier } from '../src/Components/3D/renderQuality';
+import { useSettingsStore, type Settings } from '../src/spacetime/stores/settingsStore';
 import '../src/App.css';
 
 const params = new URLSearchParams(location.search);
@@ -137,14 +140,14 @@ const stats = (values: number[]) => {
 
 const Ready = () => { useEffect(() => { setTimeout(() => { (window as any).__bench.ready = true; }, 500); }, []); return null; };
 
-const adaptive = params.has('adaptive');
-// ?dpr=2 pins the pixel ratio (else 1 to 1.5 of the page's devicePixelRatio, like the game's auto).
+const graphics = (params.get('quality') ?? 'medium') as Settings['graphics'];
+useSettingsStore.setState({ graphics });
 const fixedDpr = params.has('dpr') ? Number(params.get('dpr')) : null;
 function Bench() {
-  const [dprCap, setDprCap] = useState(1.5);
+  const quality = QUALITY[useGraphicsTier()];
   return <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
-    <Canvas id="three-canvas" dpr={fixedDpr ?? [1, dprCap]} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true }}>
-      {adaptive && <PerformanceMonitor onDecline={() => setDprCap(1)} onIncline={() => setDprCap(1.5)} flipflops={3} onFallback={() => setDprCap(1)} />}
+    <Canvas id="three-canvas" dpr={fixedDpr ?? quality.dpr} shadows="percentage" camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true }}>
+      {graphics === 'auto' && <AdaptiveQuality />}
       <GameCamera />
       <FrameProbe />
       <Suspense fallback={null}>

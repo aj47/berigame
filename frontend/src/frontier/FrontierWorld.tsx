@@ -18,7 +18,10 @@ import { BUILDING_SIDES, buildingSideAt } from "../../../shared/sim/frontier/bui
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
-import { BufferGeometry, Float32BufferAttribute, Group, Vector3 } from "three";
+import { BufferGeometry, Float32BufferAttribute, Group, Vector3, type DirectionalLight } from "three";
+import SunShadow from "../Components/3D/SunShadow";
+import AdaptiveQuality from "../Components/3D/AdaptiveQuality";
+import { QUALITY, useGraphicsTier } from "../Components/3D/renderQuality";
 import { avatarGroup } from "../animation/avatarRegistry";
 import { useSettingsStore } from "../spacetime/stores/settingsStore";
 import { useFrontier } from "./useFrontier";
@@ -378,11 +381,7 @@ export function FrontierScene({
       <color attach="background" args={["#d9eadf"]} />
       <fog attach="fog" args={["#d9eadf", 32, 76]} />
       <hemisphereLight args={["#fff7de", "#788e7d", .9 * Math.PI]} />
-      <directionalLight
-        position={[20, 35, 10]}
-        intensity={1.1 * Math.PI}
-        color="#ffeaca"
-      />
+      <FrontierSun />
       <mesh
         userData={{ worldSurface: true }}
         rotation={[-Math.PI / 2, 0, 0]}
@@ -588,13 +587,25 @@ export function FrontierScene({
     </>
   );
 }
+/** The regions' own sun (the meadow embedded in the island shares the island's). */
+function FrontierSun() {
+  const sun = useRef<DirectionalLight>(null);
+  const { shadows } = QUALITY[useGraphicsTier()];
+  return <>
+    <directionalLight ref={sun} position={[20, 35, 10]} intensity={1.1 * Math.PI} color="#ffeaca" />
+    {shadows && <SunShadow light={sun} />}
+  </>;
+}
 export default function FrontierWorld(props: {
   draft: BuildDraft | null;
   onDraft: (d: BuildDraft | null) => void;
 }) {
+  const graphics = useSettingsStore((s) => s.graphics);
+  const quality = QUALITY[useGraphicsTier()];
   return (
     <Canvas
-      dpr={[1, 1.5]}
+      dpr={quality.dpr}
+      shadows="percentage"
       camera={{
         position: [8, 12, 15] as [number, number, number],
         fov: 42,
@@ -604,6 +615,7 @@ export default function FrontierWorld(props: {
       gl={{ antialias: true }}
     >
       <WebGLContextWatch />
+      {graphics === "auto" && <AdaptiveQuality />}
       <React.Suspense fallback={null}>
         <FrontierScene {...props} />
       </React.Suspense>

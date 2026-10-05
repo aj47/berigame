@@ -1547,6 +1547,7 @@ canvas {
 .settings-toggle { display: flex; align-items: center; gap: 8px; min-height: var(--control-size); font-size: 13px; cursor: pointer; }
 .settings-toggle input { width: 22px; height: 22px; min-height: 22px; margin: 0; accent-color: var(--blue); }
 .settings-segment { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.settings-segment.graphics-tiers { grid-template-columns: repeat(4, 1fr); }
 .settings-segment button { font-size: 13px; }
 .settings-segment button[aria-checked=true] { background: var(--blue); color: #fff; border-color: #243e56; }
 .settings-hint { margin: 6px 0 2px; font-size: 11px; color: var(--ink-soft); }
