@@ -8,6 +8,7 @@ import { request as httpRequest } from 'node:http';
 import { createAgentServer } from './http';
 import { InviteStore } from './security';
 import { AGENT_ACTION_BUDGET } from './admissionPolicy';
+import { GRID_SIZE } from '../../shared/sim/constants';
 
 async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'berigame-agent-api-'));
@@ -62,7 +63,7 @@ test('authentication, scope and strict schemas reject requests before game actio
     const { token } = await f.enter();
     const cases: [string, object, number][] = [
       ['attack', { playerId: '0'.repeat(64) }, 403], ['chat', { text: 'hi' }, 403],
-      ['move', { x: 4, z: 5, owner: 'someone_else' }, 400], ['move', { x: 64, z: 5 }, 400],
+      ['move', { x: 4, z: 5, owner: 'someone_else' }, 400], ['move', { x: GRID_SIZE, z: 5 }, 400],
       ['move', { x: 1.5, z: 5 }, 400], ['__proto__', {}, 404], ['tick', {}, 404],
       // Weapons are wielded only from the three quick slots; unwield takes no fields.
       ['wield', { slot: 3 }, 400], ['wield', { slot: -1 }, 400], ['wield', {}, 400], ['unwield', { slot: 0 }, 400],

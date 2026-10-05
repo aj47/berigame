@@ -20,6 +20,7 @@ import { isHomeRegion } from "../../../shared/sim/frontier/homeMap";
 import { renewalPrice } from "../../../shared/sim/frontier/model";
 import { BUILDING_SIDES } from "../../../shared/sim/frontier/building";
 import { previewIssue } from "./preview";
+import { isTyping } from "../Components/keyboard";
 import DisciplineSelection from './DisciplineSelection';
 import BankStoragePanel from './BankStoragePanel';
 import ShrinesPanel from './ShrinesPanel';
@@ -121,6 +122,24 @@ export default function FrontierPanel({
   const shelterPieces = new Set(['floor', 'wall', 'door', 'roof']);
   const visiblePieces = pieces.filter(([key, piece]) => shelterPieces.has(key) || !pieceHint(piece));
   const laterPieces = pieces.filter(([key, piece]) => !shelterPieces.has(key) && !!pieceHint(piece));
+  const rotateDraft = (step: number) => {
+    if (!draft) return;
+    const next = { ...draft, rotation: (draft.rotation + step + 4) % 4 };
+    const reason = previewIssue(state, next, players);
+    onDraft({ ...next, valid: !reason, reason });
+  };
+  const rotateRef = useRef(rotateDraft);
+  rotateRef.current = rotateDraft;
+  useEffect(() => {
+    if (!draft) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "r" || event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target)) return;
+      event.preventDefault();
+      rotateRef.current(event.shiftKey ? -1 : 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [!!draft]);
   async function run(command: Command) {
     if (busy) return;
     setBusy(true);
@@ -222,17 +241,11 @@ export default function FrontierPanel({
           {draft.moving ? <span>Moving this piece uses no materials.</span> : materials(PIECES[draft.piece].cost)}
           <p>
             {draft.point
-              ? `Place at ${draft.point.x}, ${draft.point.z}${PIECES[draft.piece]?.edge ? ` · ${BUILDING_SIDES[draft.rotation]} side` : ''}`
+              ? `Place at ${draft.point.x}, ${draft.point.z} · ${PIECES[draft.piece]?.edge ? `${BUILDING_SIDES[draft.rotation]} side` : `facing ${BUILDING_SIDES[draft.rotation]}`}`
               : "Tap the ground to preview."}
           </p>
-          <button
-            onClick={() => {
-              const next = { ...draft, rotation: (draft.rotation + 1) % 4 };
-              const reason = previewIssue(state, next, players);
-              onDraft({ ...next, valid: !reason, reason });
-            }}
-          >
-            Rotate ↻
+          <button className="frontier-rotate" title="Rotate (R) · Shift+R turns back" onClick={() => rotateDraft(1)}>
+            Rotate ↻ <kbd>R</kbd>
           </button>
           <button
             disabled={!draft.point || draft.valid === false || busy}
@@ -431,7 +444,7 @@ export default function FrontierPanel({
                   <p>Claim a plot, or ask a neighbour for building access.</p>
                   <button onClick={() => setTab("Land")}>Find a plot</button>
                 </article> : <>
-                  <p>Choose a piece, then tap your plot to place it. Walls, doors and fences snap to the nearest tile side; rotate to choose another side.</p>
+                  <p>Choose a piece, then tap your plot to place it. Walls, doors and fences snap to the nearest tile side. Press R or Rotate to turn furniture before placing it; click a placed piece to rotate, move or dismantle it.</p>
                   <p className="frontier-hint">Materials show what you have / what you need.</p>
                   <div className="frontier-grid">{visiblePieces.map(renderPiece)}</div>
                   {!pieces.some(([, piece]) => !pieceHint(piece)) && <article>
@@ -447,7 +460,7 @@ export default function FrontierPanel({
                   .map((b) => (
                     <article key={b.id}>
                       <strong>
-                        {PIECES[b.piece].name} · {b.x},{b.z}
+                        {PIECES[b.piece].name} · {b.x},{b.z}{b.piece !== "floor" && b.piece !== "roof" ? ` · ${PIECES[b.piece].edge ? `${BUILDING_SIDES[b.rotation]} side` : `facing ${BUILDING_SIDES[b.rotation]}`}` : ""}
                       </strong>
                       <button
                         onClick={() => {
@@ -462,6 +475,13 @@ export default function FrontierPanel({
                       >
                         Move
                       </button>
+                      {button(PIECES[b.piece].edge ? `Turn to ${BUILDING_SIDES[(b.rotation + 1) % 4]} side` : `Rotate ↻ · face ${BUILDING_SIDES[(b.rotation + 1) % 4]}`, {
+                        action: "move_building",
+                        id: b.id,
+                        x: b.x,
+                        z: b.z,
+                        rotation: (b.rotation + 1) % 4,
+                      })}
                       {button("Dismantle · 75% materials", {
                         action: "dismantle",
                         id: b.id,

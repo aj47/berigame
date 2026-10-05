@@ -281,11 +281,11 @@ per cut. All current IDs and positions are in `frontier.resources`.
   1 driftwood + 2 flint into a stone club instantly (rejected while dead or
   attacking; a full bag drops it at your feet). Wield it like the stick: 8
   damage a swing. `state.trees` (berry trees only) is kept for one release.
-- **The Boulders (M3).** Bramblewild uses a 64x64 local grid. Its coastline,
-  lake and brook are described in `world.map`; water is impassable and the
-  named bridges cross the brook. The Boulders are walkable land with z >= 32
-  and `max(x, z) > 50`. A one-tile **boulder line** on walkable land with
-  z >= 32 and `max(x, z) = 50` guards it
+- **The Boulders (M3).** Bramblewild uses a 128x128 local grid. Its coastline,
+  lakes and brook are described in `world.map`; water is impassable and the
+  named bridges cross the brook. The Boulders are walkable land on the Giant's
+  headland (30 <= x < 66, 32 <= z < 66) with `max(x, z) > 50`. A one-tile
+  **boulder line** on that headland with `max(x, z) = 50` guards it
   with the same one-way rule as the brambles, keyed by the **stone club** (bag
   or wielded): you may step onto it only while holding a club, or from the
   Boulders; stepping off is always allowed, so you can always walk home.

@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Ray, Vector3 } from 'three';
 import { SPAWN_TILE, tileToWorld } from '@sim';
+import { MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
 import ClickDropdown from '../Components/ClickDropdown';
 import { useUserInputStore } from '../store';
 import { openAdventureInteraction } from '../Components/3D/adventureInteraction';
@@ -72,8 +73,8 @@ describe('Walk here menu action', () => {
     render(<ClickDropdown/>);expect(screen.queryByRole('button',{name:'Walk here'})).not.toBeInTheDocument();
   });
   it.each([
-    ['bramblewild', 69, 25, { action: 'walk', id: 'settlement', x: 5, z: 64 }],
-    ['settlement', 69, 25, { action: 'walk', id: 'settlement', x: 5, z: 64 }],
+    ['bramblewild', MEADOW_OFFSET.x + 5, 25, { action: 'walk', id: 'settlement', x: 5, z: 64 }],
+    ['settlement', MEADOW_OFFSET.x + 5, 25, { action: 'walk', id: 'settlement', x: 5, z: 64 }],
     ['settlement', 61, 25, { action: 'walk', id: 'bramblewild', x: 61, z: 25 }],
     ['reedwake', 31, 65, { action: 'move', x: 31, z: 65 }],
     ['cinder', 80, 60, { action: 'move', x: 80, z: 60 }],

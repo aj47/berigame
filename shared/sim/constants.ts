@@ -5,8 +5,8 @@
  */
 
 // ---- World / grid -----------------------------------------------------------
-/** Server coordinates cover the island, its waterways and the south-east headlands. */
-export const GRID_SIZE = 64;
+/** Server coordinates cover the original island, the Giant's headlands, Eastreach and the southern wilds. */
+export const GRID_SIZE = 128;
 /** Historical core extent. Use isLandTile for the current coastline. */
 export const ISLAND_SIZE = 50;
 /** world = tile - TILE_ORIGIN. Integer world coords are tile centres. */

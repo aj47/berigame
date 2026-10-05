@@ -1,4 +1,5 @@
-import { isHomeTarget } from "../../../shared/sim/frontier/homeMap";
+import { HOME_JOIN, isHomeTarget } from "../../../shared/sim/frontier/homeMap";
+import { tileKey } from "../../../shared/sim/grid";
 import { blockedTiles } from "./blocked";
 import { playerEnterRule } from "./brambles";
 import { carrying, duelFor } from "./adventure";
@@ -113,11 +114,11 @@ export function frontierWorld(ctx: Ctx): World {
     now: Number(ctx.timestamp.microsSinceUnixEpoch / 1000n),
     actors,
     loadBag(a) { return readSlots(ctx, Identity.fromString(a.id)).slots; },
-    homeBlocked(point) { return (homeObstacles ??= blockedTiles(ctx)).has(point.z * 64 + point.x); },
+    homeBlocked(point) { return (homeObstacles ??= blockedTiles(ctx)).has(tileKey(point)); },
     homeStepRule(a) {
       const row = ctx.db.player.identity.find(Identity.fromString(a.id))!;
       const rule = playerEnterRule(ctx, row);
-      return (from, to) => to.region !== "bramblewild" || rule(from.region === "bramblewild" ? from : { x: 63, z: 25 }, to);
+      return (from, to) => to.region !== "bramblewild" || rule(from.region === "bramblewild" ? from : HOME_JOIN.bramblewild, to);
     },
     canLeaveHomeDistrict(a) {
       const identity = Identity.fromString(a.id);

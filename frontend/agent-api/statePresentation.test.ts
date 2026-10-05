@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { homePoint, homeTarget } from '../../shared/sim/frontier/homeMap';
+import { homePoint, homeTarget, MEADOW_OFFSET } from '../../shared/sim/frontier/homeMap';
 import { frontierSnapshot } from '../../shared/sim/frontier/snapshot';
 import { newProfile } from '../../shared/sim/frontier/model';
 import { describeDestination, describeGathering, describeObjective } from './statePresentation';
@@ -13,7 +13,8 @@ const state = () => frontierSnapshot([config], [], identity, now);
 
 test('cross-district destinations decode into reusable region-local coordinates in both directions', () => {
   const outward = homeTarget(homePoint({ x: 31, z: 64 }, 'settlement'));
-  assert.equal(outward.x, 351); // The internal coordinate seen in the playtest.
+  // The tagged internal coordinate (256 + joined-frame x) seen in playtests.
+  assert.equal(outward.x, 256 + MEADOW_OFFSET.x + 31);
   assert.deepEqual(describeDestination({ region: 'bramblewild', targetX: outward.x, targetZ: outward.z }),
     { region: 'settlement', x: 31, z: 64 });
   const inward = homeTarget(homePoint({ x: 46, z: 25 }, 'bramblewild'));

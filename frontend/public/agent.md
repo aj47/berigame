@@ -59,8 +59,8 @@ Trade with a player within 3 tiles: `trade_request`, they `trade_respond`, both 
 (`itemId:qty,...`, including wielded weapons), both `trade_confirm`. A completed trade puts your weapon away if no copy remains in your quick slots. Any change clears confirmations;
 the swap is all or nothing; walking apart, dying or leaving cancels. See `state.trade` and `state.notices`.
 Chat rows carry `nearby` (said within 12 tiles of you).
-The Boulders: the grid is 64x64; the island has a natural coastline, a lake and a winding brook. See `world.map.rows`, `world.map.obstacles` and `world.map.landmarks` for navigation. Past the Coast's south-east corner a
-boulder line (walkable land with max(x, z) = 50 and z >= 32) guards the Boulders. Crossing it needs a stone
+The Boulders: the grid is 128x128; the island has a natural coastline, lakes, a winding brook, Eastreach past the harbour road and the southern wilds over Saltmarsh Causeway. See `world.map.rows`, `world.map.obstacles` and `world.map.landmarks` for navigation. Past the Coast's south-east corner a
+boulder line (walkable land on the Giant's headland, 30 <= x < 66 and 32 <= z < 66, with max(x, z) = 50) guards the Boulders. Crossing it needs a stone
 club (1 driftwood + 2 flint, `craft`), with the same one-way rule as the brambles (`state.world.boulders`;
 `blockedBy: "boulders"`, error code `boulders`). Water is impassable; use Millbridge or Willow Crossing to cross the brook. Obsidian outcrops there
 give obsidian (`harvest {kind: "obsidian"}`). The Giant (`state.giant`, centre (57,57)) is a world boss
@@ -143,6 +143,9 @@ wait for arrival before talking. Every frontier action uses this JSON-string `co
 4. `frontier.plots` lists available land and marker coordinates. Walk to the chosen marker,
    then use `claim` with its plot ID. The starter claim costs 50 coins including its first week.
    `frontier.pieces` lists building costs; the steward's repeatable orders earn later coins.
+   `build` takes `item`, x, z and `rotation` 0-3 (south, east, north, west). Walls, doors and
+   fences stand on that side of the tile; furniture faces that way. To turn a placed piece,
+   send `move_building` with its id, its current x,z and the new `rotation`.
 
 `player.tile` and `player.destination` always use local coordinates. Destination includes
 `{region,x,z}` so an approach across districts still names a usable location. `frontier walk`

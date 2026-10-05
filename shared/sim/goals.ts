@@ -173,7 +173,8 @@ function treeName(tree: GoalTree): string {
 /** Gathering half of steps 1 and 3: walk, wait, harvest or pick the best tree. */
 function gatherGoal(id: GoalStepId, text: string, idleHint: string, input: GoalInput, kind: number = NodeKind.Berry): Goal {
   const { me, others, tick } = input;
-  const trees = input.trees.filter((t) => (t.kind ?? NodeKind.Berry) === kind);
+  // First Day berry steps stay in the Grove; Coast thickets need a stick to reach.
+  const trees = input.trees.filter((t) => (t.kind ?? NodeKind.Berry) === kind && (kind !== NodeKind.Berry || areaOf(t) === 'grove'));
   if (me.harvestTreeId !== 0) {
     const tree = trees.find((t) => t.id === me.harvestTreeId);
     return { id, text, hint: `${tree && !isBerryNode(tree) ? 'Gathering from' : 'Picking'} the ${tree ? treeName(tree) : 'tree'}…`, action: null };

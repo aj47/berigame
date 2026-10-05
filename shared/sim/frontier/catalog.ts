@@ -38,7 +38,7 @@ export const REGIONS: Record<
 > = {
   bramblewild: {
     name: "Bramblewild",
-    size: 64,
+    size: 128,
     spawn: { x: 25, z: 25 },
     color: "#82a568",
   },
@@ -116,7 +116,8 @@ export type Cost = Record<string, number>;
 export type Piece = {
   name: string;
   cost: Cost;
-  layer: "floor" | "solid" | "roof";
+  /** Pieces on different layers may share a tile; a rug lies between floor and furniture. */
+  layer: "floor" | "rug" | "solid" | "roof";
   solid: boolean;
   /** New pieces mount on a tile boundary; rotation selects its side. */
   edge?: boolean;
@@ -220,6 +221,13 @@ export const PIECES: Record<string, Piece> = {
     discipline: 2,
     level: 5,
   },
+  bed: { name: "Bed", cost: { timber: 4, fibre: 4 }, layer: "solid", solid: true },
+  bench: { name: "Bench", cost: { timber: 3 }, layer: "solid", solid: true },
+  stool: { name: "Stool", cost: { timber: 1 }, layer: "solid", solid: false },
+  bookshelf: { name: "Bookshelf", cost: { planks: 4 }, layer: "solid", solid: true },
+  barrel: { name: "Barrel", cost: { timber: 3, rope: 1 }, layer: "solid", solid: true },
+  rug: { name: "Woven rug", cost: { fibre: 5 }, layer: "rug", solid: false },
+  potted_plant: { name: "Potted plant", cost: { clay: 2, fibre: 1 }, layer: "solid", solid: false },
 };
 export type Recipe = {
   id: string;
@@ -534,6 +542,9 @@ export const ORDERS = [
   { id: "rope", inputs: { rope: 3 } as Cost },
   { id: "food", inputs: { berry_greenberry: 6 } as Cost },
 ];
+const WILD_ITEMS: Record<string, string> = {
+  T: "timber", S: "stone", F: "fibre", C: "clay", G: "berry_greenberry", R: "berry_strawberry",
+};
 export const RESOURCE_PATCHES = (
   ["settlement", "reedwake", "cinder"] as const
 ).flatMap((region) => {
@@ -571,6 +582,15 @@ export const RESOURCE_PATCHES = (
   // The central woodland strip stays outside every plot's maximum 16×16 bounds.
   [{ x: 29, z: 47 }, { x: 29, z: 58 }, { x: 29, z: 70 }, { x: 33, z: 82 }, { x: 29, z: 94 }]
     .map((point, i) => ({ id: `settlement-timber-${i + 2}`, region: "settlement" as const, item: "timber", ...point })),
+  // Wild patches fill the lanes between plot columns, the eastern woods and both
+  // shores, so gatherers spread out instead of queueing at the starter grove.
+  // Item code then x,z; append only, since the index is the persisted id.
+  "T55,11 S79,12 F55,17 T79,18 G55,33 C79,34 T55,38 R79,39 S55,51 F79,52 T55,57 S79,58 F55,70 T79,71 G55,76 C79,77 T55,89 R79,90 S55,95 F79,96 T55,108 S79,109 F55,114 T79,115 G33,12 C33,18 T29,33 R33,38 S33,106 F33,112 T33,118 T108,10 T115,10 S108,19 T115,19 F122,19 T108,28 C115,28 S122,28 T108,37 G115,37 T122,37 R108,46 T115,46 T122,46 S108,55 T115,55 F122,55 T108,64 C115,64 S122,64 T108,73 G115,73 T122,73 R108,82 T108,91 T115,91 S122,91 T108,100 F115,100 T122,100 C108,109 S115,109 T122,109 G108,118 T115,118 C20,122 F44,122 C68,122 F92,122 C44,3 F68,3 C92,3"
+    .split(" ")
+    .map((entry, i) => {
+      const [x, z] = entry.slice(1).split(",").map(Number);
+      return { id: `settlement-wild-${i + 1}`, region: "settlement" as const, item: WILD_ITEMS[entry[0]], x, z };
+    }),
 );
 
 export const DISCIPLINE_PERKS = [

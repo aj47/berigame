@@ -13,10 +13,10 @@ type IslandMapProps = {
   onSelect: (region: IslandRegion) => void;
 };
 
-const WIDTH = 640;
+const WIDTH = 760;
 const HEIGHT = 510;
-const SCALE = 6.6;
-const project = ({ x, z }: Point) => ({ x: 100 + x * SCALE, y: 35 + z * SCALE });
+const SCALE = 3.6;
+const project = ({ x, z }: Point) => ({ x: 160 + x * SCALE, y: 22 + z * SCALE });
 const pointString = (point: Point) => {
   const { x, y } = project(point);
   return `${x.toFixed(2)},${y.toFixed(2)}`;
@@ -24,7 +24,7 @@ const pointString = (point: Point) => {
 
 /** Trace continuous terrain, preserving the coves, lake and brook without a tile grid. */
 function contour(field: (x: number, z: number) => number): string {
-  const step = .75;
+  const step = 1;
   const segments: [Point, Point][] = [];
   const key = (p: Point) => `${p.x.toFixed(5)},${p.z.toFixed(5)}`;
   const triangle = (vertices: Point[], values: number[]) => {
@@ -76,11 +76,13 @@ function contour(field: (x: number, z: number) => number): string {
 
 // Geometry is shared by every render and is derived from the same terrain as the game.
 const groveField = (x: number, z: number) => (1.001 - (Math.abs(x - 25) / 17) ** 2.8 - (Math.abs(z - 25) / 17) ** 2.8) * 8;
+/** Positive past the boulder line on the Giant's headland; Eastreach and the southern wilds stay Coast. */
+const bouldersField = (x: number, z: number) => Math.min(Math.max(x, z) - BOULDER_LINE, x - 30, z - 32, 66 - x, 66 - z);
 const landPath = contour(terrainField);
 const regionPaths: Record<IslandRegion, string> = {
   grove: contour((x, z) => Math.min(terrainField(x, z), groveField(x, z))),
-  coast: contour((x, z) => Math.min(terrainField(x, z), -groveField(x, z), BOULDER_LINE - Math.max(x, z))),
-  boulders: contour((x, z) => Math.min(terrainField(x, z), Math.max(x, z) - BOULDER_LINE)),
+  coast: contour((x, z) => Math.min(terrainField(x, z), -groveField(x, z), -bouldersField(x, z))),
+  boulders: contour((x, z) => Math.min(terrainField(x, z), bouldersField(x, z))),
 };
 const shallowsPath = contour((x, z) => terrainField(x, z) + 1.3);
 const offshorePath = contour((x, z) => terrainField(x, z) + 3.2);
@@ -108,6 +110,12 @@ const labelOffsets: Record<string, { x: number; y: number; anchor?: 'start' | 'm
   harbour: { x: 14, y: 5 },
   ruins: { x: 14, y: -14 },
   giant: { x: 0, y: -33, anchor: 'middle' },
+  eastreach: { x: 0, y: -10, anchor: 'middle' },
+  tarn: { x: 10, y: 4 },
+  saltmarsh: { x: 10, y: 4 },
+  mossvale: { x: 0, y: -10, anchor: 'middle' },
+  hollow: { x: 0, y: 16, anchor: 'middle' },
+  sunfall: { x: 0, y: -10, anchor: 'middle' },
 };
 
 export default function IslandMap({ selected, onSelect }: IslandMapProps) {
@@ -150,8 +158,8 @@ export default function IslandMap({ selected, onSelect }: IslandMapProps) {
         </defs>
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${id}-sea)`} />
         <rect width={WIDTH} height={HEIGHT} fill={`url(#${id}-chart)`} />
-        <rect x="13" y="13" width="614" height="484" rx="14" fill="none" stroke="#dacbad" strokeOpacity=".15" />
-        <path d="M34 64V34h30m512 0h30v30M34 446v30h30m512 0h30v-30" fill="none" stroke="#dcca9c" strokeWidth="1" opacity=".4" />
+        <rect x="13" y="13" width={WIDTH - 26} height="484" rx="14" fill="none" stroke="#dacbad" strokeOpacity=".15" />
+        <path d={`M34 64V34h30m${WIDTH - 128} 0h30v30M34 446v30h30m${WIDTH - 128} 0h30v-30`} fill="none" stroke="#dcca9c" strokeWidth="1" opacity=".4" />
         <text x="36" y="57" className="island-map__eyebrow">FIELD ATLAS</text>
         <text x="36" y="73" className="island-map__edition">BRAMBLEWILD</text>
 
@@ -190,13 +198,13 @@ export default function IslandMap({ selected, onSelect }: IslandMapProps) {
         <path className="island-map__selection" d={regionPaths[selected]} fill="#f6dc9a" fillOpacity=".06" stroke="#f0d69b" strokeWidth="1.8" strokeDasharray="4 4" fillRule="evenodd" />
         {LANDMARKS.map(landmark => {
           const p = project(landmark);
-          const offset = labelOffsets[landmark.id];
+          const offset = labelOffsets[landmark.id] ?? { x: 10, y: 4 };
           return <g key={landmark.id} className={`island-map__landmark island-map__landmark--${landmark.id}`}>
             {landmark.id !== 'giant' && <><circle cx={p.x} cy={p.y} r="3.6" fill="#f1dfb5" stroke="#536448" strokeWidth="1.2" /><circle cx={p.x} cy={p.y} r="1.2" fill="#536448" /></>}
             <text x={p.x + offset.x} y={p.y + offset.y} textAnchor={offset.anchor ?? 'start'}>{landmark.name}</text>
           </g>;
         })}
-        <g transform="translate(570 85)" className="island-map__compass">
+        <g transform={`translate(${WIDTH - 55} 85)`} className="island-map__compass">
           <circle r="22" fill="none" stroke="currentColor" strokeWidth=".65" opacity=".3" />
           <path d="M0-29 5-5 0 0-5-5Zm0 58 5-24L0 0l-5 5Z" fill="currentColor" opacity=".75" />
           <path d="M-29 0-5-5 0 0-5 5ZM29 0 5-5 0 0l5 5Z" fill="currentColor" opacity=".35" />
@@ -204,9 +212,9 @@ export default function IslandMap({ selected, onSelect }: IslandMapProps) {
           <text y="-37" textAnchor="middle">N</text>
         </g>
         <g className="island-map__sea-marks" fill="none" stroke="#a4bba1" strokeWidth=".8" opacity=".3">
-          <path d="M74 311q5-4 10 0t10 0m-14 7q5-4 10 0t10 0M481 115q5-4 10 0t10 0m-14 7q5-4 10 0t10 0M543 322q5-4 10 0t10 0m-14 7q5-4 10 0t10 0M271 441q5-4 10 0t10 0" />
+          <path d="M74 311q5-4 10 0t10 0m-14 7q5-4 10 0t10 0M420 170q5-4 10 0t10 0m-14 7q5-4 10 0t10 0M690 300q5-4 10 0t10 0m-14 7q5-4 10 0t10 0M300 262q5-4 10 0t10 0" />
         </g>
-        <g transform="translate(57 392)" className="island-map__legend">
+        <g transform="translate(24 392)" className="island-map__legend">
           <text className="island-map__sea-label" x="0" y="0">Beyond the brambles.</text>
           <path d="M0 22h23" stroke="#e6d3a6" strokeWidth="2" strokeDasharray="3 3" />
           <text x="32" y="25">Worn paths</text>

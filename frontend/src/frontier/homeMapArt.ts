@@ -1,6 +1,6 @@
-import { BRIDGES, FOREST_TREES, GRID_SIZE, LANDMARKS, TRAILS, isBridge, terrainField } from '@sim';
+import { BRIDGES, FOREST_TREES, GRID_SIZE, LANDMARKS, TRAILS, inGiantHeadland, isBridge, terrainField } from '@sim';
 import { PLOTS, REGIONS, type Location } from '../../../shared/sim/frontier/catalog';
-import { homeLand, homeLocation, homePoint, MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
+import { HOME_GRID, homeLand, homeLocation, homePoint, MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
 import { meadowField, regionLand } from '../../../shared/sim/frontier/regions';
 import type { MinimapModel } from '../Components/minimapModel';
 
@@ -9,9 +9,9 @@ export type HomeMapView = 'overview' | 'bramblewild' | 'settlement';
 const LANDMARK_RADIUS = 9;
 /** Square district frames keep the original island readable at every screen size. */
 export const HOME_MAP_VIEWS = {
-  overview: { x: -4, z: -77, span: 200 },
-  bramblewild: { x: -4, z: -4, span: 72 },
-  settlement: { x: 60, z: -43, span: 136 },
+  overview: { x: -4, z: MEADOW_OFFSET.z - 4 - Math.floor((HOME_GRID.width - HOME_GRID.height) / 2), span: HOME_GRID.width + 8 },
+  bramblewild: { x: -4, z: -4, span: GRID_SIZE + 8 },
+  settlement: { x: MEADOW_OFFSET.x - 4, z: MEADOW_OFFSET.z - 4, span: 136 },
 } as const;
 export function homeMapProjection(size: number, view: HomeMapView = 'overview') {
   const bounds = HOME_MAP_VIEWS[view], scale = size / bounds.span;
@@ -20,7 +20,7 @@ export function homeMapProjection(size: number, view: HomeMapView = 'overview') 
     pointAt: (x: number, y: number) => ({ x: bounds.x + x / scale, z: bounds.z + y / scale }),
   };
 }
-/** Original 64-tile map paints tile corners at integers and markers at cell centres. */
+/** The legacy single-district map paints tile corners at integers and markers at cell centres. */
 export function legacyMapProjection(size: number) {
   const scale = size / GRID_SIZE;
   return { scale, center: (v: number) => (v + .5) * scale, pointAt: (x: number, y: number) => ({ x: x / scale - .5, z: y / scale - .5 }) };
@@ -30,7 +30,8 @@ export function homeMapLandmarkPositions(size: number) {
   const placed: { x: number; z: number; anchorX: number; anchorZ: number }[] = [];
   for (const place of LANDMARKS) {
     const anchorX = x(place.x), anchorZ = z(place.z);
-    const offsets = [[0, 0], [0, -18], [18, 0], [0, 18], [-18, 0], [18, -18], [-18, 18]];
+    // Widening rings: the nearest free spot keeps each number beside its place.
+    const offsets = [[0, 0], ...[18, 26, 36, 46].flatMap(r => [[0, -r], [r, 0], [0, r], [-r, 0], [r, -r], [-r, r], [r, r], [-r, -r]])];
     const candidates = offsets.map(([dx, dz]) => ({ x: Math.max(10, Math.min(size - 10, anchorX + dx)), z: Math.max(10, Math.min(size - 10, anchorZ + dz)), anchorX, anchorZ }));
     placed.push(candidates.find(p => placed.every(other => Math.hypot(other.x - p.x, other.z - p.z) >= 20)) ?? candidates[0]);
   }
@@ -59,8 +60,9 @@ const mix = (a: number[], b: number[], amount: number) =>
 
 // Sample the real shoreline once, including its shallow-water fringe. Geography
 // stays fixed while ownership and people are painted over it on each update.
-const geography = Array.from({ length: 200 * 136 }, (_, i) => {
-  const x = i % 200 - 4, z = Math.floor(i / 200) + MEADOW_OFFSET.z - 4;
+const GEO_WIDTH = HOME_GRID.width + 8, GEO_HEIGHT = HOME_GRID.height + 8;
+const geography = Array.from({ length: GEO_WIDTH * GEO_HEIGHT }, (_, i) => {
+  const x = i % GEO_WIDTH - 4, z = Math.floor(i / GEO_WIDTH) + MEADOW_OFFSET.z - 4;
   const meadow = x >= MEADOW_OFFSET.x;
   const localX = x - MEADOW_OFFSET.x, localZ = z - MEADOW_OFFSET.z;
   const depth = meadow ? meadowField(localX, localZ) : terrainField(x, z);
@@ -72,7 +74,7 @@ const geography = Array.from({ length: 200 * 136 }, (_, i) => {
   const patch = .5 + .25 * Math.sin(x * .38 + Math.sin(z * .23)) + .25 * Math.sin(z * .51 - x * .14);
   const coastal = Math.max(0, 1 - depth / 2);
   let color = mix([92, 131, 81], [139, 162, 103], patch);
-  if (!meadow && z >= 32 && Math.max(x, z) > 49) color = mix([126, 132, 119], [164, 159, 129], patch);
+  if (!meadow && inGiantHeadland({ x, z }) && Math.max(x, z) > 49) color = mix([126, 132, 119], [164, 159, 129], patch);
   else if (coastal) color = mix([142, 159, 103], [224, 206, 155], coastal);
   else if (meadow && plots.some(p => localX >= p.x && localX < p.x + 8 && localZ >= p.z && localZ < p.z + 8)) {
     // The same small starting clearings used by the woodland scenery.
@@ -94,7 +96,7 @@ export function drawHomeMap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
 
   // Quiet water marks leave the coastline and live markers easy to read.
   ctx.strokeStyle = 'rgba(191,222,210,.12)'; ctx.lineWidth = detailed ? .7 : .4;
-  for (let row = 0; row < 12; row++) for (let col = 0; col < 12; col++) {
+  for (let row = 0; row < 12; row++) for (let col = 0; col < 16; col++) {
     const px = col * 18 + (row % 2) * 8, pz = row * 18 - 66;
     if (homeLand({ x: px, z: pz }) || homeLand({ x: px + 4, z: pz })) continue;
     ctx.beginPath(); ctx.moveTo(x(px), z(pz)); ctx.quadraticCurveTo(x(px + 2), z(pz + .6), x(px + 4), z(pz)); ctx.stroke();
@@ -141,7 +143,7 @@ export function drawHomeMap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
     ]);
   }
   route([homePoint({ x: 31, z: 7 }, 'settlement'), homePoint({ x: 31, z: 121 }, 'settlement')]);
-  route([{ x: 46, z: 29 }, { x: 49, z: 25 }, { x: 64, z: 25 }, town], true);
+  route([{ x: 46, z: 29 }, { x: 49, z: 25 }, { x: 64, z: 25 }, { x: 100, z: 25 }, { x: GRID_SIZE - 1, z: 25 }, town], true);
   for (const bridge of BRIDGES) {
     ctx.fillStyle = '#d6bd88';
     ctx.fillRect(x(bridge.x - bridge.width / 2), z(bridge.z - .6), bridge.width * scale, 1.2 * scale);
@@ -176,7 +178,9 @@ export function drawHomeMap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
   if (detailed) {
     if (view === 'overview') {
       label('BRAMBLEWILD', { x: 30, z: -8 }, '600 12px system-ui');
-      label('THE MEADOWS', { x: 130, z: -47 }, '600 13px system-ui');
+      label('THE MEADOWS', { x: MEADOW_OFFSET.x + 66, z: MEADOW_OFFSET.z - 8 }, '600 13px system-ui');
+      label('EASTREACH', { x: 97, z: 54 }, '600 10px system-ui');
+      label('SOUTHERN WILDS', { x: 64, z: 128 }, '600 10px system-ui');
       label('Harbour trail', { x: 67, z: 17 }, '11px system-ui');
     }
     if (view !== 'bramblewild') for (const place of LANDMARKS) {

@@ -1,5 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { HOME_JOIN, MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
+/** Meadows-local x to world x. */
+const mx = (x: number) => x + MEADOW_OFFSET.x - 25;
 import { Group } from 'three';
 import { useTileMotion } from '../hooks/useTileMotion';
 import { boundaryKey } from '../../../shared/sim/frontier/building';
@@ -115,7 +118,7 @@ describe('connected home island motion', () => {
     expect(collision).toHaveBeenCalledWith({ x: 11, z: 65, region: 'settlement' });
     expect(h.result.current.current.points.some(point => point.z !== 1)).toBe(detour);
     act(() => { harness.now = 600; harness.frame(); });
-    expect(group.position.toArray()).toEqual([51, 0, 1]);
+    expect(group.position.toArray()).toEqual([mx(12), 0, 1]);
   });
   it('uses the occupied parcel at the origin to animate a visitor leaving through its gate', () => {
     const group = new Group(), ref = { current: group };
@@ -127,7 +130,7 @@ describe('connected home island motion', () => {
     h.rerender({ x: 11 });
     expect(h.result.current.current.points.every(point => point.z === 1)).toBe(true);
     act(() => { harness.now = 300; harness.frame(); });
-    expect(group.position.toArray()).toEqual([50, 0, 1]);
+    expect(group.position.toArray()).toEqual([mx(11), 0, 1]);
   });
   it('animates around a wall edge between two walkable floor tiles', () => {
     const group = new Group(), ref = { current: group };
@@ -136,33 +139,34 @@ describe('connected home island motion', () => {
     h.rerender({ x: 32 });
     expect(h.result.current.current.points.some(point => point.z !== 0)).toBe(true);
     act(() => { harness.now = 100; harness.frame(); });
-    expect(group.position.x).toBe(70);
+    expect(group.position.x).toBe(mx(31));
     expect(group.position.z).not.toBe(0);
     act(() => { harness.now = 600; harness.frame(); });
-    expect(group.position.toArray()).toEqual([71, 0, 0]);
+    expect(group.position.toArray()).toEqual([mx(32), 0, 0]);
   });
   it('animates a three-step district update over one tick instead of snapping', () => {
     const group = new Group(), ref = { current: group };
     const h = renderHook(({ x }) => useTileMotion(x, 64, 6, ref, 'settlement'), { initialProps: { x: 30 } });
     h.rerender({ x: 33 });
-    expect(group.position.x).toBe(69);
+    expect(group.position.x).toBe(mx(30));
     act(() => { harness.now = 300; harness.frame(); });
-    expect(group.position.x).toBeCloseTo(70.5);
+    expect(group.position.x).toBeCloseTo(mx(31.5));
     act(() => { harness.now = 600; harness.frame(); });
-    expect(group.position.x).toBeCloseTo(72);
+    expect(group.position.x).toBeCloseTo(mx(33));
   });
   it('keeps the same avatar moving through the district seam in both directions', () => {
     const group=new Group(), ref={current:group};
-    const h=renderHook(({x,z,region})=>useTileMotion(x,z,6,ref,region as any), {initialProps:{x:63,z:25,region:'bramblewild'}});
-    expect(group.position.toArray()).toEqual([38,0,0]);
+    const seam=HOME_JOIN.bramblewild.x, wx=seam-25;
+    const h=renderHook(({x,z,region})=>useTileMotion(x,z,6,ref,region as any), {initialProps:{x:seam,z:25,region:'bramblewild'}});
+    expect(group.position.toArray()).toEqual([wx,0,0]);
     h.rerender({x:1,z:64,region:'settlement'});
-    expect(group.position.toArray()).toEqual([38,0,0]);
+    expect(group.position.toArray()).toEqual([wx,0,0]);
     act(()=>{harness.now=300;harness.frame();});
-    expect(group.position.x).toBeCloseTo(39);
+    expect(group.position.x).toBeCloseTo(wx+1);
     act(()=>{harness.now=600;harness.frame();});
-    expect(group.position.toArray()).toEqual([40,0,0]);
-    h.rerender({x:63,z:25,region:'bramblewild'});
+    expect(group.position.toArray()).toEqual([wx+2,0,0]);
+    h.rerender({x:seam,z:25,region:'bramblewild'});
     act(()=>{harness.now=1200;harness.frame();});
-    expect(group.position.toArray()).toEqual([38,0,0]);
+    expect(group.position.toArray()).toEqual([wx,0,0]);
   });
 });

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Minimap from '../Components/Minimap';
 import { homeMapProjection } from '../frontier/homeMapArt';
 import { homePoint } from '../../../shared/sim/frontier/homeMap';
+import { GRID_SIZE } from '@sim';
 import { useToastStore } from '../spacetime/stores/toastStore';
 
 const mock = vi.hoisted(() => ({ region: 'bramblewild', enabled: true, online: true, state: 0, items: [] as { itemId: string }[], frontier: vi.fn(), target: vi.fn() }));
@@ -111,9 +112,9 @@ describe('walking by clicking the map', () => {
     expect(mock.target).not.toHaveBeenCalled(); expect(mock.frontier).not.toHaveBeenCalled();
     expect(screen.getByRole('status').textContent).toMatch(/island/);
   });
-  it('uses the original 64-tile map when the expansion is disabled', async () => {
+  it('uses the single-district Bramblewild map when the expansion is disabled', async () => {
     mock.enabled = false; render(<Minimap />); open();
-    fireEvent.click(canvas(320), { clientX: 100 + (30.5 / 64) * 320, clientY: 80 + (24.5 / 64) * 320 });
+    fireEvent.click(canvas(320), { clientX: 100 + (30.5 / GRID_SIZE) * 320, clientY: 80 + (24.5 / GRID_SIZE) * 320 });
     expect(mock.target).toHaveBeenCalledWith(30, 24);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });

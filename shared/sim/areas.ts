@@ -1,5 +1,5 @@
 import { BOULDER_LINE, BOULDERS_MIN, HEDGE_RING, RESPAWN_GRACE_TICKS, SAFE_RADIUS, SPAWN_TILE } from './constants';
-import { groveBoundary, insideGrove } from './terrain';
+import { groveBoundary, inGiantHeadland, insideGrove } from './terrain';
 import { chebyshev, isLandTile } from './grid';
 import { PlayerState, type Slot, type Tile } from './types';
 
@@ -22,12 +22,12 @@ export function isBramble(t: Tile): boolean {
 
 /** The one-tile boulder line on the old south-east shoreline (max(x, z) = 50, both >= 36). */
 export function isBoulderLine(t: Tile): boolean {
-  return isLandTile(t) && t.z >= 32 && Math.max(t.x, t.z) === BOULDER_LINE;
+  return isLandTile(t) && inGiantHeadland(t) && Math.max(t.x, t.z) === BOULDER_LINE;
 }
 
-/** The Boulders (M3): land past the boulder line. */
+/** The Boulders (M3): the Giant's headland past the boulder line. Eastreach and the southern wilds are Coast. */
 export function inBoulders(t: Tile): boolean {
-  return isLandTile(t) && t.z >= 32 && Math.max(t.x, t.z) > BOULDER_LINE;
+  return isLandTile(t) && inGiantHeadland(t) && Math.max(t.x, t.z) > BOULDER_LINE;
 }
 
 export function areaOf(t: Tile): Area {

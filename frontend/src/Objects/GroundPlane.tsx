@@ -1,4 +1,5 @@
 import { homeCoastTexture } from "../frontier/homeCoast";
+import { HOME_GRID, MEADOW_OFFSET } from "../../../shared/sim/frontier/homeMap";
 import { useFrontier } from "../frontier/useFrontier";
 import { useFrame, useThree } from '@react-three/fiber';
 import { MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, holdState, openMenuNear } from '../Components/3D/tapAssist';
@@ -14,10 +15,11 @@ import { useToastStore } from '../spacetime/stores/toastStore';
 import { slotsFromRows } from '../Components/itemUi';
 import { useUserInputStore } from '../store';
 
-const oceanGeo = new PlaneGeometry(400, 400);
+/** Wide enough for the joined districts; fog hides its edge. */
+const oceanGeo = new PlaneGeometry(720, 720);
 const oceanMat = new ShaderMaterial({
   fog: true,
-  uniforms: UniformsUtils.merge([UniformsLib.fog, { uTime: { value: 0 }, uCoast: { value: coastTexture }, uMapOrigin: {value:new Vector2(-.5,-.5)}, uMapSize: {value:new Vector2(64,64)} }]),
+  uniforms: UniformsUtils.merge([UniformsLib.fog, { uTime: { value: 0 }, uCoast: { value: coastTexture }, uMapOrigin: {value:new Vector2(-.5,-.5)}, uMapSize: {value:new Vector2(GRID_SIZE,GRID_SIZE)} }]),
   vertexShader: `varying vec2 vW;
     #include <fog_pars_vertex>
     void main(){
@@ -52,10 +54,10 @@ oceanMat.uniforms.uTime = envTime;
 const homeOceanMat = oceanMat.clone();
 homeOceanMat.uniforms.uTime=envTime;
 homeOceanMat.uniforms.uCoast.value=homeCoastTexture;
-homeOceanMat.uniforms.uMapOrigin.value=new Vector2(-.5,-39.5);
-homeOceanMat.uniforms.uMapSize.value=new Vector2(192,128);
+homeOceanMat.uniforms.uMapOrigin.value=new Vector2(-.5,MEADOW_OFFSET.z-.5);
+homeOceanMat.uniforms.uMapSize.value=new Vector2(HOME_GRID.width,HOME_GRID.height);
 /** The ocean plane, shaded around the island and the Boulders. */
-export const Ocean = ({connected=false}:{connected?:boolean}) => <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.34, 0]} geometry={oceanGeo} material={connected?homeOceanMat:oceanMat} />;
+export const Ocean = ({connected=false}:{connected?:boolean}) => <mesh rotation={[-Math.PI / 2, 0, 0]} position={[100, -0.34, 40]} geometry={oceanGeo} material={connected?homeOceanMat:oceanMat} />;
 
 /** The terrain exactly covers the server grid; its coastline never hides walkable tiles. */
 const GroundPlane = () => {

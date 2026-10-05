@@ -55,6 +55,15 @@ export interface NodeSeed extends Tile {
 /** First node id; 1-100 stay berry trees. */
 export const FIRST_NODE_ID = 101;
 
+const OUTER_BERRIES = ['berry_greenberry', 'berry_strawberry', 'berry_blueberry', 'berry_greenberry', 'berry_strawberry', 'berry_goldberry'] as const;
+const NODE_ITEM: Record<NodeKind, string> = {
+  [NodeKind.Berry]: 'berry_greenberry', [NodeKind.Driftwood]: DRIFTWOOD_ITEM_ID, [NodeKind.TideRock]: FLINT_ITEM_ID, [NodeKind.Obsidian]: OBSIDIAN_ITEM_ID,
+};
+/** Consecutive stable ids from `first`; never reorder a published list, only append. */
+function outerSeeds(first: number, seeds: readonly (Tile & { kind: NodeKind; itemId?: string })[]): NodeSeed[] {
+  return seeds.map((s, i) => ({ id: first + i, x: s.x, z: s.z, kind: s.kind, itemId: s.itemId ?? NODE_ITEM[s.kind] }));
+}
+
 /**
  * Driftwood straight past each path crossing (N, E, S, W), tide rocks in the
  * four coves along the natural shoreline.
@@ -71,9 +80,15 @@ export const NODE_SEEDS: readonly NodeSeed[] = [
   // M3: obsidian at the far ends of the Boulders' L, well away from the Giant.
   { id: 109, x: 60, z: 40, kind: NodeKind.Obsidian, itemId: OBSIDIAN_ITEM_ID },
   { id: 110, x: 40, z: 60, kind: NodeKind.Obsidian, itemId: OBSIDIAN_ITEM_ID },
+  // Eastreach, the causeway and the southern wilds: driftwood and tide rocks
+  // alternate around the new shores, each at least 13 tiles from its neighbours.
+  ...outerSeeds(111, [[69, 113], [75, 36], [71, 23], [16, 80], [93, 76], [53, 112], [118, 90], [54, 81], [36, 75], [22, 119], [83, 6], [32, 106], [70, 83], [111, 115], [9, 93], [94, 124], [120, 21], [15, 106], [93, 110], [108, 71], [120, 37], [16, 66], [35, 121], [106, 8], [110, 53], [93, 47]].map(([x, z], i) => ({ x, z, kind: i % 2 ? NodeKind.TideRock : NodeKind.Driftwood }))),
+  // Berry thickets beside the trails: the original Coast gets its own, and the
+  // outer lands are dotted with them. Goldberries stay one in six.
+  ...outerSeeds(137, [[114, 110], [93, 17], [81, 20], [52, 99], [24, 104], [42, 88], [66, 101], [98, 82], [28, 80], [116, 21], [111, 101], [101, 39], [74, 89], [102, 20], [25, 95], [109, 91], [84, 96], [74, 112], [19, 115], [61, 91], [30, 7], [37, 40], [15, 96], [77, 30], [90, 28], [114, 30], [100, 98], [108, 82], [21, 42], [75, 98], [22, 7], [28, 118], [8, 22], [46, 42], [14, 41], [37, 97], [29, 43], [42, 21], [87, 8], [51, 90], [19, 84]].map(([x, z], i) => ({ x, z, kind: NodeKind.Berry, itemId: OUTER_BERRIES[i % OUTER_BERRIES.length] }))),
 ];
 
-/** The M2 Coast nodes (driftwood and tide rocks). */
+/** The Coast's driftwood and tide rocks, including the outer lands' shores. */
 export const COAST_NODE_SEEDS: readonly NodeSeed[] = NODE_SEEDS.filter((s) => s.kind === NodeKind.Driftwood || s.kind === NodeKind.TideRock);
 
 /** The seeds whose id is not in `existing`: what the tick inserts. Seeding twice is a no-op. */

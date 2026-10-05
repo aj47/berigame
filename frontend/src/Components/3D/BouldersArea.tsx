@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { Color, DodecahedronGeometry, IcosahedronGeometry, Object3D } from 'three';
-import { BOULDERS_MIN, BOULDER_LINE, GRID_SIZE, boulderLineTiles, isBoulderLine, terrainField, inBoulders, tileToWorld } from '@sim';
+import { BOULDERS_MIN, BOULDER_LINE, boulderLineTiles, isBoulderLine, terrainField, inBoulders, tileToWorld } from '@sim';
 import { seeded } from './nodes/lowPoly';
 
 const noRaycast = () => null;
@@ -44,11 +44,13 @@ const BouldersArea = () => {
       const d=terrainField(x,z);
       if(inBoulders({x,z}) && d<.6 && rand()<.6) edge(x-25,z-25);
     }
+    // The Giant's headland keeps its original 64-tile extent inside the larger grid.
+    const HEADLAND = 64;
     const pebbleRocks: Rock[] = [];
     for (let i = 0; i < 90; i++) {
       const eastArm = rand() < 0.55;
-      const x = eastArm ? BOULDER_LINE + 1 + rand() * (GRID_SIZE - BOULDER_LINE - 2) : BOULDERS_MIN + rand() * (BOULDER_LINE - BOULDERS_MIN);
-      const z = eastArm ? BOULDERS_MIN + rand() * (GRID_SIZE - BOULDERS_MIN - 1) : BOULDER_LINE + 1 + rand() * (GRID_SIZE - BOULDER_LINE - 2);
+      const x = eastArm ? BOULDER_LINE + 1 + rand() * (HEADLAND - BOULDER_LINE - 2) : BOULDERS_MIN + rand() * (BOULDER_LINE - BOULDERS_MIN);
+      const z = eastArm ? BOULDERS_MIN + rand() * (HEADLAND - BOULDERS_MIN - 1) : BOULDER_LINE + 1 + rand() * (HEADLAND - BOULDER_LINE - 2);
       if(!inBoulders({x,z}) || terrainField(x,z)<.5) continue;
       const s = 0.06 + rand() * 0.1;
       pebbleRocks.push({ x: x - 25, y: s * 0.3, z: z - 25, sx: s * 1.4, sy: s * 0.7, sz: s, yaw: rand() * 6.28, tilt: 0, shade: rand() });

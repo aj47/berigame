@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BoxGeometry, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene } from 'three';
 import HoldToWalk, { HOLD_MS, HOLD_RETARGET_MS } from '../Components/3D/HoldToWalk';
 import { holdState } from '../Components/3D/tapAssist';
+import { MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
+/** A Meadows tile five steps past the seam, in the joined home frame. */
+const MEADOW_X = MEADOW_OFFSET.x + 5;
 
 const mock = vi.hoisted(() => ({
   state: null as any, me: { region: 'bramblewild' }, enabled: true,
@@ -49,7 +52,7 @@ describe('hold navigation across the home island', () => {
   });
 
   it('accepts the canvas wrapper and sends Meadows coordinates without clamping to the old island', () => {
-    pointAt(69, 25); render(<HoldToWalk />); press(wrapper);
+    pointAt(MEADOW_X, 25); render(<HoldToWalk />); press(wrapper);
     expect(mock.frontier).toHaveBeenCalledWith({ action: 'walk', id: 'settlement', x: 5, z: 64 });
     expect(mock.setTarget).not.toHaveBeenCalled();
   });
@@ -69,7 +72,7 @@ describe('hold navigation across the home island', () => {
   });
 
   it.each([true, false])('does not snap open water onto the shore when expansion is %s', enabled => {
-    mock.enabled = enabled; pointAt(200, 25); render(<HoldToWalk />); press(wrapper);
+    mock.enabled = enabled; pointAt(100, 70); render(<HoldToWalk />); press(wrapper);
     expect(mock.frontier).not.toHaveBeenCalled(); expect(mock.setTarget).not.toHaveBeenCalled();
   });
 

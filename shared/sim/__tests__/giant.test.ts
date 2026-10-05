@@ -28,7 +28,7 @@ const allTiles = (): Tile[] => {
 
 describe('M3: the Boulders geometry and gate', () => {
   it('keeps the Giant on a connected headland behind the boulder line', () => {
-    expect(GRID_SIZE).toBe(64);
+    expect(GRID_SIZE).toBe(128);
     const land = allTiles().filter(isLandTile);
     expect(boulderLineTiles().every(isLandTile)).toBe(true);
     expect(giantFootprint().every(isLandTile)).toBe(true);

@@ -5,7 +5,7 @@ import type { Location, RegionId } from '../../../shared/sim/frontier/catalog';
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Vector3 } from 'three';
-import { MOVEMENT_STEPS_PER_TICK, bfsPath, chebyshev, facingToYaw, goalIsTile, tileToWorld, type Facing, type Tile } from '@sim';
+import { MOVEMENT_STEPS_PER_TICK, bfsPath, chebyshev, facingToYaw, goalIsTile, tileKey, tileToWorld, type Facing, type Tile } from '@sim';
 import { tickClock } from '../spacetime/tickClock';
 import { recordDiagnostic } from '../spacetime/diagnostics';
 import { useWorldBlocked } from '../spacetime/hooks';
@@ -108,7 +108,7 @@ export function useTileMotion(tileX: number, tileZ: number, facing: number, grou
     // Using the new position would incorrectly unlock a gate just entered.
     const fromLocation = { ...(previousRegion === 'settlement' ? homeLocation(previous) : previous), region: previousRegion };
     const frontierObstacle = buildingBlocker(frontierBlocksAt?.(fromLocation) ?? frontierBlocked ?? new Set());
-    const homeObstacle = Object.assign((p: Location) => p.region === 'bramblewild' ? blocked.has(p.z * 64 + p.x) : frontierObstacle(p), {
+    const homeObstacle = Object.assign((p: Location) => p.region === 'bramblewild' ? blocked.has(tileKey(p)) : frontierObstacle(p), {
       crosses: (a: Location, b: Location) => a.region === 'settlement' && b.region === 'settlement' && frontierObstacle.crosses(a, b),
     });
     const route = region === 'bramblewild' && previousRegion === 'bramblewild' ? bfsPath(previous, goalIsTile(tile), blocked) : isHomeRegion(region) ? homePath(previous, tile, homeObstacle) : regionalPath(region, previous, tile, frontierObstacle);
