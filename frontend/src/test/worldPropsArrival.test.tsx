@@ -36,24 +36,20 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('world prop interactions', () => {
-  it('opens berry harvest choices only after arriving beside the tree', () => {
+  it('opens berry harvest choices at the click before walking to a distant tree', () => {
     const tree = { id: 3, x: 28, z: 25, itemId: 'berry_strawberry', kind: 0, cooldownUntilTick: 0 } as any;
     const ui = render(<BerryTree tree={tree} tick={100} harvester={null} />);
     fireEvent.click(ui.container.querySelector('group')!);
-    expect(mock.approach).toHaveBeenCalledWith({ region: 'bramblewild', x: 28, z: 25 }, expect.any(Function), 1);
-    expect(selected()).toBeNull();
-    arrive();
+    expect(mock.approach).not.toHaveBeenCalled();
     expect(selected()).toMatchObject({ harvestNodeId: 3 });
   });
 
-  it('does not open a pickup menu for a pile removed during the walk', () => {
+  it('opens pickup choices at the click before walking to a distant pile', () => {
     const item = { id: 5n, x: 25, z: 25, itemId: 'stick', quantity: 1 } as any;
     const ui = render(<GroundItem groundItem={item} />);
     fireEvent.click(ui.container.querySelector('group')!);
-    expect(selected()).toBeNull();
-    ui.unmount();
-    arrive();
-    expect(selected()).toBeNull();
+    expect(mock.approach).not.toHaveBeenCalled();
+    expect(selected()).toMatchObject({ groundItemId: 5n, groundTiles: [{ x: 25, z: 25 }] });
   });
 
   it('shows dummy attack options immediately; choosing Attack lets the server approach', () => {

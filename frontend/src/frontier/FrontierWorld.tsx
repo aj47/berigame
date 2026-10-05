@@ -218,14 +218,14 @@ export function Animal({ creature, showLabel, disabled = false }: { creature: Cr
       approachWorldInteraction(creature, attack, 1);
       return;
     }
-    const event = { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() };
-    approachWorldInteraction(creature, () => {
-      if (!live.current.mounted) return;
-      const resting = live.current.creature.restUntil > Date.now();
-      setSelected({ connectionId: def.name, e: event, dropdownOptions: [
-        { label: resting ? `${def.name} is resting` : `Attack ${def.name}`, disabled: resting || !live.current.alive, onClick: attack },
-      ] });
-    }, 1);
+    // Choose first; Attack walks over from wherever the creature is by then.
+    const resting = creature.restUntil > Date.now();
+    setSelected({ connectionId: def.name, e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() }, dropdownOptions: [
+      { label: resting ? `${def.name} is resting` : `Attack ${def.name}`, disabled: resting || !live.current.alive, onClick: () => {
+        setSelected(null);
+        approachWorldInteraction(live.current.creature, attack, 1);
+      } },
+    ] });
   };
   useFrame(({ clock }, dt) => {
     if (ref.current) {

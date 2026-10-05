@@ -52,6 +52,16 @@ describe('Walk here menu action', () => {
     fireEvent.click(screen.getByRole('button',{name:label,exact:true}));
     expect(mock.adventure).toHaveBeenCalledExactlyOnceWith(view);
   });
+  it('walks to an adventure prop only after its option is chosen', () => {
+    const approach = vi.fn();
+    openAdventureInteraction('Berry drop-off',event(),'market',approach);render(<ClickDropdown/>);
+    expect(approach).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button',{name:'View berry delivery',exact:true}));
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
+    expect(mock.adventure).not.toHaveBeenCalled();
+    act(() => approach.mock.calls[0][0]());
+    expect(mock.adventure).toHaveBeenCalledExactlyOnceWith('market');
+  });
   it('opens the giant berry activity for cargo and helpers by default', () => {
     openAdventureInteraction('Moss',event());render(<ClickDropdown/>);
     fireEvent.click(screen.getByRole('button',{name:'View giant berry adventure',exact:true}));

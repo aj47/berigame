@@ -67,7 +67,9 @@ const ClickDropdown = ({ region = 'bramblewild' }: { region?: string }) => {
   }, [setSelected]);
   if (!selected) return null;
   const destination = walkDestination(selected, region as RegionId);
-  const islandGround = region === 'bramblewild' && (!selected.groundRegion || selected.groundRegion === 'bramblewild');
+  // A clicked pile carries island coordinates, so Meadows can still offer it.
+  const islandGround = selected.groundItemId !== undefined ? isHomeRegion(region)
+    : region === 'bramblewild' && (!selected.groundRegion || selected.groundRegion === 'bramblewild');
   return (
     <div
       className={`click-dropdown${selected.berryGiantExpeditionId !== undefined ? ' berry-giant-dropdown' : ''}`}
@@ -91,7 +93,7 @@ const ClickDropdown = ({ region = 'bramblewild' }: { region?: string }) => {
       ) : selected.berryGiantExpeditionId !== undefined ? (
         <BerryGiantInteraction key={String(selected.berryGiantExpeditionId)} expeditionId={selected.berryGiantExpeditionId} onClose={() => setSelected(null)} />
       ) : selected.harvestNodeId !== undefined ? (
-        <HarvestDropdownAction nodeId={selected.harvestNodeId} onClose={() => setSelected(null)} />
+        <HarvestDropdownAction nodeId={selected.harvestNodeId} region={region} onClose={() => setSelected(null)} />
       ) : selected.dropdownOptions?.map((option: any, index: number) => (
         <button
           className="context-action"
@@ -103,7 +105,7 @@ const ClickDropdown = ({ region = 'bramblewild' }: { region?: string }) => {
           <span aria-hidden="true">›</span>
         </button>
       ))}
-      {islandGround && selected.groundTiles?.length > 0 && <GroundPickupActions tiles={selected.groundTiles} selectedId={selected.groundItemId} onClose={() => {
+      {islandGround && selected.groundTiles?.length > 0 && <GroundPickupActions tiles={selected.groundTiles} selectedId={selected.groundItemId} region={region} onClose={() => {
         // A slow pickup response must not dismiss a different menu opened meanwhile.
         if (useUserInputStore.getState().clickedOtherObject === selected) setSelected(null);
       }} />}
