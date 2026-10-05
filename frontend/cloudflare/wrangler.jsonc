@@ -20,7 +20,7 @@
   },
   "vars": {
     "PUBLIC_ORIGIN": "https://beta.berigame.com",
-    "SPACETIME_URI": "wss://maincloud.spacetimedb.com",
+    "SPACETIME_URI": "wss://berigame-db.exe.xyz",
     "SPACETIME_DB": "berigame-beta"
   },
   "durable_objects": { "bindings": [{ "name": "AGENT_GATEWAY", "class_name": "AgentGateway" }] },

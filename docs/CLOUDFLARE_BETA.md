@@ -1,7 +1,9 @@
 # Cloudflare + SpacetimeDB beta
 
 - Website and HTTP agent API: Cloudflare Worker `berigame-beta`, custom domain `beta.berigame.com`.
-- Game simulation and persistent player state: SpacetimeDB Maincloud, database `berigame-beta`.
+- Game simulation and persistent player state: self-hosted SpacetimeDB 2.10.1 on the
+  exe.dev VM `berigame-db` (`wss://berigame-db.exe.xyz`), database `berigame-beta`.
+  Maincloud hosted it until October 5, 2026; the move started a fresh world.
 - Invite hashes, session credentials, limits and action receipts: one SQLite Durable Object.
 - No container disk, VM, or local computer is required after deployment.
 
@@ -21,24 +23,50 @@ npm run beta:types
 npm run beta:deploy
 ```
 
-`beta:deploy` builds the website with Maincloud settings and browser admission
+`beta:deploy` builds the website with the game server settings and browser admission
 enabled, then deploys the Worker, static assets, bindings and custom domain. Worker
 secrets are retained on updates. The secrets are `GATEWAY_CREDENTIAL` (the
 JSON credential of the limited gateway identity), `ADMIN_TOKEN` (operator API),
 and `RECOVERY_ENCRYPTION_KEY` (stable encryption key for character recovery).
 Neither belongs in frontend build variables or Git.
 
-Database changes are a separate publish, using the beta owner's CLI identity:
+Database changes are a separate publish, made on the VM as the owner identity
+(`c2006088…a4ad`, the VM's own `spacetime` CLI login). nginx exposes only
+`/v1/identity` and the `berigame-beta` subscribe endpoint, so publishing never
+goes over the public URL. The VM has no Node, so build locally and copy the bundle:
 
 ```sh
-spacetime --config-path .spacetime-data/deploy-beta/cli.toml publish \
-  --server maincloud --module-path spacetimedb --delete-data=never \
-  --yes=remote,skip-login berigame-beta
+.spacetime-data/tools/spacetimedb-cli build --module-path spacetimedb   # or `spacetime build` in spacetimedb/
+scp -i ~/.ssh/exe_dev_techfren spacetimedb/dist/bundle.js berigame-db.exe.xyz:/tmp/berigame-bundle.js
+ssh -i ~/.ssh/exe_dev_techfren berigame-db.exe.xyz \
+  'spacetime publish --server http://127.0.0.1:3000 --js-path /tmp/berigame-bundle.js \
+     --delete-data=never --yes berigame-beta'
 ```
 
-The deployment computer may use `.spacetime-data/tools/spacetimedb-cli` if
-`spacetime` is not on PATH. Never use `--delete-data` to resolve a schema conflict.
+Never use `--delete-data` to resolve a schema conflict.
 Use a data-preserving migration and regenerate frontend bindings when required.
+The sections below were written for Maincloud; apply the same flags to the VM
+publish above (for example `--yes=break-clients` for a breaking release).
+
+### Self-hosted server (exe.dev VM `berigame-db`)
+
+- SpacetimeDB 2.10.1 runs as the `spacetimedb` systemd service on
+  `127.0.0.1:3000`, data in `/var/lib/spacetimedb`, nightly backups in
+  `/var/backups/spacetimedb/` (7 kept).
+- nginx on port 80 (`/etc/nginx/sites-available/spacetimedb`) proxies only
+  `^/v1/(identity|identity/websocket-token|database/berigame-beta/subscribe)$`
+  (browsers POST `websocket-token` before subscribing)
+  with WebSocket upgrade and per-client rate limits; every other `/v1/` path is
+  404. exe.dev terminates TLS and forwards to port 80
+  (`ssh exe.dev share port berigame-db 80`, `share set-public berigame-db`).
+- Unlike Maincloud, the server issues its own identities, so Maincloud-era
+  characters and recovery files do not carry over.
+- The Worker gateway identity lives in `.spacetime-data/deploy-exe/gateway.json`
+  and is the `GATEWAY_CREDENTIAL` secret. It was configured with
+  `configure_access "<gateway identity>" true`, and the expansion with
+  `configure_expansion true false`.
+- Owner commands (`spacetime call|sql|logs --server http://127.0.0.1:3000 berigame-beta …`)
+  run over SSH on the VM.
 
 ### Breaking schema publishes (the punch/stick quick-slot release)
 
@@ -110,7 +138,7 @@ npm run beta:deploy   # immediately afterwards (new bindings: tree.kind, the cra
 
 The initial deployment stores credentials with mode 0600 beneath the ignored
 `.spacetime-data/deploy-beta/` directory. Keep a private backup of this directory.
-`cli.toml` owns the Maincloud database; `gateway.json` can provision and revoke
+`cli.toml` owned the former Maincloud database (the VM's CLI owns the current one); `gateway.json` can provision and revoke
 bounded guest permits; `cloudflare-secrets.json` holds the two Worker secrets.
 The gateway identity must match `access_policy.gateway`, and `require_admission`
 must be `true`. The public discovery endpoint reports `ready: false` otherwise.
