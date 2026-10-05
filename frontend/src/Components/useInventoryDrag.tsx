@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { create } from 'zustand';
 import { getItemDef, type Slot } from '@sim';
 
-type Drag = { owner: string; from: number; to: number | null; item: NonNullable<Slot>; x: number; y: number; allowed: boolean };
+type Drag = { owner: string; from: number; to: number | null; floor: boolean; item: NonNullable<Slot>; x: number; y: number; allowed: boolean };
 const useDragState = create<{ drag: Drag | null; moving: boolean }>(() => ({ drag: null, moving: false }));
 const THRESHOLD = 7;
 const HOLD_MS = 250;
@@ -14,18 +14,20 @@ function canMove(slots: readonly Slot[], from: number, to: number) {
     (!target || item.itemId !== target.itemId || target.quantity < (getItemDef(item.itemId)?.maxStack ?? 1));
 }
 
-/** Shared drop targets let the bag and HUD exchange items using the same server move. */
-export function useInventoryDrag({ slots, enabled, onMove, onStart, onError }: {
+/** Shared drop targets let the bag and HUD exchange items using the same server move.
+ * Releasing over the world (`data-world-floor`) drops the whole stack when `onDrop` is given. */
+export function useInventoryDrag({ slots, enabled, onMove, onDrop, onStart, onError }: {
   slots: readonly Slot[];
   enabled: boolean;
   onMove: (from: number, to: number) => Promise<unknown>;
+  onDrop?: (from: number, quantity: number) => Promise<unknown>;
   onStart?: () => void;
   onError?: () => void;
 }) {
   const owner = useId();
   const { drag, moving } = useDragState();
-  const latest = useRef({ slots, enabled, onMove, onStart, onError });
-  latest.current = { slots, enabled, onMove, onStart, onError };
+  const latest = useRef({ slots, enabled, onMove, onDrop, onStart, onError });
+  latest.current = { slots, enabled, onMove, onDrop, onStart, onError };
   const gesture = useRef<{
     pointer: number; from: number; item: NonNullable<Slot>; element: HTMLElement;
     x: number; y: number; startX: number; startY: number; previousY: number;
@@ -51,10 +53,12 @@ export function useInventoryDrag({ slots, enabled, onMove, onStart, onError }: {
   const update = () => {
     const current = gesture.current;
     if (!current?.active) return;
-    const target = document.elementFromPoint(current.x, current.y)?.closest<HTMLElement>('[data-inventory-slot]');
+    const element = document.elementFromPoint(current.x, current.y);
+    const target = element?.closest<HTMLElement>('[data-inventory-slot]');
     const to = target?.dataset.inventoryDropEnabled === 'true' ? Number(target.dataset.inventorySlot) : null;
+    const floor = !target && !!latest.current.onDrop && !!element?.closest('[data-world-floor]');
     useDragState.setState({ drag: { owner, from: current.from, item: current.item, x: current.x, y: current.y,
-      to, allowed: to !== null && canMove(latest.current.slots, current.from, to) } });
+      to, floor, allowed: floor || (to !== null && canMove(latest.current.slots, current.from, to)) } });
   };
   const autoScroll = () => {
     const current = gesture.current;
@@ -107,11 +111,11 @@ export function useInventoryDrag({ slots, enabled, onMove, onStart, onError }: {
       const wasActive = current.active;
       if (wasActive) { current.x = event.clientX; current.y = event.clientY; update(); }
       const drop = useDragState.getState().drag;
-      const valid = wasActive && sameSource() && latest.current.enabled && drop?.owner === owner && drop.allowed && drop.to !== null;
+      const valid = wasActive && sameSource() && latest.current.enabled && drop?.owner === owner && drop.allowed && (drop.to !== null || drop.floor);
       reset();
       if (valid && drop) {
         useDragState.setState({ moving: true });
-        void Promise.resolve().then(() => latest.current.onMove(drop.from, drop.to!))
+        void Promise.resolve().then(() => drop.floor ? latest.current.onDrop?.(drop.from, drop.item.quantity) : latest.current.onMove(drop.from, drop.to!))
           .catch(() => latest.current.onError?.())
           .finally(() => useDragState.setState({ moving: false }));
       }
@@ -172,8 +176,8 @@ export function useInventoryDrag({ slots, enabled, onMove, onStart, onError }: {
     onDragStart: (event: React.DragEvent) => event.preventDefault(),
   });
   const target = drag?.to !== null && drag ? slots[drag.to] : null;
-  const dropHint = drag ? !drag.allowed ? 'Move to another slot' : !target ? 'Move here' : target.itemId === drag.item.itemId ? 'Stack items' : `Swap with ${getItemDef(target.itemId)?.name ?? 'item'}` : '';
-  const preview = drag?.owner === owner && createPortal(<div className="inventory-drag-preview" style={{ left: drag.x, top: drag.y }} aria-hidden="true">
+  const dropHint = drag ? drag.floor ? `Drop ${drag.item.quantity > 1 ? `all ${drag.item.quantity}` : getItemDef(drag.item.itemId)?.name ?? 'item'} on the ground` : !drag.allowed ? 'Move to another slot' : !target ? 'Move here' : target.itemId === drag.item.itemId ? 'Stack items' : `Swap with ${getItemDef(target.itemId)?.name ?? 'item'}` : '';
+  const preview = drag?.owner === owner && createPortal(<div className="inventory-drag-preview" data-floor={drag.floor || undefined} style={{ left: drag.x, top: drag.y }} aria-hidden="true">
     <img src={getItemDef(drag.item.itemId)?.icon ?? '/berry.svg'} alt="" /><strong>{drag.item.quantity}</strong><span>{dropHint}</span>
   </div>, document.body);
   return { slotProps, preview, isDragging: !!drag, isMoving: moving, dropHint };

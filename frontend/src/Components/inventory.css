@@ -62,6 +62,8 @@
 [data-inventory-slot][data-drop-target=allowed] { outline:3px solid #628449; outline-offset:-3px; background:#dce9c7; }
 [data-inventory-slot][data-drop-target=blocked] { outline:2px dashed #a27655; outline-offset:-3px; }
 .inventory-drag-preview { position:fixed; z-index:10000; pointer-events:none; transform:translate(-50%,-75%); display:grid; place-items:center; width:54px; height:54px; border:2px solid #648844; border-radius:10px; background:#fff7e8f5; box-shadow:0 6px 20px #211a1540; color:#2b211a; }
+.inventory-drag-preview[data-floor] { border-color:#a27655; }
+.inventory-drag-preview[data-floor] span { background:#6b4a2ff2; }
 .inventory-drag-preview img { width:42px; height:42px; object-fit:contain; }
 .inventory-drag-preview strong { position:absolute; bottom:1px; right:4px; font-size:12px; }
 .inventory-drag-preview span { position:absolute; top:calc(100% + 5px); max-width:190px; width:max-content; padding:4px 7px; border-radius:6px; background:#30482ef2; color:#fffaf0; font-size:11px; text-align:center; }

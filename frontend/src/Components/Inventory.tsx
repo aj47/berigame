@@ -64,6 +64,7 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
   const drag = useInventoryDrag({
     slots, enabled: open && !pending && me?.state !== PlayerState.Dead,
     onMove: move,
+    onDrop: (from, quantity) => run(() => dropItem(from, quantity)),
     onStart: () => { setAssignTo(null); setMovingFrom(null); setSelected(null); setError(''); },
     onError: () => setError('Could not update your bag. Try again.'),
   });
@@ -262,7 +263,7 @@ const Inventory = memo(({ open, onClose, onCraft, onStorage, frontier, initialQu
           <>
             <p>
               {occupied
-                ? "Drag to arrange · Hold to drag on touch."
+                ? "Drag to arrange or onto the ground to drop · Hold to drag on touch."
                 : "Your bag is empty. Harvest a berry tree to fill it."}
             </p>
           </>

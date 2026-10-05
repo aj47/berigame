@@ -80,6 +80,20 @@ describe('inventory dragging', () => {
     expect(document.querySelector('.inventory-drag-preview')).not.toBeInTheDocument();
   });
 
+  it('drops the whole stack when released on the world floor from the bag or HUD', async () => {
+    render(<>{panel()}<CombatHud onOpenBag={() => {}} /></>);
+    const floor = document.createElement('div'); floor.dataset.worldFloor = '';
+    const canvas = floor.appendChild(document.createElement('canvas')); document.body.appendChild(floor);
+    target = canvas; fireEvent.pointerDown(bag(0), pointer); move();
+    expect(document.querySelector('.inventory-drag-preview')).toHaveTextContent('Drop all 3 on the ground');
+    await release();
+    expect(mock.dropItem).toHaveBeenLastCalledWith(0, 3);
+    fireEvent.pointerDown(hud(0), pointer); move(); await release();
+    expect(mock.dropItem).toHaveBeenCalledTimes(2);
+    expect(mock.moveItem).not.toHaveBeenCalled();
+    floor.remove();
+  });
+
   it('stacks matching items through the server move and waits for its result', async () => {
     mock.rows[1] = { slot: 5, itemId: 'berry_blueberry', quantity: 4 };
     let resolve!: (value: boolean) => void;
