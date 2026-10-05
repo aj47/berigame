@@ -43,7 +43,9 @@ export function subscribeFrontier(
         ),
       );
   };
-  conn.db.player.onInsert(update);
-  conn.db.player.onUpdate(update);
+  // Called per row: only a row that can be yours and changes region matters, so
+  // movement updates skip the scan (and its string formatting) entirely.
+  conn.db.player.onInsert((_ctx, row) => { if (row.identity.toHexString() === identity) update(); });
+  conn.db.player.onUpdate((_ctx, before, row) => { if ((before.region || "bramblewild") !== (row.region || "bramblewild")) update(); });
   update();
 }
