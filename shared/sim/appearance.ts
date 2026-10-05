@@ -78,7 +78,7 @@ export const WRAP_COLORS = [
 ] as const;
 export const BODY_TYPES = ['Classic', 'Slender', 'Broad', 'Compact'].map(name => ({ name }));
 export const FACE_SHAPES = ['Classic', 'Round', 'Long', 'Wide'].map(name => ({ name }));
-export const FACIAL_HAIR = ['Clean shaven', 'Moustache', 'Goatee', 'Full beard'].map(name => ({ name }));
+export const FACIAL_HAIR = ['None', 'Moustache', 'Goatee', 'Full beard'].map(name => ({ name }));
 export const OUTFIT_STYLES = ['Tunic', 'Trail scarf', 'Shoulder mantle', 'Explorer vest'].map(name => ({ name }));
 export const ACCESSORIES = ['None', 'Round glasses', 'Hoop earrings', 'Headband', 'Eye patch', 'Nose ring', 'Ribbon bow', 'Flower clip', 'Flower crown', 'Drop earrings'].map(name => ({ name }));
 export const EYE_COLORS = [
