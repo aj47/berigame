@@ -44,6 +44,8 @@ interface Props {
   targeted?: boolean;
   /** A chat line still fresh enough to float above the head. */
   chatText?: string;
+  /** Comma-separated identities standing on this tile that draw as this avatar (avatarStacks). */
+  stacked?: string;
   setPlayerRef?: (ref: React.MutableRefObject<any>) => void;
 }
 
@@ -63,7 +65,7 @@ function useHealthShown(hp: number, maxHp: number): boolean {
  * One shared rig and mechanically identical silhouette for every adventurer.
  * Memoized: a server tick re-renders only the avatars whose row (or labels) changed.
  */
-const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = false, chatText, setPlayerRef, frontierBlocked, frontier: frontierState }: Props) => {
+const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = false, chatText, stacked = '', setPlayerRef, frontierBlocked, frontier: frontierState }: Props) => {
   const groupRef = useRef<any>(null);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const hex = identityHex(row.identity);
@@ -114,11 +116,12 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const emoteClip = emote && !dead ? emoteCue(emote.emote) : null;
   transient.current = cue ?? (!carrying && emote && emoteClip ? { clip: emoteClip.clip, durationMs: emote.durationMs, at: emote.at, seq: 100000 + emote.seq, role: 'action' } : null);
   const healthShown = useHealthShown(row.hp, row.maxHp);
+  const stackedHexes = useMemo(() => (stacked ? stacked.split(',') : []), [stacked]);
   useEffect(() => { if (isSelf && setPlayerRef) setPlayerRef(groupRef); }, [isSelf, setPlayerRef]);
   useAvatarDecal(groupRef, isSelf ? 'self' : targeted ? 'target' : 'other');
   useAvatarLabels(groupRef, {
     id: hex,
-    name: `${isSelf ? 'You' : row.name}${targeted ? ' · Target' : ''}`,
+    name: `${isSelf ? 'You' : row.name}${stackedHexes.length ? ` +${stackedHexes.length}` : ''}${targeted ? ' · Target' : ''}`,
     tone: isSelf ? 'self' : targeted ? 'targeted' : '',
     priority: isSelf ? 3 : targeted ? 2 : 1,
     health: !dead && healthShown ? row.hp / row.maxHp : null,
@@ -136,7 +139,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
       void attack(row.identity);
       return;
     }
-    const selection = avatarSelection({ hex, name: row.name, x: row.x, z: row.z, isSelf }, e.intersections ?? []);
+    const selection = avatarSelection({ hex, name: row.name, x: row.x, z: row.z, isSelf }, e.intersections ?? [], stackedHexes);
     const groundRegion = row.region || 'bramblewild';
     setClickedOtherObject({
       ...selection,

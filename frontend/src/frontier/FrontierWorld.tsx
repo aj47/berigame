@@ -23,7 +23,7 @@ import { avatarGroup } from "../animation/avatarRegistry";
 import { useSettingsStore } from "../spacetime/stores/settingsStore";
 import { useFrontier } from "./useFrontier";
 import { avatarFrontierState } from './avatarFrontierState';
-import { useInventoryRows, useMyPlayer, usePlayers } from "../spacetime/hooks";
+import { useInventoryRows, useMyPlayer, usePlayers, useTick } from "../spacetime/hooks";
 import { useGameActions } from "../spacetime/actions";
 import {
   PIECES,
@@ -42,7 +42,8 @@ import type { BuildDraft } from "./FrontierPanel";
 import type { Command } from "../../../shared/sim/frontier/engine";
 import PlayerAvatar from "../Components/3D/PlayerAvatar";
 import CameraController from "../Components/3D/CameraController";
-import { useAppearanceByHex } from "../Components/3D/RenderOnlineUsers";
+import { useAppearanceByHex, useMyTargetHex } from "../Components/3D/RenderOnlineUsers";
+import { useStackedAvatars } from "../Components/3D/avatarStacks";
 import { AvatarOverlay } from "../Components/3D/AvatarOverlay";
 import AvatarDecals from "../Components/3D/AvatarDecals";
 import AnimationCulling from "../Components/3D/AnimationCulling";
@@ -218,6 +219,10 @@ export function FrontierScene({
     actions = useGameActions(),
     appearances = useAppearanceByHex();
   const avatarFrontier = avatarFrontierState(state);
+  const tick = useTick(), target = useMyTargetHex();
+  const selfHex = self.identity.toHexString();
+  const regionPlayers = useMemo(() => players.filter((p) => p.online && p.region === (embedded ? "settlement" : self.region || "bramblewild")), [players, embedded, self.region]);
+  const shown = useStackedAvatars(regionPlayers, selfHex, target, tick);
   const hasAxe = useInventoryRows().some(slot => slot.itemId === 'axe' && slot.quantity > 0);
   const showWorldLabels = useSettingsStore(s => s.showWorldLabels);
   const { scene, camera, gl } = useThree();
@@ -539,14 +544,15 @@ export function FrontierScene({
           </group>
         ))}
       {!embedded && <>
-      {players
-        .filter((p) => p.online && p.region === region)
+      {regionPlayers
+        .filter((p) => p.identity.toHexString() === selfHex || shown.has(p.identity.toHexString()))
         .map((p) => (
           <PlayerAvatar
             key={`${p.identity.toHexString()}:${region}`}
             row={p}
             isSelf={p.identity.toHexString() === me.identity.toHexString()}
             saved={appearances.get(p.identity.toHexString())}
+            stacked={shown.get(p.identity.toHexString())?.join(",")}
             setPlayerRef={
               p.identity.toHexString() === me.identity.toHexString()
                 ? setPlayerRef

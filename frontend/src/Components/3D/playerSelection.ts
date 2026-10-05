@@ -19,12 +19,19 @@ export function playersInHits(hits: readonly PlayerHit[]) {
   return [...players.values()];
 }
 
-/** Keep loot at the avatars' feet separate from the ray's Walk here destination. */
-export function avatarSelection(avatar: Tile & { hex: string; name: string; isSelf: boolean }, hits: readonly PlayerHit[]) {
+/**
+ * Keep loot at the avatars' feet separate from the ray's Walk here destination.
+ * `stacked` players stand on the avatar's tile without an avatar of their own (avatarStacks).
+ */
+export function avatarSelection(avatar: Tile & { hex: string; name: string; isSelf: boolean }, hits: readonly PlayerHit[], stacked: readonly string[] = []) {
   const candidates = playersInHits(hits);
   if (!avatar.isSelf && !candidates.some(player => player.hex === avatar.hex)) {
     candidates.unshift({ hex: avatar.hex, name: avatar.name, tile: { x: avatar.x, z: avatar.z } });
   }
+  const at = candidates.findIndex(player => player.hex === avatar.hex);
+  const hidden = stacked.filter(hex => !candidates.some(player => player.hex === hex))
+    .map(hex => ({ hex, name: '', tile: { x: avatar.x, z: avatar.z } }));
+  candidates.splice(at < 0 ? candidates.length : at + 1, 0, ...hidden);
   const tiles = new Map<string, Tile>();
   for (const tile of [avatar, ...candidates.flatMap(player => player.tile ? [player.tile] : [])]) {
     tiles.set(`${tile.x},${tile.z}`, { x: tile.x, z: tile.z });
