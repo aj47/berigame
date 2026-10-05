@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gatheringMotion, gatheringTool, resourceHover, resourcePresentation } from '../frontier/resourcePresentation';
+import { gatheringMotion, gatheringTool, resourceHover, resourcePresentation, resourceStatus } from '../frontier/resourcePresentation';
 
 describe('server-timed resource presentation', () => {
   it('fills progress during the committed gathering duration', () => {
@@ -27,9 +27,19 @@ describe('server-timed resource presentation', () => {
     expect(gatheringTool({item:'stone',harvest:{...harvest,tool:'pick'}})).toBe('mine');
     expect(gatheringTool({item:'fibre',harvest:{...harvest,tool:'hands'}})).toBeNull();
   });
-  it('explains timber yield and another-tree availability only on hover', () => {
-    expect(resourceHover({item:'timber'},1000)).toMatchObject({title:'Marked timber pine',action:'Chop · Starter hatchet · 1 timber'});
-    expect(resourceHover({item:'timber'},1000,true).action).toBe('Chop · Axe · 2 timber');
-    expect(resourceHover({item:'timber',regrowsAt:12000},1000,true).action).toContain('try another tree');
+  it('hovers like island trees: walk over for options, with timber yield and availability as detail', () => {
+    expect(resourceHover({item:'timber'},1000)).toMatchObject({title:'Marked timber pine',action:'Walk over for chop options',detail:'Starter hatchet · 1 timber',click:'panel',tone:'ready'});
+    expect(resourceHover({item:'timber'},1000,true).detail).toBe('Axe · 2 timber');
+    expect(resourceHover({item:'timber',regrowsAt:12000},1000,true)).toMatchObject({detail:expect.stringContaining('try another tree'),tone:'muted'});
+    expect(resourceHover({item:'berry_blueberry'},1000).action).toBe('Walk over for harvest options');
+  });
+  it('labels the dropdown action with the verb, who is gathering, or the regrowth countdown', () => {
+    const harvest = {by:'me',startedAt:1000,completesAt:4000,origin:{x:0,z:0},hp:30};
+    expect(resourceStatus({item:'timber'},1000,'me')).toMatchObject({label:'Chop timber pine',unavailable:false});
+    expect(resourceStatus({item:'iron_ore'},1000,'me').label).toBe('Mine Iron ore');
+    expect(resourceStatus({item:'fibre'},1000,'me').label).toBe('Gather Fibre');
+    expect(resourceStatus({item:'timber',harvest},1000,'me')).toMatchObject({label:'You are chopping',unavailable:true});
+    expect(resourceStatus({item:'timber',harvest},1000,'other','Robin').label).toBe('Robin is chopping');
+    expect(resourceStatus({item:'timber',regrowsAt:12000},1500,'me')).toMatchObject({label:'Regrowing (11s)',unavailable:true});
   });
 });

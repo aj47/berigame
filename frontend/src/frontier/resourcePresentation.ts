@@ -23,12 +23,33 @@ export function gatheringTool(resource: Partial<Resource> | undefined): 'hatchet
     : motion === 'mine' ? 'mine' : null;
 }
 
+export function resourceTitle(item: string) {
+  return item === 'timber' ? 'Marked timber pine' : item.replace('berry_', '').replaceAll('_', ' ').replace(/^./, c => c.toUpperCase());
+}
+
+/** Shared by the hover hint and the live action dropdown, like the island's harvestStatus. */
+export function resourceStatus(resource: Pick<Resource, 'item'> & Partial<Resource>, now: number, myId: string | null, harvesterName?: string) {
+  const motion = gatheringMotion(resource.item);
+  const berry = resource.item.startsWith('berry_');
+  const verb = motion === 'chop' ? 'Chop' : motion === 'mine' ? 'Mine' : berry ? 'Harvest' : 'Gather';
+  const regrowMs = resource.regrowsAt ? Math.max(0, resource.regrowsAt - now) : 0;
+  let label = `${verb} ${motion === 'chop' ? 'timber pine' : resourceTitle(resource.item)}`;
+  if (resource.harvest) {
+    const activity = motion === 'chop' ? 'chopping' : motion === 'mine' ? 'mining' : berry ? 'harvesting' : 'gathering';
+    label = resource.harvest.by === myId ? `You are ${activity}` : `${harvesterName ?? 'Someone'} is ${activity}`;
+  } else if (regrowMs > 0) label = `Regrowing (${Math.ceil(regrowMs / 1000)}s)`;
+  return { label, verb, busy: !!resource.harvest, regrowing: regrowMs > 0, unavailable: !!resource.harvest || regrowMs > 0 };
+}
+
 export function resourceHover(resource: Pick<Resource, 'item'> & Partial<Resource>, now: number, hasAxe = false) {
   const timber = resource.item === 'timber';
-  const title = timber ? 'Marked timber pine' : resource.item.replace('berry_', '').replaceAll('_', ' ').replace(/^./, c => c.toUpperCase());
-  const action = resource.harvest ? (timber ? 'Being chopped' : 'Being gathered')
-    : resource.regrowsAt && resource.regrowsAt > now ? 'Regrowing · try another tree'
-    : timber ? hasAxe ? 'Chop · Axe · 2 timber' : 'Chop · Starter hatchet · 1 timber'
-    : 'Walk over & gather';
-  return { title, action, click: 'action' as const };
+  const { verb, busy, regrowing, unavailable } = resourceStatus(resource, now, null);
+  const detail = busy ? (timber ? 'Being chopped' : 'Being gathered')
+    : regrowing ? 'Regrowing · try another tree'
+    : timber ? hasAxe ? 'Axe · 2 timber' : 'Starter hatchet · 1 timber'
+    : undefined;
+  return {
+    title: resourceTitle(resource.item), action: `Walk over for ${verb.toLowerCase()} options`, detail,
+    tone: unavailable ? 'muted' as const : 'ready' as const, click: 'panel' as const,
+  };
 }
