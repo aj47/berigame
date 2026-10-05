@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { BackSide, ShaderMaterial, SphereGeometry } from 'three';
+import { BackSide, Mesh, ShaderMaterial, SphereGeometry } from 'three';
 import IslandDetails from './IslandDetails';
 import AmbientLife from './AmbientLife';
 import BrambleHedge from './BrambleHedge';
@@ -28,6 +28,13 @@ const skyMat = new ShaderMaterial({
     }`,
 });
 
+/** The dome travels with the camera, so the far Meadows never leave the sky. */
+const Sky = () => {
+  const ref = useRef<Mesh>(null);
+  useFrame(({ camera }) => { ref.current?.position.set(camera.position.x, 0, camera.position.z); });
+  return <mesh ref={ref} geometry={skyGeo} material={skyMat} renderOrder={-1} raycast={() => null} frustumCulled={false} />;
+};
+
 /** Advances the one shared wind/wave clock; no allocations per frame. */
 const Clock = () => { useFrame((_, dt) => { envTime.value += Math.min(dt, 0.1); }); return null; };
 
@@ -36,7 +43,7 @@ const AlphaIsland = () => (
   <>
     <color attach="background" args={[HORIZON]} />
     <fog attach="fog" args={[HORIZON, 55, 150]} />
-    <mesh position={[64,0,0]} geometry={skyGeo} material={skyMat} renderOrder={-1} raycast={() => null} frustumCulled={false} />
+    <Sky />
     {/* Warm late-morning sun as the key, cool sky bounce as the fill. */}
     <directionalLight position={[-12, 24, 10]} intensity={1.0} color="#ffe2b8" />
     <hemisphereLight args={['#cfe8ff', '#8c7a52', 0.55]} />

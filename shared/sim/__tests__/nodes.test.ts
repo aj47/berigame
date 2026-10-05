@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { areaOf, coastPastCrossing, enterRule, HEDGE_CROSSINGS, ringOf } from '../areas';
 import { GRID_SIZE, HEDGE_RING, HOTBAR_SIZE, MAX_STACK, SPAWN_TILE } from '../constants';
-import { blockedSetFromTiles, chebyshev } from '../grid';
+import { blockedSetFromTiles, chebyshev, isLandTile } from '../grid';
 import { emptySlots } from '../inventory';
 import { getItemDef, swingDamage, TREE_SEEDS } from '../items';
 import {
   craft, getRecipe, harvestTicksFor, missingNodeSeeds, NODE_SEEDS, COAST_NODE_SEEDS, NodeKind, recipeMissing, recipeStatus, regrowTicksFor,
 } from '../nodes';
 import { reachableTiles } from '../pathfinding';
+import { RESOURCE_PATCHES } from '../frontier/catalog';
+import { terrainLand } from '../terrain';
 import type { Slot, Tile } from '../types';
 
 const club = getRecipe('stone_club')!;
@@ -20,8 +22,9 @@ const tileOf = (k: number): Tile => ({ x: k % GRID_SIZE, z: Math.floor(k / GRID_
 
 describe('Coast nodes', () => {
   it('4 driftwood piles past the path crossings and 4 cove tide rocks, all on the Coast', () => {
-    const wood = COAST_NODE_SEEDS.filter((n) => n.kind === NodeKind.Driftwood);
-    const rocks = COAST_NODE_SEEDS.filter((n) => n.kind === NodeKind.TideRock);
+    const original = COAST_NODE_SEEDS.filter((n) => n.id <= 108);
+    const wood = original.filter((n) => n.kind === NodeKind.Driftwood);
+    const rocks = original.filter((n) => n.kind === NodeKind.TideRock);
     expect(wood.map(({ x, z }) => ({ x, z }))).toEqual([{ x: 25, z: 3 }, { x: 46, z: 25 }, { x: 25, z: 46 }, { x: 3, z: 25 }]);
     expect(rocks.map(({ x, z }) => ({ x, z }))).toEqual([{ x: 12, z: 6 }, { x: 39, z: 9 }, { x: 9, z: 40 }, { x: 46, z: 46 }]);
     for (const n of COAST_NODE_SEEDS) expect(areaOf(n)).toBe('coast');
@@ -35,6 +38,29 @@ describe('Coast nodes', () => {
     for (const a of COAST_NODE_SEEDS) for (const b of COAST_NODE_SEEDS) if (a !== b) expect(chebyshev(a, b)).toBeGreaterThanOrEqual(12);
     expect(new Set(NODE_SEEDS.map((n) => n.id)).size).toBe(NODE_SEEDS.length);
     expect(Math.min(...NODE_SEEDS.map((n) => n.id))).toBe(101);
+  });
+
+  it('the expanded island is about four times the original, with resources across every shore', () => {
+    let land = 0;
+    for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) if (terrainLand({ x, z })) land++;
+    expect(land).toBeGreaterThan(8500);
+    const outer = NODE_SEEDS.filter((n) => n.id > 110);
+    expect(outer.filter((n) => n.kind === NodeKind.Driftwood).length).toBeGreaterThanOrEqual(12);
+    expect(outer.filter((n) => n.kind === NodeKind.TideRock).length).toBeGreaterThanOrEqual(12);
+    expect(outer.filter((n) => n.kind === NodeKind.Berry).length).toBeGreaterThanOrEqual(40);
+    for (const n of outer) {
+      expect(isLandTile(n), `node ${n.id}`).toBe(true);
+      // Outer berries are Coast thickets; First Day keeps to the Grove's six trees.
+      expect(areaOf(n), `node ${n.id}`).toBe('coast');
+    }
+    expect(outer.some((n) => n.kind === NodeKind.Berry && n.x < 50 && n.z < 50)).toBe(true);
+  });
+
+  it('spreads wild Meadows patches across the district', () => {
+    const wild = RESOURCE_PATCHES.filter((p) => p.id.startsWith('settlement-wild-'));
+    expect(wild.length).toBeGreaterThanOrEqual(60);
+    expect(new Set(RESOURCE_PATCHES.map((p) => p.id)).size).toBe(RESOURCE_PATCHES.length);
+    for (const item of ['timber', 'stone', 'fibre', 'clay', 'berry_greenberry', 'berry_strawberry']) expect(wild.some((p) => p.item === item)).toBe(true);
   });
 
   it('per-kind harvest and regrow: berry 5/50, driftwood 4/25, tide rock 6/40', () => {

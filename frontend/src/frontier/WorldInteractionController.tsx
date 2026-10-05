@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { tileKey } from '@sim';
 import { useGameActions } from '../spacetime/actions';
 import { useMyPlayer, useWorldBlocked } from '../spacetime/hooks';
 import { useFrontier } from './useFrontier';
@@ -40,7 +41,7 @@ export default function WorldInteractionController({ disabled = false }: { disab
       }
       const district = home ? 'settlement' : region;
       const buildings = buildingBlocker(meadowBlockedTiles(frontier, me, me.identity.toHexString(), district));
-      const solid = Object.assign((p: Location) => p.region === 'bramblewild' ? blocked.has(p.z * 64 + p.x)
+      const solid = Object.assign((p: Location) => p.region === 'bramblewild' ? blocked.has(tileKey(p))
         : buildings(p) || frontier.resources.some(n => n.region === p.region && n.x === p.x && n.z === p.z), {
         crosses: (a: Location, b: Location) => a.region === district && b.region === district && buildings.crosses(a, b),
       });

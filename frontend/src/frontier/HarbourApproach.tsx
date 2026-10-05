@@ -4,6 +4,10 @@ import { merged, part } from '../Components/3D/envArt';
 import { islandGrassGeometry, islandGrassMaterial, islandFlowerGeometry, islandFlowerMaterial } from '../Components/3D/IslandDetails';
 import { linear } from '../Components/3D/nodes/lowPoly';
 import { AdventureAssetView } from '../Components/3D/AdventureModels';
+import { MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
+
+/** The approach was laid out for a seam at x = 64; it follows the Meadows east. */
+const SEAM_SHIFT = MEADOW_OFFSET.x - 64;
 
 const noRaycast = () => null;
 const timber = new MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true });
@@ -86,7 +90,7 @@ export default function HarbourApproach() {
     return texture;
   }, []);
   useEffect(() => () => sign.dispose(), [sign]);
-  return <group>
+  return <group position={[SEAM_SHIFT, 0, 0]}>
     <mesh geometry={approach.geometry} material={timber} raycast={noRaycast} receiveShadow />
     <mesh geometry={approach.greenery} material={islandGrassMaterial} raycast={noRaycast} dispose={null} />
     <mesh geometry={approach.blossoms} material={islandFlowerMaterial} raycast={noRaycast} dispose={null} />

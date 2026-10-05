@@ -292,6 +292,19 @@
   letter-spacing: 0.12em;
   color: #7c8b65;
 }
+.frontier-build-confirm .frontier-rotate {
+  background: #2f6a50;
+  border-color: #2f6a50;
+  color: #fffbea;
+  font-weight: 600;
+}
+.frontier-build-confirm .frontier-rotate kbd {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid #fffbea80;
+  border-radius: 4px;
+  font: 600 11px system-ui;
+}
 .frontier-build-confirm {
   position: absolute;
   z-index: 75;

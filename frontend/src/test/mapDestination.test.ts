@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LANDMARKS } from '@sim';
-import { homePoint } from '../../../shared/sim/frontier/homeMap';
+import { HOME_JOIN, homePoint } from '../../../shared/sim/frontier/homeMap';
 import {
   homeMapLandmarkPositions, homeMapProjection, legacyMapProjection, mapDestinationAt, type HomeMapView,
 } from '../frontier/homeMapArt';
@@ -12,7 +12,7 @@ describe('map destinations from CSS pixels', () => {
       { view: 'bramblewild', region: 'settlement', x: 0, z: 64 },
       { view: 'settlement', region: 'settlement', x: 31, z: 64 },
       { view: 'settlement', region: 'settlement', x: 110, z: 100 },
-      { view: 'settlement', region: 'bramblewild', x: 63, z: 25 },
+      { view: 'settlement', region: 'bramblewild', ...HOME_JOIN.bramblewild },
       { view: 'overview', region: 'bramblewild', x: 35, z: 25 },
       { view: 'overview', region: 'settlement', x: 110, z: 100 },
     ] as const;
@@ -24,8 +24,9 @@ describe('map destinations from CSS pixels', () => {
 
   it('rounds to the painted tile on either side of the district crossing', () => {
     const size = 480, p = homeMapProjection(size, 'overview');
-    expect(mapDestinationAt(p.x(63.49), p.z(25), size)).toEqual({ region: 'bramblewild', x: 63, z: 25 });
-    expect(mapDestinationAt(p.x(63.51), p.z(25), size)).toEqual({ region: 'settlement', x: 0, z: 64 });
+    const seam = HOME_JOIN.bramblewild.x;
+    expect(mapDestinationAt(p.x(seam + .49), p.z(25), size)).toEqual({ region: 'bramblewild', x: seam, z: 25 });
+    expect(mapDestinationAt(p.x(seam + .51), p.z(25), size)).toEqual({ region: 'settlement', x: 0, z: 64 });
   });
 
   it.each(['overview', 'bramblewild', 'settlement'] as HomeMapView[])('rejects water and blank margins in %s', view => {

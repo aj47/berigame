@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { homeMapLandmarkPositions, homeMapProjection } from '../frontier/homeMapArt';
 import { drawMinimap, mapAccessLabel, minimapModel } from '../Components/minimapModel';
 import { homePoint } from '../../../shared/sim/frontier/homeMap';
+import { GRID_SIZE } from '@sim';
 
 const empty = { meHex: null, players: [], trees: [], groundItems: [], tick: 0 };
 describe('district maps', () => {
-  it('keeps district positions aligned while enlarging the original island', () => {
+  it('keeps district positions aligned while enlarging the whole of Bramblewild', () => {
     const island = homeMapProjection(480, 'bramblewild'), overview = homeMapProjection(480);
-    const a = island.x(64) - island.x(0), b = overview.x(64) - overview.x(0);
+    const a = island.x(GRID_SIZE) - island.x(0), b = overview.x(GRID_SIZE) - overview.x(0);
+    expect(island.x(0)).toBeGreaterThanOrEqual(0);
+    expect(island.x(GRID_SIZE)).toBeLessThanOrEqual(480);
     expect(a).toBeGreaterThan(420);
-    expect(a / b).toBeGreaterThan(2.5);
+    expect(a / b).toBeGreaterThan(1.8);
     const meadows = homeMapProjection(480, 'settlement');
     for (const point of [homePoint({ x: 0, z: 0 }, 'settlement'), homePoint({ x: 127, z: 127 }, 'settlement')]) {
       expect(meadows.x(point.x)).toBeGreaterThanOrEqual(0);

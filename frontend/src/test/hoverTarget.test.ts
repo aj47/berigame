@@ -4,7 +4,7 @@ import { GARDEN_PLOT_TILES, SPAWN_TILE, TILE_ORIGIN, tileKey, tileToWorld, garde
 import { connectedGroundHover, groundHover, hoverRoots, hoverTargetOf, hoverTile, isWorldSurface, meadowBlockedTiles } from '../Components/3D/hoverTarget';
 import { clickableNear, isDirectAttackClick, MOUSE_TAP_RADIUS, openMenuNear } from '../Components/3D/tapAssist';
 import { useUserInputStore } from '../store';
-import { homePoint } from '../../../shared/sim/frontier/homeMap';
+import { homePoint, MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
 import { frontierSnapshot } from '../../../shared/sim/frontier/snapshot';
 
 const rect = { left: 0, top: 0, width: 200, height: 200 };
@@ -186,7 +186,7 @@ describe('connected home walking previews', () => {
   });
 
   it('keeps actual water on either side of the crossing non-walkable', () => {
-    for (const tile of [{ x: 63, z: 15 }, homePoint({ x: 0, z: 50 }, 'settlement'), { x: 194, z: 25 }]) {
+    for (const tile of [{ x: 63, z: 15 }, homePoint({ x: 0, z: 50 }, 'settlement'), { x: MEADOW_OFFSET.x + 130, z: 25 }]) {
       expect(connectedGroundHover(tile, outside, noBlocks, noBuildings, true, true)).toMatchObject({ title: 'Water', tone: 'muted', tile });
     }
   });

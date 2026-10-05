@@ -1,5 +1,5 @@
 import { BufferGeometry, Color, DataTexture, Float32BufferAttribute, LinearFilter, MeshStandardMaterial, RGBAFormat } from 'three';
-import { GRID_SIZE, TILE_ORIGIN, terrainField, trailDistance } from '@sim';
+import { GRID_SIZE, TILE_ORIGIN, inGiantHeadland, terrainField, trailDistance } from '@sim';
 import { linear } from './nodes/lowPoly';
 
 const grass = linear(0x7ca655), deepGrass = linear(0x578644), sand = linear(0xecd099), ash = linear(0x8b897c), trail = linear(0xceba91);
@@ -13,7 +13,7 @@ export function createTerrainGeometry(field: (x:number,z:number)=>number, roadAt
     const wx=v.x+offset.x,wz=v.z+offset.z;
     const patch = .5+.2*Math.sin(wx*.28+Math.sin(wz*.17))+.18*Math.sin(wz*.37-wx*.14)+.07*Math.sin(wx*2.7+wz*3.1);
     const c = new Color().copy(deepGrass).lerp(grass,patch);
-    if(rocks && v.z >= 32 && Math.max(v.x,v.z)>49) c.copy(ash).multiplyScalar(.85+patch*.25);
+    if(rocks && inGiantHeadland(v) && Math.max(v.x,v.z)>49) c.copy(ash).multiplyScalar(.85+patch*.25);
     else c.lerp(sand, Math.max(0,1-v.d/1.7));
     const road = roadAt(v.x,v.z);
     const wornEdge = .1*Math.sin(wx*2.3+wz*.9)+.07*Math.sin(wz*2.7-wx*.6);
@@ -41,7 +41,7 @@ export function createTerrainGeometry(field: (x:number,z:number)=>number, roadAt
 export const terrainGeometry = createTerrainGeometry(terrainField, trailDistance);
 /** Signed coastal distance in a tiny texture, shared by the river and ocean shader. */
 export const coastTexture = (()=>{
-  const n=128, data=new Uint8Array(n*n*4);
+  const n=GRID_SIZE*2, data=new Uint8Array(n*n*4);
   for(let z=0;z<n;z++)for(let x=0;x<n;x++){
     const d=terrainField((x+.5)/2-.5,(z+.5)/2-.5),i=(z*n+x)*4;
     data[i]=Math.round(Math.max(0,Math.min(1,(8-d)/32))*255);data[i+1]=data[i];data[i+2]=data[i];data[i+3]=255;

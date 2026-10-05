@@ -263,6 +263,19 @@ describe("construction, quests and progression", () => {
     // The south wall leaves the floor reachable from its other sides.
     expect(() => h.act({ action: 'move', x: 12, z: 9 })).not.toThrow();
   });
+  it("rotates placed furniture in place and lays a rug beneath it", () => {
+    const h = harness(); h.buy(); h.supplies();
+    h.act({ action: 'build', id: PLOTS[0].id, item: 'floor', x: 13, z: 10 });
+    h.act({ action: 'build', id: PLOTS[0].id, item: 'rug', x: 13, z: 10 });
+    h.act({ action: 'build', id: PLOTS[0].id, item: 'chair', x: 13, z: 10, rotation: 1 });
+    expect(() => h.act({ action: 'build', id: PLOTS[0].id, item: 'stool', x: 13, z: 10 })).toThrow('occupied');
+    const chair = h.repo.all('building').find(b => b.piece === 'chair')!;
+    for (const rotation of [2, 3, 0]) {
+      h.act({ action: 'move_building', id: chair.id, x: 13, z: 10, rotation });
+      expect(h.repo.get('building', chair.id)).toMatchObject({ x: 13, z: 10, rotation, edge: false });
+    }
+    expect(h.repo.all('building')).toHaveLength(3);
+  });
   it("preserves centered saved walls and moves them explicitly onto a selected side", () => {
     const h = harness(); h.buy(); h.supplies();
     const legacy = { id: 'old-wall', claim: PLOTS[0].id, region: 'settlement' as const, x: 12, z: 9, piece: 'wall', rotation: 0, label: '' };
@@ -638,7 +651,8 @@ it('keeps gathering routes reachable and outside every fully expanded plot', () 
     expect(inPlot(node)).toBe(false);
     const route = regionalPath('settlement', REGIONS.settlement.spawn, node, inPlot);
     expect(route).not.toBeNull();
-    expect(route!.length).toBeLessThanOrEqual(node.id.startsWith('settlement-timber-') ? 32 : 16);
+    // The starter grove sits by the steward; wild patches only need a route.
+    if (!node.id.startsWith('settlement-wild-')) expect(route!.length).toBeLessThanOrEqual(node.id.startsWith('settlement-timber-') ? 32 : 16);
   }
 });
 
@@ -652,7 +666,7 @@ it('adds six catalog-backed timber trees to saved worlds without resetting claim
     {kind:'claim',data:JSON.stringify(savedClaim)},
     {kind:'resource',data:JSON.stringify(stump)},
   ],[],h.a.id,h.w.now);
-  const trees = state.resources.filter(n=>n.region==='settlement' && n.item==='timber');
+  const trees = state.resources.filter(n=>n.region==='settlement' && n.item==='timber' && !n.id.startsWith('settlement-wild-'));
   expect(trees).toHaveLength(6);
   expect(trees.find(n=>n.id===tree.id)).toEqual(stump);
   expect(trees.filter(n=>n.id!==tree.id).every(n=>!n.harvest && !n.regrowsAt)).toBe(true);
@@ -707,9 +721,10 @@ describe("connected home island", () => {
   });
   it("walks back across the same seam and ordinary movement or stop replaces the route", () => {
     const h=harness();Object.assign(h.a,{region:'settlement',x:0,z:64});
-    h.act({action:'walk',id:'bramblewild',x:62,z:25});advance(h.w);
-    expect(h.a.region).toBe('bramblewild');expect(h.a.x).toBe(62);expect(h.a.target).toBeUndefined();
-    h.act({action:'enter'});h.act({action:'stop'});advance(h.w);expect(h.a.x).toBe(62);
+    const west=HOME_JOIN.bramblewild.x-1;
+    h.act({action:'walk',id:'bramblewild',x:west,z:25});advance(h.w);
+    expect(h.a.region).toBe('bramblewild');expect(h.a.x).toBe(west);expect(h.a.target).toBeUndefined();
+    h.act({action:'enter'});h.act({action:'stop'});advance(h.w);expect(h.a.x).toBe(west);
     Object.assign(h.a,{region:'settlement',...REGIONS.settlement.spawn});
     h.act({action:'return'});expect(homeDestination(h.a.target!)).toEqual({x:22,z:18});
     h.act({action:'move',x:31,z:65});advance(h.w);expect(h.a.region).toBe('settlement');expect(h.a.z).toBe(65);
@@ -721,14 +736,15 @@ describe("connected home island", () => {
     expect(()=>h.act({action:'return'})).toThrow('Finish your adventure or combat');
   });
   it("rechecks barriers and blocks invalid cross-district destinations", () => {
-    const h=harness();Object.assign(h.a,{region:'bramblewild',x:63,z:25});
+    const h=harness();Object.assign(h.a,{region:'bramblewild',...HOME_JOIN.bramblewild});
     h.w.homeStepRule=()=> (_from,to)=>to.region!=='settlement';
     expect(()=>h.act({action:'enter'})).toThrow('No walkable route');
     h.w.homeStepRule=()=>()=>true;h.act({action:'enter'});
     h.w.homeStepRule=()=> (_from,to)=>to.region!=='settlement';advance(h.w);
     expect(h.a.region).toBe('bramblewild');expect(h.a.target).toBeUndefined();
     expect(()=>h.act({action:'walk',id:'sea',x:5,z:64})).toThrow();
-    expect(()=>h.act({action:'walk',id:'bramblewild',x:90,z:25})).toThrow();
+    // Open water between the Giant's headland and Eastreach.
+    expect(()=>h.act({action:'walk',id:'bramblewild',x:70,z:50})).toThrow();
   });
 
   it('names obstacles instead of a hedge when Meadows walls enclose the destination', () => {

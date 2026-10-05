@@ -213,7 +213,32 @@ describe('shelter building choices', () => {
     const p = { ...props('Build', plot.id), draft: { plot: plot.id, piece: 'wall', rotation: 0, point, valid: true } };
     render(<FrontierPanel {...p} />);
     expect(screen.getByText(/south side/)).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Rotate ↻' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Rotate ↻/ }));
     expect(p.onDraft).toHaveBeenCalledWith(expect.objectContaining({ rotation: 1, valid: false, reason: 'That building layer is occupied.' }));
+  });
+
+  it('turns furniture with R and Shift+R while placing, but not while typing', () => {
+    own();
+    const plot = mock.state.plots[12];
+    const p = { ...props('Build', plot.id), draft: { plot: plot.id, piece: 'chair', rotation: 0, point: { x: plot.x + 2, z: plot.z + 2 }, valid: true } };
+    render(<><FrontierPanel {...p} /><input aria-label="chat" /></>);
+    expect(screen.getByText(/facing south/)).toBeVisible();
+    fireEvent.keyDown(window, { key: 'r' });
+    expect(p.onDraft).toHaveBeenLastCalledWith(expect.objectContaining({ piece: 'chair', rotation: 1, valid: true }));
+    fireEvent.keyDown(window, { key: 'R', shiftKey: true });
+    expect(p.onDraft).toHaveBeenLastCalledWith(expect.objectContaining({ rotation: 3 }));
+    p.onDraft.mockClear();
+    fireEvent.keyDown(screen.getByLabelText('chat'), { key: 'r' });
+    expect(p.onDraft).not.toHaveBeenCalled();
+  });
+
+  it('rotates a placed chair in place from the placed pieces list', async () => {
+    own();
+    const plot = mock.state.plots[12];
+    mock.state.buildings = [{ id: 'chair-1', claim: plot.id, piece: 'chair', region: plot.region, x: plot.x + 2, z: plot.z + 2, rotation: 3, label: '' }];
+    render(<FrontierPanel {...props('Build', plot.id)} />);
+    expect(screen.getByText(/Chair · .* · facing west/)).toBeVisible();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Rotate ↻ · face south' })));
+    expect(mock.frontier).toHaveBeenCalledWith({ action: 'move_building', id: 'chair-1', x: plot.x + 2, z: plot.z + 2, rotation: 0 });
   });
 });

@@ -242,7 +242,7 @@ export async function createGameService(credential: Credential, options: Connect
               safeRing: { center: { ...SPAWN_TILE }, radius: SAFE_RADIUS, rule: 'No attack starts or lands while either player is within this Chebyshev radius.' },
               stickChance: STICK_DROP_CHANCE, stickUnlockLevel: 2, firstStickGuaranteed: true,
               boulders: { line: BOULDER_LINE, min: BOULDERS_MIN, entry: { ...BOULDERS_ENTRY }, key: BOULDER_KEY_ITEM,
-                rule: `The Boulders are walkable land with z >= 32 and max(x, z) > ${BOULDER_LINE}. The boulder line is walkable land with z >= 32 and max(x, z) = ${BOULDER_LINE}; enter it only while holding a stone club (bag or wielded), or from the Boulders. Stepping off is always allowed, so you can always walk home. Check world.map.rows for the coastline, river and crossings.` },
+                rule: `The Boulders are walkable land on the Giant's headland (30 <= x < 66, 32 <= z < 66) with max(x, z) > ${BOULDER_LINE}. The boulder line is walkable land on that headland with max(x, z) = ${BOULDER_LINE}; enter it only while holding a stone club (bag or wielded), or from the Boulders. Stepping off is always allowed, so you can always walk home. Check world.map.rows for the coastline, river and crossings.` },
             },
             giant: home && g ? {
               id: g.id, tile: { x: g.x, z: g.z }, footprint: 1, reach: GIANT_REACH, aggroRange: GIANT_AGGRO_RANGE,

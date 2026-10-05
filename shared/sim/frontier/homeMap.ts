@@ -1,9 +1,13 @@
+import { GRID_SIZE } from '../constants';
 import type { Location, Point, RegionId } from './catalog';
 import { gridPath, regionLand, type PathBlocker } from './regions';
 
-/** Meadows are the eastern part of Bramblewild. Saved parcel coordinates stay local. */
-export const MEADOW_OFFSET = { x: 64, z: -39 } as const;
-export const HOME_JOIN = { bramblewild: { x: 63, z: 25 }, settlement: { x: 0, z: 64 } } as const;
+/** Meadows lie east of Eastreach, along the harbour road. Saved parcel coordinates stay local. */
+export const MEADOW_OFFSET = { x: GRID_SIZE, z: -39 } as const;
+export const HOME_JOIN = { bramblewild: { x: GRID_SIZE - 1, z: 25 }, settlement: { x: 0, z: 64 } } as const;
+const MEADOW_SIZE = 128;
+/** The joined districts in Bramblewild's frame, with northing shifted so the Meadows' top row is zero. */
+export const HOME_GRID = { width: MEADOW_OFFSET.x + MEADOW_SIZE, height: Math.max(MEADOW_SIZE, GRID_SIZE - MEADOW_OFFSET.z) } as const;
 export const isHomeRegion = (region: string) => region === 'bramblewild' || region === 'settlement';
 export function homePoint(p: Point, region: string): Point {
   return region === 'settlement' ? { x: p.x + MEADOW_OFFSET.x, z: p.z + MEADOW_OFFSET.z } : { x: p.x, z: p.z };
@@ -32,7 +36,7 @@ export function homePath(from: Point, to: Point, blocked: PathBlocker<Location> 
   const obstacles = Object.assign((p: Point) => blocked(local(p)), {
     crosses: (a: Point, b: Point) => blocked.crosses?.(local(a), local(b)) ?? false,
   });
-  return gridPath(192, 128, shift(from), shift(to),
+  return gridPath(HOME_GRID.width, HOME_GRID.height, shift(from), shift(to),
     p => homeLand(unshift(p)), obstacles,
     (a, b) => canStep(local(a), local(b)))?.map(unshift) ?? null;
 }

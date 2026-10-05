@@ -14,7 +14,7 @@ import { holdState, isDirectAttackClick, MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, ope
 import { PlayerState } from "@sim";
 import { useUserInputStore } from "../store";
 import { previewIssue } from "./preview";
-import { buildingSideAt } from "../../../shared/sim/frontier/building";
+import { BUILDING_SIDES, buildingSideAt } from "../../../shared/sim/frontier/building";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
@@ -46,6 +46,8 @@ import AvatarDecals from "../Components/3D/AvatarDecals";
 import AnimationCulling from "../Components/3D/AnimationCulling";
 import { AdventureAssetView } from "../Components/3D/AdventureModels";
 import { WebGLContextWatch } from "../Components/3D/webgl";
+import { FacingArrow, FADING_PIECES, isCentred, PieceMesh, RoofMesh } from "./pieceArt";
+import { can } from "../../../shared/sim/frontier/model";
 const Box = ({
   at = [0, 0, 0],
   size = [1, 1, 1],
@@ -67,125 +69,12 @@ const Box = ({
     />
   </mesh>
 );
-export function PieceModel({ edge = false, ...props }: { piece: string; ghost?: boolean; cutaway?: boolean; edge?: boolean }) {
-  return <group position={[0, 0, edge && PIECES[props.piece]?.edge ? .5 : 0]}><PieceShape {...props} /></group>;
+export function PieceModel({ piece, ghost = false, cutaway = false, edge = false }: { piece: string; ghost?: boolean; cutaway?: boolean; edge?: boolean }) {
+  const look = ghost ? "ghost" : cutaway && (piece === "roof" || FADING_PIECES.has(piece)) ? "fade" : "normal";
+  return <group position={[0, 0, edge && PIECES[piece]?.edge ? .5 : 0]}><PieceMesh piece={piece} look={look} /></group>;
 }
-function PieceShape({
-  piece,
-  ghost = false,
-  cutaway = false,
-}: {
-  piece: string;
-  ghost?: boolean;
-  cutaway?: boolean;
-}) {
-  const opacity = ghost ? 0.5 : 1;
-  const box = (
-    at: [number, number, number],
-    size: [number, number, number],
-    color: string,
-  ) => <Box at={at} size={size} color={color} opacity={opacity} />;
-  if (piece === "floor")
-    return box([0, 0.07, 0], [0.98, 0.14, 0.98], "#b38e64");
-  if (piece === "roof")
-    return (
-      <mesh position={[0, 2.1, 0]} rotation={[0, Math.PI / 4, 0]}>
-        <coneGeometry args={[0.85, 0.8, 4]} />
-        <meshStandardMaterial
-          color="#b2b77c"
-          transparent
-          opacity={ghost ? 0.5 : cutaway ? 0.12 : 1}
-        />
-      </mesh>
-    );
-  if (["wall", "brick_wall", "window", "door"].includes(piece))
-    return (
-      <>
-        {piece === "window" ? (
-          <>
-            {box([0, 0.45, 0], [1, 0.9, 0.2], "#c3a37a")}
-            {box([0, 1.65, 0], [1, 0.3, 0.2], "#c3a37a")}
-            {box([-0.4, 1.15, 0], [0.2, 0.5, 0.2], "#c3a37a")}
-            {box([0.4, 1.15, 0], [0.2, 0.5, 0.2], "#c3a37a")}
-          </>
-        ) : piece === "door" ? (
-          <>
-            {box([-0.42, 0.9, 0], [0.16, 1.8, 0.2], "#71583e")}
-            {box([0.42, 0.9, 0], [0.16, 1.8, 0.2], "#71583e")}
-            {box([0, 1.7, 0], [1, 0.2, 0.2], "#71583e")}
-          </>
-        ) : (
-          box(
-            [0, 0.9, 0],
-            [1, 1.8, 0.2],
-            piece === "brick_wall" ? "#bc806c" : "#c3a37a",
-          )
-        )}
-      </>
-    );
-  if (piece === "fence" || piece === "gate")
-    return (
-      <>
-        {box([-0.4, 0.45, 0], [0.12, 0.9, 0.12], "#97734d")}
-        {box([0.4, 0.45, 0], [0.12, 0.9, 0.12], "#97734d")}
-        {piece === "fence" && box([0, 0.5, 0], [0.9, 0.15, 0.1], "#ba986b")}
-      </>
-    );
-  if (piece === "planter")
-    return (
-      <>
-        {box([0, 0.15, 0], [0.85, 0.3, 0.85], "#b88b68")}
-        {box([0, 0.32, 0], [0.65, 0.04, 0.65], "#584732")}
-      </>
-    );
-  if (piece === "lamp")
-    return (
-      <>
-        {box([0, 0.5, 0], [0.1, 1, 0.1], "#765e45")}
-        <mesh position={[0, 1.05, 0]}>
-          <sphereGeometry args={[0.2, 8, 6]} />
-          <meshStandardMaterial
-            color="#ffe9a0"
-            emissive="#efb55c"
-            emissiveIntensity={0.5}
-          />
-        </mesh>
-      </>
-    );
-  if (piece === "sign")
-    return (
-      <>
-        {box([0, 0.4, 0], [0.1, 0.8, 0.1], "#98724f")}
-        {box([0, 0.85, 0], [0.8, 0.4, 0.12], "#d7ba85")}
-      </>
-    );
-  if (piece === "kiln")
-    return (
-      <mesh position={[0, 0.5, 0]}>
-        <cylinderGeometry args={[0.3, 0.48, 1, 8]} />
-        <meshStandardMaterial color="#b89479" />
-      </mesh>
-    );
-  if (piece === "stable")
-    return (
-      <>
-        {box([0, 0.5, 0], [0.8, 1, 0.8], "#b2946b")}
-        {box([0, 1.1, 0], [1, 0.2, 1], "#859570")}
-      </>
-    );
-  if (piece === "chair")
-    return (
-      <>
-        {box([0, 0.35, 0], [0.6, 0.7, 0.6], "#a17d56")}
-        {box([0, 0.8, 0.25], [0.6, 0.4, 0.12], "#a17d56")}
-      </>
-    );
-  return box(
-    [0, 0.45, 0],
-    [0.85, 0.9, 0.8],
-    piece === "chest" ? "#99704b" : piece === "kitchen" ? "#859087" : "#c6a77b",
-  );
-}
+/** Pieces that open a build menu when clicked; floors, rugs and doorways stay walkable. */
+const MENU_PIECES = (piece: string) => !["floor", "rug", "roof", "door", "gate"].includes(piece);
 export function Animal({ creature, showLabel, disabled = false }: { creature: Creature; showLabel: boolean; disabled?: boolean }) {
   const ref = useRef<Group>(null);
   const def = SPECIES.find((s) => s.id === creature.species)!;
@@ -404,6 +293,32 @@ export function FrontierScene({
     aboard = state.boats.find((b) =>
       b.crew.includes(me.identity.toHexString()),
     );
+  // Roofs fade while you are on your plot; walls also fade once you step indoors.
+  const myPlot = state.plots.find(p => p.region === region && p.claim && me.x >= p.x && me.z >= p.z
+    && me.x < p.x + FRONTIER.sizes[p.claim.tier] && me.z < p.z + FRONTIER.sizes[p.claim.tier]);
+  const indoors = myPlot && pieces.some(b => b.claim === myPlot.id && b.x === me.x && b.z === me.z && (b.piece === "roof" || b.piece === "floor")) ? myPlot.id : undefined;
+  const roofsByClaim = new Map<string, Building[]>();
+  for (const b of around) if (b.piece === "roof") roofsByClaim.set(b.claim, [...roofsByClaim.get(b.claim) ?? [], b]);
+  const buildableClaims = new Set(state.plots.filter(p => p.claim && can(p.claim, identity, 1)).map(p => p.id));
+  const pieceMenu = (e: any, b: Building) => {
+    if (draft || e.delta > 5) return;
+    e.stopPropagation();
+    if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
+    const close = () => useUserInputStore.getState().setClickedOtherObject(null);
+    const rotation = (b.rotation + 1) % 4;
+    useUserInputStore.getState().setClickedOtherObject({
+      connectionId: b.label || PIECES[b.piece]?.name || "Building",
+      e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() },
+      dropdownOptions: [
+        { label: PIECES[b.piece]?.edge ? `Turn to ${BUILDING_SIDES[rotation]} side` : `Rotate ↻ · face ${BUILDING_SIDES[rotation]}`, onClick: () => {
+          close();
+          void actions.frontier({ action: "move_building", id: b.id, x: b.x, z: b.z, rotation });
+        } },
+        { label: "Move", onClick: () => { close(); onDraft({ plot: b.claim, piece: b.piece, moving: b.id, rotation: b.rotation, point: { x: b.x, z: b.z }, valid: true }); } },
+        { label: "Dismantle · 75% materials", onClick: () => { close(); void actions.frontier({ action: "dismantle", id: b.id }); } },
+      ],
+    });
+  };
   const nearbyPlots = state.plots.filter(p => p.region === region && distance(me, p.marker) < 30);
   const nearestPlot = nearbyPlots.filter(p => distance(me, p.marker) < 9)
     .sort((a, b) => distance(me, a.marker) - distance(me, b.marker))[0];
@@ -538,32 +453,35 @@ export function FrontierScene({
             ))}
         </>
       )}
-      {around.map((b) => (
-        <group
-          key={b.id}
-          position={[b.x - 25, 0, b.z - 25]}
-          rotation={[0, (b.rotation * Math.PI) / 2, 0]}
-        >
-          <PieceModel
-            piece={b.piece}
-            edge={b.edge}
-            cutaway={state.plots.some(
-              (p) =>
-                p.id === b.claim &&
-                me.x >= p.x &&
-                me.z >= p.z &&
-                me.x < p.x + FRONTIER.sizes[p.claim?.tier ?? 0] &&
-                me.z < p.z + FRONTIER.sizes[p.claim?.tier ?? 0],
-            )}
-          />
-        </group>
+      {around.filter(b => b.piece !== "roof").map((b) => {
+        const menu = (self.region || "bramblewild") === region && MENU_PIECES(b.piece) && buildableClaims.has(b.claim);
+        return (
+          <group
+            key={b.id}
+            position={[b.x - 25, 0, b.z - 25]}
+            rotation={[0, (b.rotation * Math.PI) / 2, 0]}
+            onClick={menu ? e => pieceMenu(e, b) : undefined}
+            userData={menu ? { hoverTarget: { title: b.label || PIECES[b.piece]?.name || "Building", action: "Click to rotate, move or dismantle", detail: `Facing ${BUILDING_SIDES[b.rotation]}`, click: "panel", radius: .6, tile: homePoint(b, b.region) } } : undefined}
+          >
+            <PieceModel piece={b.piece} edge={b.edge} cutaway={indoors === b.claim} />
+          </group>
+        );
+      })}
+      {[...roofsByClaim].map(([claim, tiles]) => (
+        <RoofMesh key={claim} tiles={tiles} at={[-25, 0, -25]} look={myPlot?.id === claim ? "fade" : "normal"} />
       ))}
+      {draft?.point && draft.piece === "roof" && (
+        <RoofMesh
+          tiles={[...state.buildings.filter(b => b.piece === "roof" && b.claim === draft.plot && b.id !== draft.moving), draft.point]}
+          only={draft.point} look="ghost" at={[-25, .02, -25]}
+        />
+      )}
       {draft?.point && (
         <group
           position={[draft.point.x - 25, 0.02, draft.point.z - 25]}
           rotation={[0, (draft.rotation * Math.PI) / 2, 0]}
         >
-          <PieceModel piece={draft.piece} edge={!!PIECES[draft.piece]?.edge} ghost />
+          {draft.piece !== "roof" && <PieceModel piece={draft.piece} edge={!!PIECES[draft.piece]?.edge} ghost />}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
             <planeGeometry args={[1, 1]} />
             <meshBasicMaterial
@@ -572,6 +490,7 @@ export function FrontierScene({
               opacity={0.7}
             />
           </mesh>
+          {isCentred(draft.piece) && !["floor", "roof"].includes(draft.piece) && <FacingArrow valid={draft.valid !== false} />}
         </group>
       )}
       {state.crops
