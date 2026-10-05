@@ -13,7 +13,6 @@ const CameraController = (props) => {
 	const beforePreviewDistance = useRef<number | null>(null);
 	useEffect(() => {
 		if (ref.current) {
-			configureWorldCameraInput(ref.current);
 			ref.current.setFocalOffset(0, 0.5, 0);
 			ref.current.minPolarAngle = Math.PI / 7;
 			ref.current.maxPolarAngle = Math.PI / 2.6;
@@ -58,6 +57,11 @@ const CameraController = (props) => {
 		c.dollySpeed = sensitivity;
 		c.truckSpeed = 2 * sensitivity;
 	}, [sensitivity]);
+	// Settings > Camera rotate button: right drag (default) or left drag.
+	const rotateButton = useSettingsStore((s) => s.cameraRotateButton);
+	useEffect(() => {
+		if (ref.current) configureWorldCameraInput(ref.current, rotateButton);
+	}, [rotateButton]);
 	// Hold-to-walk owns the finger while it lasts: pause camera dragging.
 	useEffect(() => {
 		const onHold = (e: Event) => { if (ref.current) ref.current.enabled = !(e as CustomEvent).detail; };

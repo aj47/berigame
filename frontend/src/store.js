@@ -21,14 +21,19 @@ export const useUserInputStore = create((set) => ({
   } : null }),
 }));
 
+const GRAPHICS_MESSAGES = {
+  unsupported: "Your browser could not start 3D graphics (WebGL).",
+  lost: "The 3D graphics stopped (WebGL context lost).",
+};
+
 // Recompute readiness from current state; no delayed callback can hide a disconnect.
 const loadingState = (state) => {
   const assetProgress = state.loadedAssets.filter((url) => state.assetsToLoad.includes(url)).length / state.assetsToLoad.length;
-  const ready = !state.assetError && !state.worldUpdatesStalled && assetProgress === 1 && state.websocketConnected && state.gameDataLoaded;
+  const ready = !state.assetError && !state.graphicsIssue && !state.worldUpdatesStalled && assetProgress === 1 && state.websocketConnected && state.gameDataLoaded;
   return {
     isLoading: !ready,
     loadingProgress: assetProgress * 0.6 + (state.websocketConnected ? 0.2 : 0) + (state.gameDataLoaded ? 0.2 : 0),
-    loadingMessage: state.assetError || state.connectionIssue || (state.worldUpdatesStalled ? "Waiting for live world updates. Rejoin if they do not return." : null) || (ready ? "Welcome to BeriGame!" : !state.websocketConnected ? "Connecting to the island…" : !state.gameDataLoaded ? "Loading the live world…" : "Preparing your adventurer…"),
+    loadingMessage: (state.graphicsIssue ? GRAPHICS_MESSAGES[state.graphicsIssue] : null) || state.assetError || state.connectionIssue || (state.worldUpdatesStalled ? "Waiting for live world updates. Rejoin if they do not return." : null) || (ready ? "Welcome to BeriGame!" : !state.websocketConnected ? "Connecting to the island…" : !state.gameDataLoaded ? "Loading the live world…" : "Preparing your adventurer…"),
   };
 };
 export const useLoadingStore = create((set) => ({
@@ -38,6 +43,13 @@ export const useLoadingStore = create((set) => ({
   assetsToLoad: ["/models/starter-adventurer.glb"],
   loadedAssets: [],
   assetError: null,
+  /** 'unsupported' when WebGL cannot start, 'lost' when the GPU context dies and stays dead. */
+  graphicsIssue: null,
+  setGraphicsIssue: (graphicsIssue) => set((state) => {
+    if (state.graphicsIssue === graphicsIssue) return state;
+    const next = { ...state, graphicsIssue };
+    return { ...next, ...loadingState(next) };
+  }),
   connectionIssue: null,
   hasSavedSignIn: false,
   worldUpdatesStalled: false,
@@ -76,5 +88,5 @@ export const useLoadingStore = create((set) => ({
     const loadedAssets = [...new Set([...state.loadedAssets, url])];
     return { loadedAssets, ...loadingState({ ...state, loadedAssets }) };
   }),
-  resetLoading: () => set({ isLoading: true, loadingProgress: 0, loadingMessage: "Preparing the island…", loadedAssets: [], assetError: null, connectionIssue: null, hasSavedSignIn: false, worldUpdatesStalled: false, gameDataLoaded: false, websocketConnected: false }),
+  resetLoading: () => set({ isLoading: true, loadingProgress: 0, loadingMessage: "Preparing the island…", loadedAssets: [], assetError: null, graphicsIssue: null, connectionIssue: null, hasSavedSignIn: false, worldUpdatesStalled: false, gameDataLoaded: false, websocketConnected: false }),
 }));

@@ -20,6 +20,8 @@ export interface Settings {
   oneClickAttack: boolean;
   /** Multiplier for camera drag/zoom speed, 0.5..2 */
   cameraSensitivity: number;
+  /** Mouse button that drags the camera around; right drag always rotates. */
+  cameraRotateButton: 'right' | 'left';
   /** Skip knockback, hitstop and fleeing wildlife bursts. Defaults to the OS preference. */
   reduceMotion: boolean;
 }
@@ -39,6 +41,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showGuidance: true,
   oneClickAttack: false,
   cameraSensitivity: 1,
+  cameraRotateButton: 'right',
   reduceMotion: prefersReduced(),
 };
 

@@ -1215,6 +1215,22 @@ canvas {
   font-size: 12px;
   margin-bottom: 10px;
 }
+.graphics-help {
+  margin-bottom: 10px;
+  text-align: left;
+}
+.graphics-help ol {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.graphics-help li + li {
+  margin-top: 6px;
+}
+.graphics-help code {
+  overflow-wrap: anywhere;
+}
 .connection-lost {
   background: #e8dcc3f5;
 }

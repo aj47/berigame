@@ -1,10 +1,13 @@
 import type CameraControls from 'camera-controls';
 import { isWorldSurface } from './hoverTarget';
 
-/** Preserve the library's zoom/touch mappings while reserving left clicks for play. */
-export function configureWorldCameraInput(controls: CameraControls) {
+/**
+ * Preserve the library's zoom/touch mappings. By default left clicks are reserved for
+ * play; with left rotation, world clicks still fire because handlers ignore drags.
+ */
+export function configureWorldCameraInput(controls: CameraControls, rotateButton: 'right' | 'left' = 'right') {
   const { ACTION } = controls.constructor as typeof CameraControls;
-  controls.mouseButtons.left = ACTION.NONE;
+  controls.mouseButtons.left = rotateButton === 'left' ? ACTION.ROTATE : ACTION.NONE;
   controls.mouseButtons.right = ACTION.ROTATE;
 }
 

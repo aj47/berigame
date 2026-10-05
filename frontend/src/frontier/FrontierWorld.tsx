@@ -45,6 +45,7 @@ import { AvatarOverlay } from "../Components/3D/AvatarOverlay";
 import AvatarDecals from "../Components/3D/AvatarDecals";
 import AnimationCulling from "../Components/3D/AnimationCulling";
 import { AdventureAssetView } from "../Components/3D/AdventureModels";
+import { WebGLContextWatch } from "../Components/3D/webgl";
 const Box = ({
   at = [0, 0, 0],
   size = [1, 1, 1],
@@ -660,6 +661,7 @@ export default function FrontierWorld(props: {
       }}
       gl={{ antialias: true }}
     >
+      <WebGLContextWatch />
       <React.Suspense fallback={null}>
         <FrontierScene {...props} />
       </React.Suspense>

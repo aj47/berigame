@@ -12,6 +12,7 @@ const LoadingScreen = () => {
     websocketConnected,
     gameDataLoaded,
     assetError,
+    graphicsIssue,
     connectionIssue,
     worldUpdatesStalled,
     hasSavedSignIn,
@@ -86,10 +87,11 @@ const LoadingScreen = () => {
             </p>
           </>
         )}
-        {(waitingLong || disconnected || assetError || connectionIssue || worldUpdatesStalled) && (
+        {graphicsIssue && <GraphicsHelp />}
+        {(waitingLong || disconnected || assetError || graphicsIssue || connectionIssue || worldUpdatesStalled) && (
           <div className="loading-recovery">
             <p>
-              {assetError || (worldUpdatesStalled ? 'Waiting for fresh world updates.' : websocketConnected
+              {graphicsIssue ? "Fixed it? Reload to try again." : assetError || (worldUpdatesStalled ? 'Waiting for fresh world updates.' : websocketConnected
                 ? "The world is taking longer than usual to load."
                 : "Still waiting for the game server.")}
             </p>
@@ -124,6 +126,31 @@ const LoadingScreen = () => {
           Tap the ground to move. Tap a tree to gather. Open Help anytime.
         </p>
       </div>
+    </div>
+  );
+};
+/** Chromium pages cannot open its internal pages, so the flag address is copyable. */
+const GraphicsHelp = () => {
+  const [copied, setCopied] = useState(false);
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  const scheme = /Edg\//.test(ua) ? "edge" : /Chrome\//.test(ua) ? "chrome" : null;
+  const flag = `${scheme}://flags/#ignore-gpu-blocklist`;
+  const copy = () => {
+    void navigator.clipboard?.writeText(flag).then(() => setCopied(true), () => {});
+  };
+  return (
+    <div className="loading-recovery graphics-help" role="alert">
+      {scheme ? (
+        <ol>
+          <li>Open {scheme === "edge" ? "Edge" : "Chrome"} Settings › System and turn on <strong>Use graphics acceleration when available</strong>, then relaunch.</li>
+          <li>
+            Still stuck? Paste <code>{flag}</code> into the address bar, set <strong>Override software rendering list</strong> to Enabled, then relaunch.{" "}
+            <button type="button" onClick={copy}>{copied ? "Copied" : "Copy address"}</button>
+          </li>
+        </ol>
+      ) : (
+        <p>Turn on hardware acceleration in your browser settings, update your graphics drivers, or try Chrome.</p>
+      )}
     </div>
   );
 };

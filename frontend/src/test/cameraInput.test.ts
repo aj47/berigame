@@ -82,3 +82,15 @@ describe('world camera controls', () => {
     button.remove();
   });
 });
+
+describe('left-drag camera preference', () => {
+  it('rotates with left or right drag when left rotation is chosen', () => {
+    configureWorldCameraInput(controls, 'left');
+    let start = controls.azimuthAngle;
+    drag(0); expect(Math.abs(controls.azimuthAngle - start)).toBeGreaterThan(.1);
+    start = controls.azimuthAngle;
+    drag(2); expect(Math.abs(controls.azimuthAngle - start)).toBeGreaterThan(.1);
+    configureWorldCameraInput(controls, 'right');
+    expect(controls.mouseButtons.left).toBe(CameraControls.ACTION.NONE);
+  });
+});

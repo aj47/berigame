@@ -50,6 +50,11 @@ function Slider({
   );
 }
 
+const ROTATE: { value: Settings["cameraRotateButton"]; label: string; hint: string }[] = [
+  { value: "right", label: "Right drag", hint: "Right drag turns the camera. Left click moves and acts" },
+  { value: "left", label: "Left drag", hint: "Left or right drag turns the camera. Clicks still move and act" },
+];
+
 const GRAPHICS: { value: Settings["graphics"]; label: string; hint: string }[] = [
   { value: "auto", label: "Auto", hint: "Adjusts for smoother play" },
   { value: "high", label: "High", hint: "Sharpest picture" },
@@ -133,6 +138,20 @@ const SettingsPanel = ({ open, onClose, recoveryEnabled = false }: Props) => {
           format={(v) => `${v.toFixed(1)}×`}
           onChange={(v) => s.set({ cameraSensitivity: v })}
         />
+        <div className="settings-segment" role="radiogroup" aria-label="Rotate camera with">
+          {ROTATE.map((r) => (
+            <button
+              key={r.value}
+              role="radio"
+              aria-checked={s.cameraRotateButton === r.value}
+              title={r.hint}
+              onClick={() => s.set({ cameraRotateButton: r.value })}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+        <p className="settings-hint">{ROTATE.find((r) => r.value === s.cameraRotateButton)?.hint}</p>
       </fieldset>
       {recoveryEnabled && <CharacterRecovery />}
       <button className="settings-reset" onClick={() => s.reset()}>
