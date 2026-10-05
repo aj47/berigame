@@ -377,10 +377,10 @@ export function FrontierScene({
       {!embedded && <>
       <color attach="background" args={["#d9eadf"]} />
       <fog attach="fog" args={["#d9eadf", 32, 76]} />
-      <hemisphereLight args={["#fff7de", "#788e7d", .9]} />
+      <hemisphereLight args={["#fff7de", "#788e7d", .9 * Math.PI]} />
       <directionalLight
         position={[20, 35, 10]}
-        intensity={1.1}
+        intensity={1.1 * Math.PI}
         color="#ffeaca"
       />
       <mesh

@@ -45,14 +45,43 @@ describe('off-screen avatars', () => {
     const bones: any[] = [];
     avatar.model.traverse((object: any) => { if (object.isBone) bones.push(object); });
     const anyFrozen = () => bones.some((bone) => bone.matrixWorldAutoUpdate === false);
-    let frozen = false, thawed = false;
+    const allFrozen = () => bones.every((bone) => !bone.matrixWorldAutoUpdate && !bone.matrixAutoUpdate);
+    let frozen = false, hidden = false, thawed = false, shown = false;
     play([avatar], { endMs: 1000 }, 60, (ms) => {
-      if (ms > 300 && ms < 600) frozen ||= anyFrozen();
-      if (ms > 700) thawed = !anyFrozen();
+      if (ms > 300 && ms < 600) { frozen ||= allFrozen(); hidden ||= !avatar.model.visible; }
+      if (ms > 700) { thawed = !anyFrozen(); shown = avatar.model.visible; }
       animationView.frustum = ms >= 250 && ms < 600 ? nowhere() : null;
     });
     expect(frozen).toBe(true);
+    // A frozen skeleton stays where the avatar was: none of it may draw while frozen.
+    expect(hidden).toBe(true);
     expect(thawed).toBe(true);
+    expect(shown).toBe(true);
+  });
+
+  it('never culls an avatar that opts out (a preview in its own canvas)', () => {
+    const avatar = makeAvatar(rig.scene, set, { seed: 5, cull: false });
+    const skippedBefore = animationView.skipped;
+    let hidden = false;
+    play([avatar], { endMs: 600 }, 60, () => { animationView.frustum = nowhere(); hidden ||= !avatar.model.visible; });
+    expect(animationView.skipped - skippedBefore).toBe(0);
+    expect(hidden).toBe(false);
+  });
+
+  it('pins the body bounds to the rest pose, so culling never depends on the first rendered pose', () => {
+    const avatar = makeAvatar(rig.scene, set, { seed: 2 });
+    const bodies: any[] = [];
+    avatar.model.traverse((object: any) => { if (object.isSkinnedMesh) bodies.push(object); });
+    expect(bodies.length).toBeGreaterThan(0);
+    const pinned = bodies.map((mesh) => mesh.boundingSphere?.clone());
+    for (const sphere of pinned) {
+      expect(sphere).toBeTruthy();
+      // Around the body (feet at the origin), roomy enough for raised arms.
+      expect(sphere.center.y).toBeGreaterThan(0.5);
+      expect(sphere.radius).toBeGreaterThan(1.2);
+    }
+    play([avatar], timeline, 60);
+    bodies.forEach((mesh, i) => expect(mesh.boundingSphere.equals(pinned[i])).toBe(true));
   });
 
   it('costs much less per update than posing (node bench, logged)', () => {

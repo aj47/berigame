@@ -1,4 +1,4 @@
-import { AnimationClip, AnimationMixer, LoopOnce, LoopRepeat, Sphere, Vector3, type AnimationAction, type Bone, type Frustum, type Object3D } from 'three';
+import { AnimationClip, AnimationMixer, LoopOnce, LoopRepeat, Sphere, Vector3, type AnimationAction, type Bone, type Frustum, type Object3D, type SkinnedMesh } from 'three';
 import { ARMED_VARIANT, type Clip } from './combatPresentation';
 import { ClipDirector, type DirectorInput } from './clipDirector';
 import { ProceduralLayer, type LayerInput } from './proceduralLayer';
@@ -34,6 +34,23 @@ export function seedFromIdentity(identity: string): number {
 export const animationView: { frustum: Frustum | null; skipped: number } = { frustum: null, skipped: 0 };
 /** Bounds of a posed adventurer around its feet: generous, so a limb or a fast camera never pops. */
 const CULL_CENTER_Y = 1, CULL_RADIUS = 2.5;
+/** Room around the rest pose for raised arms and lunges, in the renderer's own culling of the body. */
+const SKIN_BOUNDS_MARGIN = 0.5;
+
+/**
+ * three culls a skinned mesh by a bounding sphere it computes once, from whatever
+ * pose it first renders (mid-swing, or before its avatar is placed on its tile).
+ * Pin each one to the rest pose instead, with room for the limbs.
+ */
+function pinSkinnedBounds(model: Object3D): void {
+  model.updateMatrixWorld(true);
+  model.traverse((object) => {
+    const mesh = object as SkinnedMesh;
+    if (!mesh.isSkinnedMesh) return;
+    mesh.computeBoundingSphere();
+    mesh.boundingSphere!.radius += SKIN_BOUNDS_MARGIN;
+  });
+}
 
 const aliases = new WeakMap<AnimationClip, AnimationClip>();
 /**
@@ -70,6 +87,8 @@ export interface AnimatorOptions {
   procedural?: boolean;
   /** Where another avatar stands (identity hex), so a blow from behind plays HitBack. */
   locate?: (identity: string) => { x: number; z: number } | null;
+  /** Skip and hide the avatar outside the world camera's view (default true; off for previews in their own canvas). */
+  cull?: boolean;
 }
 
 /**
@@ -90,8 +109,9 @@ export class AvatarAnimator {
   /** Posed last frame (inside the view); off screen only clip time advances. */
   private onScreen = true;
   private readonly bounds = new Sphere(new Vector3(), CULL_RADIUS);
-  /** Topmost bones: their subtrees' world matrices stay frozen while off screen. */
-  private readonly boneRoots: Object3D[] = [];
+  private readonly cull: boolean;
+  /** Every bone: their matrices stay frozen while off screen. */
+  private readonly bones: Object3D[] = [];
   private readonly layerInput: LayerInput = { dt: 0, time: 0, idle: 0, run: 0, combat: 0, swing: 0, defeat: 0, x: 0, z: 0, yaw: 0 };
 
   constructor(model: Object3D, set: AvatarClipSet, options: AnimatorOptions = {}) {
@@ -111,20 +131,30 @@ export class AvatarAnimator {
       locate: options.locate,
     });
     this.layer = options.procedural === false ? null : new ProceduralLayer(model, seed);
-    model.traverse((object) => { if ((object as Bone).isBone && !(object.parent as Bone | null)?.isBone) this.boneRoots.push(object); });
+    this.cull = options.cull ?? true;
+    model.traverse((object) => { if ((object as Bone).isBone) this.bones.push(object); });
+    pinSkinnedBounds(model);
   }
 
   /** Whether the avatar (at its group's position this frame) is inside the last rendered view. */
   private inView(input: AnimatorInput): boolean {
     const frustum = animationView.frustum;
-    if (!frustum) return true;
+    if (!frustum || !this.cull) return true;
     this.bounds.center.set(input.x, this.model.matrixWorld.elements[13] + CULL_CENTER_Y, input.z);
     return frustum.intersectsSphere(this.bounds);
   }
 
-  /** Off screen: stop recomputing bone world matrices (skinning then reuses the last pose). */
+  /**
+   * Off screen: hide the model and stop recomputing its bone matrices. The frozen
+   * skeleton stays where the avatar was, so nothing of it (body, hair, props on
+   * bones) may draw until it is posed again.
+   */
   private freezeBones(frozen: boolean): void {
-    for (let i = 0; i < this.boneRoots.length; i++) this.boneRoots[i].matrixWorldAutoUpdate = !frozen;
+    this.model.visible = !frozen;
+    for (let i = 0; i < this.bones.length; i++) {
+      this.bones[i].matrixAutoUpdate = !frozen;
+      this.bones[i].matrixWorldAutoUpdate = !frozen;
+    }
   }
 
   /**

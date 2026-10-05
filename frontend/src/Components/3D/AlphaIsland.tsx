@@ -45,8 +45,8 @@ const AlphaIsland = () => (
     <fog attach="fog" args={[HORIZON, 55, 150]} />
     <Sky />
     {/* Warm late-morning sun as the key, cool sky bounce as the fill. */}
-    <directionalLight position={[-12, 24, 10]} intensity={1.0} color="#ffe2b8" />
-    <hemisphereLight args={['#cfe8ff', '#8c7a52', 0.55]} />
+    <directionalLight position={[-12, 24, 10]} intensity={1.0 * Math.PI} color="#ffe2b8" />
+    <hemisphereLight args={['#cfe8ff', '#8c7a52', 0.55 * Math.PI]} />
     <Clock />
     <GroundPlane />
     <IslandDetails />

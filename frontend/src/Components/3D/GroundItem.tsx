@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { sRGBEncoding } from 'three';
+import { SRGBColorSpace } from 'three';
 import { Html, useTexture } from '@react-three/drei';
 import { ITEM_DEFS, getItemDef, tileToWorld } from '@sim';
 import type { GroundItem as GroundItemRow } from '../../module_bindings/types';
@@ -14,7 +14,7 @@ const GroundItem = ({ groundItem }: { groundItem: GroundItemRow }) => {
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const def = getItemDef(groundItem.itemId);
   const texture = useTexture(def?.icon ?? '/items/blueberry.png');
-  useEffect(() => { texture.encoding = sRGBEncoding; texture.needsUpdate = true; }, [texture]);
+  useEffect(() => { texture.colorSpace = SRGBColorSpace; texture.needsUpdate = true; }, [texture]);
   const [x,y,z] = tileToWorld(groundItem);
   const onClick = (e: any) => {
     if (e.delta > 5) return;

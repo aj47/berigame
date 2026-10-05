@@ -20,17 +20,17 @@
 		"agent:typecheck": "../spacetimedb/node_modules/.bin/tsc -p agent-api/tsconfig.json"
 	},
 	"dependencies": {
-		"@react-three/drei": "^9.56.22",
-		"@react-three/fiber": "^8.11.0",
+		"@react-three/drei": "^9.122.0",
+		"@react-three/fiber": "^8.18.0",
 		"@simplewebauthn/browser": "^14.0.0",
 		"@simplewebauthn/server": "^14.0.3",
 		"@types/node": "^18.14.6",
-		"@types/three": "^0.149.0",
+		"@types/three": "^0.186.0",
 		"arctic": "^3.7.0",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",
 		"spacetimedb": "^2.10.1",
-		"three": "^0.149.0",
+		"three": "^0.186.1",
 		"zustand": "^4.3.2"
 	},
 	"devDependencies": {
@@ -41,11 +41,16 @@
 		"@testing-library/react": "^14.3.1",
 		"@types/react": "^18.0.27",
 		"@types/react-dom": "^18.0.10",
-		"@vitejs/plugin-react": "^1.3.0",
+		"@vitejs/plugin-react": "^6.1.2",
 		"jsdom": "^26.1.0",
 		"meshoptimizer": "^1.3.0",
 		"tsx": "^4.23.13",
-		"vite": "^4.1.4",
-		"vitest": "^3.2.3"
+		"vite": "^8.3.2",
+		"vitest": "^4.1.11"
+	},
+	"overrides": {
+		"stats-gl": {
+			"three": "$three"
+		}
 	}
 }

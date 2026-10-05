@@ -68,8 +68,23 @@ function GameCamera() {
   const gl = useThree((state) => state.gl);
   useEffect(() => {
     // Splits a frame into useFrame work (update) and gl.render (matrices, before-render hooks, draw submission).
+    // With EXT_disjoint_timer_query_webgl2 (hardware GPUs), each gl.render is also timed on the GPU.
+    const context = gl.getContext() as WebGL2RenderingContext;
+    const timer = context.getExtension('EXT_disjoint_timer_query_webgl2');
+    const pending: WebGLQuery[] = [];
     const render = gl.render;
-    gl.render = function (s, c) { renderStart = performance.now(); render.call(this, s, c); };
+    gl.render = function (s, c) {
+      renderStart = performance.now();
+      const query = timer && recording && pending.length < 8 ? context.createQuery() : null;
+      if (query) context.beginQuery(timer.TIME_ELAPSED_EXT, query);
+      render.call(this, s, c);
+      if (query) { context.endQuery(timer.TIME_ELAPSED_EXT); pending.push(query); }
+      while (pending.length && context.getQueryParameter(pending[0], context.QUERY_RESULT_AVAILABLE)) {
+        const done = pending.shift()!;
+        if (!context.getParameter(timer!.GPU_DISJOINT_EXT)) gpu.push(context.getQueryParameter(done, context.QUERY_RESULT) / 1e6);
+        context.deleteQuery(done);
+      }
+    };
     return () => { gl.render = render; };
   }, [gl]);
   useEffect(() => {
@@ -84,6 +99,7 @@ function GameCamera() {
 const frames: number[] = [];
 const work: number[] = [];
 const update: number[] = [];
+const gpu: number[] = [];
 let renderStart = 0;
 // React commit time of the avatar components (ticks re-render them), from <Profiler>.
 let reactMs = 0, reactCommits = 0;
@@ -94,7 +110,12 @@ let started = 0;
 addEffect(() => { started = performance.now(); });
 addAfterEffect(() => { if (recording) { work.push(performance.now() - started); update.push(renderStart - started); } });
 function FrameProbe() {
-  useFrame((_, dt) => { if (recording) frames.push(dt * 1000); });
+  const gl = useThree((state) => state.gl);
+  useFrame((_, dt) => {
+    if (recording) frames.push(dt * 1000);
+    // DebugBridge publishes these in dev builds only; a production bench build needs them too.
+    if (!import.meta.env.DEV) (window as any).__berigameRender = { calls: gl.info.render.calls, triangles: gl.info.render.triangles, pixelRatio: gl.getPixelRatio() };
+  });
   return null;
 }
 const stats = (values: number[]) => {
@@ -107,20 +128,22 @@ const stats = (values: number[]) => {
   async frames(ms: number) {
     const view = (animator as any).animationView;
     const skippedBefore = view?.skipped ?? 0;
-    frames.length = 0; work.length = 0; update.length = 0; reactMs = 0; reactCommits = 0; recording = true;
+    frames.length = 0; work.length = 0; update.length = 0; gpu.length = 0; reactMs = 0; reactCommits = 0; recording = true;
     await new Promise((r) => setTimeout(r, ms));
     recording = false;
-    return { interval: stats(frames), work: stats(work), update: stats(update), reactMsPerSecond: reactMs / (ms / 1000), reactCommits, skippedAnimatorUpdates: (view?.skipped ?? 0) - skippedBefore };
+    return { interval: stats(frames), work: stats(work), update: stats(update), gpu: gpu.length ? stats(gpu) : null, reactMsPerSecond: reactMs / (ms / 1000), reactCommits, skippedAnimatorUpdates: (view?.skipped ?? 0) - skippedBefore };
   },
 };
 
 const Ready = () => { useEffect(() => { setTimeout(() => { (window as any).__bench.ready = true; }, 500); }, []); return null; };
 
 const adaptive = params.has('adaptive');
+// ?dpr=2 pins the pixel ratio (else 1 to 1.5 of the page's devicePixelRatio, like the game's auto).
+const fixedDpr = params.has('dpr') ? Number(params.get('dpr')) : null;
 function Bench() {
   const [dprCap, setDprCap] = useState(1.5);
   return <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
-    <Canvas id="three-canvas" dpr={[1, dprCap]} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true }}>
+    <Canvas id="three-canvas" dpr={fixedDpr ?? [1, dprCap]} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true }}>
       {adaptive && <PerformanceMonitor onDecline={() => setDprCap(1)} onIncline={() => setDprCap(1.5)} flipflops={3} onFallback={() => setDprCap(1)} />}
       <GameCamera />
       <FrameProbe />

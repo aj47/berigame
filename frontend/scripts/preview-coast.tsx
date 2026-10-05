@@ -66,9 +66,9 @@ function Camera() {
 }
 
 const Scene = () => <>
-  <ambientLight intensity={0.55} />
-  <hemisphereLight args={['#dff2ff', '#b89b6a', 0.45]} />
-  <directionalLight position={[6, 12, 6]} intensity={0.9} />
+  <ambientLight intensity={0.55 * Math.PI} />
+  <hemisphereLight args={['#dff2ff', '#b89b6a', 0.45 * Math.PI]} />
+  <directionalLight position={[6, 12, 6]} intensity={0.9 * Math.PI} />
   <Camera />
   {/* sand */}
   <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]}><planeGeometry args={[40, 40]} /><meshStandardMaterial color="#e2cd9b" /></mesh>

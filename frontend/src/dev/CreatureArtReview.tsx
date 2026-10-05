@@ -43,10 +43,10 @@ function App() {
       <label><input type="checkbox" checked={tamed} onChange={e => setTamed(e.target.checked)} />Tamed collars</label>
       <label><input type="checkbox" checked={labels} onChange={e => setLabels(e.target.checked)} />Labels</label>
     </header>
-    <Canvas key={view} shadows camera={{ position: v.eye, fov: 40 }} dpr={[1, 2]}>
+    <Canvas key={view} shadows="percentage" camera={{ position: v.eye, fov: 40 }} dpr={[1, 2]}>
       <color attach="background" args={['#d9eadf']} />
-      <hemisphereLight args={['#fff7de', '#788e7d', .9]} />
-      <directionalLight position={[8, 14, 10]} intensity={1.1} color="#ffeaca" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-10} shadow-camera-right={10} shadow-camera-top={10} shadow-camera-bottom={-10} />
+      <hemisphereLight args={['#fff7de', '#788e7d', .9 * Math.PI]} />
+      <directionalLight position={[8, 14, 10]} intensity={1.1 * Math.PI} color="#ffeaca" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-10} shadow-camera-right={10} shadow-camera-top={10} shadow-camera-bottom={-10} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.005, 0]} receiveShadow><planeGeometry args={[40, 40]} /><meshStandardMaterial color="#6a9a4a" roughness={1} /></mesh>
       <Suspense fallback={null}>
         {focus
