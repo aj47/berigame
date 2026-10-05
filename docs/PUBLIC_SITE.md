@@ -52,7 +52,7 @@ Publishing the public Worker updates the shared brand icons on all three domains
 To publish in-game wiki links or other approved frontend changes
 to the game, use the separate `npm run beta:deploy` command described in
 [Cloudflare beta operations](CLOUDFLARE_BETA.md). That build sets the correct
-Maincloud connection and admission settings. Deploy the public site first so
+game server (`wss://berigame-db.exe.xyz`) and admission settings. Deploy the public site first so
 the game's new wiki links have a destination. No game database publication is
 needed for this website release.
 
