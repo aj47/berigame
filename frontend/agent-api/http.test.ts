@@ -206,7 +206,7 @@ test('invite replay and expiration cannot create another player', async () => {
   } finally { await f.close(); }
 });
 
-test('a LAN can fill the default 64 agent slots without an address cap', async () => {
+test('a LAN can fill 64 agent slots without an address cap', async () => {
   const f = await fixture();
   try { for (let i = 0; i < 64; i++) await f.enter(); assert.equal(f.created(), 64); }
   finally { await f.close(); }

@@ -427,8 +427,8 @@ permit expiration if the API process crashes.
 | Session reads | 4/second, burst 10; actions do not count against this budget |
 | IP requests (local API) | 256/second, burst 1,024; all paths and failed authentication count |
 | IP joins | 4/second, burst 256, including invalid invite attempts; no default per-IP player cap |
-| Global requests (local API) | 256/second, burst 1,024; separate joins at 8/second, burst 256; 64 requests in flight; 128 HTTP connections |
-| API sessions | 64 total, including pending connections; local operators can configure a smaller cap |
+| Global requests (local API) | 2,560/second, burst 4,096; separate joins at 8/second, burst 256; 64 requests in flight; 128 HTTP connections |
+| API sessions | 250 total, including pending connections; local operators can configure a smaller cap |
 | Database | 256 online characters; offline permits do not occupy slots; 4 connections per identity; 10,000 historical players/permits |
 | Existing gameplay | 5 committed inputs/tick, server movement/combat/harvest/eating rules; 3-second chat cooldown |
 | Payloads | 4 KiB JSON bodies; 8 KiB headers; strict fields, types, bounds and action allowlist; body deadline 3 seconds |

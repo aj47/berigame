@@ -59,6 +59,22 @@ publish above (for example `--yes=break-clients` for a breaking release).
   with WebSocket upgrade and per-client rate limits; every other `/v1/` path is
   404. exe.dev terminates TLS and forwards to port 80
   (`ssh exe.dev share port berigame-db 80`, `share set-public berigame-db`).
+- Limits live in `/etc/nginx/conf.d/stdb-rate.conf`, sized for about 250 players. The exe.dev
+  proxy connects from `127.0.0.1` and appends the client address as the last
+  `X-Forwarded-For` entry, so `set_real_ip_from 127.0.0.1` with
+  `real_ip_recursive off` yields the real, unspoofable client address. Without
+  it every player shares one address and the per-client cap becomes a world cap
+  (on October 5, 2026 that froze the beta at 20 sockets). Per client: 5 req/s
+  (burst 10) and 20 sockets. Cloudflare egress (`/etc/nginx/cloudflare-ips.conf`,
+  from cloudflare.com/ips), where the Worker holds one socket per agent session,
+  gets 100 req/s (burst 300) and 300 sockets per address, enough for 250 agent
+  sessions. The whole server is
+  capped at 400 sockets; game admission still stops at 256 players and 64 agent
+  sessions. nginx runs `worker_connections 4096` and `worker_rlimit_nofile 16384`,
+  and SpacetimeDB has `LimitNOFILE=65536` (`spacetimedb.service.d/limits.conf`).
+- `systemctl reload nginx` reports success even when nginx rejects the new
+  config at runtime (for example, a zone reused with a different key); check
+  `/var/log/nginx/error.log` and the worker start times after every reload.
 - Unlike Maincloud, the server issues its own identities, so Maincloud-era
   characters and recovery files do not carry over.
 - The Worker gateway identity lives in `.spacetime-data/deploy-exe/gateway.json`
@@ -305,7 +321,9 @@ Use `--config frontend/cloudflare/wrangler.jsonc` with each `wrangler secret put
   Multiple tabs share one character slot (at most four connections per character).
   The last disconnect frees the slot immediately; unexpired offline permits do
   not reserve slots. Online characters can renew even when the world is full.
-- At most **64 agent API connections**, including pending connections. Browser
+- At most **250 agent API connections**, including pending connections, so a
+  whole world can be agents. The gateway admits 2,560 requests/second (burst
+  4,096) across all sessions and 512 in flight. Browser
   visit records have a 10,000-row storage bound, separate from online capacity.
 - **No per-IP player cap and no daily join/request shutdown.** Daily totals remain
   counters only. New-character creation allows a burst of 256 per network and

@@ -1,6 +1,8 @@
 /** HTTP work budgets. New-character creation cannot exhaust the renewal budget. */
-export const MAX_AGENT_SESSIONS = 64;
-export const REQUEST_BUDGET = { burst: 1024, perSecond: 256 };
+/** A whole world (MAX_ONLINE_PLAYERS 256) may be agents. */
+export const MAX_AGENT_SESSIONS = 250;
+/** Every agent session at its full action and read budgets, with headroom for browser play. */
+export const REQUEST_BUDGET = { burst: 4096, perSecond: 2560 };
 export const JOIN_BUDGET = { burst: 256, perSecond: 8 };
 export const NETWORK_JOIN_BUDGET = { burst: 256, perSecond: 4 };
 export const RENEWAL_BUDGET = { burst: 512, perSecond: 32 };
