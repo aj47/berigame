@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useUserInputStore } from "../store";
 import HarvestDropdownAction from "./HarvestDropdownAction";
+import ResourceDropdownAction from "../frontier/ResourceDropdownAction";
 import BerryGiantInteraction from "./BerryGiantInteraction";
 import PlayerInteraction from "./PlayerInteraction";
 import GroundPickupActions from "./GroundPickupActions";
@@ -94,6 +95,8 @@ const ClickDropdown = ({ region = 'bramblewild' }: { region?: string }) => {
         <BerryGiantInteraction key={String(selected.berryGiantExpeditionId)} expeditionId={selected.berryGiantExpeditionId} onClose={() => setSelected(null)} />
       ) : selected.harvestNodeId !== undefined ? (
         <HarvestDropdownAction nodeId={selected.harvestNodeId} region={region} onClose={() => setSelected(null)} />
+      ) : selected.resourceId !== undefined ? (
+        <ResourceDropdownAction resourceId={selected.resourceId} onClose={() => setSelected(null)} />
       ) : selected.dropdownOptions?.map((option: any, index: number) => (
         <button
           className="context-action"
