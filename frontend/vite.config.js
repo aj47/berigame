@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { createLogger, defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { readFile } from 'node:fs/promises'
@@ -21,16 +21,31 @@ function agentGuide() {
   return { name: 'agent-guide', configureServer: configure, configurePreviewServer: configure }
 }
 
+// Pre-bundled dependencies' maps leave their sources out (optimizeDeps below); Vite
+// notes each source it then declines to copy in from another package. Drop that note.
+const logger = createLogger()
+const warnOnce = logger.warnOnce.bind(logger)
+logger.warnOnce = (msg, options) => { if (!msg.includes('points to a source file outside its package')) warnOnce(msg, options) }
+
 // https://vitejs.dev/config/
 export default defineConfig({
+  customLogger: logger,
   plugins: [react({ fastRefresh: !process.env.VITEST }), agentGuide(), wikiAssets()],
-  // Auxiliary art-preview HTML files are not application entry points.
-  optimizeDeps: { entries: ['index.html'] },
+  optimizeDeps: {
+    // Auxiliary art-preview HTML files are not application entry points.
+    entries: ['index.html'],
+    // The dev server inlines pre-bundled dependencies' source maps. Without the sources
+    // copied into each map, three's file stays well under the browser's in-memory cache
+    // entry limit, so a reload reuses it instead of downloading it again.
+    rolldownOptions: { output: { sourcemapExcludeSources: true } },
+  },
   resolve: {
-    alias: {
+    alias: [
       // Pure simulation code shared with the SpacetimeDB module.
-      '@sim': path.resolve(__dirname, '../shared/sim'),
-    },
+      { find: '@sim', replacement: path.resolve(__dirname, '../shared/sim') },
+      // Only the drei helpers the game uses (src/vendor/drei.ts); deep imports pass through.
+      { find: /^@react-three\/drei$/, replacement: path.resolve(__dirname, 'src/vendor/drei.ts') },
+    ],
   },
   build: {
     rollupOptions: {
