@@ -483,7 +483,7 @@ export function FrontierScene({
             position={[b.x - 25, 0, b.z - 25]}
             rotation={[0, (b.rotation * Math.PI) / 2, 0]}
             onClick={menu ? e => pieceMenu(e, b) : undefined}
-            userData={menu ? { hoverTarget: { title: b.label || PIECES[b.piece]?.name || "Building", action: pieceHoverAction(uses, canBuild), detail: canBuild ? `Facing ${BUILDING_SIDES[b.rotation]}` : undefined, click: "panel", radius: .6, tile: homePoint(b, b.region) } } : undefined}
+            userData={menu ? { hoverTarget: { title: b.label || PIECES[b.piece]?.name || "Building", action: pieceHoverAction(uses, canBuild), detail: canBuild ? `Facing ${BUILDING_SIDES[b.rotation]}` : undefined, click: "panel", radius: .6, tile: homePoint(b, b.region) } } : {}}
           >
             <PieceModel piece={b.piece} edge={b.edge} cutaway={indoors === b.claim} />
           </group>
