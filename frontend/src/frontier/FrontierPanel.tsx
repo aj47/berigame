@@ -20,6 +20,7 @@ import { isHomeRegion } from "../../../shared/sim/frontier/homeMap";
 import { renewalPrice } from "../../../shared/sim/frontier/model";
 import { BUILDING_SIDES } from "../../../shared/sim/frontier/building";
 import { previewIssue } from "./preview";
+import { distance } from "../../../shared/sim/frontier/regions";
 import { isTyping } from "../Components/keyboard";
 import DisciplineSelection from './DisciplineSelection';
 import BankStoragePanel from './BankStoragePanel';
@@ -505,15 +506,25 @@ export default function FrontierPanel({
             {tab === "Wildlife" && (
               <>
                 {state.creatures
-                  .filter((c) => c.region === region || c.owner === id)
-                  .map((c) => (
+                  .filter((c) => c.owner === id || (c.region === region && (!c.owner || distance(me, c) < 24)))
+                  // Your companions first, then the nearest wildlife.
+                  .sort((a, b) => Number(b.owner === id) - Number(a.owner === id)
+                    || (a.region === region ? distance(me, a) : 999) - (b.region === region ? distance(me, b) : 999))
+                  .slice(0, 16)
+                  .map((c) => {
+                    const species = state.species.find((s) => s.id === c.species);
+                    return (
                     <article key={c.id}>
                       <h3>
-                        {state.species.find((s) => s.id === c.species)?.name}
-                        {c.owner === id ? " · your companion" : ""}
+                        <span className="frontier-species-dot" style={{ background: species?.color }} aria-hidden="true" />
+                        {species?.name}
+                        {c.owner === id ? " · your companion" : c.owner ? " · a companion" : ""}
                       </h3>
                       <p>
-                        {state.species.find((s) => s.id === c.species)?.hint}
+                        {species?.hint}
+                      </p>
+                      <p>
+                        <strong>{species?.tameable ? "Companion ability:" : "Danger:"}</strong> {species?.utility}
                       </p>
                       <small>
                         {c.region} · {c.x},{c.z}
@@ -527,7 +538,7 @@ export default function FrontierPanel({
                         </button>
                         {button("Observe", { action: "observe", id: c.id })}
                         {!c.owner &&
-                          c.species !== "bristleback" &&
+                          species?.tameable &&
                           button("Offer feed", { action: "tame", id: c.id })}
                         {c.owner === id && (
                           <>
@@ -539,11 +550,12 @@ export default function FrontierPanel({
                             {button("Use ability", { action: "ability" })}
                           </>
                         )}
-                        {c.species === "bristleback" &&
+                        {species && !species.tameable &&
                           button("Attack", { action: "attack", id: c.id })}
                       </div>
                     </article>
-                  ))}
+                    );
+                  })}
               </>
             )}
             {tab === "Skills" && (

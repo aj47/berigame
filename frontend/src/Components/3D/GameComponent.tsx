@@ -2,7 +2,7 @@ import WorldInteractionController from '../../frontier/WorldInteractionControlle
 import { useFrontier } from "../../frontier/useFrontier";
 import { avatarFrontierState } from '../../frontier/avatarFrontierState';
 import { type BuildDraft } from '../../frontier/FrontierPanel';
-import FrontierWorld, { FrontierScene } from '../../frontier/FrontierWorld';
+import FrontierWorld, { BramblewildCreatures, FrontierScene } from '../../frontier/FrontierWorld';
 import HarbourApproach from '../../frontier/HarbourApproach';
 import { MEADOW_OFFSET } from '../../../../shared/sim/frontier/homeMap';
 import { useMyPlayer } from '../../spacetime/hooks';
@@ -107,6 +107,7 @@ const GameComponent = () => {
           <WorldObjects />
           <Garden /><AdventureWorld frontierEnabled={frontier.enabled} />
           {frontier.enabled && <HarbourApproach />}
+          {frontier.enabled && me && <BramblewildCreatures disabled={!!draft} />}
           {frontier.enabled && me && <group position={[MEADOW_OFFSET.x, 0, MEADOW_OFFSET.z]}>
             <FrontierScene embedded draft={draft} onDraft={setDraft} />
           </group>}

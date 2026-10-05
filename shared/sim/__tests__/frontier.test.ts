@@ -9,8 +9,10 @@ import {
   perform,
   seedCreatures,
   validateCommand,
+  wildStep,
 } from "../frontier/engine";
-import { FRONTIER, DAY, PLOTS, PORTS, WEEK, RESOURCE_PATCHES, REGIONS } from "../frontier/catalog";
+import { FRONTIER, DAY, PLOTS, PORTS, WEEK, RESOURCE_PATCHES, REGIONS, SPECIES } from "../frontier/catalog";
+import { distance } from "../frontier/regions";
 import {
   claimStatus,
   newProfile,
@@ -528,6 +530,66 @@ describe("creatures and a complete crewed crossing", () => {
     h.w.now += 6000;
     h.act({ action: "tame", id: c.id });
     expect(h.repo.get("creature", c.id)?.owner).toBe("a");
+  });
+  it("seeds three of every species at home, on land and off every plot", () => {
+    const h = harness();
+    seedCreatures(h.w);
+    const inPlot = (c: { region: string; x: number; z: number }) => PLOTS.some(p => p.region === c.region
+      && c.x >= p.x - 1 && c.x < p.x + 16 && c.z >= p.z - 1 && c.z < p.z + 16);
+    expect(SPECIES.filter(s => s.tameable).length).toBeGreaterThanOrEqual(10);
+    for (const species of SPECIES) {
+      const wild = h.repo.all("creature").filter(c => c.species === species.id);
+      expect(wild, species.id).toHaveLength(3);
+      for (const c of wild) {
+        expect(regionLand(c.region as any, c), species.id).toBe(true);
+        expect(inPlot(c), species.id).toBe(false);
+        expect(distance(c, species.home)).toBeLessThanOrEqual(species.roam);
+      }
+    }
+  });
+  it("brings stray wild creatures home and wanders without leaving land or entering plots", () => {
+    const h = harness();
+    seedCreatures(h.w);
+    const bun = h.repo.all("creature").find(c => c.species === "burrowbun")!;
+    h.repo.put("creature", { ...bun, x: 115, z: 100 });
+    seedCreatures(h.w);
+    const home = SPECIES.find(s => s.id === "burrowbun")!;
+    expect(distance(h.repo.get("creature", bun.id)!, home.home)).toBeLessThanOrEqual(home.roam);
+    for (const species of SPECIES) {
+      let c = { ...h.repo.all("creature").find(n => n.species === species.id)! };
+      for (let t = 0; t < 400; t++) {
+        const next = wildStep(c, h.w.now + t * 3000);
+        if (next) c = { ...c, ...next };
+        expect(regionLand(c.region as any, c), species.id).toBe(true);
+        expect(PLOTS.some(p => p.region === c.region && c.x >= p.x - 1 && c.x < p.x + 16 && c.z >= p.z - 1 && c.z < p.z + 16)).toBe(false);
+        expect(distance(c, species.home), species.id).toBeLessThanOrEqual(species.roam);
+      }
+    }
+  });
+  it("lets an active companion keep pace with its owner and helps with each new ability", () => {
+    const h = harness();
+    seedCreatures(h.w);
+    const c = h.repo.all("creature").find((c) => c.species === "thistlefox")!;
+    Object.assign(h.a, { region: c.region, x: c.x, z: c.z });
+    h.supplies(h.a, { taming_feed: 2, harness: 1 });
+    h.act({ action: "observe", id: c.id });
+    h.act({ action: "tame", id: c.id });
+    h.w.now += 6000;
+    h.act({ action: "tame", id: c.id });
+    const p = h.repo.get("profile", "a")!;
+    p.xp[3] = 1000; p.active = [3];
+    h.repo.put("profile", p);
+    h.act({ action: "train", id: c.id });
+    h.w.now += 6000;
+    h.act({ action: "ability" });
+    expect(h.a.bag.some(s => s?.itemId?.startsWith("berry_"))).toBe(true);
+    // Walk away three tiles per tick; the fox stays at heel instead of trailing a tile every three seconds.
+    for (let i = 0; i < 4; i++) {
+      h.a.x -= 3;
+      h.w.now += 600;
+      advance(h.w);
+      expect(distance(h.repo.get("creature", c.id)!, h.a)).toBeLessThanOrEqual(3);
+    }
   });
   it("boards a passenger, navigates, docks and moves all crew with cargo intact", () => {
     const h = harness();
