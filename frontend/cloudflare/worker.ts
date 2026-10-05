@@ -228,7 +228,7 @@ export class AgentGateway extends DurableObject<Env> {
     this.inflight++;
     if (lane === 'join') this.joining++;
     try {
-      if (this.inflight > 128) throw new ApiError(429, 'capacity', 'The sign-in service is busy. Retry shortly.', 2);
+      if (this.inflight > 512) throw new ApiError(429, 'capacity', 'The sign-in service is busy. Retry shortly.', 2);
       // Leave room for renewals and existing agents during a burst of new joins.
       if (lane === 'join' && this.joining > 32) throw new ApiError(429, 'join_busy', 'Players are joining right now. Retry shortly.', 2);
       const now = Date.now();

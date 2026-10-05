@@ -67,7 +67,8 @@ publish above (for example `--yes=break-clients` for a breaking release).
   (on October 5, 2026 that froze the beta at 20 sockets). Per client: 5 req/s
   (burst 10) and 20 sockets. Cloudflare egress (`/etc/nginx/cloudflare-ips.conf`,
   from cloudflare.com/ips), where the Worker holds one socket per agent session,
-  gets 50 req/s (burst 100) and 160 sockets per address. The whole server is
+  gets 100 req/s (burst 300) and 300 sockets per address, enough for 250 agent
+  sessions. The whole server is
   capped at 400 sockets; game admission still stops at 256 players and 64 agent
   sessions. nginx runs `worker_connections 4096` and `worker_rlimit_nofile 16384`,
   and SpacetimeDB has `LimitNOFILE=65536` (`spacetimedb.service.d/limits.conf`).
@@ -320,7 +321,9 @@ Use `--config frontend/cloudflare/wrangler.jsonc` with each `wrangler secret put
   Multiple tabs share one character slot (at most four connections per character).
   The last disconnect frees the slot immediately; unexpired offline permits do
   not reserve slots. Online characters can renew even when the world is full.
-- At most **64 agent API connections**, including pending connections. Browser
+- At most **250 agent API connections**, including pending connections, so a
+  whole world can be agents. The gateway admits 2,560 requests/second (burst
+  4,096) across all sessions and 512 in flight. Browser
   visit records have a 10,000-row storage bound, separate from online capacity.
 - **No per-IP player cap and no daily join/request shutdown.** Daily totals remain
   counters only. New-character creation allows a burst of 256 per network and
