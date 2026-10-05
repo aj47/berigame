@@ -53,6 +53,16 @@ describe('progressive Meadows panel', () => {
     expect(floor).toBeEnabled();
   });
 
+  it('renders once the player arrives after mounting without one', () => {
+    const player = mock.player;
+    mock.player = null;
+    const view = render(<FrontierPanel {...props('Land')} />);
+    expect(view.container).toBeEmptyDOMElement();
+    mock.player = player;
+    view.rerender(<FrontierPanel {...props('Land')} />);
+    expect(screen.getByRole('navigation', { name: 'Settlement activities' })).toBeVisible();
+  });
+
   it('distinguishes disciplines and explains their initial XP boost', () => {
     render(<FrontierPanel {...props('Skills')} />);
     expect(screen.getByRole('heading', { name: 'Disciplines' })).toBeVisible();

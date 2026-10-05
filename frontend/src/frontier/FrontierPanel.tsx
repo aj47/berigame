@@ -80,6 +80,24 @@ export default function FrontierPanel({
   useEffect(() => {
     if (request.plot) setSelected(request.plot);
   }, [request]);
+  const rotateDraft = (step: number) => {
+    if (!draft) return;
+    const next = { ...draft, rotation: (draft.rotation + step + 4) % 4 };
+    const reason = previewIssue(state, next, players);
+    onDraft({ ...next, valid: !reason, reason });
+  };
+  const rotateRef = useRef(rotateDraft);
+  rotateRef.current = rotateDraft;
+  useEffect(() => {
+    if (!draft) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "r" || event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target)) return;
+      event.preventDefault();
+      rotateRef.current(event.shiftKey ? -1 : 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [!!draft]);
   if (!state.enabled || !me) return null;
   const id = me.identity.toHexString(),
     region = me.region || "bramblewild",
@@ -123,24 +141,6 @@ export default function FrontierPanel({
   const shelterPieces = new Set(['floor', 'wall', 'door', 'roof']);
   const visiblePieces = pieces.filter(([key, piece]) => shelterPieces.has(key) || !pieceHint(piece));
   const laterPieces = pieces.filter(([key, piece]) => !shelterPieces.has(key) && !!pieceHint(piece));
-  const rotateDraft = (step: number) => {
-    if (!draft) return;
-    const next = { ...draft, rotation: (draft.rotation + step + 4) % 4 };
-    const reason = previewIssue(state, next, players);
-    onDraft({ ...next, valid: !reason, reason });
-  };
-  const rotateRef = useRef(rotateDraft);
-  rotateRef.current = rotateDraft;
-  useEffect(() => {
-    if (!draft) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== "r" || event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target)) return;
-      event.preventDefault();
-      rotateRef.current(event.shiftKey ? -1 : 1);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [!!draft]);
   async function run(command: Command) {
     if (busy) return;
     setBusy(true);
