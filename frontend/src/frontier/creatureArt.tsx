@@ -120,10 +120,14 @@ const burrowbun = () => {
     { name: "body", at: [0, 0, 0], build: k => k
       .ball(FUR, .3, [0, .3, -.04], [1, .92, 1.12])
       .ball(CREAM, .21, [0, .27, .13], [.9, .95, .72])
-      .both(s => k
-        .ball(DARK, .17, [s * .17, .2, -.14], [.72, .95, 1.2])
-        .ball(CREAM, .09, [s * .15, .045, -.02], [.85, .45, 1.95])
-        .ball(CREAM, .055, [s * .09, .05, .21], [1, .8, 1.3])) },
+ },
+    // Haunch and long hind foot swing together from the hip; front paws from the shoulder.
+    ...sides((s, side) => ({ name: `legB${side}`, parent: "body", at: [s * .16, .22, -.1], build: k => k
+      .ball(DARK, .17, [s * .01, -.02, -.04], [.72, .95, 1.2])
+      .ball(CREAM, .09, [-s * .01, -.175, .08], [.85, .45, 1.95]) })),
+    ...sides((s, side) => ({ name: `legF${side}`, parent: "body", at: [s * .09, .2, .19], build: k => k
+      .seg(FUR, [0, 0, 0], [0, -.14, .01], .04, .032)
+      .ball(CREAM, .055, [0, -.15, .02], [1, .8, 1.3]) })),
     { name: "tail", parent: "body", at: [0, .33, -.37], grain: .3, build: k => k
       .ball(WHITE, .1, [0, 0, 0], [1, 1, .9])
       .ball(WHITE, .06, [.05, .04, -.03]).ball(WHITE, .06, [-.05, .03, -.02]) },
@@ -147,6 +151,11 @@ const burrowbun = () => {
     a.move("root", 0, air * .24);
     a.scale("root", 1 - (air - .5 * m) * .09, 1 + (air - .5 * m) * .18, 1 - (air - .5 * m) * .09);
     a.rot("body", -Math.cos(p * TAU) * .16 * m);
+    // Bound: stretched out in the air (front paws reaching, hind feet kicked back), gathered on
+    // the ground with the hind feet swung under the body. Front paws touch down a beat early.
+    const reach = Math.sin(p * Math.PI), land = Math.sin(fract(p + .1) * Math.PI);
+    a.rot("legBL", (reach * 1.05 - .4) * m); a.rot("legBR", (reach * 1.05 - .4) * m);
+    a.rot("legFL", (.35 - land * .95) * m); a.rot("legFR", (.35 - land * .95) * m);
     a.rot("earL", -.15 - air * .7, 0, -(Math.sin(a.t * 1.3 + a.ph) ** 24) * .45);
     a.rot("earR", -.15 - air * .7 + every(a.t + a.ph, 4.3) * .25, 0, 0);
     a.rot("tail", air * .4 + Math.sin(a.t * 7) * .08 * (1 - m));
