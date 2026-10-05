@@ -9,14 +9,17 @@ import { approachWorldInteraction } from './worldInteraction';
 import './bankStorage.css';
 
 /** The personal bank is the existing private vault; other containers retain their own access rules. */
-export default function BankStoragePanel({ state, onBag, onTravel }: {
+export default function BankStoragePanel({ state, onBag, onTravel, request }: {
   state: FrontierSnapshot; onBag: () => void; onTravel: () => void;
+  /** A chest clicked in the world; `id` changes on every request so a repeat click reselects it. */
+  request?: { storage?: string; id: number };
 }) {
   const me = useMyPlayer(), inventory = useInventoryRows(), players = usePlayers(), actions = useGameActions();
-  const [storage, setStorage] = useState(''), [quantity, setQuantity] = useState(0);
+  const [storage, setStorage] = useState(request?.storage ?? ''), [quantity, setQuantity] = useState(0);
   const [pending, setPending] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const busy = useRef(false), mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { if (request?.storage) setStorage(request.storage); }, [request?.storage, request?.id]);
   if (!me) return null;
   const id = me.identity.toHexString(), region = me.region || 'bramblewild', vaultId = `vault-${id}`;
   const storageId = storage || vaultId, personal = storageId === vaultId;

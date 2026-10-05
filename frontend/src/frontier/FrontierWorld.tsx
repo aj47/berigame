@@ -1,7 +1,7 @@
 import { createTerrainGeometry, terrainMaterial } from "../Components/3D/islandTerrainArt";
 import { meadowField } from "../../../shared/sim/frontier/regions";
 import { linear } from "../Components/3D/nodes/lowPoly";
-import { homePoint, MEADOW_OFFSET } from "../../../shared/sim/frontier/homeMap";
+import { homePoint, isHomeRegion, MEADOW_OFFSET } from "../../../shared/sim/frontier/homeMap";
 import MeadowScenery, { ResourceModel } from "./MeadowScenery";
 import MeadowTownSquare from "./MeadowTownSquare";
 import IslandShrines3D from './IslandShrines3D';
@@ -51,6 +51,7 @@ import { WebGLContextWatch } from "../Components/3D/webgl";
 import { FacingArrow, FADING_PIECES, isCentred, PieceMesh, RoofMesh } from "./pieceArt";
 import { CREATURE_HEIGHT, CreatureModel, type CreatureMotion } from "./creatureArt";
 import { can } from "../../../shared/sim/frontier/model";
+import { pieceClickable, pieceHoverAction, pieceUses, type PieceUse } from "./pieceActions";
 const Box = ({
   at = [0, 0, 0],
   size = [1, 1, 1],
@@ -76,8 +77,6 @@ export function PieceModel({ piece, ghost = false, cutaway = false, edge = false
   const look = ghost ? "ghost" : cutaway && (piece === "roof" || FADING_PIECES.has(piece)) ? "fade" : "normal";
   return <group position={[0, 0, edge && PIECES[piece]?.edge ? .5 : 0]}><PieceMesh piece={piece} look={look} /></group>;
 }
-/** Pieces that open a build menu when clicked; floors, rugs and doorways stay walkable. */
-const MENU_PIECES = (piece: string) => !["floor", "rug", "roof", "door", "gate"].includes(piece);
 export function Animal({ creature, showLabel, disabled = false, profile }: { creature: Creature; showLabel: boolean; disabled?: boolean; profile?: Profile }) {
   const ref = useRef<Group>(null);
   const motion = useRef<CreatureMotion>({ speed: 0 });
@@ -218,7 +217,8 @@ export function FrontierScene({
     actions = useGameActions(),
     appearances = useAppearanceByHex();
   const avatarFrontier = avatarFrontierState(state);
-  const hasAxe = useInventoryRows().some(slot => slot.itemId === 'axe' && slot.quantity > 0);
+  const inventoryRows = useInventoryRows();
+  const hasAxe = inventoryRows.some(slot => slot.itemId === 'axe' && slot.quantity > 0);
   const showWorldLabels = useSettingsStore(s => s.showWorldLabels);
   const { scene, camera, gl } = useThree();
   const [playerRef, setPlayerRef] = useState<any>();
@@ -298,22 +298,38 @@ export function FrontierScene({
   const roofsByClaim = new Map<string, Building[]>();
   for (const b of around) if (b.piece === "roof") roofsByClaim.set(b.claim, [...roofsByClaim.get(b.claim) ?? [], b]);
   const buildableClaims = new Set(state.plots.filter(p => p.claim && can(p.claim, identity, 1)).map(p => p.id));
+  const hasSeed = inventoryRows.some(slot => slot.owner.toHexString() === identity && slot.itemId === "carrot_seed" && slot.quantity > 0);
+  const usesFor = (b: Building) => pieceUses(b, { canBuild: buildableClaims.has(b.claim), crop: state.crops.find(c => c.id === b.id), hasSeed, now: Date.now() });
+  /** Use actions walk beside the piece first, like resources and creatures. */
+  const actOnPiece = (b: Building, use: PieceUse) => {
+    useUserInputStore.getState().setClickedOtherObject(null);
+    const at = { region: b.region, x: b.x, z: b.z };
+    if (use.kind === "storage") approachWorldInteraction(at, () => openSettlement("Storage", b.claim, b.id));
+    else if (use.kind === "craft") approachWorldInteraction(at, () => openSettlement("Craft"));
+    else if (use.kind === "plant") approachWorldInteraction(at, () => void actions.frontier({ action: "plant", id: b.id }), 1);
+    else if (use.kind === "harvest") approachWorldInteraction(at, () => void actions.frontier({ action: "harvest_crop", id: b.id }), 1);
+    else approachWorldInteraction(at, () => {}, 1);
+  };
   const pieceMenu = (e: any, b: Building) => {
     if (draft || e.delta > 5) return;
     e.stopPropagation();
     if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
     const close = () => useUserInputStore.getState().setClickedOtherObject(null);
     const rotation = (b.rotation + 1) % 4;
+    const builder = buildableClaims.has(b.claim) && (self.region || "bramblewild") === region;
     useUserInputStore.getState().setClickedOtherObject({
       connectionId: b.label || PIECES[b.piece]?.name || "Building",
       e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() },
       dropdownOptions: [
-        { label: PIECES[b.piece]?.edge ? `Turn to ${BUILDING_SIDES[rotation]} side` : `Rotate ↻ · face ${BUILDING_SIDES[rotation]}`, onClick: () => {
-          close();
-          void actions.frontier({ action: "move_building", id: b.id, x: b.x, z: b.z, rotation });
-        } },
-        { label: "Move", onClick: () => { close(); onDraft({ plot: b.claim, piece: b.piece, moving: b.id, rotation: b.rotation, point: { x: b.x, z: b.z }, valid: true }); } },
-        { label: "Dismantle · 75% materials", onClick: () => { close(); void actions.frontier({ action: "dismantle", id: b.id }); } },
+        ...usesFor(b).map(use => ({ label: use.label, disabled: "disabled" in use && use.disabled, onClick: () => actOnPiece(b, use) })),
+        ...(builder ? [
+          { label: PIECES[b.piece]?.edge ? `Turn to ${BUILDING_SIDES[rotation]} side` : `Rotate ↻ · face ${BUILDING_SIDES[rotation]}`, onClick: () => {
+            close();
+            void actions.frontier({ action: "move_building", id: b.id, x: b.x, z: b.z, rotation });
+          } },
+          { label: "Move", onClick: () => { close(); onDraft({ plot: b.claim, piece: b.piece, moving: b.id, rotation: b.rotation, point: { x: b.x, z: b.z }, valid: true }); } },
+          { label: "Dismantle · 75% materials", onClick: () => { close(); void actions.frontier({ action: "dismantle", id: b.id }); } },
+        ] : []),
       ],
     });
   };
@@ -452,14 +468,17 @@ export function FrontierScene({
         </>
       )}
       {around.filter(b => b.piece !== "roof").map((b) => {
-        const menu = (self.region || "bramblewild") === region && MENU_PIECES(b.piece) && buildableClaims.has(b.claim);
+        const here = (self.region || "bramblewild") === region || (isHomeRegion(self.region || "bramblewild") && isHomeRegion(region));
+        const canBuild = buildableClaims.has(b.claim) && (self.region || "bramblewild") === region;
+        const uses = here ? usesFor(b) : [];
+        const menu = here && pieceClickable(b, { canBuild, indoors: indoors === b.claim, hasUses: uses.length > 0 });
         return (
           <group
             key={b.id}
             position={[b.x - 25, 0, b.z - 25]}
             rotation={[0, (b.rotation * Math.PI) / 2, 0]}
             onClick={menu ? e => pieceMenu(e, b) : undefined}
-            userData={menu ? { hoverTarget: { title: b.label || PIECES[b.piece]?.name || "Building", action: "Click to rotate, move or dismantle", detail: `Facing ${BUILDING_SIDES[b.rotation]}`, click: "panel", radius: .6, tile: homePoint(b, b.region) } } : undefined}
+            userData={menu ? { hoverTarget: { title: b.label || PIECES[b.piece]?.name || "Building", action: pieceHoverAction(uses, canBuild), detail: canBuild ? `Facing ${BUILDING_SIDES[b.rotation]}` : undefined, click: "panel", radius: .6, tile: homePoint(b, b.region) } } : undefined}
           >
             <PieceModel piece={b.piece} edge={b.edge} cutaway={indoors === b.claim} />
           </group>

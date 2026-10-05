@@ -628,7 +628,7 @@ export default function FrontierPanel({
                 )}
               </>
             )}
-            {tab === "Storage" && <BankStoragePanel state={state} onBag={() => setTab("Bag")} onTravel={() => setOpen(false)} />}
+            {tab === "Storage" && <BankStoragePanel state={state} onBag={() => setTab("Bag")} onTravel={() => setOpen(false)} request={request} />}
           </div>
         </section>
       )}
