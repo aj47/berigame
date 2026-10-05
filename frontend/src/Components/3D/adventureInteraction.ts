@@ -14,11 +14,15 @@ const interactionLabels: Record<AdventureView, string> = {
 
 export const adventureInteractionLabel = (view: AdventureView) => interactionLabels[view];
 
-/** World props offer both their adventure and the ground underneath the click. */
-export function openAdventureInteraction(name: string, event: { clientX: number; clientY: number; ray?: Ray }, view: AdventureView = 'expedition') {
+/**
+ * World props offer both their adventure and the ground underneath the click.
+ * The menu opens at once; choosing the adventure walks over first via `approach`.
+ */
+export function openAdventureInteraction(name: string, event: { clientX: number; clientY: number; ray?: Ray }, view: AdventureView = 'expedition',
+  approach: (perform: () => void) => void = perform => perform()) {
   const select = useUserInputStore.getState().setClickedOtherObject;
   select({ connectionId: name, e: event, dropdownOptions: [{
     label: adventureInteractionLabel(view),
-    onClick: () => { select(null); openAdventure(view); },
+    onClick: () => { select(null); approach(() => openAdventure(view)); },
   }] });
 }

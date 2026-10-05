@@ -82,10 +82,10 @@ class AssetBoundary extends React.Component<{children:React.ReactNode}, {failed:
 export function AdventureAssetView(props:React.ComponentProps<typeof AdventureModel>){return <AssetBoundary><Suspense fallback={null}><AdventureModel {...props}/></Suspense></AssetBoundary>;}
 
 /** NPCs interpolate the server's 1.8-second steps; models never move authoritative state. */
-export function AdventureActor({asset,x,z,label,speech,mood='idle',height=2.7,registryKey,onInteract,hoverAction,showLabel=true,showSpeech=true}: {asset:'gardener'|'moss'|'pip'|'berry-giant';x:number;z:number;label:string;speech?:string;mood?:ActorMood;height?:number;registryKey?:string;onInteract?:(event:{clientX:number;clientY:number})=>void;hoverAction?:string;showLabel?:boolean;showSpeech?:boolean}) {
+export function AdventureActor({asset,x,z,label,speech,mood='idle',height=2.7,registryKey,onInteract,approachFirst=false,hoverAction,showLabel=true,showSpeech=true}: {asset:'gardener'|'moss'|'pip'|'berry-giant';x:number;z:number;label:string;speech?:string;mood?:ActorMood;height?:number;registryKey?:string;onInteract?:(event:{clientX:number;clientY:number})=>void;approachFirst?:boolean;hoverAction?:string;showLabel?:boolean;showSpeech?:boolean}) {
   const group=useRef<Group>(null), moving=useRef(false);
-  const current=useRef({x,z,label,onInteract}),mounted=useRef(true);
-  current.current={x,z,label,onInteract};
+  const current=useRef({x,z,label,onInteract,approachFirst}),mounted=useRef(true);
+  current.current={x,z,label,onInteract,approachFirst};
   useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
   const showWorldLabels=useSettingsStore(state=>state.showWorldLabels);
   const initial=useRef(tileToWorld({x,z}));
@@ -101,17 +101,21 @@ export function AdventureActor({asset,x,z,label,speech,mood='idle',height=2.7,re
     if(e.delta>5)return;e.stopPropagation();
     if(holdState.active||performance.now()<holdState.suppressClickUntil)return;
     const event={clientX:e.clientX,clientY:e.clientY,ray:e.ray?.clone()};
-    const approach=()=>{
+    // Actors wander during the walk: follow them until you arrive.
+    const follow=(perform:()=>void)=>{
       const target={x:current.current.x,z:current.current.z};
       approachWorldInteraction({region:'bramblewild',...target},()=>{
         if(!mounted.current)return;
         const latest=current.current;
-        if(latest.x!==target.x||latest.z!==target.z){approach();return;}
-        if(latest.onInteract)latest.onInteract(event);else openAdventureInteraction(latest.label.split(' · ')[0],event);
+        if(latest.x!==target.x||latest.z!==target.z){follow(perform);return;}
+        perform();
       });
     };
-    approach();
-  }} userData={{hoverTarget:{title:label.split(' · ')[0],action:`Walk over · ${hoverAction??adventureInteractionLabel('expedition')}`,click:'panel',detail:label.split(' · ').slice(1).join(' · '),radius:asset==='berry-giant'?1.8:.65}}}>
+    const {onInteract,approachFirst,label}=current.current;
+    if(!onInteract)openAdventureInteraction(label.split(' · ')[0],event,'expedition',follow);
+    else if(approachFirst)follow(()=>current.current.onInteract?.(event));
+    else onInteract(event);
+  }} userData={{hoverTarget:{title:label.split(' · ')[0],action:hoverAction??adventureInteractionLabel('expedition'),click:'panel',detail:label.split(' · ').slice(1).join(' · '),radius:asset==='berry-giant'?1.8:.65}}}>
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,.017,0]} scale={asset==='berry-giant'?[1.8,1.25,1]:asset==='pip'?[.65,.9,1]:[.65,.45,1]} raycast={()=>null}>
       <circleGeometry args={[1,16]}/><meshBasicMaterial color="#233c2a" transparent opacity={.18} depthWrite={false}/>
     </mesh>

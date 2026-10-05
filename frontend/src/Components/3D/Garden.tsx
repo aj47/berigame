@@ -14,7 +14,7 @@ import { useLoadingStore, useUserInputStore } from '../../store';
 import { merged, part } from './envArt';
 import { slotsFromRows } from '../itemUi';
 import type { HoverTarget } from './hoverTarget';
-import { approachWorldInteraction } from '../../frontier/worldInteraction';
+import { performOnIsland } from '../../frontier/worldInteraction';
 import { holdState } from './tapAssist';
 
 /*
@@ -187,8 +187,8 @@ const Garden = () => {
   }, [queued, me, clear, plantGarden, harvestGarden]);
 
   const slots = useMemo(() => slotsFromRows(inventory), [inventory]);
-  const currentMenu = useRef({ plots, slots, run });
-  currentMenu.current = { plots, slots, run };
+  const currentMenu = useRef({ plots, slots, run, region: me?.region });
+  currentMenu.current = { plots, slots, run, region: me?.region };
 
   const hoverTarget: HoverTarget = (point) => {
     const index = Math.max(0, gardenPlotAt(worldToTile(point.x, point.z)));
@@ -197,7 +197,7 @@ const Garden = () => {
     const name = view.plant ? getItemDef(view.plant.itemId)?.name ?? 'Berries' : '';
     const seeds = GARDEN_CROPS.some(crop => countItem(slots, crop.itemId) > 0);
     return {
-      title: `Your garden · plot ${index + 1}`, action: 'Walk over for garden options', click: 'panel', radius: .5, tile: GARDEN_PLOT_TILES[index],
+      title: `Your garden · plot ${index + 1}`, action: 'Click for garden options', click: 'panel', radius: .5, tile: GARDEN_PLOT_TILES[index],
       detail: view.locked ? `Opens at Foraging level ${GARDEN_EXTRA_PLOT_LEVEL}` : view.plant ? left > 0 ? `${name} · ready in ${formatGardenTime(left)}` : `${name} · ready to harvest` : seeds ? 'Empty plot · choose a berry to plant' : 'Empty plot · bring a berry to plant',
       tone: view.locked || left > 0 || (!view.plant && !seeds) ? 'muted' : 'ready',
     };
@@ -211,32 +211,33 @@ const Garden = () => {
     let index = gardenPlotAt(tile);
     if (index < 0) index = 0;
     const event = { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() };
-    approachWorldInteraction({ region: 'bramblewild', ...GARDEN_PLOT_TILES[index] }, () => {
-      const { plots, slots, run } = currentMenu.current;
-      const view = plots[index];
-      const close = () => setClickedOtherObject(null);
-      const options: { label: string; onClick: () => void; disabled?: boolean }[] = [];
-      if (view.locked) {
-        options.push({ label: `Opens at Foraging level ${GARDEN_EXTRA_PLOT_LEVEL}`, onClick: close, disabled: true });
-      } else if (!view.plant) {
-        for (const crop of GARDEN_CROPS) {
-          const have = countItem(slots, crop.itemId);
-          const name = getItemDef(crop.itemId)?.name ?? crop.itemId;
-          options.push({
-            label: `Plant ${name} · ${formatGardenTime(crop.growMs)} → ${crop.yield}${have ? '' : ' (none in bag)'}`,
-            disabled: have === 0,
-            onClick: () => { close(); run('plant', index, crop.itemId); },
-          });
-        }
-      } else {
-        const crop = getGardenCrop(view.plant.itemId);
-        const name = getItemDef(view.plant.itemId)?.name ?? 'berries';
-        const left = gardenRemainingMs(view.plant, Date.now());
-        if (left === 0) options.push({ label: `Harvest ${crop?.yield ?? ''} ${name}`, onClick: () => { close(); run('harvest', index); } });
-        else options.push({ label: `${name} growing · ${formatGardenTime(left)} left`, onClick: close, disabled: true });
+    // Choose first; plant and harvest walk to the plot.
+    const { plots, slots } = currentMenu.current;
+    const view = plots[index];
+    const close = () => setClickedOtherObject(null);
+    const run: typeof currentMenu.current.run = (...args) =>
+      performOnIsland(currentMenu.current.region, GARDEN_PLOT_TILES[index], () => currentMenu.current.run(...args));
+    const options: { label: string; onClick: () => void; disabled?: boolean }[] = [];
+    if (view.locked) {
+      options.push({ label: `Opens at Foraging level ${GARDEN_EXTRA_PLOT_LEVEL}`, onClick: close, disabled: true });
+    } else if (!view.plant) {
+      for (const crop of GARDEN_CROPS) {
+        const have = countItem(slots, crop.itemId);
+        const name = getItemDef(crop.itemId)?.name ?? crop.itemId;
+        options.push({
+          label: `Plant ${name} · ${formatGardenTime(crop.growMs)} → ${crop.yield}${have ? '' : ' (none in bag)'}`,
+          disabled: have === 0,
+          onClick: () => { close(); run('plant', index, crop.itemId); },
+        });
       }
-      setClickedOtherObject({ connectionId: `Your garden · plot ${index + 1}`, e: event, dropdownOptions: options });
-    }, 1);
+    } else {
+      const crop = getGardenCrop(view.plant.itemId);
+      const name = getItemDef(view.plant.itemId)?.name ?? 'berries';
+      const left = gardenRemainingMs(view.plant, Date.now());
+      if (left === 0) options.push({ label: `Harvest ${crop?.yield ?? ''} ${name}`, onClick: () => { close(); run('harvest', index); } });
+      else options.push({ label: `${name} growing · ${formatGardenTime(left)} left`, onClick: close, disabled: true });
+    }
+    setClickedOtherObject({ connectionId: `Your garden · plot ${index + 1}`, e: event, dropdownOptions: options });
   };
 
   const [ox, , oz] = tileToWorld(ORIGIN);

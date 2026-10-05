@@ -2,11 +2,13 @@ import React, { useRef, useState } from 'react';
 import { getItemDef, type Tile } from '@sim';
 import { useGroundItems, useTick } from '../spacetime/hooks';
 import { useGameActions } from '../spacetime/actions';
+import { performOnIsland } from '../frontier/worldInteraction';
 
 /** The place stays fixed while pile quantities and availability follow live rows. */
-export default function GroundPickupActions({ tiles, selectedId, onClose }: {
+export default function GroundPickupActions({ tiles, selectedId, region, onClose }: {
   tiles: readonly Tile[];
   selectedId?: bigint;
+  region?: string;
   onClose: () => void;
 }) {
   const groundItems = useGroundItems();
@@ -19,7 +21,13 @@ export default function GroundPickupActions({ tiles, selectedId, onClose }: {
     .sort((a, b) => Number(b.id === selectedId) - Number(a.id === selectedId));
 
   const pickUp = async (id: bigint) => {
-    if (inFlight.current || !items.some(item => item.id === id)) return;
+    const item = items.find(item => item.id === id);
+    if (inFlight.current || !item) return;
+    if (region && region !== 'bramblewild') {
+      // Crossing from Meadows closes the menu; the pickup runs on arrival.
+      performOnIsland(region, item, () => void pickupItem(id));
+      return;
+    }
     inFlight.current = true;
     setPending(id);
     setFailed(null);
