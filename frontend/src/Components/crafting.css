@@ -1,10 +1,17 @@
 .crafting-panel .recipe-list { display:grid; gap:8px; }
-.craft-instructions { font-size:12px; color:var(--ink-soft); margin:0 0 10px; }
+.craft-filters { position:sticky; top:-10px; z-index:1; display:flex; flex-wrap:wrap; gap:4px; margin:0 -12px 8px; padding:6px 12px; background:var(--parchment); border-bottom:1px solid #d4c3a1; }
+.craft-filters button { display:inline-flex; align-items:center; gap:4px; min-height:calc(var(--control-size) - 4px); padding:4px 10px; font-size:12px; border-radius:999px; box-shadow:none; }
+.craft-filters button[aria-pressed=true] { background:var(--blue); color:white; border-color:#243e56; }
+.craft-filter-count { min-width:16px; padding:0 4px; border-radius:999px; background:#4f7a3a; color:white; font-size:10px; font-weight:700; line-height:16px; text-align:center; }
+.crafting-panel .craft-group { display:grid; gap:6px; }
+.craft-group-title { margin:4px 0 0; font:700 11px var(--font-body, 'Trebuchet MS', sans-serif); letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); }
 .craft-recipe { padding:10px; border:1px solid #b6c0a980; border-radius:10px; background:#fffdf461; }
+.craft-recipe[data-ready=true] { border-color:#6f9a5a; background:#eef5e2b3; }
+.craft-recipe.locked { opacity:.72; padding:7px 10px; }
 .craft-recipe-heading { display:flex; gap:8px; align-items:center; }
 .craft-recipe-heading>img { width:36px; height:36px; object-fit:contain; flex-shrink:0; }
 .craft-recipe-heading>div { min-width:0; flex:1; }
-.craft-recipe-heading h3 { margin:0 0 3px; font:700 13px var(--font-body, 'Trebuchet MS', sans-serif); }
+.craft-recipe-heading h4 { margin:0 0 3px; font:700 13px var(--font-body, 'Trebuchet MS', sans-serif); }
 .craft-recipe-heading span { font-size:11px; color:var(--ink-soft); }
 .craft-recipe-heading button { min-height:max(40px, var(--control-size)); min-width:58px; font-size:12px; padding:7px 10px; }
 .craft-ingredients { display:flex; flex-wrap:wrap; gap:5px; padding:0; margin:9px 0 0; list-style:none; }
@@ -13,4 +20,6 @@
 .craft-ingredients img { width:18px; height:18px; object-fit:contain; }
 .craft-ingredients strong { margin-left:3px; }
 .crafting-panel .craft-recipe-note { margin:7px 0 0; color:var(--ink-soft); font-size:11px; }
+.craft-recipe.locked .craft-recipe-note { margin-top:4px; }
+.craft-empty { margin:4px 0; font-size:12px; color:var(--ink-soft); }
 .craft-error { color:#8b392e; font-size:12px; }

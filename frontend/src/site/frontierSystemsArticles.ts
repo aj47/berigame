@@ -32,7 +32,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
         'Look for timber pines with pale trunk bands and wood chips. Your starter hatchet collects one Timber per cut. Carry a crafted Axe to use its metal head and receive two Timber per cut; both count toward gathering quests.',
         'Make a Hammer from one Timber and two Stone for Tools of the trade. Claim the quest reward at the steward when it is your active quest.',
         'Turn Timber into Planks and Plant fibre into Rope. These are used in stables, sails and skiff hulls.',
-        'Craft shows recipes you can make first. Every recipe displays item icons, held / needed ingredients, and any station or discipline requirement.',
+        'Craft groups recipes into Gear, Food, Tools and Materials, with the ones you can make first in each group. Tap Ready to see only what your bag can make now, or a group name to show just that group. Every recipe displays item icons, held / needed ingredients, and any station or discipline requirement.',
       ] },
       { id: 'patches', title: 'Where to gather', paragraphs: [
         'Six marked timber pines form a gathering route around Meadows town. Move to another tree while a stump regrows. The coordinates below belong to each named region. Stand within two tiles of a patch to gather. Plant fibre, Reeds and Carrot seeds award Cultivation XP; other resource patches award Exploration XP. Each completed gather awards 8 XP, even when that discipline is inactive.',
