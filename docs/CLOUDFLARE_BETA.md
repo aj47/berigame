@@ -232,9 +232,10 @@ across renewals, so `npm run beta:revoke -- SESSION_ID` works at any time.
 - *Multiple tabs* serialize renewal through a Web Lock and re-read storage; other
   tabs adopt the result through `storage` events. Up to four tabs may connect as
   one character.
-- *Lost storage* creates a new guest unless the player previously exported a
-  character recovery file from the settlements menu; see [Settlements](SETTLEMENTS.md).
-- *Privacy.* No names, emails or other personal data are collected. The renewal
+- *Lost storage* creates a new guest unless the player saved the character to an
+  account (below) or exported a character recovery file from the settlements menu;
+  see [Settlements](SETTLEMENTS.md).
+- *Privacy.* Guests give no names, emails or other personal data. The renewal
   record holds the token digest, SpacetimeDB identity, sessionId, invite scopes
   and expiry. Browser session rows no longer store the browser's SpacetimeDB
   token, only its identity.
@@ -244,6 +245,58 @@ or column, so the normal data-preserving publish above applies (no
 `break-clients`). Publish the module first, then `npm run beta:deploy`; the
 Worker adds its `renewals` table itself. Browsers admitted before the deploy have
 no renewal token and behave as before until their next invite.
+
+## Player accounts
+
+Guests can save their character to an account from **Settings → Account** and log
+in on any browser from the title screen. Logins: Discord, Google, email (a link
+plus a 6-digit code) and passkeys. An account unlocks exactly one character and
+never changes its SpacetimeDB identity: it stores the same sealed credential as a
+recovery key. Accounts live in the gateway Durable Object (`accounts`,
+`account_logins`, `account_sessions`, `account_pending`); SpacetimeDB is unchanged.
+
+**Flow.** Saving sends the visit renewal token as proof plus the character token,
+which the Worker verifies against the world before sealing it with
+`RECOVERY_ENCRYPTION_KEY`. Logging in returns an account token (`bgu_…`, 180 days,
+extended on use). `POST /api/play/v1/account/play` with that token returns the
+character token and a fresh renewal token, replacing any other browser's renewal;
+a browser that holds an account token silently takes it back at its next renewal.
+Discord and Google return through `/api/play/v1/account/oauth/{provider}/callback`
+to `/play#account`; the OAuth state is bound to an HttpOnly `__Host-` cookie, and
+the account token is only handed to that browser by `POST …/oauth/finish`.
+
+**Rules.** Only saving a character creates an account, so a login with no saved
+character is refused. A login belongs to one account; an account has at most 10
+logins and cannot remove its last one. Revoking a character (`beta:revoke`) also
+detaches it from its account.
+
+**Limits and privacy.** Login emails: 3 per address and 5 per network, then one
+every 10 minutes each, and 200 per hour in total; 5 code attempts per email. Account requests are
+limited per network, saving and playing per character and account. Emails are
+stored only as a digest plus a masked label (`p•••@example.com`); Discord
+keeps the user id and display name, Google the subject id and masked email,
+passkeys the credential id, public key and counter. Session tokens, codes and
+OAuth state are stored as digests or sealed.
+
+**Setup.** The beta configuration is live as of Oct 5, 2026. The Worker reports
+Discord, Google, email and passkeys enabled at
+`GET /api/play/v1/account/providers`. Cloudflare Email Sending is enabled for
+`berigame.com`; the OAuth clients and callback URLs are configured. Real email
+delivery and complete browser sign-in flows have not yet been verified. For a
+fresh environment, configure the methods below. A method appears only once
+configured; passkeys need nothing.
+
+- *Email:* onboard `berigame.com` in Cloudflare Email Service. The `EMAIL`
+  `send_email` binding and `EMAIL_FROM` (`login@berigame.com`) are in
+  `wrangler.jsonc`.
+- *Discord:* create an application at discord.com/developers, add the redirect
+  `https://beta.berigame.com/api/play/v1/account/oauth/discord/callback`, then
+  `wrangler secret put DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET`.
+- *Google:* create an OAuth web client in Google Cloud with the redirect
+  `https://beta.berigame.com/api/play/v1/account/oauth/google/callback`, then
+  `wrangler secret put GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+Use `--config frontend/cloudflare/wrangler.jsonc` with each `wrangler secret put`.
 
 ## Abuse and persistence limits
 

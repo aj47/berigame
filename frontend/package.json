@@ -22,8 +22,11 @@
 	"dependencies": {
 		"@react-three/drei": "^9.56.22",
 		"@react-three/fiber": "^8.11.0",
+		"@simplewebauthn/browser": "^14.0.0",
+		"@simplewebauthn/server": "^14.0.3",
 		"@types/node": "^18.14.6",
 		"@types/three": "^0.149.0",
+		"arctic": "^3.7.0",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",
 		"spacetimedb": "^2.10.1",

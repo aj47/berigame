@@ -8,9 +8,11 @@ import { ACTIONS, openapi, validateAction, validateObject } from '../agent-api/c
 import { admissionError, ApiError, digest, secret, type Invite } from '../agent-api/portable';
 import { createGameService, deadline, type Credential, type GameSession } from '../agent-api/game';
 import { openCloudflareSocket } from './socket';
+import { bearer, errorBody, readJson, send, unauthorized } from './http';
+import { ACCOUNT_BASE, createAccountTables, forgetCharacter, handleAccount, isAccountPath, isOAuthCallback, reapAccounts, type AccountEnv } from './accounts';
 import { issueRenewal, lookupRenewal, MAX_RENEWALS, renewedElsewhere, rotateRenewal, visitEnded, type RenewalRow, type RenewalStore } from '../agent-api/renewal';
 
-interface Env {
+interface Env extends AccountEnv {
   ASSETS: Fetcher;
   AGENT_GATEWAY: DurableObjectNamespace<AgentGateway>;
   EDGE_LIMIT: RateLimit;
@@ -29,77 +31,34 @@ type Service = Awaited<ReturnType<typeof createGameService>>;
 const PREFIX = '/api/agent/v1';
 const IDLE_MS = 10 * 60_000;
 const unavailable = () => new ApiError(503, 'world_unavailable', 'The island is unavailable. Retry shortly.');
-const unauthorized = () => new ApiError(401, 'invalid_session', 'A valid, unexpired session bearer token is required.');
 function playerRejection(error: unknown): string {
   const message = String(error instanceof Error ? error.message : error).replace(/^SenderError:\s*/, '').slice(0, 300);
   return /^(Needs |Walk |Put |Pick |The |This |That |You |Both |One |Finish |Change |Earn |Three |Visit |Four |Join |Choose |Catch |Pass |Ask |Equip |Fresh |No |They |Only |empty slot|still chewing|not a weapon|No fighting)/i.test(message) && !/token|credential|sql|stack|https?:/i.test(message)
     ? message : 'The game rejected this action. Inspect state before trying again.';
-}
-const errorBody = (error: ApiError) => ({ error: { code: error.code, message: error.message } });
-function send(status: number, body?: unknown, retryAfter?: number) {
-  return new Response(body === undefined ? null : JSON.stringify(body), { status, headers: {
-    'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
-    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
-    ...(body === undefined ? {} : { 'Content-Type': 'application/json; charset=utf-8' }),
-    ...(retryAfter ? { 'Retry-After': String(retryAfter) } : {}),
-  } });
-}
-function bearer(request: Request) {
-  const value = request.headers.get('Authorization');
-  if (!value || !/^Bearer bg[ishark]_[A-Za-z0-9_-]{43}$/.test(value)) throw unauthorized();
-  return value.slice(7);
 }
 function isAdmin(request: Request, env: Env) {
   const value = request.headers.get('Authorization')?.slice(7) ?? '';
   return !!env.ADMIN_TOKEN && request.headers.get('Authorization')?.startsWith('Bearer ')
     && timingSafeEqual(Buffer.from(digest(value)), Buffer.from(digest(env.ADMIN_TOKEN)));
 }
-async function readJson(request: Request): Promise<unknown> {
-  if (request.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/json'
-    || ![null, 'identity'].includes(request.headers.get('Content-Encoding'))) {
-    throw new ApiError(415, 'json_required', 'Send uncompressed application/json.');
-  }
-  if (Number(request.headers.get('Content-Length')) > 4096) throw new ApiError(413, 'body_too_large', 'JSON bodies are limited to 4096 bytes.');
-  const reader = request.body?.getReader();
-  if (!reader) throw new ApiError(400, 'invalid_json', 'Send a JSON object.');
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let size = 0;
-  try {
-    const text = await Promise.race([
-      (async () => {
-        const chunks: Uint8Array[] = [];
-        while (true) {
-          const next = await reader.read();
-          if (next.done) break;
-          size += next.value.length;
-          if (size > 4096) throw new ApiError(413, 'body_too_large', 'JSON bodies are limited to 4096 bytes.');
-          chunks.push(next.value);
-        }
-        return Buffer.concat(chunks).toString('utf8');
-      })(),
-      new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new ApiError(408, 'body_timeout', 'Request body timed out.')), 3000); }),
-    ]);
-    try { return JSON.parse(text); } catch { throw new ApiError(400, 'invalid_json', 'Send a JSON object.'); }
-  } finally { clearTimeout(timer); void reader.cancel().catch(() => {}); }
-}
-
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
-      if (url.search) throw new ApiError(404, 'not_found', 'Credentials belong in Authorization headers.');
+      const account = isAccountPath(url.pathname);
+      if (url.search && !isOAuthCallback(url.pathname)) throw new ApiError(404, 'not_found', 'Credentials belong in Authorization headers.');
       if (request.headers.get('Origin') && request.headers.get('Origin') !== env.PUBLIC_ORIGIN) {
         throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       }
       if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/sessions`, `${PREFIX}/renewals`, `${PREFIX}/session`, `${PREFIX}/state`,
         '/api/play/v1/sessions', '/api/play/v1/renewals', '/api/play/v1/recovery', '/api/play/v1/recover', `${PREFIX}/recovery`, `${PREFIX}/recover`, '/api/admin/invites', '/api/admin/revoke'].includes(url.pathname)
-        && !Object.keys(ACTIONS).some(name => url.pathname === `${PREFIX}/actions/${name}`)) {
+        && !account && !Object.keys(ACTIONS).some(name => url.pathname === `${PREFIX}/actions/${name}`)) {
         throw new ApiError(404, 'not_found', 'Unknown endpoint. See /api/agent/v1/openapi.json.');
       }
       const publicRead = request.method === 'GET' && [PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`].includes(url.pathname);
       if (url.pathname.startsWith('/api/admin/')) { if (!isAdmin(request, env)) throw unauthorized(); }
-      else if (!publicRead && !(request.method === 'POST' && [ `${PREFIX}/sessions`, '/api/play/v1/sessions' ].includes(url.pathname))) bearer(request);
+      else if (!publicRead && !account && !(request.method === 'POST' && [ `${PREFIX}/sessions`, '/api/play/v1/sessions' ].includes(url.pathname))) bearer(request);
       const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
       // A shared network is not one player. Bearers are authenticated again in the coordinator.
       const credential = request.headers.get('Authorization');
@@ -146,6 +105,7 @@ export class AgentGateway extends DurableObject<Env> {
     sql.exec('CREATE TABLE IF NOT EXISTS renewals (key TEXT PRIMARY KEY, prev_key TEXT, prev_until INTEGER NOT NULL, identity TEXT NOT NULL UNIQUE, session_id TEXT NOT NULL, config TEXT NOT NULL, expires_at INTEGER NOT NULL)');
     sql.exec('CREATE INDEX IF NOT EXISTS renewals_prev ON renewals(prev_key)');
     sql.exec('CREATE INDEX IF NOT EXISTS renewals_session ON renewals(session_id)');
+    createAccountTables(sql);
   }
   private one<T extends Record<string, any>>(query: string, ...args: (string | number | null)[]): T | undefined {
     return this.ctx.storage.sql.exec<T>(query, ...args).toArray()[0];
@@ -246,6 +206,7 @@ export class AgentGateway extends DurableObject<Env> {
       this.ctx.storage.sql.exec('DELETE FROM invites WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM renewals WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM recoveries WHERE expires_at <= ?', now);
+      reapAccounts(this.ctx.storage.sql, now);
       this.ctx.storage.sql.exec('DELETE FROM buckets WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM daily WHERE day < ?', new Date(now - 7 * 86400_000).toISOString().slice(0, 10));
     })();
@@ -293,6 +254,7 @@ export class AgentGateway extends DurableObject<Env> {
             await (await this.game()).revoke(identity);
             this.renewals().removeIdentity(identity);
             this.ctx.storage.sql.exec('DELETE FROM recoveries WHERE identity = ?', identity);
+            forgetCharacter(this.ctx.storage.sql, identity);
           }
           return send(204);
         }
@@ -305,6 +267,11 @@ export class AgentGateway extends DurableObject<Env> {
         return send(201, { code, kind: value.kind, expiresAt: new Date(invite.expiresAt).toISOString(), permissions: { combat: invite.combat, chat: invite.chat } });
       }
       this.ctx.storage.sql.exec('UPDATE daily SET requests = requests + 1 WHERE day = ?', day);
+      if (path.startsWith(ACCOUNT_BASE)) {
+        return await handleAccount(request, path, { env: this.env, sql: this.ctx.storage.sql, transactionSync: fn => this.ctx.storage.transactionSync(fn),
+          take: (key, capacity, perSecond, at) => this.take(key, capacity, perSecond, at), renewals: () => this.renewals(),
+          verifyCredential: async credential => (await this.game()).verifyCredential(credential), ip, now });
+      }
       if (request.method === 'GET' && [PREFIX, `${PREFIX}/`].includes(path)) {
         let ready = false;
         try { ready = (await this.game()).ready(); } catch { /* Public status is safe without credentials configured. */ }

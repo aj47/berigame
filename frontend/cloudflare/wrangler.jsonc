@@ -21,8 +21,10 @@
   "vars": {
     "PUBLIC_ORIGIN": "https://beta.berigame.com",
     "SPACETIME_URI": "wss://berigame-db.exe.xyz",
-    "SPACETIME_DB": "berigame-beta"
+    "SPACETIME_DB": "berigame-beta",
+    "EMAIL_FROM": "login@berigame.com"
   },
+  "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["login@berigame.com"] }],
   "durable_objects": { "bindings": [{ "name": "AGENT_GATEWAY", "class_name": "AgentGateway" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentGateway"] }],
   "ratelimits": [{ "name": "EDGE_LIMIT", "namespace_id": "927471", "simple": { "limit": 1200, "period": 60 } }],

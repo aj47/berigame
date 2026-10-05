@@ -70,7 +70,7 @@ export const guideArticles: WikiArticle[] = [
       ] },
       { id: 'handy-shortcuts', title: 'A few useful shortcuts', table: { headers: ['Key', 'Action'], rows: [['I', 'Open your bag'], ['C', 'Open crafting'], ['K', 'Open skills and techniques'], ['1 / 2 / 3', 'Use a quick slot'], ['Escape', 'Stop your current action / close a panel'], ['H or ?', 'Open in-game help']] } },
     ],
-    related: ['controls', 'gathering', 'meadows', 'coins-quests', 'expeditions', 'death-safety'],
+    related: ['controls', 'player-accounts', 'gathering', 'meadows', 'coins-quests', 'expeditions', 'death-safety'],
     sourceFiles: ['shared/sim/constants.ts', 'shared/sim/adventure.ts', 'shared/sim/frontier/catalog.ts', 'spacetimedb/src/reducers/tick.ts', 'frontend/src/Components/UIComponents.tsx', 'frontend/src/Components/CharacterRecovery.tsx'],
   },
   {
@@ -634,8 +634,44 @@ export const guideArticles: WikiArticle[] = [
       ] },
       { id: 'sharing', title: 'Share an invitation, keep your identity', paragraphs: ['Use the Friends panel’s join-me link when inviting another player. It creates a shareable code without exposing your sign-in credentials. Agent session and renewal tokens also belong to one character and should be kept in their intended credential storage rather than placed in a URL.'] },
     ],
-    related: ['getting-started', 'controls', 'land-ownership', 'garden', 'trading-social', 'agent-play'],
+    related: ['getting-started', 'player-accounts', 'controls', 'land-ownership', 'garden', 'trading-social', 'agent-play'],
     sourceFiles: ['frontend/src/spacetime/connection.ts', 'frontend/src/spacetime/sessionToken.ts', 'frontend/src/spacetime/visitRenewal.ts', 'frontend/src/Components/LoadingScreen.tsx', 'frontend/src/Components/CharacterRecovery.tsx', 'frontend/src/frontier/recovery.ts'],
+  },
+  {
+    slug: 'player-accounts',
+    title: 'Save & return to your character',
+    category: 'Essentials',
+    summary: 'Link a sign-in method to return to the character you already play.',
+    lead: 'Player accounts let you return to an existing character from another browser. First enter the island as a guest, then link a sign-in method in Settings → Account. Signing in loads that saved character; it does not create a new one.',
+    facts: [
+      { label: 'Save a character', value: 'Settings → Account' },
+      { label: 'Log in', value: 'Title screen → Saved your character? Log in' },
+      { label: 'Sign-in methods', value: 'Discord · Google · email · passkey' },
+      { label: 'Game identity', value: 'The same character and server-saved progress' },
+    ],
+    sections: [
+      { id: 'save-character', title: 'Link a sign-in method', bullets: [
+        'Enter the island as a guest and create the character you want to keep using.',
+        'Open Settings → Account and choose Discord, Google, email or a passkey. Follow the sign-in prompt to attach that method to your current character.',
+        'An account is created when you save a character. Signing in with a method that has no saved character does not create a blank character.',
+        'Each account belongs to one game character. Linking an account keeps that character’s existing game identity and server progress.',
+      ] },
+      { id: 'return-to-character', title: 'Log in from another browser', bullets: [
+        'On the title screen, choose “Saved your character? Log in” and select a sign-in method already linked to your account.',
+        'After authentication, the game returns you to the same character with its current inventory, skills and world progress.',
+        'If you use email, the message includes a sign-in link and a six-digit code. Use the code in the game tab if the link opens in a phone’s in-app browser instead.',
+      ] },
+      { id: 'devices', title: 'Using two browsers', paragraphs: [
+        'Logging in on another browser moves the active play session to that browser. If the original browser remains open and signed in, its account login can resume the character at its next hourly renewal. Log out on a browser you are finished using from Settings → Account.',
+      ] },
+      { id: 'manage-logins', title: 'Manage linked methods', bullets: [
+        'Settings → Account shows the sign-in methods attached to your character. You can add another method or remove one you no longer use.',
+        'Keep at least one method linked; the last sign-in method cannot be removed.',
+        'Log out on this browser from the same section. Logging out does not delete the account or character.',
+      ] },
+    ],
+    related: ['getting-started', 'connection-identity', 'controls'],
+    sourceFiles: ['frontend/src/Components/AccountLogin.tsx', 'frontend/src/Components/AccountSection.tsx', 'frontend/cloudflare/accounts.ts'],
   },
   {
     slug: 'agent-play',

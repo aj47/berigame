@@ -1,6 +1,8 @@
 import React, { useId } from "react";
 import "./menuGuide.css";
 import CharacterRecovery from './CharacterRecovery';
+import AccountSection from './AccountSection';
+import { accountsEnabled } from '../account/accountApi';
 import { useSettingsStore, type Settings } from "../spacetime/stores/settingsStore";
 
 interface Props {
@@ -153,6 +155,7 @@ const SettingsPanel = ({ open, onClose, recoveryEnabled = false }: Props) => {
         </div>
         <p className="settings-hint">{ROTATE.find((r) => r.value === s.cameraRotateButton)?.hint}</p>
       </fieldset>
+      {accountsEnabled && <AccountSection />}
       {recoveryEnabled && <CharacterRecovery />}
       <button className="settings-reset" onClick={() => s.reset()}>
         Reset to defaults

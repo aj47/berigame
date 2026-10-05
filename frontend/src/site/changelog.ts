@@ -15,6 +15,17 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-05-player-accounts', date: '2026-10-05', period: 'Oct 5, 2026',
+    title: 'Save your character and return from another browser',
+    note: 'Live beta update — player accounts are enabled.',
+    changes: [
+      'Save your current character from Settings → Account by linking Discord, Google, email or a passkey. Accounts are created when you save a character.',
+      'Choose “Saved your character? Log in” on the title screen to return to that same character from another browser. Email offers both a sign-in link and a six-digit code.',
+      'Manage linked sign-ins and log out in Settings → Account. Your character keeps the same game identity and server-saved progress.',
+    ],
+    commits: [],
+  },
+  {
     id: '2026-10-03-discord-links', date: '2026-10-03', period: 'Oct 3, 2026',
     title: 'Join the BeriGame community on Discord',
     changes: [
@@ -248,6 +259,6 @@ export const changelogArticle: WikiArticle = {
     paragraphs: entry.note ? [entry.note] : undefined,
     bullets: entry.changes,
   })),
-  related: ['getting-started', 'controls', 'meadows', 'coins-quests', 'land-ownership', 'connection-identity'],
+  related: ['getting-started', 'player-accounts', 'controls', 'meadows', 'coins-quests', 'land-ownership', 'connection-identity'],
   sourceFiles: ['frontend/src/site/changelog.ts'],
 };

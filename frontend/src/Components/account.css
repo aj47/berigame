@@ -1,0 +1,20 @@
+.account-login { display: grid; gap: 8px; }
+.account-methods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.account-methods button { font-size: 13px; }
+.account-email { display: grid; gap: 6px; text-align: left; }
+.account-email label { display: grid; gap: 4px; font-size: 12px; font-weight: bold; }
+.account-email input { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--parchment); color: var(--ink); font-size: 14px; }
+.account-hint { margin: 0; font-size: 12px; line-height: 1.5; color: var(--ink-soft); }
+.account-error { margin: 0; font-size: 12px; color: #8b3024; }
+.account-link-button { background: none; border: 0; padding: 4px 0; min-height: 0; font-size: 12px; color: var(--blue); text-decoration: underline; justify-self: start; }
+.account-logins { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 4px; }
+.account-logins li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.account-logins li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-logins button { font-size: 12px; min-height: 32px; padding: 4px 10px; }
+.account-section details { margin: 6px 0; }
+.account-section summary { cursor: pointer; font-size: 13px; padding: 4px 0; }
+.account-logout { width: 100%; font-size: 13px; margin-top: 6px; }
+.beta-account { margin: 0 0 18px; text-align: left; }
+.beta-account summary { cursor: pointer; font-size: 13px; font-weight: bold; padding: 6px 0; color: var(--blue); }
+.beta-account .account-login { margin-top: 8px; }
+.beta-account .account-methods button { min-height: 44px; }
