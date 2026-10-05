@@ -87,8 +87,8 @@ export const guideArticles: WikiArticle[] = [
         'If the camera gets awkward, open Help → Keyboard & camera → Reset view. Camera sensitivity, graphics quality and reduced motion are available in Settings.',
       ] },
       { id: 'interacting', title: 'Interacting with the island', bullets: [
-        'Select a world object to approach it. Its interaction panel opens when you arrive within reach; choosing another destination cancels the pending interaction. Hover labels show what the object does before you walk there.',
-        'Choose Harvest on original island trees and resource nodes. These nodes can queue you beside a busy or regrowing resource. In the Meadows, select a resource to approach and begin gathering; Timber trees fall after a completed chop and regrow from their stumps.',
+        'Select a world object to open its menu where you clicked. Choosing an action walks you into reach first; choosing another destination cancels the pending action. Hover labels show what the object does.',
+        'Choose Harvest on original island trees and resource nodes. These nodes can queue you beside a busy or regrowing resource. In the Meadows, select a timber pine, rock or plant and choose Chop, Mine, Harvest or Gather; the menu shows who is already gathering there or how long the patch has left to regrow. Timber trees fall after a completed chop and regrow from their stumps.',
         'Choose an item in the bag to see its available actions. Food heals, weapons can be assigned to quick slots, and materials are used in crafting or camp contributions.',
         'Use the goal prompt for the next suggested milestone. Open the minimap to orient yourself and find named destinations.',
       ] },
@@ -291,7 +291,7 @@ export const guideArticles: WikiArticle[] = [
         'Coins are a server-saved balance rather than a bag item. Gathering produces supplies and XP; collect quest rewards or deliver supply orders to receive coins.',
       ] },
       { id: 'moving-dropping', title: 'Moving, dropping and picking up', paragraphs: [
-        'Drag items between bag and quick slots; on touch screens, hold an item before dragging. Matching stacks merge up to their limit, and different items swap places. You can also select an item and choose Move. Dropping creates a visible ground pile in Bramblewild or a dropped bag in other regions.',
+        'Drag items between bag and quick slots; on touch screens, hold an item before dragging. Matching stacks merge up to their limit, and different items swap places. You can also select an item and choose Move. Dropping creates a visible ground pile in Bramblewild or a dropped bag in other regions. In Bramblewild you can also drag an item out of the bag or a quick slot and release it over the island to drop the whole stack.',
         'Ground items last 500 server ticks, or five minutes. Pick-up works from an adjacent tile and can walk you towards the pile. If only part of a pile fits, the remainder stays on the ground. Items on the ground are not reserved for the player who dropped them.',
         'If a player covers a pile, select the player and choose the item under On the ground. Each stack has its own pickup action.',
         'Ordinary death drops your whole bag, including your wielded weapon. Skill progress and unlocked keepsakes persist. Friendly duels use separate practice health and do not drop your items.',
@@ -368,7 +368,7 @@ export const guideArticles: WikiArticle[] = [
     title: 'Crafting & recipes',
     category: 'Items & equipment',
     summary: 'Original island recipes, with a guide to the Meadows workshop and new materials.',
-    lead: 'Open Craft with C in any district to turn gathered materials into weapons, food and a keepsake. Camp recipes complete instantly with the required ingredients and Crafting level. When settlements are enabled, the same panel includes tools, refined materials, creature supplies and boat parts.',
+    lead: 'Open Craft with C in any district to turn gathered materials into weapons, food and a keepsake. Camp recipes complete instantly with the required ingredients and Crafting level. When settlements are enabled, the same panel includes tools, refined materials, creature supplies and boat parts. Recipes are grouped into Gear, Food, Tools and Materials; the buttons at the top show every group, only what your bag can make now (Ready), or a single group.',
     facts: [{ label: 'Original island recipes', value: String(RECIPES.length) }, { label: 'Crafting time', value: 'Instant' }, { label: 'Original recipes need a station?', value: 'No' }, { label: 'Shortcut', value: 'C' }],
     sections: [
       { id: 'recipe-table', title: 'Recipe reference', table: { headers: ['Recipe', 'Ingredients', 'Crafting level', 'XP', 'Result'], rows: RECIPES.map(recipe => [recipe.name, recipe.inputs.map(input => `${input.quantity} ${itemName(input.itemId)}`).join(' + '), String(recipe.level), String(recipe.xp), recipe.output ? `${recipe.output.quantity} ${itemName(recipe.output.itemId)}` : 'Permanent cosmetic unlock']) } },

@@ -119,4 +119,22 @@ describe('live resource action dropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Follow' }));
     expect(action).toHaveBeenCalledOnce();
   });
+
+  it('crosses from Meadows to the tree before starting the harvest', () => {
+    mock.trees = [{ ...mock.trees[0], x: 28, z: 25, cooldownUntilTick: 0 }];
+    const requests: any[] = [];
+    const listen = (event: Event) => requests.push((event as CustomEvent).detail);
+    window.addEventListener('berigame-world-interaction', listen);
+    try {
+      useUserInputStore.getState().setClickedOtherObject({ connectionId: 'Blueberry', harvestNodeId: 1, e: { clientX: 100, clientY: 100 } });
+      render(<ClickDropdown region="settlement" />);
+      fireEvent.click(screen.getByRole('button', { name: /^Harvest/ }));
+      expect(mock.startHarvest).not.toHaveBeenCalled();
+      expect(requests).toEqual([expect.objectContaining({ location: { region: 'bramblewild', x: 28, z: 25 }, radius: 1 })]);
+      requests[0].perform();
+      expect(mock.startHarvest).toHaveBeenCalledExactlyOnceWith(1);
+    } finally {
+      window.removeEventListener('berigame-world-interaction', listen);
+    }
+  });
 });

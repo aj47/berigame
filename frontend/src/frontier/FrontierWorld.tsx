@@ -8,7 +8,7 @@ import IslandShrines3D from './IslandShrines3D';
 import { approachWorldInteraction } from "./worldInteraction";
 import { openSettlement } from "./navigation";
 import { plotName } from "./panelModel";
-import { resourceHover } from "./resourcePresentation";
+import { resourceHover, resourceTitle } from "./resourcePresentation";
 import { meadowTrailDistance } from "./meadowPathArt";
 import { holdState, isDirectAttackClick, MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, openMenuNear } from "../Components/3D/tapAssist";
 import { PlayerState } from "@sim";
@@ -218,14 +218,14 @@ export function Animal({ creature, showLabel, disabled = false }: { creature: Cr
       approachWorldInteraction(creature, attack, 1);
       return;
     }
-    const event = { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() };
-    approachWorldInteraction(creature, () => {
-      if (!live.current.mounted) return;
-      const resting = live.current.creature.restUntil > Date.now();
-      setSelected({ connectionId: def.name, e: event, dropdownOptions: [
-        { label: resting ? `${def.name} is resting` : `Attack ${def.name}`, disabled: resting || !live.current.alive, onClick: attack },
-      ] });
-    }, 1);
+    // Choose first; Attack walks over from wherever the creature is by then.
+    const resting = creature.restUntil > Date.now();
+    setSelected({ connectionId: def.name, e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() }, dropdownOptions: [
+      { label: resting ? `${def.name} is resting` : `Attack ${def.name}`, disabled: resting || !live.current.alive, onClick: () => {
+        setSelected(null);
+        approachWorldInteraction(live.current.creature, attack, 1);
+      } },
+    ] });
   };
   useFrame(({ clock }, dt) => {
     if (ref.current) {
@@ -410,9 +410,9 @@ export function FrontierScene({
   const nearbyResources = state.resources.filter(n => n.region === region && distance(me, n) < 35);
   const nearestResource = nearbyResources.filter(n => distance(me, n) < 8)
     .sort((a, b) => distance(me, a) - distance(me, b))[0];
-  const approachResource = (n: typeof state.resources[number]) => {
-    if (n.harvest || (n.regrowsAt && n.regrowsAt > Date.now())) return;
-    approachWorldInteraction(n, () => void actions.frontier({ action: 'gather', id: n.id }), 1);
+  // Like island berry trees: choose from a live action menu first; the action walks over.
+  const approachResource = (n: typeof state.resources[number], e: any) => {
+    useUserInputStore.getState().setClickedOtherObject({ connectionId: resourceTitle(n.item), e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() }, resourceId: n.id });
   };
   const click = (e: any) => {
     if (e.delta > 5) return;
@@ -529,7 +529,7 @@ export function FrontierScene({
             ))}
           {nearbyResources
             .map((n) => (
-              <group key={n.id} position={[n.x - 25, 0, n.z - 25]} userData={{ hoverTarget: resourceHover(n, Date.now(), hasAxe) }} onClick={e => { if (!draft && e.delta <= 5) { e.stopPropagation(); if (holdState.active || performance.now() < holdState.suppressClickUntil) return; approachResource(n); } }}>
+              <group key={n.id} position={[n.x - 25, 0, n.z - 25]} userData={{ hoverTarget: resourceHover(n, Date.now(), hasAxe) }} onClick={e => { if (!draft && e.delta <= 5) { e.stopPropagation(); if (holdState.active || performance.now() < holdState.suppressClickUntil) return; approachResource(n, e); } }}>
                 <ResourceModel item={n.item} resource={n}/>
                 {showWorldLabels && !n.harvest && nearestResource?.id === n.id && <Html style={{ pointerEvents: 'none' }} zIndexRange={[3, 0]} position={[0, n.regrowsAt && n.regrowsAt > Date.now() ? 1 : n.item === 'timber' || n.item.startsWith('berry_') ? 3.2 : 1.3, 0]} center>
                   <span className="frontier-label">{n.regrowsAt && n.regrowsAt > Date.now() ? 'Regrowing' : n.item.replace('berry_', '').replaceAll('_', ' ').replace(/^./, c => c.toUpperCase())}</span>

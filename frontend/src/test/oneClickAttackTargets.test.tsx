@@ -166,11 +166,12 @@ describe('one-click hostile wildlife attacks', () => {
       useSettingsStore.getState().set({ oneClickAttack: enabled });
       capturedClick({ delta: 0, button: 0, stopPropagation: vi.fn(), clientX: 100, clientY: 100 });
     });
-    act(() => mock.approach.mock.lastCall![1]());
     if (enabled) {
+      act(() => mock.approach.mock.lastCall![1]());
       expect(mock.frontier).toHaveBeenCalledExactlyOnceWith({ action: 'attack', id: 'bristle' });
       expect(selected()).toBeNull();
     } else {
+      expect(mock.approach).not.toHaveBeenCalled();
       expect(mock.frontier).not.toHaveBeenCalled();
       expect(selected().dropdownOptions[0].label).toMatch(/^Attack /);
     }
@@ -189,13 +190,20 @@ describe('one-click hostile wildlife attacks', () => {
     expect(selected()).toBeNull();
   });
 
-  it('keeps the explicit attack option when holding for a menu', () => {
+  it('opens the attack option before walking, then approaches the creature once chosen', () => {
     useSettingsStore.setState({ oneClickAttack: true });
-    const ui = render(<Animal creature={creature()} showLabel={false} />);
+    const row = creature();
+    const ui = render(<Animal creature={row} showLabel={false} />);
     click(ui.container, { interaction: 'menu' });
-    act(() => mock.approach.mock.lastCall![1]());
-    expect(mock.frontier).not.toHaveBeenCalled();
+    expect(mock.approach).not.toHaveBeenCalled();
+    expect(selected().dropdownOptions[0].label).toMatch(/^Attack /);
+    const moved = { ...row, x: 53 };
+    ui.rerender(<Animal creature={moved} showLabel={false} />);
     act(() => selected().dropdownOptions[0].onClick());
+    expect(selected()).toBeNull();
+    expect(mock.approach).toHaveBeenCalledWith(moved, expect.any(Function), 1);
+    expect(mock.frontier).not.toHaveBeenCalled();
+    act(() => mock.approach.mock.lastCall![1]());
     expect(mock.frontier).toHaveBeenCalledExactlyOnceWith({ action: 'attack', id: 'bristle' });
   });
 

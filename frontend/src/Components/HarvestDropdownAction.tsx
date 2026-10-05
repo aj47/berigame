@@ -3,9 +3,10 @@ import { useGameActions } from '../spacetime/actions';
 import { useMyIdentityHex, usePlayerByHex, useTick, useTrees } from '../spacetime/hooks';
 import { identityHex } from '../spacetime/identity';
 import { harvestStatus } from './harvestUi';
+import { performOnIsland } from '../frontier/worldInteraction';
 
 /** Keep the selected node's status live without reopening or moving its menu. */
-export default function HarvestDropdownAction({ nodeId, onClose }: { nodeId: number; onClose: () => void }) {
+export default function HarvestDropdownAction({ nodeId, region, onClose }: { nodeId: number; region?: string; onClose: () => void }) {
   const node = useTrees().find(tree => tree.id === nodeId);
   const tick = useTick();
   const myHex = useMyIdentityHex();
@@ -22,8 +23,8 @@ export default function HarvestDropdownAction({ nodeId, onClose }: { nodeId: num
       disabled={disabled}
       onClick={() => {
         if (disabled) return;
-        void startHarvest(node.id);
         onClose();
+        performOnIsland(region, node, () => void startHarvest(node.id));
       }}
     >
       {status.label}{!status.berry && status.unavailable ? ' — wait here' : ''}

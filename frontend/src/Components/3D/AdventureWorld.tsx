@@ -25,8 +25,8 @@ function Place({asset,at,name,view='expedition',showLabel}: {asset:AdventureAsse
     if(e.delta>5)return;e.stopPropagation();
     if(holdState.active||performance.now()<holdState.suppressClickUntil)return;
     const event={clientX:e.clientX,clientY:e.clientY,ray:e.ray?.clone()};
-    approachWorldInteraction({region:'bramblewild',...at},()=>openAdventureInteraction(name,event,view));
-  }} userData={{hoverTarget:{title:name,action:`Walk over · ${adventureInteractionLabel(view)}`,click:'panel',radius:asset==='market'?1.6:1.1}}}>
+    openAdventureInteraction(name,event,view,perform=>approachWorldInteraction({region:'bramblewild',...at},perform));
+  }} userData={{hoverTarget:{title:name,action:adventureInteractionLabel(view),click:'panel',radius:asset==='market'?1.6:1.1}}}>
     <AdventureAssetView asset={asset}/>
     {showLabel&&<Html position={[0,asset==='market'?2.7:1.8,0]} center zIndexRange={[3,0]} style={{pointerEvents:'none'}}><span className="adventure-world-label">{name}</span></Html>}
   </group>;
@@ -50,17 +50,18 @@ function Cargo({row,tick,carrierTile,showLabel}:{row:Expedition;tick:number;carr
     if(holdState.active||performance.now()<holdState.suppressClickUntil)return;
     const event={clientX:e.clientX,clientY:e.clientY,ray:e.ray?.clone()};
     const at=()=>current.current.carrierTile??(current.current.row.mossCarrying?{x:current.current.row.mossX,z:current.current.row.mossZ}:current.current.row);
-    const approach=()=>{
+    // Rolling or carried cargo may move during the walk: follow it until you arrive.
+    const follow=(perform:()=>void)=>{
       const target={x:at().x,z:at().z};
       approachWorldInteraction({region:'bramblewild',...target},()=>{
         if(!mounted.current)return;
         const latest=at();
-        if(latest.x!==target.x||latest.z!==target.z){approach();return;}
-        openAdventureInteraction(current.current.row.stage==='growing'?'Strange seed':'Giant berry',event);
+        if(latest.x!==target.x||latest.z!==target.z){follow(perform);return;}
+        perform();
       });
     };
-    approach();
-  }} userData={{hoverTarget:{title:growing?'Strange seed':'Giant berry',action:`Walk over · ${adventureInteractionLabel('expedition')}`,click:'panel',detail:growing?'Growing':carried?'Being carried':hidden?'Hidden under leaves':'Ready to haul',radius:.85}}}>
+    openAdventureInteraction(current.current.row.stage==='growing'?'Strange seed':'Giant berry',event,'expedition',follow);
+  }} userData={{hoverTarget:{title:growing?'Strange seed':'Giant berry',action:adventureInteractionLabel('expedition'),click:'panel',detail:growing?'Growing':carried?'Being carried':hidden?'Hidden under leaves':'Ready to haul',radius:.85}}}>
     <group ref={fruit}><AdventureAssetView asset={growing?'strange-seed':'giant-berry'}/></group>
     {hidden&&!growing&&<group position={[0,.75,0]}><AdventureAssetView asset="leaf-cover" scale={1.3}/></group>}
     {showLabel&&<Html position={[0,growing?1.2:1.95,0]} center zIndexRange={[3,0]} style={{pointerEvents:'none'}}><span className="adventure-world-label">{growing?'Strange seed':'Giant berry'} · {row.value}</span></Html>}
@@ -71,6 +72,8 @@ export default function AdventureWorld({ frontierEnabled = false }: { frontierEn
   const me=useMyPlayer();
   const showWorldLabels=useSettingsStore(state=>state.showWorldLabels);
   const homeTile=me ? homePoint(me,me.region || 'bramblewild') : null;
+  // Expedition panels walk with island coordinates, so cross from Meadows before opening one.
+  const offIsland=!!me?.region&&me.region!=='bramblewild';
   const nearby=(at:{x:number;z:number},radius=10)=>!!homeTile&&showWorldLabels&&Math.hypot(homeTile.x-at.x,homeTile.z-at.z)<radius;
   const nearTrail=nearby({x:49,z:27},8);
   const select=useUserInputStore((state:any)=>state.setClickedOtherObject);
@@ -94,7 +97,7 @@ export default function AdventureWorld({ frontierEnabled = false }: { frontierEn
     {!giants.length&&<AdventureActor asset="berry-giant" x={FEAST_GIANT.x} z={FEAST_GIANT.z} label="Berry Giant · hungry" speech="Bring me a giant berry!" height={4.75}
       showLabel={nearby(FEAST_GIANT)} showSpeech={nearby(FEAST_GIANT,6)}
       hoverAction="Feed a giant berry"
-      onInteract={event=>select({connectionId:'Berry Giant',berryGiantExpeditionId:0n,e:event})}/>}
+      approachFirst={offIsland} onInteract={event=>select({connectionId:'Berry Giant',berryGiantExpeditionId:0n,e:event})}/>}
     <Place asset={built?'workshop':'workshop-site'} at={{x:20,z:17}} name={built?'Camp workshop':'Build our workshop'} view="workshop" showLabel={nearby({x:20,z:17})}/>
     {built&&<group position={tileToWorld({x:19,z:18})} rotation={[0,.55,0]}><AdventureAssetView asset="handcart"/></group>}
     {expeditions.filter(e=>['growing','hauling'].includes(e.stage)).map(e=>{
@@ -112,7 +115,7 @@ export default function AdventureWorld({ frontierEnabled = false }: { frontierEn
       return <AdventureActor key={`giant-${e.id}`} asset="berry-giant" x={at.x} z={at.z} showLabel={nearby(at)} showSpeech={nearby(at,6)}
         label={`Berry Giant · ${fed?'berry happy':mood.label}`} speech={fed?'Thank you, berry friend!':mood.speech}
         mood={fed?'happy':tick<e.giantUntil?'rest':'sniff'} height={4.75} hoverAction={fed?'Meet your berry friend':'Feed a giant berry'}
-        onInteract={event=>select({connectionId:'Berry Giant',berryGiantExpeditionId:e.id,e:event})}/>;
+        approachFirst={offIsland} onInteract={event=>select({connectionId:'Berry Giant',berryGiantExpeditionId:e.id,e:event})}/>;
     })}
   </group>;
 }

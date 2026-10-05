@@ -44,7 +44,7 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag, frontier }: Props) => {
   const players = usePlayersByHex();
   const tick = useTick();
   const rows = useInventoryRows();
-  const { eatBerry, wieldItem, unwield, cancel, moveItem, frontier: frontierAction } = useGameActions();
+  const { eatBerry, wieldItem, unwield, cancel, moveItem, dropItem, frontier: frontierAction } = useGameActions();
   const showToast = useToastStore((s) => s.show);
   const sparkle = useFirstDayStore((s) => s.stickFoundAt !== null);
   const [pending, setPending] = useState(false);
@@ -71,6 +71,7 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag, frontier }: Props) => {
   const drag = useInventoryDrag({
     slots, enabled: !dead && !pending && !!me,
     onMove: async (from, to) => run(() => moveItem(from, to)),
+    onDrop: async (from, quantity) => run(() => dropItem(from, quantity)),
     onError: () => showToast('Could not move that item. Try again.'),
   });
 

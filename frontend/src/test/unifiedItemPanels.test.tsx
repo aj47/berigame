@@ -130,6 +130,29 @@ describe('one bag, craft panel and quick bar in every district', () => {
     expect(mock.craft).toHaveBeenCalledWith('stone_club');
   });
 
+  it('groups recipes by shelf and filters to ready or one shelf', () => {
+    render(<CraftingPanel open onClose={() => {}} frontier={snapshot()} />);
+    expect(screen.getAllByRole('heading', { level: 3 }).map(heading => heading.textContent)).toEqual(['Gear', 'Food', 'Tools', 'Materials']);
+    const gear = within(screen.getByRole('group', { name: 'Gear' })).getAllByRole('article');
+    expect(within(gear[0]).getByRole('heading').textContent).toBe('Stone Club');
+    const locked = gear.map(card => card.classList.contains('locked'));
+    expect(locked).toEqual([...locked].sort((a, b) => Number(a) - Number(b)));
+    expect(within(gear.at(-1)!).queryByRole('list')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Ready, \d+ ready$/ }));
+    const ready = screen.getAllByRole('button', { name: /^Make / });
+    expect(ready.length).toBeGreaterThan(1);
+    ready.forEach(button => expect(button).toBeEnabled());
+    expect(screen.getByRole('button', { name: 'Make Planks' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Make Driftwood Crown' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Materials/ }));
+    expect(screen.getByRole('button', { name: /^Materials/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Make Planks' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Make Stone Club' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
+  });
+
   it('explains missing stations and enables the same recipe after reaching the town workshop', () => {
     mock.player.region = 'bramblewild';
     const frontier = snapshot();

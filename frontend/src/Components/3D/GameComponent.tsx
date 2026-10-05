@@ -99,7 +99,7 @@ const GameComponent = () => {
       {!draft && clickedOtherObject && <ClickDropdown region={me?.region || 'bramblewild'} />}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       {webgl && <WorldBoundary>
-      {!homeScene ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" dpr={dpr} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
+      {!homeScene ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" data-world-floor dpr={dpr} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
         <WebGLContextWatch />
         {graphics === 'auto' && <PerformanceMonitor onDecline={() => setDprCap(1)} onIncline={() => setDprCap(1.5)} flipflops={3} onFallback={() => setDprCap(1)} />}
         <Suspense fallback={null}>

@@ -38,3 +38,19 @@ export function frontierRecipeStatus(recipe: Recipe, state: FrontierSnapshot, pl
     locked: !!unlock,
   };
 }
+
+export type CraftCategory = 'gear' | 'food' | 'tools' | 'materials';
+export const CRAFT_CATEGORIES: { id: CraftCategory; label: string }[] = [
+  { id: 'gear', label: 'Gear' },
+  { id: 'food', label: 'Food' },
+  { id: 'tools', label: 'Tools' },
+  { id: 'materials', label: 'Materials' },
+];
+
+/** Shelf for a recipe's output; keepsakes (no item output) count as gear. */
+export function craftCategory(itemId: string | null): CraftCategory {
+  const item = itemId ? getItemDef(itemId) : undefined;
+  if (!item || item.weaponDamage > 0 || itemId === 'padded_vest') return 'gear';
+  if (item.healthRestore > 0 || itemId === 'taming_feed') return 'food';
+  return item.maxStack === 1 ? 'tools' : 'materials';
+}

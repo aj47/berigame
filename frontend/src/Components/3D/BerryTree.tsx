@@ -9,7 +9,6 @@ import { identityHex } from '../../spacetime/identity';
 import { useUserInputStore } from '../../store';
 import { merged, part, withWind } from './envArt';
 import HarvestRing from '../../fx/HarvestRing';
-import { approachWorldInteraction } from '../../frontier/worldInteraction';
 import { holdState } from './tapAssist';
 
 type V3 = [number, number, number];
@@ -116,15 +115,13 @@ const BerryTree = ({ tree, tick, harvester }: Props) => {
     if (e.delta > 5) return;
     e.stopPropagation();
     if (holdState.active || performance.now() < holdState.suppressClickUntil) return;
-    const event = { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() };
-    approachWorldInteraction({ region: 'bramblewild', x: tree.x, z: tree.z }, () => {
-      setClickedOtherObject({ connectionId: def?.name ?? 'Berry tree', e: event, harvestNodeId: tree.id });
-    }, 1);
+    // Choose first; the harvest action walks over.
+    setClickedOtherObject({ connectionId: def?.name ?? 'Berry tree', e: { clientX: e.clientX, clientY: e.clientY, ray: e.ray?.clone() }, harvestNodeId: tree.id });
   };
   const s = getShape(tree.itemId);
   const ripe = regrowTicks === 0;
   return <group position={[wx, wy, wz]} onClick={onClick} userData={{ hoverTarget: {
-    title: `${def?.name ?? 'Berry'} tree`, action: 'Walk over for harvest options', click: 'panel', detail: label, tone: disabled ? 'muted' : 'ready', radius: 1.2,
+    title: `${def?.name ?? 'Berry'} tree`, action: 'Click for harvest options', click: 'panel', detail: label, tone: disabled ? 'muted' : 'ready', radius: 1.2,
   } }}>
     <mesh geometry={s.body} material={faded ? bodyFaded : bodyMat} />
     <mesh geometry={shadowGeo} material={shadowMat} position={[0, .015, 0]} />
