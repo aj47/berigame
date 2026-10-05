@@ -15,6 +15,20 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-05-homes-and-outer-lands', date: '2026-10-05', period: 'Oct 5, 2026',
+    title: 'Roomier homes, joined roofs and a Bramblewild four times larger',
+    note: 'Live beta update.',
+    changes: [
+      'Walls stand taller than your character, and neighbouring roof tiles on a plot join into one roof with ridges, valleys and overhanging eaves.',
+      'Every building piece has new detailed art, and beds, benches, stools, bookshelves, barrels, woven rugs and potted plants join the build list.',
+      'Press R (Shift+R to go back) to turn a piece while placing it; an arrow on the preview shows which way it faces. Placed pieces can be rotated where they stand.',
+      'The Coast continues past the harbour road into Eastreach and over Saltmarsh Causeway into Mossvale and the southern wilds, with lakes, woods and six new destinations on the map.',
+      'Forty-one berry thickets and twenty-six driftwood piles and tide rocks now dot the shores, including new thickets on the original Coast. The harbour trail to the Meadows crosses Eastreach.',
+      'The Meadows gains seventy-three wild timber, stone, fibre, clay and berry patches between the plots, in the eastern woods and along both shores.',
+    ],
+    commits: [],
+  },
+  {
     id: '2026-10-05-menus-crafting-drop', date: '2026-10-05', period: 'Oct 5, 2026',
     title: 'Menus open where you click, a sorted crafting panel and drag to drop',
     note: 'Live beta update.',
