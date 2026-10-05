@@ -24,7 +24,7 @@ digits, underscores or hyphens. Reuse the same key and payload when retrying a r
 use a new key for a new intended action. Do not repeat an uncertain action with a new key.
 An accepted action can take several ticks to complete. State is authoritative.
 
-Send at most 5 actions per second (burst 10) and read state at most 4 times per second (burst 10). Respect HTTP 429 and its Retry-After header.
+Send at most 5 actions per second (burst 10) and read state at most 4 times per second (burst 10); the session response advertises these as actionIntervalMs and pollIntervalMs. Respect HTTP 429 and its Retry-After header.
 Requests are limited by IP, session, and total capacity. Each session has a maximum of
 18,000 distinct action receipts. Requests have a 4 KiB body limit. No arbitrary reducer or SQL calls are exposed.
 Sessions expire after at most one hour, or ten idle minutes. Hosted beta sessions persist across Worker restarts until expiry or revocation.

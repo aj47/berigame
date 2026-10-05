@@ -1,6 +1,7 @@
 import { validateCommand } from '../../shared/sim/frontier/engine';
 import { EXPEDITION_ACTIONS } from '../../shared/sim';
 import { ApiError } from './portable';
+import { AGENT_POLL_INTERVAL_MS } from './admissionPolicy';
 import {
   CHAT_NEARBY_RADIUS, INVITE_PARAM, MAX_OFFER_LEN, MAX_TRADE_STACKS, TRADE_BREAK_RANGE, TRADE_RANGE,
   DUMMY_ID, DUMMY_MAX_HP, DUMMY_TILE, GIANT_ID, GIANT_REACH, GIANT_TILE, RAID_INTERVAL_MS, RAID_MIN_CONTRIBUTION, RAID_REWARD, RAID_WINDOW_MS, raidMaxHp, EMOTE_LIST, GRID_SIZE, HOTBAR_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, PUNCH_DAMAGE, RECIPES, STICK_DROP_CHANCE, STICK_ITEM_ID, STONE_CLUB_ITEM_ID, getItemDef, validAppearance, COSMETICS,
@@ -99,7 +100,7 @@ const sessionResponse = { description: 'Bearer token shown once. Never place it 
   token: { type: 'string', description: 'Secret bearer token for subsequent requests.' },
   renewToken: { type: 'string', description: 'Secret return token, valid 30 days and rotated on every return. Store securely.' },
   sessionId: { type: 'string', format: 'uuid' }, playerId, expiresAt: { type: 'string', format: 'date-time' },
-  permissions, pollIntervalMs: { type: 'integer', const: 1000 },
+  permissions, pollIntervalMs: { type: 'integer', const: AGENT_POLL_INTERVAL_MS },
 }, ['token', 'sessionId', 'playerId', 'expiresAt', 'permissions', 'pollIntervalMs'])) };
 export const openapi = {
   openapi: '3.1.0', info: { title: 'BeriGame Agent API', version: '1.6.0' }, servers: [{ url: '/api/agent/v1' }],

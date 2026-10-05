@@ -1,4 +1,4 @@
-import { AGENT_ACTION_BUDGET, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS } from './admissionPolicy';
+import { AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS } from './admissionPolicy';
 import { admissionError } from './portable';
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage } from 'node:http';
@@ -101,7 +101,7 @@ export function createAgentServer(options: Options) {
       const route = req.url.slice(PREFIX.length);
       if ((route === '' || route === '/') && req.method === 'GET') {
         send(200, { name: 'BeriGame', version: 1, ready: options.game.ready(), onboarding: '/agent', openapi: `${PREFIX}/openapi.json`,
-          access: 'single-use invite', pollIntervalMs: 1000, actionIntervalMs: 1000, idleTimeoutSeconds: idleMs / 1000 }); return;
+          access: 'single-use invite', pollIntervalMs: AGENT_POLL_INTERVAL_MS, actionIntervalMs: AGENT_ACTION_INTERVAL_MS, idleTimeoutSeconds: idleMs / 1000 }); return;
       }
       if (route === '/openapi.json' && req.method === 'GET') { send(200, openapi); return; }
       if (!options.game.ready()) throw new ApiError(503, 'world_unavailable', 'The admitted game world is unavailable.');
@@ -129,7 +129,7 @@ export function createAgentServer(options: Options) {
           res.once('close', () => { if (!res.writableFinished) void remove(key, 'response_interrupted'); });
           log({ event: 'session_created', session: session.id, player: game.identity, expiresAt, combat: invite.combat, chat: invite.chat });
           send(201, { token, sessionId: session.id, playerId: game.identity, expiresAt: new Date(expiresAt).toISOString(),
-            permissions: { combat: invite.combat, chat: invite.chat }, pollIntervalMs: 1000 });
+            permissions: { combat: invite.combat, chat: invite.chat }, pollIntervalMs: AGENT_POLL_INTERVAL_MS });
         } finally {
           const count = (pending.get(ip) ?? 1) - 1;
           if (count) pending.set(ip, count); else pending.delete(ip);

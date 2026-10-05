@@ -20,3 +20,6 @@ export const AGENT_ACTION_BUDGET = { burst: 10, perSecond: 5 };
 export const AGENT_READ_BUDGET = { burst: 10, perSecond: 4 };
 /** Distinct action receipts per session: the sustained action rate for the full one-hour session lifetime. */
 export const MAX_SESSION_ACTIONS = AGENT_ACTION_BUDGET.perSecond * 3600;
+/** Pacing hints advertised to agents, matching the sustained budgets above. */
+export const AGENT_POLL_INTERVAL_MS = Math.ceil(1000 / AGENT_READ_BUDGET.perSecond);
+export const AGENT_ACTION_INTERVAL_MS = Math.ceil(1000 / AGENT_ACTION_BUDGET.perSecond);

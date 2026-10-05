@@ -1,4 +1,4 @@
-import { requestLane, AGENT_ACTION_BUDGET, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS, REQUEST_BUDGET, JOIN_BUDGET, NETWORK_JOIN_BUDGET, RENEWAL_BUDGET, CHARACTER_RENEWAL_BUDGET } from '../agent-api/admissionPolicy';
+import { requestLane, AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS, REQUEST_BUDGET, JOIN_BUDGET, NETWORK_JOIN_BUDGET, RENEWAL_BUDGET, CHARACTER_RENEWAL_BUDGET } from '../agent-api/admissionPolicy';
 import { MAX_ONLINE_PLAYERS, MAX_STORED_CHARACTERS } from '../../shared/sim/admission';
 import { sealRecovery, openRecovery } from '../agent-api/recovery';
 import './codecs';
@@ -309,7 +309,7 @@ export class AgentGateway extends DurableObject<Env> {
         let ready = false;
         try { ready = (await this.game()).ready(); } catch { /* Public status is safe without credentials configured. */ }
         return send(200, { name: 'BeriGame', version: 1, ready, onboarding: '/agent', openapi: `${PREFIX}/openapi.json`,
-          access: 'open beta', pollIntervalMs: 1000, actionIntervalMs: 1000, idleTimeoutSeconds: 600,
+          access: 'open beta', pollIntervalMs: AGENT_POLL_INTERVAL_MS, actionIntervalMs: AGENT_ACTION_INTERVAL_MS, idleTimeoutSeconds: 600,
           capacity: { maxOnlinePlayers: MAX_ONLINE_PLAYERS, maxAgentSessions: MAX_AGENT_SESSIONS, perNetworkPlayerLimit: null } });
       }
       if (path === `${PREFIX}/openapi.json` && request.method === 'GET') return send(200, { ...openapi, paths: { ...openapi.paths, '/sessions': { post: { ...openapi.paths['/sessions'].post, summary: 'Join the open beta', security: [] } } } });
@@ -349,7 +349,7 @@ export class AgentGateway extends DurableObject<Env> {
           this.ctx.storage.sql.exec("UPDATE sessions SET state = 'active' WHERE key = ?", key);
           return send(201, { ...(kind === 'agent' ? { token: sessionToken, renewToken } : { token: credential.token, uri: credential.uri, database: credential.database, renewToken }),
             sessionId: row.id, playerId: credential.identity, expiresAt: new Date(row.expires_at).toISOString(),
-            permissions: { combat: invite.combat, chat: invite.chat }, pollIntervalMs: 1000 });
+            permissions: { combat: invite.combat, chat: invite.chat }, pollIntervalMs: AGENT_POLL_INTERVAL_MS });
         } catch (error) {
           if (row.credential) this.renewals().removeIdentity((JSON.parse(row.credential) as Credential).identity);
           try { await this.remove(row); } catch { /* Alarm retries revocation. */ }
@@ -431,7 +431,7 @@ export class AgentGateway extends DurableObject<Env> {
             this.live.delete(old.key); this.live.set(key, game);
             await this.ctx.storage.setAlarm(Date.now() + 30_000);
             return send(200, { token, renewToken, sessionId: old.id, playerId: found.identity, expiresAt: new Date(expiresAt).toISOString(),
-              permissions: { combat: config.combat, chat: config.chat }, pollIntervalMs: 1000 });
+              permissions: { combat: config.combat, chat: config.chat }, pollIntervalMs: AGENT_POLL_INTERVAL_MS });
           }
           if (old) await this.remove(old);
           this.sessionCapacity('agent');
@@ -445,7 +445,7 @@ export class AgentGateway extends DurableObject<Env> {
           const renewToken = rotateRenewal(store, found, Date.now());
           this.ctx.storage.sql.exec("UPDATE sessions SET state = 'active' WHERE key = ?", key);
           await this.ctx.storage.setAlarm(Date.now() + 30_000);
-          return send(200, { token, renewToken, sessionId: found.session_id, playerId: found.identity, expiresAt: new Date(reserved.expires_at).toISOString(), permissions: { combat: config.combat, chat: config.chat }, pollIntervalMs: 1000 });
+          return send(200, { token, renewToken, sessionId: found.session_id, playerId: found.identity, expiresAt: new Date(reserved.expires_at).toISOString(), permissions: { combat: config.combat, chat: config.chat }, pollIntervalMs: AGENT_POLL_INTERVAL_MS });
         } catch (error) { if (reserved) { try { await this.remove(reserved); } catch { /* Alarm retries; permit also expires. */ } } throw error; }
         finally { this.renewing.delete(found.identity); if (retainedKey) this.busy.delete(retainedKey); }
       }
