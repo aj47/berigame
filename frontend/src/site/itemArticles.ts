@@ -25,7 +25,7 @@ const notes: Record<string, ItemNotes> = {
   berry_blueberry: {
     summary: 'A five-HP berry from the eastern Grove, also grown in your garden.',
     lead: 'Blueberries are edible berries that restore 5 HP. The wild tree stands just east of the starting safe ring, making it a convenient source of food before exploring the island. They can also be planted for a later harvest.',
-    source: 'Grove tree · personal garden',
+    source: 'Grove tree · Coast thickets · personal garden',
     sections: [{ id: 'practical-uses', title: 'When to use blueberries', paragraphs: [
       'A blueberry restores more health per bite than a strawberry or greenberry. A new character starts at 20 of 30 HP, so two blueberries can restore the missing 10 HP, with the normal eating cooldown between bites.',
       'Blueberries have no ingredient role in the current crafting recipes. Berry Mash specifically requires greenberries and a strawberry; blueberries cannot substitute. Keeping them as food or planting them are the direct uses available.',
@@ -35,7 +35,7 @@ const notes: Record<string, ItemNotes> = {
   berry_strawberry: {
     summary: 'Three-HP food for Berry Mash and settlement Travel rations.',
     lead: 'Strawberries restore 3 HP and grow on two wild trees in the Grove. One Strawberry and two Greenberries make Berry Mash. When settlements are enabled, Strawberries also grow at a Meadows patch and combine with Carrots into Travel rations.',
-    source: 'Two Grove trees · personal garden',
+    source: 'Two Grove trees · Coast thickets · personal garden',
     sections: [{ id: 'practical-uses', title: 'Eat, plant or make mash', paragraphs: [
       'Use a strawberry for a small top-up, or combine it with two greenberries when you want a larger single bite. Those ingredients restore 7 HP when eaten separately, exactly the same as the resulting mash. Crafting changes how quickly you can consume that healing and awards Crafting XP; it does not create extra HP.',
       'Both strawberry trees give the same item and Foraging XP. If one is busy or regrowing, the other is an alternative. Planting a strawberry consumes it immediately, so reserve food for your next journey before filling your garden.',
@@ -45,7 +45,7 @@ const notes: Record<string, ItemNotes> = {
   berry_greenberry: {
     summary: 'Food, garden crops, expedition bait and settlement Taming feed.',
     lead: 'Greenberries restore 2 HP, the smallest heal of the island’s food items. Their other uses make them valuable expedition supplies: they can bribe Pip, distract the pursuing Giant or become Berry Mash.',
-    source: 'Two Grove trees · personal garden',
+    source: 'Two Grove trees · Coast thickets · personal garden',
     sections: [{ id: 'expedition-uses', title: 'Expedition uses', paragraphs: [
       'Bribing Pip consumes one greenberry. Stand within three tiles of him during an active hauling expedition; the bribe leaves the cargo alone for 30 seconds. Equipping Favourite snack extends this to 90 seconds.',
       'Ordinary bait consumes one greenberry and leaves a scent at your position for 15 seconds. Put down any cargo you are carrying before preparing it. With Scent decoy equipped, bait instead consumes one driftwood and lasts 30 seconds.',
@@ -58,7 +58,7 @@ const notes: Record<string, ItemNotes> = {
   berry_goldberry: {
     summary: 'The strongest single-bite heal, earned from the Grove and expeditions.',
     lead: 'Goldberries restore 10 HP per bite, more than any other current food. There is one wild Goldberry tree in the Grove. Garden harvests and successful giant berry expeditions provide additional ways to obtain them.',
-    source: 'Grove tree · garden · expeditions',
+    source: 'Grove tree · Coast thickets · garden · expeditions',
     sections: [{ id: 'expedition-rewards', title: 'Expedition rewards and hidden cache', paragraphs: [
       'A delivery normally awards four Goldberries per qualifying member; a feast adds two bonus Goldberries. Giant fruit starts cargo at six, and a completed workshop adds one more. Splitting cargo and first hiring Moss each reduce cargo value by one unless Berry basket or Porter pact prevents that cost.',
       'Remain in the expedition until completion and earn contribution credit by an action such as carrying, hiding or delivering cargo. Simply joining or tracking the hidden cache does not earn completion credit.',

@@ -179,13 +179,14 @@ export const frontierLandArticles: WikiArticle[] = [
     sections: [
       { id: 'first-shelter', title: 'Build your first shelter', bullets: [
         'Walk near your plot. Open Your land → Build on this plot and choose a piece you have the materials for. Unavailable pieces explain the missing supplies or discipline requirement.',
-        'Tap a tile inside your buildable boundary to position the preview. Rotate it if needed and choose Build here. Red or invalid previews explain why placement is blocked.',
+        'Tap a tile inside your buildable boundary to position the preview. Press R to turn it clockwise (Shift+R turns it back) or use the Rotate button; the arrow on the preview shows which way a chair, bed or bench will face. Choose Build here when it is right. Red or invalid previews explain why placement is blocked.',
+        'Walls stand taller than your character. Roof tiles placed next to each other on the same plot join into one roof with ridges, valleys and eaves, so cover the whole floor for a finished house; the roof fades while you are on your plot so you can see inside.',
         `For the first shelter quest, place a Timber floor, a Timber wall and a Thatched roof. Their total base cost is ${cost({ timber: PIECES.floor.cost.timber + PIECES.wall.cost.timber + PIECES.roof.cost.timber, fibre: PIECES.roof.cost.fibre })}. Return to the steward to complete Under your own roof.`,
         'Keep a clear entrance with a Door or Gate. Your first Workbench, Storage chest and Cooking station make the plot useful beyond shelter.',
       ] },
       { id: 'placement-rules', title: 'Placement, moving and dismantling', paragraphs: [
-        `A plot can hold up to ${FRONTIER.maxPieces} pieces. Each tile has a floor layer, a structure layer and a roof layer; pieces on different layers can share a tile. Two pieces on the same layer cannot. You cannot place a piece on a character or creature, outside the active plot boundary or where a solid piece would trap a character.`,
-        'Use Placed pieces → Move to choose a new position for an existing piece without paying its material cost again. Moving a planter moves its crop with it. Building, moving and dismantling require Build access and a nearby character, and are frozen during a capture challenge.',
+        `A plot can hold up to ${FRONTIER.maxPieces} pieces. Each tile has a floor layer, a rug layer, a structure layer and a roof layer; pieces on different layers can share a tile, so a Woven rug fits under furniture on a floor. Two pieces on the same layer cannot. You cannot place a piece on a character or creature, outside the active plot boundary or where a solid piece would trap a character.`,
+        'Click a placed piece, or use Placed pieces, to Rotate it where it stands or Move it to a new position without paying its material cost again. Moving a planter moves its crop with it. Building, moving and dismantling require Build access and a nearby character, and are frozen during a capture challenge.',
         'Dismantle returns 75% of each construction material, rounded down separately. For example, a Timber wall made from three Timber returns two Timber. Empty a chest before dismantling it. Dismantling a planter also removes the crop growing in it.',
       ] },
       { id: 'piece-reference', title: 'Building pieces and base costs', table: { headers: ['Piece', 'Materials', 'Role or requirement'], rows: Object.entries(PIECES).map(([id, piece]) => [

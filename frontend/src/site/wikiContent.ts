@@ -148,6 +148,12 @@ export const guideArticles: WikiArticle[] = [
         ['Raid Giant', '(57, 57)', 'Scheduled cooperative boss encounter'],
         ['Driftwood Harbour', 'Bramblewild (46, 29)', 'Shipwright, skiff construction and departures when settlements are enabled'],
         ['Meadows steward', 'Meadows (31, 64)', 'Quests, supply orders, public workshop and disciplines'],
+        ['Eastreach Heath', 'Bramblewild (88, 16)', 'Open heath past the harbour road, with berry thickets and driftwood bays'],
+        ['Mirror Tarn', 'Bramblewild (97, 33)', 'An upland lake ringed by pines in Eastreach'],
+        ['Saltmarsh Causeway', 'Bramblewild (18, 62)', 'The land bridge south from the original Coast'],
+        ['Mossvale Wood', 'Bramblewild (28, 92)', 'Deep southern woods around Reedmere lake'],
+        ['Bramble Hollow', 'Bramblewild (64, 92)', 'Where the two halves of the southern wilds meet'],
+        ['Sunfall Bluffs', 'Bramblewild (106, 96)', 'The far south-east shore, linked north to Eastreach by a land bridge'],
       ] } },
       { id: 'distances', title: 'Reading distances and coordinates', paragraphs: [
         'Coordinates are server tile coordinates, written as (x, z), local to the named region. Bramblewild and Meadows have different local grids but share continuous land and walking routes. Sea coordinates belong to the sailing map. Most interaction ranges count the largest horizontal or vertical difference, so a diagonal neighbouring tile is also one tile away.',
@@ -188,9 +194,16 @@ export const guideArticles: WikiArticle[] = [
     category: 'World',
     summary: 'Gather driftwood and flint, then craft your route into the Boulders.',
     lead: 'Beyond the brambles, the Coast supplies the materials for your first crafted weapons. Driftwood piles and tide rocks train Beachcombing, while their resources combine into a Stone Club or Flint Knife.',
-    facts: [{ label: 'Entry key', value: 'Stick' }, { label: 'Resources', value: 'Driftwood · Flint Shard' }, { label: 'Gathering skill', value: 'Beachcombing' }, { label: 'Next route key', value: 'Stone Club' }],
+    facts: [{ label: 'Entry key', value: 'Stick' }, { label: 'Resources', value: 'Driftwood · Flint Shard · Berries' }, { label: 'Gathering skill', value: 'Beachcombing · Foraging' }, { label: 'Next route key', value: 'Stone Club' }],
     sections: [
+      { id: 'outer-lands', title: 'Eastreach and the southern wilds', paragraphs: [
+        'The Coast is not just the ring outside the brambles. The harbour road runs east across Eastreach, an open heath with pine woods and Mirror Tarn, and continues to the Meadows seam at (127, 25). Saltmarsh Causeway leaves the south of the original island near (21, 46) and leads into Mossvale Wood, Reedmere lake and the rest of the southern wilds.',
+        'A far-east land bridge joins Eastreach to Sunfall Bluffs, so the outer lands form one loop you can walk in either direction. All of it counts as Coast: a Stick gets you there, combat rules match the rest of the Coast, and you can always walk home to the Grove. The Giant’s headland stays separated by water, so the boulder line remains the only way into the Boulders.',
+      ] },
       { id: 'resource-locations', title: 'Resource locations', table: { headers: ['Node', 'Tile', 'Yield'], rows: NODE_SEEDS.filter(node => node.kind === 1 || node.kind === 2).map(node => [NODE_KINDS[node.kind].name, location(node), itemName(node.itemId)]) } },
+      { id: 'berry-thickets', title: 'Berry thicket locations', paragraphs: [
+        'Berry thickets grow beside the Coast trails, including a few on the original Coast. They gather, regrow and train Foraging exactly like the Grove’s berry trees, but you need a Stick to reach them, so the First Day guide keeps newcomers on the six Grove trees.',
+      ], table: { headers: ['Thicket', 'Tile', 'Food healing'], rows: NODE_SEEDS.filter(node => node.kind === 0).map(node => [itemName(node.itemId), location(node), `${getItemDef(node.itemId)?.healthRestore} HP`]) } },
       { id: 'first-club', title: 'Make your first Stone Club', paragraphs: [
         'Gather one driftwood from a pile and two flint shards from tide rocks. The Stone Club recipe is available at Crafting level 1 and can be made directly from the crafting panel. No workbench is needed.',
         'The club awards 40 Crafting XP, deals 8 damage when wielded and allows you to cross the boulder line. Crafting one from zero XP also passes the 25 XP threshold for Crafting level 2, unlocking the Flint Knife recipe.',
@@ -214,7 +227,7 @@ export const guideArticles: WikiArticle[] = [
     facts: [{ label: 'Entry key', value: 'Stone Club' }, { label: 'Rare resource', value: 'Obsidian' }, { label: 'Outcrops', value: '2' }, { label: 'Raid centre', value: '(57, 57)' }],
     sections: [
       { id: 'getting-there', title: 'Getting there', paragraphs: [
-        'Travel to the south-east Coast with a Stone Club in your bag or wielded. The boulder line lies where the larger of your x and z coordinates reaches 50 on land. The suggested route target is (51, 51).',
+        'Travel to the south-east Coast with a Stone Club in your bag or wielded. The boulder line lies on the Giant’s headland (x 30–65, z 32–65), where the larger of your x and z coordinates reaches 50 on land. Eastreach and the southern wilds are Coast, not Boulders. The suggested route target is (51, 51).',
         'The club is checked when crossing outward and is not consumed. You can return from the Boulders without it, but you will need another club to cross outward again.',
       ] },
       { id: 'obsidian', title: 'Gathering obsidian', table: { headers: ['Outcrop', 'Tile', 'Base gather time', 'Regrow time', 'Beachcombing XP'], rows: [['Eastern outcrop', '(60, 40)', '4.8 seconds', '90 seconds', '14'], ['Southern outcrop', '(40, 60)', '4.8 seconds', '90 seconds', '14']] }, paragraphs: [
