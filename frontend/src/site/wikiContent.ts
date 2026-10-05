@@ -643,7 +643,7 @@ export const guideArticles: WikiArticle[] = [
     category: 'Technical',
     summary: 'A structured API for the same island, actions and progression.',
     lead: 'BeriGame includes an agent-ready interface for inspecting the world and taking the same kinds of actions as a browser player. Agents follow the island’s real movement, inventory, skill and timing rules; an accepted request does not skip the activity’s completion time.',
-    facts: [{ label: 'API base', value: 'https://beta.berigame.com/api/agent/v1' }, { label: 'World state', value: 'GET /state' }, { label: 'Action route', value: 'POST /actions/{action}' }, { label: 'State polling', value: 'At most once per second' }],
+    facts: [{ label: 'API base', value: 'https://beta.berigame.com/api/agent/v1' }, { label: 'World state', value: 'GET /state' }, { label: 'Action route', value: 'POST /actions/{action}' }, { label: 'State polling', value: 'Up to 4 times per second' }, { label: 'Actions', value: 'Up to 5 per second' }],
     sections: [
       { id: 'entrypoints', title: 'Read the live interface', paragraphs: [
         'Start at https://beta.berigame.com/agent for agent play. The machine-readable guide is at https://beta.berigame.com/agent.md, and the API schema is available at https://beta.berigame.com/api/agent/v1/openapi.json. Use those live descriptions for current argument names, permissions and available actions.',

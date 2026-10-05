@@ -1,4 +1,4 @@
-import { requestLane, MAX_AGENT_SESSIONS, REQUEST_BUDGET, JOIN_BUDGET, NETWORK_JOIN_BUDGET, RENEWAL_BUDGET, CHARACTER_RENEWAL_BUDGET } from '../agent-api/admissionPolicy';
+import { requestLane, AGENT_ACTION_BUDGET, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS, REQUEST_BUDGET, JOIN_BUDGET, NETWORK_JOIN_BUDGET, RENEWAL_BUDGET, CHARACTER_RENEWAL_BUDGET } from '../agent-api/admissionPolicy';
 import { MAX_ONLINE_PLAYERS, MAX_STORED_CHARACTERS } from '../../shared/sim/admission';
 import { sealRecovery, openRecovery } from '../agent-api/recovery';
 import './codecs';
@@ -495,7 +495,8 @@ export class AgentGateway extends DurableObject<Env> {
         await this.remove(row);
         throw new ApiError(503, 'action_outcome_uncertain', 'The connection restarted during an action. This session has been closed to prevent a duplicate action.');
       }
-      this.take(`read:${key}`, 10, 2, now);
+      const acting = path.startsWith(`${PREFIX}/actions/`) && request.method === 'POST';
+      if (!acting) this.take(`read:${key}`, AGENT_READ_BUDGET.burst, AGENT_READ_BUDGET.perSecond, now); // Actions spend only the action budget.
       this.ctx.storage.sql.exec('UPDATE sessions SET last_seen = ? WHERE key = ?', now, key);
       if (path === `${PREFIX}/session` && request.method === 'DELETE') { await this.remove(row); return send(204); }
       if (path === `${PREFIX}/state` && request.method === 'GET') {
@@ -506,8 +507,8 @@ export class AgentGateway extends DurableObject<Env> {
           throw error;
         }
       }
-      if (path.startsWith(`${PREFIX}/actions/`) && request.method === 'POST') {
-        this.take(`action:${key}`, 4, 1, now);
+      if (acting) {
+        this.take(`action:${key}`, AGENT_ACTION_BUDGET.burst, AGENT_ACTION_BUDGET.perSecond, now);
         const action = path.slice(`${PREFIX}/actions/`.length);
         const input = validateAction(action, await readJson(request));
         const invite = JSON.parse(row.config) as Invite;
@@ -525,7 +526,7 @@ export class AgentGateway extends DurableObject<Env> {
           }
           return send(prior.status, JSON.parse(prior.body));
         }
-        if (row.actions_count >= 1024) throw new ApiError(429, 'session_action_budget', 'This session has reached its action budget.');
+        if (row.actions_count >= MAX_SESSION_ACTIONS) throw new ApiError(429, 'session_action_budget', 'This session has reached its action budget.');
         if (this.busy.has(key)) throw new ApiError(409, 'action_in_progress', 'Wait for the current action receipt.');
         this.busy.add(key);
         try {

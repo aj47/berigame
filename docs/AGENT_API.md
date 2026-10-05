@@ -422,9 +422,9 @@ permit expiration if the API process crashes.
 | Boundary | Enforced limits |
 | --- | --- |
 | Admission | Single-use invite; separate identity per session; server permit required even for direct SDK calls |
-| Session | At most 1 hour total, 10 minutes idle, 1024 distinct action receipts |
-| Actions | 1 attempt/second, burst 4; invalid arguments and denied scopes consume the same budget |
-| Session requests | 2/second, burst 10 |
+| Session | At most 1 hour total, 10 minutes idle, 18,000 distinct action receipts |
+| Actions | 5 attempts/second, burst 10 (enough to act every 600 ms tick); invalid arguments and denied scopes consume the same budget. The game still accepts at most 5 inputs per character per tick |
+| Session reads | 4/second, burst 10; actions do not count against this budget |
 | IP requests (local API) | 256/second, burst 1,024; all paths and failed authentication count |
 | IP joins | 4/second, burst 256, including invalid invite attempts; no default per-IP player cap |
 | Global requests (local API) | 256/second, burst 1,024; separate joins at 8/second, burst 256; 64 requests in flight; 128 HTTP connections |

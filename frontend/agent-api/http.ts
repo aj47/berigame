@@ -1,4 +1,4 @@
-import { MAX_AGENT_SESSIONS } from './admissionPolicy';
+import { AGENT_ACTION_BUDGET, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS } from './admissionPolicy';
 import { admissionError } from './portable';
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage } from 'node:http';
@@ -122,7 +122,8 @@ export function createAgentServer(options: Options) {
           const token = secret('bgs_');
           const key = digest(token);
           const session: Session = { id: randomUUID(), game, invite, ip, expiresAt, lastSeen: now(),
-            reads: new Budget(10, 2, now()), actions: new Budget(4, 1, now()), busy: false, receipts: new Map() };
+            reads: new Budget(AGENT_READ_BUDGET.burst, AGENT_READ_BUDGET.perSecond, now()),
+            actions: new Budget(AGENT_ACTION_BUDGET.burst, AGENT_ACTION_BUDGET.perSecond, now()), busy: false, receipts: new Map() };
           sessions.set(key, session);
           // The response is the only disclosure of this token. Store only its hash.
           res.once('close', () => { if (!res.writableFinished) void remove(key, 'response_interrupted'); });
@@ -141,12 +142,13 @@ export function createAgentServer(options: Options) {
       const session = sessions.get(key);
       if (!session) throw unauthorized();
       if (session.expiresAt <= now() || now() - session.lastSeen >= idleMs) { await remove(key, 'expired'); throw unauthorized(); }
-      session.reads.take(now());
+      const acting = route.startsWith('/actions/') && req.method === 'POST';
+      if (!acting) session.reads.take(now()); // Actions spend only the action budget.
       session.lastSeen = now();
       if (route === '/session' && req.method === 'DELETE') { await remove(key, 'left'); send(204); return; }
       try {
         if (route === '/state' && req.method === 'GET') { send(200, session.game.state()); return; }
-        if (route.startsWith('/actions/') && req.method === 'POST') {
+        if (acting) {
           session.actions.take(now()); // Failed validation and denied actions count too.
           const action = route.slice('/actions/'.length);
           const input = validateAction(action, await readJson(req));
@@ -160,7 +162,7 @@ export function createAgentServer(options: Options) {
             if (prior.fingerprint !== fingerprint) throw new ApiError(409, 'idempotency_conflict', 'This Idempotency-Key was already used for a different action.');
             send(prior.status, prior.body); return;
           }
-          if (session.receipts.size >= 1024) throw new ApiError(429, 'session_action_budget', 'This session has reached its action budget.');
+          if (session.receipts.size >= MAX_SESSION_ACTIONS) throw new ApiError(429, 'session_action_budget', 'This session has reached its action budget.');
           if (session.busy) throw new ApiError(409, 'action_in_progress', 'Wait for the current action receipt, then retry with the same key.');
           session.busy = true;
           try {

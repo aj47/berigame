@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import { createAgentServer } from './http';
 import { InviteStore } from './security';
+import { AGENT_ACTION_BUDGET } from './admissionPolicy';
 
 async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'berigame-agent-api-'));
@@ -107,10 +108,26 @@ test('invalid action attempts exhaust the same rate budget and include Retry-Aft
   const f = await fixture();
   try {
     const { token } = await f.enter();
-    for (let i = 0; i < 4; i++) assert.equal((await f.request('/actions/move', token, { x: -1, z: 1 })).status, 400);
+    for (let i = 0; i < AGENT_ACTION_BUDGET.burst; i++) assert.equal((await f.request('/actions/move', token, { x: -1, z: 1 })).status, 400);
     const response = await f.request('/actions/stop', token, {}, { 'Idempotency-Key': randomUUID() });
     assert.equal(response.status, 429); assert.ok(Number(response.headers.get('Retry-After')) >= 1);
     assert.deepEqual(f.calls, []);
+  } finally { await f.close(); }
+});
+
+test('a bot can act every tick for a second and still read state', async () => {
+  const f = await fixture();
+  try {
+    const { token } = await f.enter();
+    for (let i = 0; i < AGENT_ACTION_BUDGET.burst; i++) {
+      assert.equal((await f.request('/actions/stop', token, {}, { 'Idempotency-Key': randomUUID() })).status, 200);
+    }
+    assert.equal((await f.request('/state', token)).status, 200);
+    f.advance(1000);
+    for (let i = 0; i < AGENT_ACTION_BUDGET.perSecond; i++) {
+      assert.equal((await f.request('/actions/stop', token, {}, { 'Idempotency-Key': randomUUID() })).status, 200);
+    }
+    assert.equal(f.calls.length, AGENT_ACTION_BUDGET.burst + AGENT_ACTION_BUDGET.perSecond);
   } finally { await f.close(); }
 });
 

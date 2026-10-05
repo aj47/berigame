@@ -264,7 +264,7 @@ no renewal token and behave as before until their next invite.
 - At most 128 requests in flight, of which at most 32 may create new characters,
   leaving room for returning players during a join burst. `Retry-After` tells
   waiting players when to try again; browser retries add a small random delay.
-- Edge limits allow 600 requests/minute per credential digest, or per network
+- Edge limits allow 1,200 requests/minute per credential digest, or per network
   for anonymous traffic. Credential-shaped requests still require server-side
   authentication. An IP address is never evidence of character ownership.
 - At most 256 unredeemed invites and 1,024 action receipts per API session.

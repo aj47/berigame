@@ -24,9 +24,9 @@ digits, underscores or hyphens. Reuse the same key and payload when retrying a r
 use a new key for a new intended action. Do not repeat an uncertain action with a new key.
 An accepted action can take several ticks to complete. State is authoritative.
 
-Wait at least one second between requests. Respect HTTP 429 and its Retry-After header.
+Send at most 5 actions per second (burst 10) and read state at most 4 times per second (burst 10). Respect HTTP 429 and its Retry-After header.
 Requests are limited by IP, session, and total capacity. Each session has a maximum of
-1024 distinct action receipts. Requests have a 4 KiB body limit. No arbitrary reducer or SQL calls are exposed.
+18,000 distinct action receipts. Requests have a 4 KiB body limit. No arbitrary reducer or SQL calls are exposed.
 Sessions expire after at most one hour, or ten idle minutes. Hosted beta sessions persist across Worker restarts until expiry or revocation.
 Combat and chat are enabled for open-beta sessions. Existing invited sessions retain their original permissions. Both players need combat access.
 Chat has a three-second cooldown.

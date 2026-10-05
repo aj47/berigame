@@ -25,7 +25,7 @@
   },
   "durable_objects": { "bindings": [{ "name": "AGENT_GATEWAY", "class_name": "AgentGateway" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AgentGateway"] }],
-  "ratelimits": [{ "name": "EDGE_LIMIT", "namespace_id": "927471", "simple": { "limit": 600, "period": 60 } }],
+  "ratelimits": [{ "name": "EDGE_LIMIT", "namespace_id": "927471", "simple": { "limit": 1200, "period": 60 } }],
   "observability": { "enabled": false },
   "limits": { "cpu_ms": 50 }
 }
