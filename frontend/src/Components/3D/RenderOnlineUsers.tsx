@@ -10,6 +10,7 @@ import { useChatPrefsStore } from '../../spacetime/stores/chatPrefsStore';
 import { useAppearanceRows, useChatMessages, useMyIdentityHex, useMyPlayer, usePlayers, useTick, useTrainingDummies, useGiants } from '../../spacetime/hooks';
 import { CHAT_BUBBLE_TICKS, DUMMY_IDLE_RESET_TICKS, GIANT_REGEN_IDLE_TICKS, GiantState, bubbleText, type Appearance } from '@sim';
 import { identityHex } from '../../spacetime/identity';
+import { useStackedAvatars } from './avatarStacks';
 
 /** Latest chat line per sender that is still fresh enough to float above a head. */
 export function useRecentChatBySender(): Map<string, { text: string; tick: number }> {
@@ -65,18 +66,20 @@ const RenderOnlineUsers = ({ frontierBlocked, frontier }: { frontierBlocked?: Se
   const dummies = useTrainingDummies();
   const giants = useGiants();
   const tick = useTick();
+  const visible = useMemo(() => players.filter(p => p.online && (!p.region || p.region === 'bramblewild' || p.region === 'settlement')), [players]);
+  const shown = useStackedAvatars(visible, me, target, tick);
 
   return (
     <>
       {dummies.map((d) => <TrainingDummy key={d.id} dummy={d} tick={Math.min(tick, d.lastHitTick + DUMMY_SETTLED_TICKS)} />)}
       {giants.map((g) => <Giant key={g.id} giant={g} tick={g.state === GiantState.Defeated ? Math.min(tick, g.respawnTick) : Math.min(tick, g.lastHitTick + GIANT_REGEN_IDLE_TICKS)} />)}
       {MARKERS}
-      {players.map((p) => {
-        if (!p.online || (p.region && p.region !== 'bramblewild' && p.region !== 'settlement')) return null;
+      {visible.map((p) => {
         const hex = identityHex(p.identity);
-        if (hex === me) return null;
+        const stacked = shown.get(hex);
+        if (!stacked) return null;
         return (
-          <PlayerAvatar frontier={frontier} frontierBlocked={frontierBlocked} key={hex} row={p} isSelf={false} saved={appearances.get(hex)} targeted={hex === target} chatText={chat.get(hex)?.text} />
+          <PlayerAvatar frontier={frontier} frontierBlocked={frontierBlocked} key={hex} row={p} isSelf={false} saved={appearances.get(hex)} targeted={hex === target} chatText={chat.get(hex)?.text} stacked={stacked.join(',')} />
         );
       })}
       {SHARED_LAYERS}
