@@ -34,6 +34,20 @@ describe('personal bank and existing storage', () => {
     expect(mock.frontier).toHaveBeenLastCalledWith({ action: 'container', id: 'vault-me', target: 'withdraw', item: 'cloth', quantity: 3 });
   });
 
+  it('opens on the chest clicked in the world and transfers with it once beside it', async () => {
+    const state = snapshot();
+    state.buildings = [{ id: 'piece-54', claim: 'settlement-17', piece: 'chest', region: 'settlement', x: 17, z: 85, rotation: 0, label: '' }];
+    state.containers = [{ id: 'piece-54', owner: 'owner', claim: 'settlement-17', slots: [{ itemId: 'planks', quantity: 20 }, ...Array(11).fill(null)] }];
+    mock.player = { ...mock.player, x: 16, z: 86 };
+    const view = render(<BankStoragePanel state={state} onBag={() => {}} onTravel={() => {}} request={{ storage: 'piece-54', id: 1 }} />);
+    expect(screen.getByRole('combobox', { name: 'Storage location' })).toHaveValue('piece-54');
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Withdraw 20 Planks' })));
+    expect(mock.frontier).toHaveBeenLastCalledWith({ action: 'container', id: 'piece-54', target: 'withdraw', item: 'planks', quantity: 20 });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Storage location' }), { target: { value: 'vault-me' } });
+    view.rerender(<BankStoragePanel state={state} onBag={() => {}} onTravel={() => {}} request={{ storage: 'piece-54', id: 2 }} />);
+    expect(screen.getByRole('combobox', { name: 'Storage location' })).toHaveValue('piece-54');
+  });
+
   it.each(['bramblewild', 'settlement'])('offers walking from %s and gates transfers until reaching town', async region => {
     mock.player = { ...mock.player, region, x: 10, z: 10 };
     const onTravel = vi.fn();
