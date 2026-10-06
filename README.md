@@ -6,6 +6,10 @@ A multiplayer 3D web game built with React Three Fiber on top of a SpacetimeDB g
 
 Land claims, modular building, quests, five disciplines, companions, coin trading and sailing are available behind the expansion flag. See [Settlements](docs/SETTLEMENTS.md) for play instructions, recovery, enabling/disabling and verification.
 
+## Boss fights
+
+Clatterhorn, a charging stag beetle in a glade on the Coast, and the Sunken Spire, a bullet-hell dungeon for parties of one to four, share the integer simulation in `shared/sim` (`clatterhorn.ts`, `spire.ts`, `bullets.ts`). Both ship closed; the world owner opens them with `configure_bosses`. Rules and numbers are in [docs/design/BOSSES.md](docs/design/BOSSES.md); the release and rollback steps are in [docs/CLOUDFLARE_BETA.md](docs/CLOUDFLARE_BETA.md). `SPIRE_VALIDATE=full npm test --prefix shared -- --run spire-patterns` runs the full 46,464-instance pattern validator.
+
 ## Overview
 
 BeriGame is a real-time multiplayer game built around an authoritative
