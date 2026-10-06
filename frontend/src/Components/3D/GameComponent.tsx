@@ -30,7 +30,7 @@ import WorldHover, { WorldHoverTooltip } from './WorldHover';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
 import { useGroundItems, usePlayersByHex, useTick, useTrees } from '../../spacetime/hooks';
 import { identityHex } from '../../spacetime/identity';
-import { isWebGLError, WebGLContextWatch, webglAvailable } from './webgl';
+import { isWebGLError, WebGLContextWatch, webglAvailable, webglSupport } from './webgl';
 import AdaptiveQuality from './AdaptiveQuality';
 import { QUALITY, useGraphicsTier } from './renderQuality';
 
@@ -76,9 +76,9 @@ const GameComponent = () => {
   const frontier = useFrontier();
   const avatarFrontier = avatarFrontierState(frontier);
   const [draft, setDraft] = useState<BuildDraft | null>(null);
-  // Without WebGL the renderer throws; skip it and show browser fix steps instead.
-  const [webgl] = useState(webglAvailable);
-  useEffect(() => { if (!webgl) useLoadingStore.getState().setGraphicsIssue('unsupported'); }, [webgl]);
+  // Without WebGL 2 the renderer throws; skip it and show browser fix steps instead.
+  const [webgl] = useState(webglSupport);
+  useEffect(() => { if (webgl !== 'webgl2') useLoadingStore.getState().setGraphicsIssue(webgl === 'webgl1' ? 'webgl1' : 'unsupported'); }, [webgl]);
   const homeScene = !me?.region || me.region === 'bramblewild' || (frontier.enabled && me.region === 'settlement');
   const inFrontier = !!me?.region && me.region !== 'bramblewild';
   const [playerRef, setPlayerRef] = useState<any>();
@@ -86,6 +86,7 @@ const GameComponent = () => {
   // Settings > Graphics: a fixed tier, or auto (start from the device, then follow the frame rate).
   const graphics = useSettingsStore((s) => s.graphics);
   const quality = QUALITY[useGraphicsTier()];
+  const worldLoading = useLoadingStore((s) => s.isLoading);
 
   return (
     <div style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
@@ -96,10 +97,10 @@ const GameComponent = () => {
       {homeScene && !draft && <WorldHoverTooltip />}
       {!draft && clickedOtherObject && <ClickDropdown region={me?.region || 'bramblewild'} />}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-      {webgl && <WorldBoundary>
+      {webgl === 'webgl2' && <WorldBoundary>
       {!homeScene ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" data-world-floor dpr={quality.dpr} shadows="percentage" camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
         <WebGLContextWatch />
-        {graphics === 'auto' && <AdaptiveQuality />}
+        {graphics === 'auto' && !worldLoading && <AdaptiveQuality />}
         <Suspense fallback={null}>
           <AlphaIsland />
           <WorldObjects />

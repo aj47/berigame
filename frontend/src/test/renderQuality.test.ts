@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { BoxGeometry, InstancedMesh, Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, PlaneGeometry, ShaderMaterial } from 'three';
 import { declineTier, deviceTiers, inclineTier, useAutoQuality, type AutoQuality } from '../Components/3D/renderQuality';
 import { shadowRole } from '../Components/3D/SunShadow';
+import { performanceBounds } from '../Components/3D/AdaptiveQuality';
 
 const desktop = (gpu: string) => deviceTiers({ gpu, cores: 8, memory: 8, mobile: false });
 const phone = (gpu: string, memory = 4) => deviceTiers({ gpu, cores: 8, memory, mobile: true });
@@ -48,6 +49,17 @@ describe('auto stepping', () => {
     // Frames keep up again at medium: high stays off.
     expect(inclineTier(auto)).toEqual(auto);
     expect(declineTier(declineTier(auto))).toEqual({ tier: 'low', ceiling: 'low' });
+  });
+
+  it('judges frame rate against the display, so a capped browser keeping up is not slow', () => {
+    const [down60, up60] = performanceBounds(60);
+    expect(down60).toBe(48);
+    expect(up60).toBeCloseTo(55.8);
+    expect(performanceBounds(144)).toEqual([70, 100]);
+    // Low Power Mode or battery saver caps frames near 30 Hz: 34 fps windows step up, not down.
+    const [down, up] = performanceBounds(34);
+    expect(34).toBeGreaterThanOrEqual(up);
+    expect(down).toBeLessThan(30);
   });
 
   it('steps the shared store from the device start', () => {

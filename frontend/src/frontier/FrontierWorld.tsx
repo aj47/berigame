@@ -12,7 +12,7 @@ import { resourceHover, resourceTitle } from "./resourcePresentation";
 import { meadowTrailDistance } from "./meadowPathArt";
 import { holdState, isDirectAttackClick, MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, openMenuNear } from "../Components/3D/tapAssist";
 import { PlayerState } from "@sim";
-import { useUserInputStore } from "../store";
+import { useLoadingStore, useUserInputStore } from "../store";
 import { previewIssue } from "./preview";
 import { BUILDING_SIDES, buildingSideAt } from "../../../shared/sim/frontier/building";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -602,6 +602,7 @@ export default function FrontierWorld(props: {
 }) {
   const graphics = useSettingsStore((s) => s.graphics);
   const quality = QUALITY[useGraphicsTier()];
+  const worldLoading = useLoadingStore((s) => s.isLoading);
   return (
     <Canvas
       dpr={quality.dpr}
@@ -615,7 +616,7 @@ export default function FrontierWorld(props: {
       gl={{ antialias: true }}
     >
       <WebGLContextWatch />
-      {graphics === "auto" && <AdaptiveQuality />}
+      {graphics === "auto" && !worldLoading && <AdaptiveQuality />}
       <React.Suspense fallback={null}>
         <FrontierScene {...props} />
       </React.Suspense>

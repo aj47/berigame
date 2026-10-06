@@ -48,6 +48,10 @@ export default defineConfig({
     ],
   },
   build: {
+    // Vite 4's default browser floor. Vite 8's own (Safari 16.4, Chrome 111) leaves three's class
+    // static blocks and CSS range media queries in the output, so older Safari and Chrome would
+    // fail to parse the 3D chunks and ignore every mobile breakpoint.
+    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
     rollupOptions: {
       output: {
         // three.js (half the bundle, no dependencies of its own) changes far less
