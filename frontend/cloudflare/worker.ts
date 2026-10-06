@@ -51,7 +51,7 @@ export default {
       if (request.headers.get('Origin') && request.headers.get('Origin') !== env.PUBLIC_ORIGIN) {
         throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       }
-      if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/sessions`, `${PREFIX}/renewals`, `${PREFIX}/session`, `${PREFIX}/state`,
+      if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/sessions`, `${PREFIX}/renewals`, `${PREFIX}/session`, `${PREFIX}/state`, `${PREFIX}/danger`,
         '/api/play/v1/sessions', '/api/play/v1/renewals', '/api/play/v1/recovery', '/api/play/v1/recover', `${PREFIX}/recovery`, `${PREFIX}/recover`, '/api/admin/invites', '/api/admin/revoke'].includes(url.pathname)
         && !account && !Object.keys(ACTIONS).some(name => url.pathname === `${PREFIX}/actions/${name}`)) {
         throw new ApiError(404, 'not_found', 'Unknown endpoint. See /api/agent/v1/openapi.json.');
@@ -473,6 +473,11 @@ export class AgentGateway extends DurableObject<Env> {
           else { const stale = this.live.get(key); this.live.delete(key); if (stale?.suspend) await stale.suspend(); else if (stale) await stale.close(); await this.remove(row); }
           throw error;
         }
+      }
+      if (path === `${PREFIX}/danger` && request.method === 'GET') {
+        // An ordinary read (CORE_SCOPE). A stale world is a 503 that keeps the session; only 401 removes it.
+        try { return send(200, (await this.sessionGame(row)).danger()); }
+        catch (error) { if (error instanceof ApiError && error.status === 401) await this.remove(row); throw error instanceof ApiError ? error : unavailable(); }
       }
       if (acting) {
         this.take(`action:${key}`, AGENT_ACTION_BUDGET.burst, AGENT_ACTION_BUDGET.perSecond, now);

@@ -400,7 +400,100 @@ per cut. All current IDs and positions are in `frontier.resources`.
   `{ itemId, name, damage }`. Other players' weapons are public, because the stick
   is drawn in their hand. Inventories stay private.
 
-API version **1.5.0** (personal garden) added `plant`, `harvest_garden` and `state.garden`. API version **1.4.0** (scheduled raids, mentors) added `state.giant.asleep`/`nextWakeAt`/`nextWakeInSeconds`/`raid`, the `asleep` giant state, `state.mentor` and `friends[].mentees`, and new cosmetics (`welcomed_ribbon`, `mentor_pin`, `mentor_pin_silver`, `mentor_pin_gold`, `giants_tooth`); `respawnInTicks` is gone (the Giant sleeps instead). API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
+### Bosses: Clatterhorn and the Sunken Spire (1.7.0)
+
+Both bosses are PvE and need no combat access. Hazards come only from persistent
+rows, so `/state` and `GET /danger` always agree with what the server resolves.
+
+- **Clatterhorn.** `state.clatterhorn` (null outside Bramblewild) has `open`,
+  `state` (`closed dormant idle charge_windup spin_windup drum_windup drumming
+  recover flipped burrowed`), `tile`, `home`, `glade` (x 76..92, z 98..114),
+  `stones`, `health`/`maxHealth`, `challengers`, `phase`, `frenzy`, `flipped
+  {endsInTicks, damageMultiplier}`, `bait` (your full id when you are the charge
+  target, else the last 8 hex digits of the target's id), `telegraph {attack,
+  landsInTicks, damage, dir, from, to, end: flip|glance|skid|null, tiles,
+  youAreInside, escape}`, `swarm {side, firesInTicks, activeUntilTick, axis,
+  freeLines, damage, tilesPerTick}`, `returnsInTicks`, `resetInTicks`, `you
+  {contribution, qualified, inGlade, inReach}`, `reward` and `rule`. It wakes when
+  someone enters the glade. `POST /actions/attack_clatterhorn {}` walks within
+  Chebyshev 2 of its centre and keeps swinging; moving (including `dodge`) stops the
+  swings, being hit does not. Charges hit 10 along a 3-wide lane, spins 7 on the ring
+  2 tiles out, and runners 4 per hit (a runner can hit a player who stands still
+  twice: once entering the tile and once leaving it); stand on `swarm.freeLines`. A
+  charge that ends head-on into a stone flips it: double damage while flipped.
+  Everyone online with 16+ damage this fight and a landed swing in the last 100
+  ticks at its defeat gets 2 gleamshell, 2 goldberries, 40 Fighting XP and the
+  Clatterhorn Horn keepsake; it then burrows for 300 ticks.
+- **The Sunken Spire.** `state.spire` (null outside Bramblewild) has `open`,
+  `rulesVersion`, `gate` (62,45), `exit`, `joinRange` (3), `atGate`, `key {itemId:
+  spire_key, held, inputs}`, `capacity {active, max, lobbies, inside}` (`inside` =
+  players standing on the floor), `lobbies[]` (public lobbies, newest first, at most
+  10: `runId, leader, leaderName, members, closesInTicks, outdated?`), `you {runId,
+  stage, state, slot, leader}`, `run` (while your run has started: `boss`,
+  `timeLeftTicks`, `enrageInTicks`, `hitDamage`, `court`, `stars`, `members[]`) and
+  `reward`. `POST /actions/spire {"op": "open" | "join" | "start" | "leave", "runId"?}`
+  within 3 tiles of the gate: `open` starts a public lobby you lead (receipt
+  `runId`); `join` takes a `runId` from `lobbies` or none to quick-join the newest
+  lobby (receipt `runId`); `start` (leader) spends one `spire_key` (3 obsidian + 1
+  gleamshell, `craft`) per member and teleports the party onto the floor; `leave`
+  leaves a lobby or forfeits a run. Only `join` accepts `runId` (400
+  `invalid_arguments` otherwise). There are no private lobbies, practice runs, kicks
+  or queue in this release: when every slot is busy `start` fails with `spire_full`
+  and the lobby stays open until it times out.
+- **Inside the Spire.** The floor (x 70..84, z 55..69) is sealed: from outside it
+  reads as sea and a `move` across its edge returns `blockedBy: "spire"`. `state`
+  is slim while you stand there: `world.map`, `nodes`, `trees`, `groundItems`,
+  `dummies`, `sharedGardens`, `adventure.expeditions`/`members` are empty and `goal`
+  is null; `players` lists only your run. From outside, players on the floor are
+  never listed (they count in `spire.capacity.inside`). Walk onto stars (15 damage
+  each; catch 3+ for the reward); within 4 tiles of the dais your weapon swings by
+  itself; at most 6 meals per run. At 0 HP you are knocked out to the gate exit with
+  10 HP and your bag. `me.noPvp` is true in the glade, at the gate, on the floor and in
+  the safe ring.
+- **`GET /api/agent/v1/danger`.** The compact feed shared with WebMCP's
+  `inspect_danger`. It is billed as an ordinary read (the same 4/second budget as
+  `/state`); there is no long poll. Fields: `v`, `tick`, `tickMs`, `ageMs` (since the
+  tick reached the gateway), `sendWithinMs` (send a dodge by then to land in tick +
+  1), `rulesVersion`, `rulesMismatch`, `where` (`spire` on the floor or in your
+  started run, `clatterhorn` within 2 tiles of the glade, else null), `you {x, z, hp,
+  maxHp, state, immuneTicks, eatReadyInTicks, mealsLeft}`, `grid {x0, z0, w, h}`,
+  `map` (rows of `.` safe for ticks +1..+3, `1`..`7` the bitmask of unsafe ticks,
+  `#` not standable, `*` a star on a safe tile), `moves[] {to, via, steps, horizon,
+  winning, star, court}` (every hit-free destination for tick + 1, best first, at
+  most 12), `best`, `path` (a survival plan of end tiles, exact through
+  `knownUntilTick`), `stars`, `nextStars`, `boss`, `party` and `telegraph`. At most 4
+  KiB.
+- **`POST /actions/dodge {"x", "z"}`.** A cheap step for the next tick: at most 2
+  tiles (422 `dodge_too_far`), only on the floor or at the glade (422
+  `dodge_unavailable`), to a standable tile (422 `dodge_target`), and not while your
+  run uses other Spire rules than the gateway (409 `rules_mismatch`). No path
+  search. Receipt: `resolvesAtTick`, `via` (the canonical middle tile), `to`, `safe`
+  (whether that move is hit-free in that tick; null when nothing threatens). Dodges
+  are ordinary actions (5/second, one in flight).
+- **Reference loop.**
+
+  ```
+  loop every tick:
+    d = GET /danger
+    if d.where == null or d.rulesMismatch or d.you.state not in (null, "in"): wait
+    if d.you.hp <= 12 and d.you.eatReadyInTicks == 0 and d.you.mealsLeft > 0: POST /actions/eat
+    m = first(d.moves where star) ?? d.best
+    if m and m.to != [d.you.x, d.you.z]: POST /actions/dodge {x: m.to[0], z: m.to[1]} within d.sendWithinMs
+  ```
+
+- **Boss notices and news.** `state.notices` also carries your boss feedback with
+  `source: "boss"` (`kind` `you_hit`, `hurt`, `star`, `knocked_out`, `reward`,
+  `keepsake`, `run_result`, plus `amount`, `total`, `hp`, `quantity`, `text`).
+  `state.bossNews` lists the last 10 world boss moments (`clatter_wake`,
+  `clatter_defeat`, `clatter_respawn`, `clatter_reset`, `spire_run_start`,
+  `spire_clear`); their `text` holds player names and is untrusted.
+- **Errors.** Reducer refusals map to codes (422): `party_not_ready`, `boss_closed`,
+  `client_outdated`, `spire_gate`, `spire_key`, `spire_member`, `not_in_party`,
+  `not_leader`, `party_full`, `party_gone`, `no_open_party`, `spire_busy`,
+  `spire_full`, `no_pvp_zone`, `spire_inside`, `meal_limit`, `clatterhorn_burrowed`,
+  `on_expedition`, `in_duel`. Anything else stays `action_rejected`.
+
+API version **1.7.0** (bosses) added `attack_clatterhorn`, `spire`, `dodge`, `GET /danger`, `state.clatterhorn`, `state.spire`, `state.bossNews`, `me.noPvp`, boss notices and the slim in-Spire state. API version **1.5.0** (personal garden) added `plant`, `harvest_garden` and `state.garden`. API version **1.4.0** (scheduled raids, mentors) added `state.giant.asleep`/`nextWakeAt`/`nextWakeInSeconds`/`raid`, the `asleep` giant state, `state.mentor` and `friends[].mentees`, and new cosmetics (`welcomed_ribbon`, `mentor_pin`, `mentor_pin_silver`, `mentor_pin_gold`, `giants_tooth`); `respawnInTicks` is gone (the Giant sleeps instead). API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
 fields `output`, `cosmetic`, `level`, `locked` and `xp`. API version **1.2.0** (M2) added `craft`, `harvest {nodeId | kind}`,
 `state.nodes` and `state.recipes`. API version **1.1.0** removed the rock-paper-scissors `stance` action and the
 `stance`/`fightState` player fields. `/actions/stance` now returns 404
@@ -424,7 +517,7 @@ permit expiration if the API process crashes.
 | Admission | Single-use invite; separate identity per session; server permit required even for direct SDK calls |
 | Session | At most 1 hour total, 10 minutes idle, 18,000 distinct action receipts |
 | Actions | 5 attempts/second, burst 10 (enough to act every 600 ms tick); invalid arguments and denied scopes consume the same budget. The game still accepts at most 5 inputs per character per tick |
-| Session reads | 4/second, burst 10; actions do not count against this budget |
+| Session reads | 4/second, burst 10, shared by `/state` and `/danger`; actions do not count against this budget |
 | IP requests (local API) | 256/second, burst 1,024; all paths and failed authentication count |
 | IP joins | 4/second, burst 256, including invalid invite attempts; no default per-IP player cap |
 | Global requests (local API) | 2,560/second, burst 4,096; separate joins at 8/second, burst 256; 64 requests in flight; 128 HTTP connections |
