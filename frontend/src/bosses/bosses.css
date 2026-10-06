@@ -1,0 +1,81 @@
+/* Sunken Spire DOM: HUD, result card, lobby panel, step pad (FINAL_SPEC 7.6). Imported by the components. */
+
+.spire-hud { position: absolute; inset: 0; pointer-events: none; z-index: 6; color: #f1eaff; font-size: 13px; }
+.spire-hud button { pointer-events: auto; }
+.spire-top { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(460px, calc(100vw - 24px)); display: grid; gap: 5px; }
+.spire-boss-bar { position: relative; height: 16px; border-radius: 8px; background: #160f26e6; border: 1px solid #7d68c4; overflow: hidden; }
+.spire-boss-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #b79bff, #ffd6f0); transition: width 0.25s ease-out; }
+.spire-boss-bar[data-phase="2"] .spire-boss-fill { background: linear-gradient(90deg, #5fb8e8, #9fe7ff); }
+.spire-boss-bar[data-phase="3"] .spire-boss-fill { background: linear-gradient(90deg, #7f5fe0, #b79bff); }
+.spire-boss-bar[data-phase="4"] .spire-boss-fill { background: linear-gradient(90deg, #c0392b, #ff6b6b); }
+.spire-notch { position: absolute; top: 0; bottom: 0; width: 2px; background: #0d0b18cc; }
+.spire-boss-label { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-shadow: 0 1px 3px #000c; font-weight: 700; }
+.spire-pips { display: inline-flex; gap: 4px; }
+.spire-pip { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #b79bff; background: transparent; }
+.spire-pip.is-on { background: #b79bff; }
+.spire-timer { font-variant-numeric: tabular-nums; }
+.spire-timer.is-low { color: #ffb547; }
+.spire-enrage { color: #ff8a8a; font-size: 12px; text-align: center; text-shadow: 0 1px 3px #000c; }
+.spire-banner { justify-self: center; margin-top: 4px; padding: 5px 14px; border-radius: 999px; background: #1b1430e6; border: 1px solid #b79bff; font-weight: 700; animation: spire-banner-in 0.25s ease-out; }
+.spire-banner small { display: block; font-weight: 400; font-size: 12px; opacity: 0.85; text-align: center; }
+.spire-banner.is-enrage { border-color: #ff6b6b; color: #ffd0d0; }
+@keyframes spire-banner-in { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.spire-reduced .spire-banner { animation: spire-fade-in 0.3s ease-out; }
+@keyframes spire-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.spire-party { position: absolute; top: max(70px, calc(env(safe-area-inset-top) + 58px)); left: max(12px, env(safe-area-inset-left)); display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.spire-party li { display: grid; grid-template-columns: 14px auto auto; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 7px; background: #160f26cc; font-size: 12px; }
+.spire-party li[data-me="true"] { outline: 1px solid #5ff0ff88; }
+.spire-party .spire-member-hp { font-variant-numeric: tabular-nums; color: #ffd6f0; }
+.spire-party .spire-member-stars { color: #ffd36e; }
+
+.spire-bottom { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 112px); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 12px; padding: 6px 12px; border-radius: 10px; background: #160f26d9; border: 1px solid #5b4a8f; max-width: calc(100vw - 24px); }
+.spire-meals { letter-spacing: 2px; color: #ffd36e; }
+.spire-court { color: #f4cb63; font-weight: 700; }
+.spire-shield { color: #5ff0ff; animation: spire-shimmer 0.5s ease-in-out infinite alternate; }
+.spire-reduced .spire-shield { animation: none; opacity: 0.6; }
+@keyframes spire-shimmer { from { opacity: 0.45; } to { opacity: 1; } }
+.spire-leave { min-height: 32px; padding: 0 10px; border-radius: 7px; border: 1px solid #ff8a8a; background: #3a1420; color: #ffd0d0; cursor: pointer; }
+
+.spire-chip { position: absolute; top: max(70px, calc(env(safe-area-inset-top) + 58px)); left: 50%; transform: translateX(-50%); padding: 5px 12px; border-radius: 999px; background: #160f26e6; border: 1px solid #7d68c4; color: #f1eaff; font-size: 12px; pointer-events: none; z-index: 6; }
+
+/* Result card */
+.spire-result { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 40; width: min(380px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; padding: 16px; border-radius: 14px; background: #1b1430f2; border: 2px solid #b79bff; color: #f1eaff; box-shadow: 0 8px 32px #000a; }
+.spire-result h2 { margin: 0 0 4px; font-size: 20px; text-align: center; }
+.spire-result .spire-result-sub { margin: 0 0 10px; text-align: center; opacity: 0.85; }
+.spire-result table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.spire-result th, .spire-result td { padding: 4px; text-align: right; }
+.spire-result th:first-child, .spire-result td:first-child { text-align: left; }
+.spire-result ul { margin: 10px 0 0; padding-left: 18px; }
+.spire-flawless { margin-top: 8px; text-align: center; color: #ffd36e; font-weight: 700; }
+.spire-result .spire-close { display: block; margin: 12px auto 0; min-height: 36px; padding: 0 18px; border-radius: 8px; border: 1px solid #b79bff; background: #2d2250; color: #f1eaff; cursor: pointer; }
+.spire-result.is-intro h2 { font-size: 24px; }
+
+/* Lobby panel */
+.spire-lobby { position: absolute; right: max(12px, env(safe-area-inset-right)); top: max(70px, calc(env(safe-area-inset-top) + 58px)); z-index: 20; width: min(320px, calc(100vw - 24px)); max-height: calc(100dvh - 200px); overflow: auto; padding: 12px; border-radius: 12px; background: var(--panel-surface, #f7f1e3e6); border: 2px solid #5b4a8f; color: var(--ink, #2b211a); font-size: 13px; pointer-events: auto; }
+.spire-lobby header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.spire-lobby h2 { margin: 0; font-size: 16px; }
+.spire-lobby h3 { margin: 10px 0 4px; font-size: 13px; }
+.spire-lobby ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.spire-lobby li { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.spire-lobby button { min-height: 32px; padding: 0 10px; border-radius: 7px; border: 1px solid #5b4a8f; background: #ece4ff; color: #2b2148; cursor: pointer; }
+.spire-lobby button.is-primary { background: #5b4a8f; color: #fff; }
+.spire-lobby button:disabled { opacity: 0.55; cursor: default; }
+.spire-lobby .spire-reason { margin: 4px 0 0; font-size: 12px; color: #8a3b3b; }
+.spire-lobby .spire-note { margin: 4px 0 0; font-size: 12px; color: var(--ink-soft, #584635); }
+.spire-lobby .spire-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.spire-online { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #9a9a9a; margin-right: 4px; }
+.spire-online.is-on { background: #3fae5a; }
+
+/* Step pad (touch) */
+.spire-controls { position: absolute; inset: auto 0 0 0; pointer-events: none; z-index: 7; }
+.spire-pad { position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 150px); width: 132px; height: 132px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 3px; pointer-events: auto; touch-action: none; user-select: none; }
+.spire-pad button { border: 1px solid #7d68c4; border-radius: 8px; background: #160f26b3; color: #f1eaff; font-size: 16px; padding: 0; touch-action: none; }
+.spire-pad button:active, .spire-pad button.is-held { background: #5b4a8fd9; }
+.spire-pad .spire-pad-hold { font-size: 11px; }
+.spire-side { position: absolute; right: max(12px, env(safe-area-inset-right)); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 150px); display: grid; gap: 6px; pointer-events: auto; }
+.spire-side button { min-width: 64px; min-height: 44px; border-radius: 10px; border: 1px solid #7d68c4; background: #160f26cc; color: #f1eaff; }
+.spire-side button:disabled { opacity: 0.5; }
+@media (hover: hover) and (pointer: fine) { .spire-pad, .spire-side { opacity: 0.8; } }
+
+.spire-hover-hit { color: #ff8a8a; font-weight: 800; font-size: 13px; text-shadow: 0 1px 2px #000; white-space: nowrap; }
