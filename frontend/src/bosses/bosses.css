@@ -2,7 +2,8 @@
 
 .spire-hud { position: absolute; inset: 0; pointer-events: none; z-index: 6; color: #f1eaff; font-size: 13px; }
 .spire-hud button { pointer-events: auto; }
-.spire-top { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(460px, calc(100vw - 24px)); display: grid; gap: 5px; }
+/* Below the game toolbar (Adventure, Bag, Chat, Menu), which stays on screen inside the Spire. */
+.spire-top { position: absolute; top: max(64px, calc(env(safe-area-inset-top) + 56px)); left: 50%; transform: translateX(-50%); width: min(460px, calc(100vw - 24px)); display: grid; gap: 5px; }
 .spire-boss-bar { position: relative; height: 16px; border-radius: 8px; background: #160f26e6; border: 1px solid #7d68c4; overflow: hidden; }
 .spire-boss-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #b79bff, #ffd6f0); transition: width 0.25s ease-out; }
 .spire-boss-bar[data-phase="2"] .spire-boss-fill { background: linear-gradient(90deg, #5fb8e8, #9fe7ff); }
@@ -24,12 +25,13 @@
 @keyframes spire-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .spire-party { position: absolute; top: max(70px, calc(env(safe-area-inset-top) + 58px)); left: max(12px, env(safe-area-inset-left)); display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+@media (max-width: 820px) { .spire-party { top: max(136px, calc(env(safe-area-inset-top) + 128px)); } }
 .spire-party li { display: grid; grid-template-columns: 14px auto auto; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 7px; background: #160f26cc; font-size: 12px; }
 .spire-party li[data-me="true"] { outline: 1px solid #5ff0ff88; }
 .spire-party .spire-member-hp { font-variant-numeric: tabular-nums; color: #ffd6f0; }
 .spire-party .spire-member-stars { color: #ffd36e; }
 
-.spire-bottom { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 112px); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 12px; padding: 6px 12px; border-radius: 10px; background: #160f26d9; border: 1px solid #5b4a8f; max-width: calc(100vw - 24px); }
+.spire-bottom { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 156px); display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 12px; padding: 6px 12px; border-radius: 10px; background: #160f26d9; border: 1px solid #5b4a8f; max-width: calc(100vw - 24px); }
 .spire-meals { letter-spacing: 2px; color: #ffd36e; }
 .spire-court { color: #f4cb63; font-weight: 700; }
 .spire-shield { color: #5ff0ff; animation: spire-shimmer 0.5s ease-in-out infinite alternate; }
@@ -41,7 +43,7 @@
 
 /* Result card */
 .spire-result { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 40; width: min(380px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; padding: 16px; border-radius: 14px; background: #1b1430f2; border: 2px solid #b79bff; color: #f1eaff; box-shadow: 0 8px 32px #000a; }
-.spire-result h2 { margin: 0 0 4px; font-size: 20px; text-align: center; }
+.spire-result h2 { margin: 0 0 4px; font-size: 20px; text-align: center; color: inherit; }
 .spire-result .spire-result-sub { margin: 0 0 10px; text-align: center; opacity: 0.85; }
 .spire-result table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .spire-result th, .spire-result td { padding: 4px; text-align: right; }
