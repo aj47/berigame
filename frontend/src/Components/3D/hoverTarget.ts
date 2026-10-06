@@ -1,5 +1,9 @@
 import type { Object3D, Vector3 } from 'three';
-import { areaOf, enterRule, inBounds, inSpireFloor, nearestReachableTile, tileEquals, tileKey, TILE_ORIGIN, type Tile } from '@sim';
+import {
+  areaOf, canonicalMiddle, chebyshev, CLATTER_SWARM_TICKS, ClatterState, clatterHitsMove, clatterSwarmFreeLines, clatterSwarmHit,
+  clatterTelegraph, enterRule, inBounds, inClatterGlade, inSpireFloor, nearestReachableTile, tileEquals, tileKey, TILE_ORIGIN,
+  CLATTER_DAMAGE, type ClatterRowLike, type Tile,
+} from '@sim';
 import { HOME_JOIN, homeLand, homeLocation, homePath, homePoint } from '../../../../shared/sim/frontier/homeMap';
 import { PIECES } from '../../../../shared/sim/frontier/catalog';
 import { can } from '../../../../shared/sim/frontier/model';
@@ -113,4 +117,37 @@ export function connectedGroundHover(tile: Tile, me: Tile & { region?: string },
     return { title: 'Boulder boundary', action: 'Carry a stone club to cross', tone: 'muted', tile };
   }
   return { title: 'Path blocked', action: 'Choose a clear spot', detail: 'A building or obstacle blocks this route', tone: 'muted', tile };
+}
+
+/** Clatterhorn dodge-assist verdict for a hovered tile: green (`safe`) or red (`hit`, with the damage you would take). */
+export interface ClatterHoverVerdict { tile: Tile; kind: 'safe' | 'hit'; damage: number }
+
+/** Ticks of runners checked after the swarm fires (they cross the 17-tile glade in about 20). */
+const SWARM_LOOKAHEAD = CLATTER_SWARM_TICKS + 4;
+
+/**
+ * Dodge assist at Clatterhorn (mirrors the Spire's exact-move hover): while a charge, spin or drum is telegraphed or
+ * the swarm runs, and you stand in the glade, a walkable tile within Chebyshev 2 of your true tile is judged as the
+ * move you would make in tick + 1 (with its canonical middle, as the server tests it) and then standing there until
+ * the hazard is over, all through `clatterHitsMove`. Null when there is nothing to judge.
+ */
+export function clatterHoverVerdict(row: ClatterRowLike | null | undefined, tick: number, me: Tile, tile: Tile, blocked: Set<number>): ClatterHoverVerdict | null {
+  if (!row || row.state === ClatterState.Closed || !inClatterGlade(me)) return null;
+  const tel = clatterTelegraph(row);
+  const swarm = clatterSwarmFreeLines(row).length > 0;
+  if (!tel && !swarm) return null;
+  if (!inBounds(tile) || chebyshev(me, tile) > 2 || !isOpenGround(tile, false) || blocked.has(tileKey(tile))) return null;
+  const windup = row.state === ClatterState.ChargeWindup || row.state === ClatterState.SpinWindup;
+  const blowTiles = windup && tel ? new Set(tel.tiles) : null;
+  const until = Math.max(windup ? row.stateUntilTick - tick : 0, swarm ? Math.max(0, row.stateUntilTick - tick) + SWARM_LOOKAHEAD : 0, 1);
+  const mid = canonicalMiddle(me, tile, blocked);
+  let damage = 0;
+  for (let k = 1; k <= until; k++) {
+    const T = tick + k;
+    const [p0, p1] = k === 1 ? [me, mid] : [tile, tile];
+    if (!clatterHitsMove(row, T, p0, p1, tile)) continue;
+    if (blowTiles && T === row.stateUntilTick && blowTiles.has(tileKey(tile))) damage += tel!.damage;
+    if (clatterSwarmHit(row, T, p0, p1, tile)) damage += CLATTER_DAMAGE.runner;
+  }
+  return { tile, kind: damage > 0 ? 'hit' : 'safe', damage };
 }

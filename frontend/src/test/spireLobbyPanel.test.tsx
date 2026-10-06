@@ -112,6 +112,24 @@ describe('SpireLobbyPanel', () => {
     expect(screen.getByRole('button', { name: 'Open a party' })).toBeDisabled();
   });
 
+  it('a knocked-out member waits on the party; a forfeit (Left) can open or join a new one at once', () => {
+    act(() => {
+      const s = useBossStore.getState();
+      s.setRow('spireRun', spireRun({ stage: SpireStage.Active }));
+      s.setRow('spireMember', spireMember('me', { state: SpireMemberState.Out }));
+    });
+    const ui = render(<SpireLobbyPanel />);
+    expect(screen.getByText('Your party is still fighting inside.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open a party' })).not.toBeInTheDocument();
+    // spire_leave refuses a Left member ("You are not in a Spire party") and spire_open deletes its row: no give-up button.
+    act(() => useBossStore.getState().setRow('spireMember', spireMember('me', { state: SpireMemberState.Left })));
+    ui.rerender(<SpireLobbyPanel />);
+    expect(screen.queryByText('Your party is still fighting inside.')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open a party' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Open a party' }));
+    expect(mock.open).toHaveBeenCalledTimes(1);
+  });
+
   it('closes the gate panel', () => {
     render(<SpireLobbyPanel />);
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
