@@ -2,7 +2,7 @@
 export { describeDestination, describeGathering, describeObjective, describeAction } from '../../shared/sim/agentState';
 import {
   BossEventKind, BossId, BossNoticeKind, ClatterState, GRID_SIZE, SPIRE_OUTCOME_NAMES, SPIRE_RULES_VERSION, SpireStage,
-  atClatterhorn, bossConfigOr, buildDangerFeed, canonicalMiddle, chebyshev, clatterHitsMove, describeClatterhorn, describeSpire,
+  atClatterhorn, bossConfigOr, buildDangerFeed, cargoMovementSteps, chebyshev, clatterHitsMove, dangerMoveTo, describeClatterhorn, describeSpire,
   getCosmetic, getItemDef, inClatterGlade, inSpireFloor, isLandTile, spireFightBullets, spireHitsMove, spireSeesPlayer, spireStandable,
   type BossConfigLike, type ClatterRowLike, type DangerFeed, type DangerMemberInput, type SpireFightLike, type SpireMemberLike,
   type SpireRunLike, type Tile,
@@ -60,9 +60,21 @@ export function visiblePlayers<P extends BossPlayer>(me: P, players: Iterable<P>
   });
 }
 
-/** `state.clatterhorn` and `state.spire` (both null outside Bramblewild). */
+/**
+ * Tiles you move per tick (the server's `cargoMovementSteps`): 1 while you carry the giant berry, i.e. you are the
+ * carrier of a hauling expedition, else 2.
+ */
+export function moveStepsOf(meHex: string, expeditions: Iterable<{ stage: string; carrier?: Hex | string | null }>): 1 | 2 {
+  for (const e of expeditions) if (e.stage === 'hauling' && e.carrier && hexOf(e.carrier) === meHex) return cargoMovementSteps(true) as 1;
+  return cargoMovementSteps(false) as 2;
+}
+
+/**
+ * `state.clatterhorn` and `state.spire` (both null outside Bramblewild). `blocked` is the stable world blocked set
+ * /danger gets and `maxSteps` your tiles per tick (`moveStepsOf`), so the telegraph's escapes match /danger.
+ */
 export function describeBosses(rows: BossRows, me: BossPlayer, tick: number, options: {
-  players: Iterable<BossPlayer>; keysHeld: number; contribution: number | null;
+  players: Iterable<BossPlayer>; keysHeld: number; contribution: number | null; blocked: Set<number>; maxSteps?: 1 | 2;
 }) {
   if (!homeRegion(me)) return { clatterhorn: null, spire: null };
   const cfg = bossConfigOr(rows.config);
@@ -70,7 +82,8 @@ export function describeBosses(rows: BossRows, me: BossPlayer, tick: number, opt
   const byHex = new Map([...options.players].map((p) => [hexOf(p.identity), p]));
   const { fight } = myRun(rows, meHex);
   return {
-    clatterhorn: describeClatterhorn(rows.clatter ?? null, cfg, { x: me.x, z: me.z, identity: meHex }, tick, options.contribution),
+    clatterhorn: describeClatterhorn(rows.clatter ?? null, cfg, { x: me.x, z: me.z, identity: meHex }, tick, options.contribution,
+      { blocked: options.blocked, maxSteps: options.maxSteps }),
     spire: describeSpire({
       cfg, runs: rows.runs, fight,
       members: rows.members.map((m) => ({ ...m, identity: hexOf(m.identity) })),
@@ -84,9 +97,12 @@ export function describeBosses(rows: BossRows, me: BossPlayer, tick: number, opt
   };
 }
 
-/** GET /api/agent/v1/danger and WebMCP inspect_danger. `blocked` must be a stable Set (move tables are cached per Set). */
+/**
+ * GET /api/agent/v1/danger and WebMCP inspect_danger. `blocked` must be a stable Set (move tables are cached per
+ * Set); `maxSteps` is your tiles per tick (`moveStepsOf`, default 2).
+ */
 export function dangerFeed(rows: BossRows, me: BossPlayer, tick: number, options: {
-  players: Iterable<BossPlayer>; blocked: Set<number>; ageMs: number; tickMs: number;
+  players: Iterable<BossPlayer>; blocked: Set<number>; ageMs: number; tickMs: number; maxSteps?: 1 | 2;
 }): DangerFeed {
   const meHex = hexOf(me.identity);
   const home = homeRegion(me);
@@ -104,12 +120,14 @@ export function dangerFeed(rows: BossRows, me: BossPlayer, tick: number, options
   return buildDangerFeed({
     tick, tickMs: options.tickMs, ageMs: Math.max(0, Math.round(options.ageMs)), rulesVersion: SPIRE_RULES_VERSION,
     me: { identity: meHex, x: me.x, z: me.z, hp: me.hp, maxHp: me.maxHp, eatCooldownUntilTick: me.eatCooldownUntilTick ?? 0 },
-    blocked: options.blocked, spire, clatter: home ? rows.clatter ?? null : null,
+    blocked: options.blocked, maxSteps: options.maxSteps, spire, clatter: home ? rows.clatter ?? null : null,
   });
 }
 
 export type DodgeProblem = { status: number; code: string; message: string };
 export const DODGE_TOO_FAR = 'A dodge moves at most 2 tiles; use move for longer walks';
+export const DODGE_CARRYING = 'Carrying the giant berry you move 1 tile per tick, so a dodge moves at most 1 tile';
+export const DODGE_UNREACHABLE = 'That tile takes more than one tick to reach around what is in the way; pick a destination from GET /danger moves';
 export const DODGE_NOT_HERE = "Dodge works only on the Sunken Spire floor or at Clatterhorn's glade; use move elsewhere";
 export const DODGE_BAD_TILE = 'You cannot stand there; pick a destination from GET /danger moves';
 export const RULES_MISMATCH = 'Your Spire run uses other rules than this gateway; retry after the update';
@@ -120,14 +138,15 @@ const gladeStandable = (t: Tile, blocked: Set<number>) => Number.isInteger(t.x) 
   && t.x < GRID_SIZE && t.z < GRID_SIZE && !blocked.has(t.z * GRID_SIZE + t.x) && !inSpireFloor(t) && (inClatterGlade(t) || isLandTile(t));
 
 /**
- * The `dodge` action's gateway-side check (shared with WebMCP's dodge_to_tile): at most 2 tiles away, only on
- * the Spire floor (to a standable floor tile) or at Clatterhorn (glade or the land around it), never into
- * another rules version. Returns the problem, or the receipt fields: `via` (the canonical middle tile) and
- * `safe` (whether that move is hit-free in tick + 1 under the server rule; null without a hazard source).
+ * The `dodge` action's gateway-side check (shared with WebMCP's dodge_to_tile): at most `maxSteps` tiles away
+ * (2, or 1 while carrying the giant berry), only on the Spire floor (to a standable floor tile) or at Clatterhorn
+ * (glade or the land around it), reachable in one tick (the /danger move tables), never into another rules
+ * version. Returns the problem, or the receipt fields: `via` (the move's canonical middle tile) and `safe`
+ * (whether that move is hit-free in tick + 1 under the server rule; null without a hazard source).
  */
-export function dodgeCheck(rows: BossRows, me: BossPlayer, to: Tile, tick: number, blocked: Set<number>):
+export function dodgeCheck(rows: BossRows, me: BossPlayer, to: Tile, tick: number, blocked: Set<number>, maxSteps: 1 | 2 = 2):
   { problem: DodgeProblem } | { resolvesAtTick: number; via: [number, number]; to: [number, number]; safe: boolean | null } {
-  if (chebyshev(me, to) > 2) return { problem: { status: 422, code: 'dodge_too_far', message: DODGE_TOO_FAR } };
+  if (chebyshev(me, to) > maxSteps) return { problem: { status: 422, code: 'dodge_too_far', message: maxSteps < 2 ? DODGE_CARRYING : DODGE_TOO_FAR } };
   const floor = onSpireFloor(me);
   const glade = !floor && homeRegion(me) && atClatterhorn(me);
   if (!floor && !glade) return { problem: { status: 422, code: 'dodge_unavailable', message: DODGE_NOT_HERE } };
@@ -137,7 +156,10 @@ export function dodgeCheck(rows: BossRows, me: BossPlayer, to: Tile, tick: numbe
   if (floor && run && run.stage === SpireStage.Active && run.rules !== SPIRE_RULES_VERSION) {
     return { problem: { status: 409, code: 'rules_mismatch', message: RULES_MISMATCH } };
   }
-  const via = canonicalMiddle(me, to, blocked);
+  // Only a move the server finishes this tick: past a stone or around the dais a 2-tile target can take 3-4 steps.
+  const move = dangerMoveTo(floor ? 'spire' : 'clatterhorn', me, to, blocked, floor ? 2 : maxSteps);
+  if (!move) return { problem: { status: 422, code: 'dodge_target', message: DODGE_UNREACHABLE } };
+  const via = move.mid;
   const T = tick + 1;
   let safe: boolean | null = null;
   if (floor && fight && run?.stage === SpireStage.Active) safe = spireHitsMove(spireFightBullets(fight), T, me, via, to) === 0;

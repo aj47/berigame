@@ -9,7 +9,7 @@
 import type { BossConfigLike } from './bossConfig';
 import {
   CLATTER_DIR_NAMES, SPIRE_MEMBER_STATE_NAMES, SPIRE_OUTCOME_NAMES, SPIRE_STAGE_NAMES, clatterBaitId, clatterTelegraphView,
-  spireLiveStars,
+  spireLiveStars, spireNextStarsIn,
 } from './bossDanger';
 import { CLATTER_GLADE, CLATTER_HOME, CLATTER_STONES, SPIRE_CENTRE, SPIRE_EXIT, SPIRE_GATE, SPIRE_GATE_RANGE, inClatterGlade, inSpireFloor } from './bossZones';
 import {
@@ -29,7 +29,6 @@ import {
 const cheb = (a: { x: number; z: number }, b: { x: number; z: number }) => Math.max(Math.abs(a.x - b.x), Math.abs(a.z - b.z));
 const tile = (t: { x: number; z: number }) => ({ x: t.x, z: t.z });
 const SWARM_SIDES = ['north', 'east', 'south', 'west'] as const;
-const NO_BLOCKED: Set<number> = new Set();
 
 const cosmeticKey = (id: number) => getCosmetic(id)?.key ?? null;
 const itemName = (id: string) => getItemDef(id)?.name ?? id;
@@ -43,12 +42,16 @@ const CLATTER_RULE = (cfg: BossConfigLike) =>
   + `Safe moves: GET /api/agent/v1/danger.`;
 
 /** `state.clatterhorn` (null without a row; the caller passes null outside Bramblewild). */
+/**
+ * `world.blocked` is the world's blocked set (the stable Set /danger gets) and `world.maxSteps` your tiles per
+ * tick, so `telegraph.escape` lists the same tiles as GET /danger.
+ */
 export function describeClatterhorn(row: ClatterRowLike | null, cfg: BossConfigLike, me: { x: number; z: number; identity: string },
-  tick: number, contribution: number | null): Record<string, unknown> | null {
+  tick: number, contribution: number | null, world: { blocked: Set<number>; maxSteps?: 1 | 2 }): Record<string, unknown> | null {
   if (!row) return null;
   const closed = row.state === ClatterState.Closed || !cfg.clatterhornOpen;
   const awake = clatterAttackable(row);
-  const tv = clatterTelegraphView(row, me, tick, NO_BLOCKED);
+  const tv = clatterTelegraphView(row, me, tick, world.blocked, world.maxSteps ?? 2);
   const drum = row.state === ClatterState.DrumWindup || row.state === ClatterState.Drumming;
   const fire = row.state === ClatterState.DrumWindup ? row.stateUntilTick : row.swarmTick;
   const damage = Math.max(0, contribution ?? 0);
@@ -179,7 +182,6 @@ function describeRun(run: SpireRunInput, fight: SpireFightLike, members: readonl
   const active = run.stage === SpireStage.Active;
   const enraged = active && spireEnraged(run.startTick, tick);
   const live = spireLiveStars(run, fight, tick + 1);
-  const nextTick = live ? live.nextTick : run.startTick;
   return {
     runId: String(run.id),
     stage: SPIRE_STAGE_NAMES[run.stage] ?? 'unknown',
@@ -197,7 +199,7 @@ function describeRun(run: SpireRunInput, fight: SpireFightLike, members: readonl
     stars: active ? {
       wave: live ? live.wave : -1,
       live: live ? live.stars.map((s) => ({ x: s.x, z: s.z, ticksLeft: live.lastTick - tick })) : [],
-      nextInTicks: nextTick < run.endTick ? Math.max(1, nextTick - tick) : null,
+      nextInTicks: spireNextStarsIn(run, live, tick + 1),
     } : null,
     members: members.map((m) => {
       const p = input.player(m.identity);

@@ -11,8 +11,8 @@ import SocialTabs from "./SocialTabs";
 /** Your tile, only when it changes (not on every other row update). */
 const useMyTile = () => {
   const me = useMyPlayer();
-  const x = me?.x, z = me?.z;
-  return useMemo(() => (x === undefined ? null : { x, z }), [x, z]);
+  const x = me?.x, z = me?.z, region = me?.region;
+  return useMemo(() => (x === undefined ? null : { x, z, region }), [x, z, region]);
 };
 
 const ChatBox = memo(({ open, onClose, onOpenFriends }) => {

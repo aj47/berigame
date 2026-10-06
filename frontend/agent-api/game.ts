@@ -1,7 +1,7 @@
 import { subscribeFrontier } from '../src/spacetime/frontierSubscription';
 import { frontierSnapshot, type FrontierSnapshot } from '../../shared/sim/frontier/snapshot';
 import { describeAction, describeDestination, describeGathering, describeObjective } from './statePresentation';
-import { bossError, ClatterContribution, crossesSpireFloor, describeBossEvent, describeBossNotice, describeBosses, dangerFeed, dodgeCheck, onSpireFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows } from './statePresentation';
+import { bossError, ClatterContribution, crossesSpireFloor, describeBossEvent, describeBossNotice, describeBosses, dangerFeed, dodgeCheck, moveStepsOf, onSpireFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows } from './statePresentation';
 import { subscribeSpire } from '../src/bosses/spireSubscription';
 import { validateCommand } from '../../shared/sim/frontier/engine';
 import { ADVENTURE_CAMP, BERRY_MARKET, GIANT_FEAST, BERRY_PATCH, TECHNIQUES, PATHS, PATH_FIELDS, techniqueUnlocked, hasTechnique } from '../../shared/sim';
@@ -33,6 +33,12 @@ export interface GameSession {
   action(name: string, input: Record<string, any>): Promise<ActionResult>;
   /** GET /danger: the compact boss feed. Throws 503 world_unavailable while the cache is stale (never revokes). */
   danger(): DangerFeed;
+  /**
+   * False once this session's own socket or the gateway control socket has dropped (neither reconnects), so a
+   * 503 from state()/danger() is permanent and the session must be dropped. Ignores tick age: a brief tick stall
+   * while both sockets stay open is still alive and clears by itself.
+   */
+  alive?(): boolean;
   close(): Promise<void>;
   suspend?(): Promise<void>;
 }
@@ -82,7 +88,7 @@ export async function deadline<T>(promise: Promise<T>, ms = 8000): Promise<T> {
 export type ConnectionOptions = { webSocketFactory?: Parameters<ReturnType<typeof DbConnection.builder>['withWSFn']>[0] };
 
 export function connect(credential: Credential, control = false, options: ConnectionOptions = {}) {
-  return new Promise<{ conn: DbConnection; live(): boolean }>((resolve, reject) => {
+  return new Promise<{ conn: DbConnection; live(): boolean; connected(): boolean }>((resolve, reject) => {
     let active = false;
     let lastTick = Date.now();
     let settled = false;
@@ -103,7 +109,7 @@ export function connect(credential: Credential, control = false, options: Connec
           connection.subscriptionBuilder().onError(fail).onApplied(() => {
             if (settled) return;
             settled = true; clearTimeout(timer); lastTick = Date.now();
-            resolve({ conn: connection, live: () => active && Date.now() - lastTick < TICK_MS * 8 });
+            resolve({ conn: connection, live: () => active && Date.now() - lastTick < TICK_MS * 8, connected: () => active });
           }).subscribe(control ? [tables.world, tables.accessPolicy] : [
             tables.frontierView, tables.world, tables.accessPolicy, tables.player.where(row => row.online.eq(true)), tables.tree,
             tables.groundItem, tables.inventorySlot, tables.chatMessage, tables.trainingDummy,
@@ -116,9 +122,10 @@ export function connect(credential: Credential, control = false, options: Connec
             tables.giantRaid,
             tables.mentorStat,
             tables.gardenPlot, tables.adventureProfile, tables.expedition, tables.expeditionMember, tables.islandProject, tables.gardenShowcase, tables.friendlyDuel,
-            // Bosses: config, the beetle, every run and member (small); boss_notice is narrowed to you by RLS.
-            // Your run's spire_fight comes from subscribeSpire (one run at a time).
-            tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossNotice, tables.bossEvent,
+            // Bosses: config, the beetle, every run and member (small). boss_notice has no RLS (views.ts), so the
+            // subscription query narrows it to your rows: otherwise every agent socket in the Durable Object would
+            // receive and decode every fighter's notices. Your run's spire_fight comes from subscribeSpire.
+            tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossNotice.where(row => row.player.eq(identity)), tables.bossEvent,
           ]);
         }).build();
     } catch (error) { settled = true; clearTimeout(timer); reject(error); }
@@ -180,7 +187,7 @@ export async function createGameService(credential: Credential, options: Connect
         notices.push({ tick: row.tick, kind: row.kind, from: row.from.toHexString(), text: row.text });
         if (notices.length > 10) notices.shift();
       });
-      // Boss feedback (FINAL_SPEC 8.1): your last 16 boss notices (RLS), the last 10 world boss moments, and
+      // Boss feedback (FINAL_SPEC 8.1): your last 16 boss notices (subscription-filtered), the last 10 world boss moments, and
       // your Clatterhorn damage this fight. tickAt is when the current world tick reached this gateway.
       const bossNotices: ReturnType<typeof describeBossNotice>[] = [];
       const bossNews: ReturnType<typeof describeBossEvent>[] = [];
@@ -201,6 +208,8 @@ export async function createGameService(credential: Credential, options: Connect
         config: [...conn.db.bossConfig.iter()][0] ?? null, clatter: [...conn.db.clatterhorn.iter()][0] ?? null,
         runs: [...conn.db.spireRun.iter()], members: [...conn.db.spireMember.iter()], fights: [...conn.db.spireFight.iter()],
       });
+      /** Your tiles per tick: 1 while you carry the giant berry (the server's cargoMovementSteps). */
+      const moveSteps = () => moveStepsOf(player.identity, conn.db.expedition.iter());
       const keysHeld = () => slotsOf().reduce((n, s) => n + (s?.itemId === SPIRE_KEY_ITEM_ID ? s.quantity : 0), 0);
       const currentTrade = () => {
         const rows = [...conn.db.trade.iter()];
@@ -238,11 +247,12 @@ export async function createGameService(credential: Credential, options: Connect
         identity: player.identity,
         close,
         suspend: async () => { if (link) disconnect(link.conn); await suspend(player.identity); },
+        alive: () => control.connected() && link!.connected(),
         danger() {
           const self = me();
           const tick = conn.db.world.id.find(0)?.tick ?? 0;
           return dangerFeed(bossRows(), self, tick, { players: conn.db.player.iter(), blocked: stableBlocked(conn.db.tree.iter()),
-            ageMs: Date.now() - tickAt, tickMs: TICK_MS });
+            ageMs: Date.now() - tickAt, tickMs: TICK_MS, maxSteps: moveSteps() });
         },
         state() {
           const self = me();
@@ -275,7 +285,8 @@ export async function createGameService(credential: Credential, options: Connect
           const inside = onSpireFloor(self);
           const outside = home && !inside;
           const rows = bossRows();
-          const bosses = describeBosses(rows, self, tick, { players: conn.db.player.iter(), keysHeld: keysHeld(), contribution: contribution.read(rows.clatter) });
+          const bosses = describeBosses(rows, self, tick, { players: conn.db.player.iter(), keysHeld: keysHeld(), contribution: contribution.read(rows.clatter),
+            blocked: stableBlocked(conn.db.tree.iter()), maxSteps: moveSteps() });
           const goal = outside ? goalFor(self, tick) : null;
           const now = Date.now();
           const frontier = frontierSnapshot(conn.db.frontierObject.iter(), conn.db.frontierView.iter(), player.identity, now);
@@ -538,8 +549,8 @@ export async function createGameService(credential: Credential, options: Connect
               break;
             }
             case 'dodge': {
-              // No reachability floods (move runs three): at most 2 tiles, on the floor or at the glade only.
-              const check = dodgeCheck(bossRows(), self, { x: input.x, z: input.z }, tick, stableBlocked(conn.db.tree.iter()));
+              // No reachability floods (move runs three): one tick's move (2 tiles, 1 carrying), on the floor or at the glade only.
+              const check = dodgeCheck(bossRows(), self, { x: input.x, z: input.z }, tick, stableBlocked(conn.db.tree.iter()), moveSteps());
               if ('problem' in check) throw new ApiError(check.problem.status, check.problem.code, check.problem.message);
               await r.setTarget({ x: input.x, z: input.z });
               return check;

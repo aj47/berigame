@@ -229,7 +229,12 @@ export function phaseClatterhorn(t: BossTick): void {
   if (step.moved) {
     for (const h of t.order) {
       const p = t.players.get(h)!;
-      if (!alive(p) || !swingsAtBeetle(p) || chebyshev(p, row) <= CLATTER_REACH) continue;
+      if (!alive(p) || !swingsAtBeetle(p)) continue;
+      if (chebyshev(p, row) <= CLATTER_REACH) {
+        // Already in reach of the new centre: drop a walk target aimed at the old one.
+        if (p.targetX !== undefined) { p.targetX = undefined; p.targetZ = undefined; t.mark(p); }
+        continue;
+      }
       const path = bfsPath(p, goalAdjacentTo(row, t.blocked, CLATTER_REACH), t.blocked, t.enterRule(p));
       if (path && path.length > 0) {
         const end = path[path.length - 1];

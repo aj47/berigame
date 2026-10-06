@@ -4,7 +4,7 @@ import { tileToWorld, type Tile } from '@sim';
 vi.mock('../spacetime/hooks', () => ({ useTick: () => 0, useMyPlayer: () => null }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ setTarget: vi.fn() }) }));
 
-import { fireTicksOf, handleFloorClick, SHARDMOTHER_TINT } from '../bosses/spire/SpireScene';
+import { claimSpireAtmosphere, fireTicksOf, handleFloorClick, SHARDMOTHER_TINT } from '../bosses/spire/SpireScene';
 import { holdState } from '../Components/3D/tapAssist';
 import { triangleCount } from '../Components/3D/nodes/lowPoly';
 import { buildGateGeometry } from '../bosses/spire/SpireGate';
@@ -85,5 +85,37 @@ describe('the Spire Gate', () => {
     expect(triangleCount(g)).toBeGreaterThan(100);
     expect(triangleCount(g)).toBeLessThan(600);
     expect(g.getAttribute('color')).toBeDefined();
+  });
+});
+
+describe('the Spire atmosphere', () => {
+  /** R3F's attach/detach: attaching remembers the previous value, detaching writes it back. */
+  const attach = (scene: any, key: 'background' | 'fog', obj: any) => { obj.prev = scene[key]; scene[key] = obj; return () => { scene[key] = obj.prev; }; };
+
+  it('leaves the overworld background and fog that AlphaIsland attached before the cleanup ran, visit after visit', () => {
+    const scene: any = { background: null, fog: null };
+    let island = { bg: { id: 'C1' }, fog: { id: 'F1' } };
+    let detachBg = attach(scene, 'background', island.bg), detachFog = attach(scene, 'fog', island.fog);
+    for (let visit = 1; visit <= 3; visit++) {
+      // Enter: AlphaIsland unmounts (mutation phase), then the Spire's effect claims the scene.
+      detachBg(); detachFog();
+      const release = claimSpireAtmosphere(scene);
+      expect(scene.fog.near).toBe(18);
+      // Leave: AlphaIsland remounts and attaches in the mutation phase, then the Spire's passive cleanup runs.
+      island = { bg: { id: `C${visit + 1}` }, fog: { id: `F${visit + 1}` } };
+      detachBg = attach(scene, 'background', island.bg); detachFog = attach(scene, 'fog', island.fog);
+      release();
+      expect(scene.background).toBe(island.bg);
+      expect(scene.fog).toBe(island.fog);
+    }
+  });
+
+  it('restores what was there when nothing else took the scene meanwhile', () => {
+    const before = { background: { id: 'sky' }, fog: { id: 'haze' } };
+    const scene: any = { ...before };
+    const release = claimSpireAtmosphere(scene);
+    expect(scene.background).not.toBe(before.background);
+    release();
+    expect(scene).toEqual(before);
   });
 });

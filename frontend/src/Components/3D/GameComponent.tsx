@@ -7,7 +7,7 @@ import HarbourApproach from '../../frontier/HarbourApproach';
 import { MEADOW_OFFSET } from '../../../../shared/sim/frontier/homeMap';
 import { useMyPlayer } from '../../spacetime/hooks';
 import { Canvas, events as pointerEvents } from '@react-three/fiber';
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import CameraController from './CameraController';
 import PlayerController from './PlayerController';
 import RenderOnlineUsers from './RenderOnlineUsers';
@@ -44,8 +44,32 @@ import type { CameraFocus } from './CameraController';
 
 /** Only what you can see takes a click or a hover (FINAL_SPEC 7.4). */
 const canvasEvents = withVisibleFilter(pointerEvents);
-/** The Spire's scene is its own chunk, fetched during the lobby (SpireLobbyPanel preloads it). */
-const SpireScene = React.lazy(loadSpireScene);
+/** How long the Spire scene waits before fetching its chunk again after a failed load. */
+export const SPIRE_RETRY_MS = 1500;
+
+/**
+ * The Spire's scene is its own chunk, fetched during the lobby (SpireLobbyPanel preloads it). Its own error
+ * boundary inside the Canvas: a failed chunk load renders nothing and retries with a fresh React.lazy (a lazy
+ * component remembers its rejection), instead of reaching WorldBoundary and blanking the whole world.
+ */
+class SpireBoundary extends React.Component<{ children: React.ReactNode; onError: () => void }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: unknown) { console.warn('The Spire scene could not load; retrying', error); this.props.onError(); }
+  render() { return this.state.failed ? null : this.props.children; }
+}
+
+export function SpireSceneSlot() {
+  const [attempt, setAttempt] = useState(0);
+  const Scene = useMemo(() => React.lazy(() => loadSpireScene()), [attempt]);
+  const [waiting, setWaiting] = useState(false);
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setTimeout(() => { setWaiting(false); setAttempt((n) => n + 1); }, SPIRE_RETRY_MS);
+    return () => clearTimeout(timer);
+  }, [waiting]);
+  return <SpireBoundary key={attempt} onError={() => setWaiting(true)}><Suspense fallback={null}><Scene /></Suspense></SpireBoundary>;
+}
 const [spireX, , spireZ] = tileToWorld(SPIRE_CENTRE);
 /** Inside the Spire the camera frames the arena centre: 24 (landscape) or 30 (portrait), zoom 18..34. */
 export const SPIRE_CAMERA: CameraFocus = { target: [spireX, spireZ], distance: 24, min: 18, max: 34 };
@@ -142,8 +166,8 @@ const GameComponent = () => {
           <DebugBridge />
           <FxLayer />
         </Suspense>
-        {/* Its own boundary: the chunk loading never blanks the avatars. */}
-        {inside && <Suspense fallback={null}><SpireScene /></Suspense>}
+        {/* Its own Suspense and error boundary: the chunk loading (or failing) never blanks the avatars. */}
+        {inside && <SpireSceneSlot />}
       </Canvas>}
       </WorldBoundary>}
       </div>

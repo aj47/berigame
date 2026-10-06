@@ -1,7 +1,7 @@
 /** The island's single terrain definition: used by the server, 3D world and map. */
 import { GRID_SIZE } from './constants';
 import type { Tile } from './types';
-import { CLATTER_STONES, SPIRE_GATE, inClatterGlade, inSpireFloor } from './bossZones';
+import { CLATTER_GLADE, CLATTER_STONES, SPIRE_GATE, inBossRect, inSpireFloor } from './bossZones';
 
 export const TERRAIN_VERSION = 'bramblewild-expanse-v2';
 export const ISLAND_NAME = 'Bramblewild';
@@ -150,6 +150,14 @@ export function nearestDryTile(from: Tile, blocked: ReadonlySet<number> = new Se
   return best;
 }
 
+/**
+ * Clatterhorn's Glade plus the margin kept clear of forest trunks: 2 tiles north and west, 6 east and 8 south.
+ * The default camera looks north-west from the south-east, so pines there stand between it and the fighters.
+ */
+export const GLADE_CLEARING = {
+  x0: CLATTER_GLADE.x0 - 2, z0: CLATTER_GLADE.z0 - 2, x1: CLATTER_GLADE.x1 + 6, z1: CLATTER_GLADE.z1 + 8,
+} as const;
+
 /** Trunks and building footprints are real obstacles; their canopies may overhang paths. */
 export const FOREST_TREES: readonly Tile[] = [
   [12,16],[11,19],[13,18],[12,22],[11,26],[10,35],[14,38],[17,39],
@@ -171,8 +179,9 @@ function outerForest(): Tile[] {
     const t = { x: gx * 4 + 1 + Math.floor(hash(gx, gz) * 3), z: gz * 4 + 1 + Math.floor(hash(gz + 41, gx) * 3) };
     if (t.x < 64 && t.z < 64 && !(t.x < 24 && t.z >= 44)) continue;
     const woods = .5 + .35 * Math.sin(t.x * .11 + 1.3) * Math.cos(t.z * .09 - .4) + .2 * Math.sin((t.x + t.z) * .05);
-    // Clatterhorn's Glade is an open clearing (its standing stones are scenery below).
-    if (inClatterGlade(t)) continue;
+    // Clatterhorn's Glade is an open clearing (its standing stones are scenery below), with a trunk-free margin:
+    // wider on the follow camera's side (south and east), where tall pines would hide the fight.
+    if (inBossRect(t, GLADE_CLEARING)) continue;
     if (hash(t.x + 7, t.z + 13) > woods) continue;
     if (outerLandField(t.x, t.z) < 2.2 || terrainField(t.x, t.z) < 2.2 || trailDistance(t.x, t.z) < 2.5) continue;
     if (LANDMARKS.some(l => Math.max(Math.abs(l.x - t.x), Math.abs(l.z - t.z)) < 4)) continue;

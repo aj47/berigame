@@ -17,6 +17,7 @@ import {
   GIANT_ID, GIANT_REACH, GIANT_TILE, GiantEventKind, GiantState, giantAfterHit, giantForgot,
   inBoulders, stepGiant, type GiantCandidate,
   RAID_REWARD, RaidOutcome, raidDue, raidRewardees,
+  CLATTERHORN_ID, CLATTER_REACH, ClatterState,
 } from '../../../shared/sim';
 import { emitGiantEvent, ensureGiant } from '../lib/giant';
 import { clearContributions as clearAllContributions, countRaiders, ensureRaid, nowMs, sleepGiant, wakeGiant } from '../lib/raid';
@@ -154,6 +155,16 @@ function resolvePending(s: TickState, p: PlayerRow): void {
     if (chebyshev(p, GIANT_TILE) <= GIANT_REACH && p.targetX !== undefined) {
       p.targetX = undefined; p.targetZ = undefined;
       mark(s, p);
+    }
+  } else if (p.pending === Pending.Clatterhorn) {
+    // Stop at the first tile in reach of where the beetle stands now: a charge can move it after the walk began,
+    // and the stale target would lead the swinger back out of reach.
+    if (p.targetX !== undefined && !p.combatTarget) {
+      const row = s.ctx.db.clatterhorn?.id.find(CLATTERHORN_ID);
+      if (row && row.state !== ClatterState.Closed && row.state !== ClatterState.Burrowed && chebyshev(p, row) <= CLATTER_REACH) {
+        p.targetX = undefined; p.targetZ = undefined;
+        mark(s, p);
+      }
     }
   } else if (p.pending === Pending.Pickup) {
     const item = s.ctx.db.groundItem.id.find(p.pendingId);

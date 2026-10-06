@@ -144,8 +144,10 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
           tables.giantRaid,
           tables.mentorStat,
           tables.gardenPlot, tables.adventureProfile, tables.expedition, tables.expeditionMember, tables.islandProject, tables.gardenShowcase, tables.friendlyDuel,
-          // Bosses: lifecycle rows whole-table; notices narrowed to your own by RLS; spire_fight per run (bosses/spireSubscription.ts).
-          tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossEvent, tables.bossNotice,
+          // Bosses: lifecycle rows whole-table; notices narrowed to your own by the query (boss_notice has no RLS);
+          // spire_fight per run (bosses/spireSubscription.ts).
+          tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossEvent,
+          tables.bossNotice.where((row) => row.player.eq(identity)),
         ]);
     })
     .onConnectError((ctx, error) => {

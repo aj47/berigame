@@ -143,7 +143,7 @@ export const useBossStore = create<BossState>((set, get) => {
     },
 
     pushNotice: (row) => {
-      // boss_notice has no server-side filter: keep only notices addressed to this player.
+      // boss_notice has no RLS (the subscription query filters it): still keep only notices addressed to this player.
       const me = get().meHex;
       if (!me || row.player?.toHexString?.() !== me) return;
       const seq = get().seq + 1;

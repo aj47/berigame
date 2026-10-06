@@ -6,11 +6,12 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import { createAgentServer } from './http';
+import { ApiError } from './portable';
 import { InviteStore } from './security';
 import { AGENT_ACTION_BUDGET, AGENT_READ_BUDGET } from './admissionPolicy';
 import { GRID_SIZE } from '../../shared/sim/constants';
 
-async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean } = {}) {
+async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean; link?: { stalled: boolean; alive: boolean } } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'berigame-agent-api-'));
   let now = Date.now();
   const calls: string[] = [];
@@ -27,7 +28,11 @@ async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: numbe
       const identity = String(++created).padStart(64, '0');
       await gate;
       return { identity, state: () => ({ player: { id: identity }, inventory: [] }),
-        danger: () => ({ v: 1, tick: ++dangerReads, where: null, moves: [], best: null, path: [] }) as any,
+        danger: () => {
+          if (options.link?.stalled) throw new ApiError(503, 'world_unavailable', 'The live world is unavailable. Retry shortly.');
+          return { v: 1, tick: ++dangerReads, where: null, moves: [], best: null, path: [] } as any;
+        },
+        ...(options.link ? { alive: () => options.link!.alive } : {}),
         async action(name: string, input: Record<string, unknown>) { calls.push(name); inputs.push(input); }, async close() { closed.push(identity); } };
     },
   } });
@@ -232,6 +237,25 @@ test('GET /danger returns the feed and is billed as an ordinary read, sharing th
     f.advance(1000);
     assert.equal((await f.request('/danger/next/5', token)).status, 404);
     assert.equal((await f.request('/danger', token, {}, {}, 'POST')).status, 404);
+  } finally { await f.close(); }
+});
+
+test('GET /danger keeps the session through a tick stall but closes it once the link has dropped', async () => {
+  const link = { stalled: false, alive: true };
+  const f = await fixture({ link });
+  try {
+    const { token } = await f.enter();
+    assert.equal((await f.request('/danger', token)).status, 200);
+    link.stalled = true;
+    assert.equal((await f.request('/danger', token)).status, 503);
+    assert.deepEqual(f.closed, []);
+    link.stalled = false;
+    assert.equal((await f.request('/danger', token)).status, 200);
+    link.stalled = true; link.alive = false;
+    f.advance(1000);
+    assert.equal((await f.request('/danger', token)).status, 503);
+    assert.equal(f.closed.length, 1);
+    assert.equal((await f.request('/danger', token)).status, 401);
   } finally { await f.close(); }
 });
 

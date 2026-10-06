@@ -187,6 +187,9 @@ export function createAgentServer(options: Options) {
         throw new ApiError(404, 'not_found', 'Unknown endpoint or method. See openapi.json.');
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) await remove(key, 'revoked');
+        // A read's 503 from a dropped socket is permanent (links never reconnect): close the session so the agent
+        // re-joins. A tick stall with the sockets still open keeps it.
+        else if (!acting && error instanceof ApiError && error.status === 503 && session.game.alive?.() === false) await remove(key, 'disconnected');
         throw error;
       }
     } catch (error) {

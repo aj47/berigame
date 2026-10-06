@@ -53,8 +53,10 @@ interface Client {
 
 const SUBSCRIBE = [
   tables.world, tables.player, tables.tree, tables.groundItem, tables.inventorySlot, tables.adventureProfile, tables.playerCosmetic,
-  tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.spireFight, tables.bossEvent, tables.bossNotice,
+  tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.spireFight, tables.bossEvent,
 ];
+/** Notices that reached a client addressed to someone else (the filtered subscription must deliver none). */
+let foreignNotices = 0;
 
 function connect(name: string, token?: string): Promise<Client> {
   return new Promise((resolve, reject) => {
@@ -64,13 +66,14 @@ function connect(name: string, token?: string): Promise<Client> {
       .onConnectError((_c, err) => { clearTimeout(timer); reject(err); })
       .onConnect((conn, identity) => {
         const me = identity.toHexString();
-        // boss_notice has no RLS policy (docs/design/BOSSES.md 4): keep only rows addressed to us, like the clients do.
-        conn.db.bossNotice.onInsert((_c, row) => { if (row.player.toHexString() === me) notices.push(row); });
+        // boss_notice has no RLS policy (docs/design/BOSSES.md 4): the subscription query narrows it to our rows,
+        // as the browser and the agent gateway do.
+        conn.db.bossNotice.onInsert((_c, row) => { if (row.player.toHexString() === me) notices.push(row); else foreignNotices++; });
         conn.db.bossEvent.onInsert((_c, row) => events.push(row));
         conn.subscriptionBuilder()
           .onApplied(() => { clearTimeout(timer); resolve({ name, conn, r: retrying(conn.reducers), identity: me, notices, events }); })
           .onError((ctx) => { clearTimeout(timer); reject((ctx as any).event ?? new Error(`${name}: subscribe failed`)); })
-          .subscribe(SUBSCRIBE);
+          .subscribe([...SUBSCRIBE, tables.bossNotice.where((row) => row.player.eq(identity))]);
       }).build();
   });
 }
@@ -482,6 +485,9 @@ async function main() {
   // Leave the world as the default: both closed.
   await owner.r.configureBosses(cfgArgs(false, false));
   check('closing Clatterhorn again sets it Closed', clatter(A)?.state === ClatterState.Closed || (await waitFor('closed', () => clatter(A)?.state === ClatterState.Closed, 3_000).then(() => true, () => false)));
+
+  check('the filtered boss_notice subscription delivers only your own notices', foreignNotices === 0 && A.notices.length > 0 && B.notices.length > 0,
+    `${foreignNotices} foreign, A ${A.notices.length}, B ${B.notices.length}`);
 
   console.log(failures === 0 ? '\nALL BOSS CHECKS PASSED' : `\n${failures} BOSS CHECK(S) FAILED`);
   for (const c of [owner, A, B]) c.conn.disconnect();

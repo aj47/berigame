@@ -306,6 +306,31 @@ describe('attacks', () => {
     expect(chebyshev(h.p(A), a)).toBe(2);
   });
 
+  it('a swinger still walking in stops at the first tile in reach of where the beetle now stands', () => {
+    h.fight();
+    h.swinger(A, HOME.x - 7, HOME.z);
+    const a0 = h.p(A);
+    expect(a0.targetX).toBeDefined();
+    expect(chebyshev({ x: a0.targetX, z: a0.targetZ }, HOME)).toBeLessThanOrEqual(2);
+    // A charge lands right beside the walker (centre 2 tiles east of A), far from the old target's centre.
+    const landed = [{ x: a0.x + 2, z: a0.z }, { x: a0.x + 2, z: a0.z - 1 }, { x: a0.x + 2, z: a0.z + 1 }].find((c) => clatterValidCentre(c))!;
+    expect(landed).toBeDefined();
+    h.setBeetle({ x: landed.x, z: landed.z });
+    h.run(3);
+    const a = h.p(A);
+    expect(chebyshev(a, landed)).toBeLessThanOrEqual(2);
+    expect(a.targetX).toBeUndefined();
+    expect(a.pending).toBe(Pending.Clatterhorn);
+  });
+
+  it('re-selecting the beetle in reach drops a walk target aimed at its old centre', () => {
+    h.fight();
+    h.swinger(A, HOME.x + 2, HOME.z);
+    h.place(A, HOME.x + 2, HOME.z, { targetX: HOME.x + 9, targetZ: HOME.z });
+    h.attack(A);
+    expect(h.p(A)).toMatchObject({ pending: Pending.Clatterhorn, targetX: undefined, targetZ: undefined });
+  });
+
   it('aligned bait behind a stone flips it (Flipped 8 ticks in phase 1) and swings deal x2', () => {
     // Find a beetle centre, a stone and a target standing behind it on the charge line.
     let setup: { c: { x: number; z: number }; t: { x: number; z: number }; dir: number } | undefined;

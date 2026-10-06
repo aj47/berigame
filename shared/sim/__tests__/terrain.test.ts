@@ -8,9 +8,9 @@ import { TREE_SEEDS } from '../items';
 import { NODE_SEEDS } from '../nodes';
 import { bfsPath, goalAdjacentTo, goalIsTile, reachableTiles } from '../pathfinding';
 import { worldBlockedSet } from '../social';
-import { BRIDGES, isBridge, LANDMARKS, SCENERY_BLOCKERS, TERRAIN_MAP, nearestDryTile } from '../terrain';
+import { BRIDGES, FOREST_TREES, GLADE_CLEARING, isBridge, LANDMARKS, SCENERY_BLOCKERS, TERRAIN_MAP, nearestDryTile } from '../terrain';
 import { testTable } from './adventureHarness';
-import { inSpireFloor, spireStandable } from '../bossZones';
+import { CLATTER_GLADE, inBossRect, inSpireFloor, spireStandable } from '../bossZones';
 vi.mock('../../../spacetimedb/node_modules/spacetimedb/dist/server/index.mjs', () => ({ SenderError: class SenderError extends Error {} }));
 import { reconcileTerrain } from '../../../spacetimedb/src/lib/terrain';
 import { seedMissingNodes } from '../../../spacetimedb/src/lib/nodes';
@@ -37,6 +37,13 @@ describe('Bramblewild exploration',()=>{
     expect(standable.every(spireStandable)).toBe(true);
     const inside=reachableTiles(standable[0],blocked,undefined,inSpireFloor);
     expect(inside.size).toBe(216);
+  });
+  it("keeps forest trunks out of Clatterhorn's Glade and its camera-side margin",()=>{
+    expect(GLADE_CLEARING.z1-CLATTER_GLADE.z1).toBeGreaterThanOrEqual(6);
+    expect(GLADE_CLEARING.x1-CLATTER_GLADE.x1).toBeGreaterThanOrEqual(4);
+    expect(FOREST_TREES.filter(t=>inBossRect(t,GLADE_CLEARING))).toEqual([]);
+    // The pines that hid fighters at the south edge from the default camera.
+    for (const t of [{x:82,z:115},{x:85,z:115},{x:85,z:117},{x:91,z:119}]) expect(SCENERY_BLOCKERS.some(b=>b.x===t.x&&b.z===t.z)).toBe(false);
   });
   it('keeps every novice destination and garden reachable without equipment',()=>{
     for(const t of [...LANDMARKS.filter(t=>t.access==='grove'),ADVENTURE_CAMP,BERRY_PATCH,BERRY_MARKET,GIANT_FEAST]){
