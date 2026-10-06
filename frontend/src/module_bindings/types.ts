@@ -53,6 +53,50 @@ export const Appearance = __t.object("Appearance", {
 });
 export type Appearance = __Infer<typeof Appearance>;
 
+export const BossConfig = __t.object("BossConfig", {
+  id: __t.u8(),
+  clatterhornOpen: __t.bool(),
+  spireOpen: __t.bool(),
+  spirePracticeOpen: __t.bool(),
+  spireMaxRuns: __t.u8(),
+  spireHpBase: __t.u32(),
+  spireHpPerMember: __t.u32(),
+  clatterHpBase: __t.u32(),
+  clatterHpPerChallenger: __t.u32(),
+});
+export type BossConfig = __Infer<typeof BossConfig>;
+
+export const BossEvent = __t.object("BossEvent", {
+  tick: __t.u32(),
+  boss: __t.u8(),
+  kind: __t.u8(),
+  runId: __t.u64(),
+  player: __t.identity(),
+  x: __t.i32(),
+  z: __t.i32(),
+  quantity: __t.u32(),
+  value: __t.u32(),
+  text: __t.string(),
+});
+export type BossEvent = __Infer<typeof BossEvent>;
+
+export const BossNotice = __t.object("BossNotice", {
+  tick: __t.u32(),
+  boss: __t.u8(),
+  kind: __t.u8(),
+  player: __t.identity(),
+  runId: __t.u64(),
+  amount: __t.u32(),
+  total: __t.u32(),
+  hp: __t.u8(),
+  half: __t.u8(),
+  quantity: __t.u8(),
+  itemId: __t.string(),
+  x: __t.i32(),
+  z: __t.i32(),
+});
+export type BossNotice = __Infer<typeof BossNotice>;
+
 export const ChatMessage = __t.object("ChatMessage", {
   id: __t.u64(),
   sender: __t.identity(),
@@ -63,6 +107,44 @@ export const ChatMessage = __t.object("ChatMessage", {
   z: __t.i32(),
 });
 export type ChatMessage = __Infer<typeof ChatMessage>;
+
+export const Clatterhorn = __t.object("Clatterhorn", {
+  id: __t.u32(),
+  x: __t.i32(),
+  z: __t.i32(),
+  hp: __t.u32(),
+  maxHp: __t.u32(),
+  state: __t.u8(),
+  phase: __t.u8(),
+  stateUntilTick: __t.u32(),
+  attack: __t.u8(),
+  dir: __t.u8(),
+  endX: __t.i32(),
+  endZ: __t.i32(),
+  endKind: __t.u8(),
+  chain: __t.u8(),
+  attackCount: __t.u32(),
+  bait: __t.u32(),
+  swarmTick: __t.u32(),
+  swarmSide: __t.u8(),
+  swarmFree: __t.u8(),
+  engagedTick: __t.u32(),
+  lastHitTick: __t.u32(),
+  challengers: __t.u32(),
+  fightCount: __t.u32(),
+  defeats: __t.u32(),
+  owedLeft: __t.u32(),
+});
+export type Clatterhorn = __Infer<typeof Clatterhorn>;
+
+export const ClatterhornCredit = __t.object("ClatterhornCredit", {
+  identity: __t.identity(),
+  fight: __t.u32(),
+  damage: __t.u32(),
+  lastHitTick: __t.u32(),
+  owed: __t.u8(),
+});
+export type ClatterhornCredit = __Infer<typeof ClatterhornCredit>;
 
 export const CombatEvent = __t.object("CombatEvent", {
   tick: __t.u32(),
@@ -410,6 +492,80 @@ export const SocialPair = __t.object("SocialPair", {
   redeemedCode: __t.string(),
 });
 export type SocialPair = __Infer<typeof SocialPair>;
+
+export const SpireFight = __t.object("SpireFight", {
+  runId: __t.u64(),
+  hp: __t.u32(),
+  maxHp: __t.u32(),
+  phase: __t.u8(),
+  seed: __t.u32(),
+  patternCount: __t.u32(),
+  curKind: __t.u8(),
+  curStart: __t.u32(),
+  curSeed: __t.u8(),
+  curAimX: __t.i32(),
+  curAimZ: __t.i32(),
+  prevKind: __t.u8(),
+  prevStart: __t.u32(),
+  prevSeed: __t.u8(),
+  prevAimX: __t.i32(),
+  prevAimZ: __t.i32(),
+  starWave: __t.u32(),
+  starMask: __t.u8(),
+  hitTick0: __t.u32(),
+  hitTick1: __t.u32(),
+  hitTick2: __t.u32(),
+  hitTick3: __t.u32(),
+  hits0: __t.u8(),
+  hits1: __t.u8(),
+  hits2: __t.u8(),
+  hits3: __t.u8(),
+  stars0: __t.u8(),
+  stars1: __t.u8(),
+  stars2: __t.u8(),
+  stars3: __t.u8(),
+  dmg0: __t.u32(),
+  dmg1: __t.u32(),
+  dmg2: __t.u32(),
+  dmg3: __t.u32(),
+  downs0: __t.u8(),
+  downs1: __t.u8(),
+  downs2: __t.u8(),
+  downs3: __t.u8(),
+});
+export type SpireFight = __Infer<typeof SpireFight>;
+
+export const SpireMember = __t.object("SpireMember", {
+  identity: __t.identity(),
+  runId: __t.u64(),
+  slot: __t.u8(),
+  state: __t.u8(),
+  joinedTick: __t.u32(),
+  awaySinceTick: __t.u32(),
+  awayCount: __t.u8(),
+  downUntilTick: __t.u32(),
+  reviveSinceTick: __t.u32(),
+  meals: __t.u8(),
+});
+export type SpireMember = __Infer<typeof SpireMember>;
+
+export const SpireRun = __t.object("SpireRun", {
+  id: __t.u64(),
+  leader: __t.identity(),
+  stage: __t.u8(),
+  outcome: __t.u8(),
+  mode: __t.u8(),
+  isPublic: __t.bool(),
+  rules: __t.u32(),
+  partySize: __t.u8(),
+  createdTick: __t.u32(),
+  queuedTick: __t.u32(),
+  startTick: __t.u32(),
+  endTick: __t.u32(),
+  phase: __t.u8(),
+  clearTicks: __t.u32(),
+});
+export type SpireRun = __Infer<typeof SpireRun>;
 
 export const TickSchedule = __t.object("TickSchedule", {
   scheduledId: __t.u64(),

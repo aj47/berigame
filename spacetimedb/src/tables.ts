@@ -553,3 +553,112 @@ export const frontierPrivate = table({ name: 'frontier_private' }, {
 export const frontierView = table({ name: 'frontier_view', public: true }, {
   key: t.string().primaryKey(), owner: t.identity().index('btree'), kind: t.string(), data: t.string(), source: t.string().index('btree').default(''),
 });
+
+// ---- Bosses: Clatterhorn and the Sunken Spire (FINAL_SPEC section 4.1) ------------------
+// Flat primitive columns only (no u16, arrays, objects or enums): the publish is a pure
+// "Creating table" migration. Columns of features not in this release keep their zero values.
+
+/** Owner switches and live HP knobs for both bosses (one row, id 0). An absent row means the defaults: both closed. */
+export const bossConfig = table({ name: 'boss_config', public: true }, {
+  id: t.u8().primaryKey(),
+  clatterhornOpen: t.bool(),
+  spireOpen: t.bool(),
+  spirePracticeOpen: t.bool(),
+  spireMaxRuns: t.u8(),                 // 1..32 concurrent Active runs (default 12)
+  spireHpBase: t.u32(),                 // default 1000
+  spireHpPerMember: t.u32(),            // default 700
+  clatterHpBase: t.u32(),               // default 200
+  clatterHpPerChallenger: t.u32(),      // default 150
+});
+
+/** Clatterhorn (shared/sim/clatterhorn.ts), one row (id = CLATTERHORN_ID = 1). At most one write per tick. */
+export const clatterhorn = table({ name: 'clatterhorn', public: true }, {
+  id: t.u32().primaryKey(),
+  x: t.i32(), z: t.i32(),               // body centre (moves on a charge)
+  hp: t.u32(), maxHp: t.u32(),
+  state: t.u8(),                        // ClatterState
+  phase: t.u8(),                        // 1..3 (stored at decisions; never decreases within a fight)
+  stateUntilTick: t.u32(),              // windup: landing tick; Recover/Flipped/Drumming: end; lonely Idle: reset; Burrowed: return
+  attack: t.u8(),                       // ClatterAttack of the current or last action
+  dir: t.u8(),                          // charge direction 0..7 (Facing order)
+  endX: t.i32(), endZ: t.i32(),         // charge end centre
+  endKind: t.u8(),                      // ClatterEndKind, fixed at telegraph time
+  chain: t.u8(),                        // chained charges left
+  attackCount: t.u32(),
+  bait: t.u32(),                        // identityKey32 of the current/last charge target (0 = none)
+  swarmTick: t.u32(),                   // wave-A fire tick of the current/last swarm (0 = none)
+  swarmSide: t.u8(),                    // 0 N, 1 E, 2 S, 3 W
+  swarmFree: t.u8(),                    // 0..2: column class never used
+  engagedTick: t.u32(),
+  lastHitTick: t.u32(),
+  challengers: t.u32(),
+  fightCount: t.u32(),
+  defeats: t.u32(),
+  owedLeft: t.u32(),                    // defeat rewards still to pay (batches of 25 per tick)
+});
+
+/** Private: damage per player in the current fight; owed = 1 while a defeat reward waits to be paid. */
+export const clatterhornCredit = table({ name: 'clatterhorn_credit' }, {
+  identity: t.identity().primaryKey(),
+  fight: t.u32(), damage: t.u32(), lastHitTick: t.u32(), owed: t.u8(),
+});
+
+/** One row per Sunken Spire party: lobby, run, result. Transition-only writes. Whole-table subscription. */
+export const spireRun = table({ name: 'spire_run', public: true }, {
+  id: t.u64().primaryKey().autoInc(),
+  leader: t.identity(),
+  stage: t.u8(),                        // SpireStage
+  outcome: t.u8(),                      // SpireOutcome
+  mode: t.u8(),                         // SpireMode: Normal 0 (Practice 1 reserved)
+  isPublic: t.bool(),                   // listed for quick join (always true in this release)
+  rules: t.u32(),                       // SPIRE_RULES_VERSION at open
+  partySize: t.u8(),
+  createdTick: t.u32(), queuedTick: t.u32(),
+  startTick: t.u32(),                   // first fight tick (start + 5); 0 before the start
+  endTick: t.u32(),                     // Lobby: expiry; Active: time limit; Cleared/Failed: cleanup tick
+  phase: t.u8(),                        // mirror of spire_fight.phase for onlookers (written on a phase change)
+  clearTicks: t.u32(),
+});
+
+/** One row per party member (one party at a time). Transition-only writes. Whole-table subscription. */
+export const spireMember = table({ name: 'spire_member', public: true }, {
+  identity: t.identity().primaryKey(),
+  runId: t.u64().index('btree'),
+  slot: t.u8(),                         // 0..3: spawn tile, swing cadence, fan rotation, per-slot columns of spire_fight
+  state: t.u8(),                        // SpireMemberState
+  joinedTick: t.u32(),
+  awaySinceTick: t.u32(),               // 0 = present
+  awayCount: t.u8(),
+  downUntilTick: t.u32(),
+  reviveSinceTick: t.u32(),             // 0 = no revive in progress
+  meals: t.u8(),
+});
+
+/** Fight state of one Active run (PK = run id). High churn: clients and the gateway subscribe per run. */
+export const spireFight = table({ name: 'spire_fight', public: true }, {
+  runId: t.u64().primaryKey(),
+  hp: t.u32(), maxHp: t.u32(), phase: t.u8(), seed: t.u32(),
+  patternCount: t.u32(),
+  curKind: t.u8(), curStart: t.u32(), curSeed: t.u8(), curAimX: t.i32(), curAimZ: t.i32(),
+  prevKind: t.u8(), prevStart: t.u32(), prevSeed: t.u8(), prevAimX: t.i32(), prevAimZ: t.i32(),   // prevKind 255 = none
+  starWave: t.u32(), starMask: t.u8(),
+  hitTick0: t.u32(), hitTick1: t.u32(), hitTick2: t.u32(), hitTick3: t.u32(),   // last bullet hit per slot (i-frames)
+  hits0: t.u8(), hits1: t.u8(), hits2: t.u8(), hits3: t.u8(),                   // saturating at 255
+  stars0: t.u8(), stars1: t.u8(), stars2: t.u8(), stars3: t.u8(),
+  dmg0: t.u32(), dmg1: t.u32(), dmg2: t.u32(), dmg3: t.u32(),                   // stars + swings dealt
+  downs0: t.u8(), downs1: t.u8(), downs2: t.u8(), downs3: t.u8(),
+});
+
+/** Event table: world-visible boss moments (a few per minute at most). */
+export const bossEvent = table({ name: 'boss_event', public: true, event: true }, {
+  tick: t.u32(), boss: t.u8(), kind: t.u8(), runId: t.u64(),
+  player: t.identity(),                 // the module identity when not about one player
+  x: t.i32(), z: t.i32(), quantity: t.u32(), value: t.u32(), text: t.string(),
+});
+
+/** Event table with RLS (player = :sender): personal combat feedback, one row per recipient. */
+export const bossNotice = table({ name: 'boss_notice', public: true, event: true }, {
+  tick: t.u32(), boss: t.u8(), kind: t.u8(), player: t.identity(), runId: t.u64(),
+  amount: t.u32(), total: t.u32(), hp: t.u8(), half: t.u8(), quantity: t.u8(),
+  itemId: t.string(), x: t.i32(), z: t.i32(),
+});

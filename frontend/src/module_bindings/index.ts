@@ -36,12 +36,15 @@ import {
 // Import all reducer arg schemas
 import AddFriendReducer from "./add_friend_reducer";
 import AttackReducer from "./attack_reducer";
+import AttackClatterhornReducer from "./attack_clatterhorn_reducer";
 import AttackDummyReducer from "./attack_dummy_reducer";
 import AttackGiantReducer from "./attack_giant_reducer";
 import AttestRecoveryReducer from "./attest_recovery_reducer";
+import BossDebugReducer from "./boss_debug_reducer";
 import CancelReducer from "./cancel_reducer";
 import CancelTradeRequestReducer from "./cancel_trade_request_reducer";
 import ConfigureAccessReducer from "./configure_access_reducer";
+import ConfigureBossesReducer from "./configure_bosses_reducer";
 import ConfigureExpansionReducer from "./configure_expansion_reducer";
 import ConfirmTradeReducer from "./confirm_trade_reducer";
 import ConfirmTradeCoinsReducer from "./confirm_trade_coins_reducer";
@@ -78,6 +81,10 @@ import SetTargetReducer from "./set_target_reducer";
 import SetTradeCoinsReducer from "./set_trade_coins_reducer";
 import SetTradeOfferReducer from "./set_trade_offer_reducer";
 import ShareGardenReducer from "./share_garden_reducer";
+import SpireJoinReducer from "./spire_join_reducer";
+import SpireLeaveReducer from "./spire_leave_reducer";
+import SpireOpenReducer from "./spire_open_reducer";
+import SpireStartReducer from "./spire_start_reducer";
 import StartHarvestReducer from "./start_harvest_reducer";
 import TriggerGiantRaidReducer from "./trigger_giant_raid_reducer";
 import UnwieldReducer from "./unwield_reducer";
@@ -90,7 +97,11 @@ import WieldItemReducer from "./wield_item_reducer";
 import AccessPolicyRow from "./access_policy_table";
 import AdventureProfileRow from "./adventure_profile_table";
 import AppearanceRow from "./appearance_table";
+import BossConfigRow from "./boss_config_table";
+import BossEventRow from "./boss_event_table";
+import BossNoticeRow from "./boss_notice_table";
 import ChatMessageRow from "./chat_message_table";
+import ClatterhornRow from "./clatterhorn_table";
 import CombatEventRow from "./combat_event_table";
 import DummyEventRow from "./dummy_event_table";
 import EmoteEventRow from "./emote_event_table";
@@ -114,6 +125,9 @@ import PlayerRow from "./player_table";
 import PlayerCosmeticRow from "./player_cosmetic_table";
 import PlayerSkillRow from "./player_skill_table";
 import SocialEventRow from "./social_event_table";
+import SpireFightRow from "./spire_fight_table";
+import SpireMemberRow from "./spire_member_table";
+import SpireRunRow from "./spire_run_table";
 import TradeRow from "./trade_table";
 import TrainingDummyRow from "./training_dummy_table";
 import TreeRow from "./tree_table";
@@ -156,6 +170,33 @@ const tablesSchema = __schema({
       { name: 'appearance_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, AppearanceRow),
+  bossConfig: __table({
+    name: 'boss_config',
+    indexes: [
+      { accessor: 'id', name: 'boss_config_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'boss_config_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, BossConfigRow),
+  bossEvent: __table({
+    name: 'boss_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, BossEventRow),
+  bossNotice: __table({
+    name: 'boss_notice',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, BossNoticeRow),
   chatMessage: __table({
     name: 'chat_message',
     indexes: [
@@ -167,6 +208,17 @@ const tablesSchema = __schema({
       { name: 'chat_message_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ChatMessageRow),
+  clatterhorn: __table({
+    name: 'clatterhorn',
+    indexes: [
+      { accessor: 'id', name: 'clatterhorn_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'clatterhorn_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ClatterhornRow),
   combatEvent: __table({
     name: 'combat_event',
     indexes: [
@@ -437,6 +489,42 @@ const tablesSchema = __schema({
     ],
     event: true,
   }, SocialEventRow),
+  spireFight: __table({
+    name: 'spire_fight',
+    indexes: [
+      { accessor: 'runId', name: 'spire_fight_run_id_idx_btree', algorithm: 'btree', columns: [
+        'runId',
+      ] },
+    ],
+    constraints: [
+      { name: 'spire_fight_run_id_key', constraint: 'unique', columns: ['runId'] },
+    ],
+  }, SpireFightRow),
+  spireMember: __table({
+    name: 'spire_member',
+    indexes: [
+      { accessor: 'identity', name: 'spire_member_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'runId', name: 'spire_member_run_id_idx_btree', algorithm: 'btree', columns: [
+        'runId',
+      ] },
+    ],
+    constraints: [
+      { name: 'spire_member_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, SpireMemberRow),
+  spireRun: __table({
+    name: 'spire_run',
+    indexes: [
+      { accessor: 'id', name: 'spire_run_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'spire_run_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SpireRunRow),
   trade: __table({
     name: 'trade',
     indexes: [
@@ -493,12 +581,15 @@ const tablesSchema = __schema({
 const reducersSchema = __reducers(
   __reducerSchema("add_friend", AddFriendReducer),
   __reducerSchema("attack", AttackReducer),
+  __reducerSchema("attack_clatterhorn", AttackClatterhornReducer),
   __reducerSchema("attack_dummy", AttackDummyReducer),
   __reducerSchema("attack_giant", AttackGiantReducer),
   __reducerSchema("attest_recovery", AttestRecoveryReducer),
+  __reducerSchema("boss_debug", BossDebugReducer),
   __reducerSchema("cancel", CancelReducer),
   __reducerSchema("cancel_trade_request", CancelTradeRequestReducer),
   __reducerSchema("configure_access", ConfigureAccessReducer),
+  __reducerSchema("configure_bosses", ConfigureBossesReducer),
   __reducerSchema("configure_expansion", ConfigureExpansionReducer),
   __reducerSchema("confirm_trade", ConfirmTradeReducer),
   __reducerSchema("confirm_trade_coins", ConfirmTradeCoinsReducer),
@@ -535,6 +626,10 @@ const reducersSchema = __reducers(
   __reducerSchema("set_trade_coins", SetTradeCoinsReducer),
   __reducerSchema("set_trade_offer", SetTradeOfferReducer),
   __reducerSchema("share_garden", ShareGardenReducer),
+  __reducerSchema("spire_join", SpireJoinReducer),
+  __reducerSchema("spire_leave", SpireLeaveReducer),
+  __reducerSchema("spire_open", SpireOpenReducer),
+  __reducerSchema("spire_start", SpireStartReducer),
   __reducerSchema("start_harvest", StartHarvestReducer),
   __reducerSchema("trigger_giant_raid", TriggerGiantRaidReducer),
   __reducerSchema("unwield", UnwieldReducer),

@@ -34,3 +34,6 @@ export const gardenPlotVisibility = spacetimedb.clientVisibilityFilter.sql(
 );
 
 export const frontierVisibility = spacetimedb.clientVisibilityFilter.sql('SELECT * FROM frontier_view WHERE owner = :sender');
+
+/** Boss notices (an event table): each client receives only its own hits, rewards and run results. */
+export const bossNoticeVisibility = spacetimedb.clientVisibilityFilter.sql('SELECT * FROM boss_notice WHERE player = :sender');

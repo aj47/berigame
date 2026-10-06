@@ -1,8 +1,9 @@
 /** The island's single terrain definition: used by the server, 3D world and map. */
 import { GRID_SIZE } from './constants';
 import type { Tile } from './types';
+import { CLATTER_STONES, SPIRE_GATE, inClatterGlade, inSpireFloor } from './bossZones';
 
-export const TERRAIN_VERSION = 'bramblewild-expanse-v1';
+export const TERRAIN_VERSION = 'bramblewild-expanse-v2';
 export const ISLAND_NAME = 'Bramblewild';
 const ellipse = (x: number, z: number, cx: number, cz: number, rx: number, rz: number) =>
   (1 - Math.hypot((x - cx) / rx, (z - cz) / rz)) * Math.min(rx, rz);
@@ -85,7 +86,8 @@ export function terrainLand(t: Tile): boolean {
   if (!landTiles) {
     landTiles = new Uint8Array(GRID_SIZE * GRID_SIZE);
     for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++)
-      if (terrainField(x, z) >= 0 || isBridge({ x, z })) landTiles[z * GRID_SIZE + x] = 1;
+      // The Sunken Spire's sealed floor is walkable land but never rendered (terrainField is unchanged).
+      if (terrainField(x, z) >= 0 || isBridge({ x, z }) || inSpireFloor({ x, z })) landTiles[z * GRID_SIZE + x] = 1;
   }
   return landTiles[t.z * GRID_SIZE + t.x] === 1;
 }
@@ -114,6 +116,8 @@ export const LANDMARKS = [
   { id: 'mossvale', name: 'Mossvale Wood', short: 'Mossvale', x: 28, z: 92, access: 'coast', detail: 'Deep southern woods around Reedmere lake.' },
   { id: 'hollow', name: 'Bramble Hollow', short: 'Hollow', x: 64, z: 92, access: 'coast', detail: 'A sheltered dell where the southern wilds meet.' },
   { id: 'sunfall', name: 'Sunfall Bluffs', short: 'Sunfall', x: 106, z: 96, access: 'coast', detail: 'Wind-bent bluffs above the far south-east shore.' },
+  { id: 'glade', name: "Clatterhorn's Glade", short: 'Glade', x: 84, z: 106, access: 'coast', detail: 'A mossy clearing ringed by standing stones. Something big clatters in the brush.' },
+  { id: 'spire', name: 'Sunken Spire Gate', short: 'Spire', x: 62, z: 45, access: 'boulders', detail: 'Stairs into the inland sea. Bring a spire key and friends.' },
 ] as const;
 export const TRAILS: readonly (readonly Tile[])[] = [
   [{ x: 25, z: 5 }, { x: 25, z: 11 }, { x: 27, z: 18 }, { x: 25, z: 25 }],
@@ -139,7 +143,7 @@ export function trailDistance(x: number, z: number): number {
 export function nearestDryTile(from: Tile, blocked: ReadonlySet<number> = new Set()): Tile {
   let best = { x: 25, z: 25 }, distance = Infinity;
   for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) {
-    if (!terrainLand({ x, z }) || blocked.has(z * GRID_SIZE + x) || groveBoundary({ x, z }) || (inGiantHeadland({ x, z }) && Math.max(x, z) === 50)) continue;
+    if (!terrainLand({ x, z }) || blocked.has(z * GRID_SIZE + x) || groveBoundary({ x, z }) || (inGiantHeadland({ x, z }) && Math.max(x, z) === 50) || inSpireFloor({ x, z })) continue;
     const d = (from.x - x) ** 2 + (from.z - z) ** 2;
     if (d < distance) { best = { x, z }; distance = d; }
   }
@@ -167,6 +171,8 @@ function outerForest(): Tile[] {
     const t = { x: gx * 4 + 1 + Math.floor(hash(gx, gz) * 3), z: gz * 4 + 1 + Math.floor(hash(gz + 41, gx) * 3) };
     if (t.x < 64 && t.z < 64 && !(t.x < 24 && t.z >= 44)) continue;
     const woods = .5 + .35 * Math.sin(t.x * .11 + 1.3) * Math.cos(t.z * .09 - .4) + .2 * Math.sin((t.x + t.z) * .05);
+    // Clatterhorn's Glade is an open clearing (its standing stones are scenery below).
+    if (inClatterGlade(t)) continue;
     if (hash(t.x + 7, t.z + 13) > woods) continue;
     if (outerLandField(t.x, t.z) < 2.2 || terrainField(t.x, t.z) < 2.2 || trailDistance(t.x, t.z) < 2.5) continue;
     if (LANDMARKS.some(l => Math.max(Math.abs(l.x - t.x), Math.abs(l.z - t.z)) < 4)) continue;
@@ -179,13 +185,15 @@ export const SCENERY_BLOCKERS: readonly Tile[] = [
   ...[13,14,15].flatMap(z => [20,21,22].map(x => ({x,z}))),
   {x:27,z:4}, {x:27,z:5},
   {x:43,z:45}, {x:47,z:45}, {x:43,z:48}, {x:47,z:48},
+  // Clatterhorn's standing stones and the Sunken Spire's gate arch.
+  ...CLATTER_STONES, SPIRE_GATE,
 ];
 
 /** Compact machine-readable map; x is the column, z the row. */
 export const TERRAIN_MAP = {
   name: ISLAND_NAME, version: TERRAIN_VERSION, landmarks: LANDMARKS, bridges: BRIDGES,
-  legend: '. ground, ~ water, = bridge, # brambles; static obstacles are listed separately',
+  legend: '. ground, ~ water, = bridge, # brambles, % the sealed Sunken Spire floor (reached only through the Spire Gate); static obstacles are listed separately',
   rows: Array.from({ length: GRID_SIZE }, (_, z) => Array.from({ length: GRID_SIZE }, (_, x) =>
-    !terrainLand({ x, z }) ? '~' : groveBoundary({ x, z }) ? '#' : isBridge({ x, z }) ? '=' : '.').join('')),
+    !terrainLand({ x, z }) ? '~' : inSpireFloor({ x, z }) ? '%' : groveBoundary({ x, z }) ? '#' : isBridge({ x, z }) ? '=' : '.').join('')),
   obstacles: SCENERY_BLOCKERS,
 };

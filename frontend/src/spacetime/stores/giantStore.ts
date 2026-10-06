@@ -28,6 +28,8 @@ interface GiantFxState {
   /** World-wide raid lines (announcements, wake, sleep) shown in chat as system lines. */
   systemLines: readonly RaidLine[];
   pushEvent: (e: GiantEvent, meHex: string | null) => void;
+  /** Append a world line to chat (Clatterhorn and Sunken Spire moments share the raid lines' ring). */
+  addSystemLine: (text: string) => void;
 }
 
 export interface RaidLine { id: number; at: number; text: string }
@@ -52,7 +54,7 @@ const HIT_TTL_MS = 1400;
 const NUMBER_TTL_MS = 1400;
 
 /** Float `text` over a player through the shared combat FX numbers (no swing cue: the Giant is not a player). */
-function floatOnPlayer(hex: string, text: string, amount: number) {
+export function floatOnPlayer(hex: string, text: string, amount: number) {
   const at = performance.now();
   useCombatFxStore.setState((s) => {
     const seq = s.seq + 1;
@@ -70,14 +72,18 @@ export const useGiantStore = create<GiantFxState>((set, get) => ({
   defeatAt: -Infinity,
   systemLines: [],
 
+  addSystemLine: (text) => {
+    const lines = get().systemLines;
+    const id = (lines[lines.length - 1]?.id ?? 0) + 1;
+    set({ systemLines: [...lines, { id, at: Date.now(), text }].slice(-MAX_LINES) });
+  },
+
   pushEvent: (e, meHex) => {
     const at = performance.now();
     const hex = e.player.toHexString();
     const line = raidLineText(e);
     if (line) {
-      const lines = get().systemLines;
-      const id = (lines[lines.length - 1]?.id ?? 0) + 1;
-      set({ systemLines: [...lines, { id, at: Date.now(), text: line }].slice(-MAX_LINES) });
+      get().addSystemLine(line);
       // Your own reward toast (same transaction) wins over the world-wide "it sleeps again" line.
       if (!(e.kind === GiantEventKind.Sleep && performance.now() - lastRewardAt < 3000)) useToastStore.getState().show(line);
       if (e.kind === GiantEventKind.Wake) set({ hp: null, hit: null });

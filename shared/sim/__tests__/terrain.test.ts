@@ -10,6 +10,7 @@ import { bfsPath, goalAdjacentTo, goalIsTile, reachableTiles } from '../pathfind
 import { worldBlockedSet } from '../social';
 import { BRIDGES, isBridge, LANDMARKS, SCENERY_BLOCKERS, TERRAIN_MAP, nearestDryTile } from '../terrain';
 import { testTable } from './adventureHarness';
+import { inSpireFloor, spireStandable } from '../bossZones';
 vi.mock('../../../spacetimedb/node_modules/spacetimedb/dist/server/index.mjs', () => ({ SenderError: class SenderError extends Error {} }));
 import { reconcileTerrain } from '../../../spacetimedb/src/lib/terrain';
 import { seedMissingNodes } from '../../../spacetimedb/src/lib/nodes';
@@ -18,11 +19,24 @@ const blocked=worldBlockedSet([...TREE_SEEDS,...NODE_SEEDS]);
 describe('Bramblewild exploration',()=>{
   it('connects all dry land with no inaccessible islands or stranded resources',()=>{
     const seen=reachableTiles(SPAWN_TILE,blocked,enterRule(true,true));
-    for(let z=0;z<GRID_SIZE;z++)for(let x=0;x<GRID_SIZE;x++)if(isLandTile({x,z})&&!blocked.has(tileKey({x,z})))expect(seen.has(tileKey({x,z})),`${x},${z}`).toBe(true);
+    // The Sunken Spire's floor is sealed land: reached only through the Spire Gate (reducers teleport).
+    for(let z=0;z<GRID_SIZE;z++)for(let x=0;x<GRID_SIZE;x++)if(isLandTile({x,z})&&!blocked.has(tileKey({x,z}))&&!inSpireFloor({x,z}))expect(seen.has(tileKey({x,z})),`${x},${z}`).toBe(true);
     for(const n of [...TREE_SEEDS,...NODE_SEEDS]){
       expect(isLandTile(n),`node ${n.id}`).toBe(true);
       expect(neighbors8(n).some(t=>seen.has(tileKey(t)))).toBe(true);
     }
+  });
+  it('keeps the Spire floor sealed land: area spire, unreachable from spawn, one standable component',()=>{
+    const seen=reachableTiles(SPAWN_TILE,blocked,enterRule(true,true));
+    const floor:{x:number;z:number}[]=[];
+    for(let z=0;z<GRID_SIZE;z++)for(let x=0;x<GRID_SIZE;x++)if(inSpireFloor({x,z}))floor.push({x,z});
+    expect(floor).toHaveLength(225);
+    for(const t of floor){expect(isLandTile(t)).toBe(true);expect(areaOf(t)).toBe('spire');expect(seen.has(tileKey(t))).toBe(false);}
+    const standable=floor.filter(t=>!blocked.has(tileKey(t)));
+    expect(standable).toHaveLength(216);
+    expect(standable.every(spireStandable)).toBe(true);
+    const inside=reachableTiles(standable[0],blocked,undefined,inSpireFloor);
+    expect(inside.size).toBe(216);
   });
   it('keeps every novice destination and garden reachable without equipment',()=>{
     for(const t of [...LANDMARKS.filter(t=>t.access==='grove'),ADVENTURE_CAMP,BERRY_PATCH,BERRY_MARKET,GIANT_FEAST]){
@@ -50,6 +64,7 @@ describe('Bramblewild exploration',()=>{
   it('exposes the same map to agents, including obstacle footprints and both bridges',()=>{
     expect(TERRAIN_MAP.rows).toHaveLength(GRID_SIZE);
     for(let z=0;z<GRID_SIZE;z++)for(let x=0;x<GRID_SIZE;x++)expect(TERRAIN_MAP.rows[z][x]!=='~').toBe(isLandTile({x,z}));
+    expect(TERRAIN_MAP.legend).toContain('% the sealed Sunken Spire floor');
     for(const t of SCENERY_BLOCKERS)expect(blocked.has(tileKey(t))).toBe(true);
     for(const t of [{x:0,z:0},{x:17,z:13},{x:63,z:0}]){const at=nearestDryTile(t,blocked);expect(isLandTile(at)).toBe(true);expect(blocked.has(tileKey(at))).toBe(false);}
   });

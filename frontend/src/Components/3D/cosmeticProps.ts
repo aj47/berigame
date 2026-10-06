@@ -144,6 +144,55 @@ function berryHeart(): BufferGeometry {
   return b.build();
 }
 
+// ---- Boss keepsakes (Clatterhorn and the Sunken Spire) ------------------------------
+const BEETLE = [0x2e7d6f, 0x3b5ba9, 0x7e4fa8], BEETLE_DARK = 0x1f3f4a;
+const PRISM = [0x9fe7ff, 0xffd6f0, 0xb79bff], PRISM_CORE = 0xf4fbff, SILVER = 0xb9c2cc, SILVER_DARK = 0x7f8a96;
+
+/** Clatterhorn Horn: a dark band with the beetle's forked, iridescent horn rising over the brow. */
+function clatterhornHorn(): BufferGeometry {
+  const b = new LowPolyBuilder();
+  const y = HEAD_TOP - 0.11;
+  b.log(new Vector3(0, y, 0), new Vector3(0, y + 0.04, 0), 0.215, 0.215, { sides: 10, rings: 2, bark: [linear(BEETLE_DARK), linear(BEETLE[0])], cap: linear(BEETLE_DARK), capStart: false, capEnd: false });
+  const base = new Vector3(0, y + 0.03, 0.2), bend = new Vector3(0, y + 0.17, 0.25), fork = new Vector3(0, y + 0.26, 0.2);
+  const shell = BEETLE.map(linear);
+  b.log(base, bend, 0.05, 0.038, { sides: 5, rings: 2, bark: shell, cap: linear(BEETLE[0]), capEnd: false });
+  b.log(bend, fork, 0.038, 0.026, { sides: 5, rings: 2, bark: shell, cap: linear(BEETLE[2]), capStart: false, capEnd: false });
+  for (const side of [-1, 1]) b.log(fork, new Vector3(side * 0.06, y + 0.33, 0.16), 0.026, 0.006, { sides: 4, rings: 2, bark: [linear(BEETLE[2]), linear(BEETLE[1])], cap: linear(BEETLE[2]), capStart: false });
+  return b.build();
+}
+
+/** Prism Crown: a silver band ringed with glass spikes in the Shardmother's phase colours. */
+function prismCrown(): BufferGeometry {
+  const b = new LowPolyBuilder();
+  const y = HEAD_TOP - 0.08;
+  b.log(new Vector3(0, y, 0), new Vector3(0, y + 0.04, 0), 0.215, 0.21, { sides: 10, rings: 2, bark: [linear(SILVER), linear(SILVER_DARK)], cap: linear(SILVER), capStart: false, capEnd: false });
+  ringPoints(0.21, 5, y + 0.1, Math.PI / 2).forEach((p, i) => {
+    b.rock(p, 0.05, new Vector3(0.55, i === 0 ? 2.1 : 1.6, 0.55), { segments: 4, jitter: 0.1, seed: 101 + i, colors: [linear(PRISM[i % 3]), linear(PRISM_CORE)], top: linear(PRISM_CORE) });
+  });
+  return b.build();
+}
+
+/** Shard Pendant: a silver chain with a long prism shard hanging in front. */
+function shardPendant(): BufferGeometry {
+  const b = new LowPolyBuilder();
+  b.log(new Vector3(0, 0, 0), new Vector3(0, 0.015, 0), 0.175, 0.175, { sides: 10, rings: 2, bark: [linear(SILVER), linear(SILVER_DARK)], cap: linear(SILVER), capStart: false, capEnd: false });
+  b.log(new Vector3(0, 0, 0.175), new Vector3(0, -0.06, 0.2), 0.01, 0.01, { sides: 5, rings: 2, bark: [linear(SILVER_DARK)], cap: linear(SILVER) });
+  b.rock(new Vector3(0, -0.13, 0.21), 0.07, new Vector3(0.45, 1.3, 0.35), { segments: 5, jitter: 0.12, seed: 111, colors: PRISM.map(linear), top: linear(PRISM_CORE) });
+  return b.build();
+}
+
+/** Shard Circlet: a fine silver circlet with one prism shard on the brow and two small ones at the temples. */
+function shardCirclet(): BufferGeometry {
+  const b = new LowPolyBuilder();
+  const y = HEAD_TOP - 0.12;
+  b.log(new Vector3(0, y, 0), new Vector3(0, y + 0.02, 0), 0.218, 0.218, { sides: 10, rings: 2, bark: [linear(SILVER), linear(SILVER_DARK)], cap: linear(SILVER), capStart: false, capEnd: false });
+  b.rock(new Vector3(0, y + 0.05, 0.215), 0.045, new Vector3(0.55, 1.5, 0.4), { segments: 5, jitter: 0.1, seed: 121, colors: [linear(PRISM[0]), linear(PRISM[2])], top: linear(PRISM_CORE) });
+  for (const side of [-1, 1]) {
+    b.rock(new Vector3(side * 0.15, y + 0.03, 0.15), 0.028, new Vector3(0.6, 1.3, 0.5), { segments: 4, jitter: 0.1, seed: 122 + side, colors: [linear(PRISM[1]), linear(PRISM[0])], top: linear(PRISM_CORE) });
+  }
+  return b.build();
+}
+
 const BUILDERS: Record<number, () => BufferGeometry> = {
   [Cosmetic.StrawHat]: strawHat,
   [Cosmetic.CoastScarf]: coastScarf,
@@ -157,6 +206,10 @@ const BUILDERS: Record<number, () => BufferGeometry> = {
   [Cosmetic.MentorPinGold]: mentorPin(0xd4a526, 0xf6d86b),
   [Cosmetic.GiantsTooth]: giantsTooth,
   [Cosmetic.BerryHeart]: berryHeart,
+  [Cosmetic.ClatterhornHorn]: clatterhornHorn,
+  [Cosmetic.PrismCrown]: prismCrown,
+  [Cosmetic.ShardPendant]: shardPendant,
+  [Cosmetic.ShardCirclet]: shardCirclet,
 };
 const geometries = new Map<number, BufferGeometry>();
 

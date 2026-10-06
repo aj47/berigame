@@ -24,6 +24,8 @@ export interface Settings {
   cameraRotateButton: 'right' | 'left';
   /** Skip knockback, hitstop and fleeing wildlife bursts. Defaults to the OS preference. */
   reduceMotion: boolean;
+  /** Inside the Sunken Spire: green dots on every winning destination of your next move. */
+  dodgeAssist: boolean;
 }
 
 const prefersReduced = (): boolean => {
@@ -43,6 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   cameraSensitivity: 1,
   cameraRotateButton: 'right',
   reduceMotion: prefersReduced(),
+  dodgeAssist: true,
 };
 
 const KEY = 'berigame.settings.v1';

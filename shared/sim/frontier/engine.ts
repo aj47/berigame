@@ -3,6 +3,7 @@ import { addItem, countItem, removeFromSlot } from "../inventory";
 import { getItemDef } from "../items";
 import { facingFromDelta } from "../grid";
 import { areaOf } from "../areas";
+import { inSpireFloor } from "../bossZones";
 import { TICK_MS } from "../constants";
 import { levelForXp } from "../skills";
 import { buildingBlocker, buildingCollisionKeys, buildingsOverlap, isEdgeBuilding } from "./building";
@@ -1648,7 +1649,7 @@ export function advance(w: World) {
     const owner = c.owner
       ? w.actors.find((a) => a.id === c.owner && a.online)
       : undefined;
-    if (c.owner && (!c.active || !owner || owner.region === "sea")) continue;
+    if (c.owner && (!c.active || !owner || owner.region === "sea" || (owner.region === "bramblewild" && inSpireFloor(owner)))) continue;
     if (owner) {
       // Companions keep pace: up to three steps a tick, stopping beside you.
       if (owner.region !== c.region || distance(c, owner) > PET_LEASH) {

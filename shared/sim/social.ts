@@ -7,6 +7,7 @@ import { blockedSetFromTiles, chebyshev, tileKey } from './grid';
 import type { Tile } from './types';
 import { SCENERY_BLOCKERS } from './terrain';
 import { giantFootprint } from './giant';
+import { SPIRE_DAIS } from './bossZones';
 
 // ---- Training dummy ---------------------------------------------------------
 export const DUMMY_ID = 1;
@@ -21,11 +22,11 @@ export const DUMMY_MAX_HP = 60;
 /** Left alone this long, the dummy is back to full (computed lazily: no tick writes while idle). */
 export const DUMMY_IDLE_RESET_TICKS = 25;
 
-/** Every static blocker the client and server path around: the trees and nodes, the dummy and the Giant's footprint. */
+/** Every static blocker the client and server path around: the trees and nodes, the dummy, the Giant's footprint, the scenery (stones, gate) and the Spire's dais. */
 export function worldBlockedSet(nodes: Iterable<Tile>): Set<number> {
   const s = blockedSetFromTiles(nodes);
   s.add(tileKey(DUMMY_TILE));
-  for (const t of [...GIANT_BLOCKED, ...SCENERY_BLOCKERS]) s.add(tileKey(t));
+  for (const t of [...GIANT_BLOCKED, ...SCENERY_BLOCKERS, ...SPIRE_DAIS]) s.add(tileKey(t));
   return s;
 }
 

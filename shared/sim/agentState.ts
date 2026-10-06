@@ -3,8 +3,10 @@ import { homeDestination, homeLocation, isHomeRegion, isHomeTarget } from './fro
 import type { FrontierSnapshot } from './frontier/snapshot';
 import { Pending, type Tile } from './types';
 import { chebyshev } from './grid';
+import { inSpireFloor } from './bossZones';
 
 type ActivityPlayer = Tile & {
+  region?: string;
   pending: number;
   harvestEndTick: number;
   targetX?: number;
@@ -15,6 +17,8 @@ type ActivityPlayer = Tile & {
 /** Both agent entry points expose the same activity, including timed frontier work. */
 export function describeAction(player: ActivityPlayer, gathering: ReturnType<typeof describeGathering>, harvestTree?: Tile | null) {
   if (gathering) return gathering.itemId === 'timber' ? 'chopping' : 'gathering';
+  if ((player.region || 'bramblewild') === 'bramblewild' && inSpireFloor(player)) return player.targetX === undefined ? 'holding still in the spire' : 'dodging in the spire';
+  if (player.pending === Pending.Clatterhorn) return player.targetX === undefined ? 'fighting clatterhorn' : 'walking to clatterhorn';
   if (player.pending === Pending.Trade) return 'walking to trade';
   if (player.harvestEndTick) return 'harvesting';
   if (player.pending === Pending.Harvest) return chebyshev(player, harvestTree ?? player) <= 1 ? 'waiting at tree' : 'walking to tree';

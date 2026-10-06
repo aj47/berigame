@@ -114,6 +114,7 @@ export interface CosmeticDef {
 export const Cosmetic = {
   StrawHat: 0, CoastScarf: 1, FlowerCrown: 2, ShellNecklace: 3, DriftwoodCrown: 4, WovenSash: 5,
   WelcomedRibbon: 6, MentorPin: 7, MentorPinSilver: 8, MentorPinGold: 9, GiantsTooth: 10, BerryHeart: 11,
+  ClatterhornHorn: 12, PrismCrown: 13, ShardPendant: 14, ShardCirclet: 15,
 } as const;
 
 export const COSMETICS: readonly CosmeticDef[] = [
@@ -129,6 +130,10 @@ export const COSMETICS: readonly CosmeticDef[] = [
   { id: Cosmetic.MentorPinGold, key: 'mentor_pin_gold', name: "Mentor's Pin (Gold)", slot: CosmeticSlot.Neck, how: 'Mentor 10 newer players' },
   { id: Cosmetic.GiantsTooth, key: 'giants_tooth', name: "Giant's Tooth", slot: CosmeticSlot.Neck, how: 'Help defeat the Giant in a raid' },
   { id: Cosmetic.BerryHeart, key: 'berry_heart', name: 'Berry Heart', slot: CosmeticSlot.Neck, how: 'Share your first feast with the Berry Giant' },
+  { id: Cosmetic.ClatterhornHorn, key: 'clatterhorn_horn', name: 'Clatterhorn Horn', slot: CosmeticSlot.Head, how: 'Help defeat Clatterhorn' },
+  { id: Cosmetic.PrismCrown, key: 'prism_crown', name: 'Prism Crown', slot: CosmeticSlot.Head, how: 'Clear the Sunken Spire' },
+  { id: Cosmetic.ShardPendant, key: 'shard_pendant', name: 'Shard Pendant', slot: CosmeticSlot.Neck, how: 'Clear the Sunken Spire without being hit' },
+  { id: Cosmetic.ShardCirclet, key: 'shard_circlet', name: 'Shard Circlet', slot: CosmeticSlot.Head, how: 'Make it (Crafting level 10)' },
 ];
 
 /** Mentor's Pin variants by tier (shared/sim/mentor.ts MENTOR_PIN_TIERS). */

@@ -23,3 +23,7 @@ export * from './reducers/garden';
 export * from './reducers/adventure';
 
 export * from './reducers/frontier';
+
+export * from './reducers/clatterhorn';
+export * from './reducers/spire';
+export * from './reducers/bossAdmin';
