@@ -122,9 +122,10 @@ export function connect(credential: Credential, control = false, options: Connec
             tables.giantRaid,
             tables.mentorStat,
             tables.gardenPlot, tables.adventureProfile, tables.expedition, tables.expeditionMember, tables.islandProject, tables.gardenShowcase, tables.friendlyDuel,
-            // Bosses: config, the beetle, every run and member (small); boss_notice is narrowed to you by RLS.
-            // Your run's spire_fight comes from subscribeSpire (one run at a time).
-            tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossNotice, tables.bossEvent,
+            // Bosses: config, the beetle, every run and member (small). boss_notice has no RLS (views.ts), so the
+            // subscription query narrows it to your rows: otherwise every agent socket in the Durable Object would
+            // receive and decode every fighter's notices. Your run's spire_fight comes from subscribeSpire.
+            tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossNotice.where(row => row.player.eq(identity)), tables.bossEvent,
           ]);
         }).build();
     } catch (error) { settled = true; clearTimeout(timer); reject(error); }
@@ -186,7 +187,7 @@ export async function createGameService(credential: Credential, options: Connect
         notices.push({ tick: row.tick, kind: row.kind, from: row.from.toHexString(), text: row.text });
         if (notices.length > 10) notices.shift();
       });
-      // Boss feedback (FINAL_SPEC 8.1): your last 16 boss notices (RLS), the last 10 world boss moments, and
+      // Boss feedback (FINAL_SPEC 8.1): your last 16 boss notices (subscription-filtered), the last 10 world boss moments, and
       // your Clatterhorn damage this fight. tickAt is when the current world tick reached this gateway.
       const bossNotices: ReturnType<typeof describeBossNotice>[] = [];
       const bossNews: ReturnType<typeof describeBossEvent>[] = [];
