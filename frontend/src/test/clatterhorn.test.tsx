@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, cleanup, render, screen } from '@testing-library/react';
-import { Euler, Vector3 } from 'three';
+import { Euler, Object3D, Vector3 } from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BossEventKind, BossId, BossNoticeKind, ClatterState, HurtSource, clatterSwarmBullets, tileToWorld } from '@sim';
 
@@ -18,6 +18,7 @@ import { ClatterhornModel, clatterBarText, clatterMenuOption, DASH_MS } from '..
 import { clatterMaterials, clatterTriangles } from '../bosses/clatterhorn/clatterGeometry';
 import { clatterRowCues, startClatterFx, useClatterFxStore, CLATTER_LINES } from '../bosses/clatterhorn/clatterFx';
 import { setClatterPlayerSource } from '../bosses/clatterhorn/clatterPlayers';
+import { registerAvatarGroup, unregisterAvatarGroup } from '../animation/avatarRegistry';
 import { mushroomRing, struckStone } from '../bosses/clatterhorn/ClatterGlade';
 import { holdState } from '../Components/3D/tapAssist';
 import { useBossStore } from '../bosses/bossStore';
@@ -223,11 +224,22 @@ describe('Clatterhorn FX', () => {
         });
         act(() => { vi.advanceTimersByTime(200); });
         expect(useToastStore.getState().message).toBe('Clatterhorn is beaten! You earned 2 gleamshell, 2 goldberry and the Clatterhorn keepsake');
-        // Another player's swing: their avatar swings (negative cue seq, as for the Giant).
+        // Another player's swing: their avatar swings (negative cue seq, as for the Giant), with a whoosh at it.
+        const ada = new Object3D(); ada.position.set(40, 0, 52);
+        registerAvatarGroup(hex('ada'), ada);
+        mock.play.length = 0;
         act(() => store.pushSwingCue(hex('ada'), 101));
         const cue = useCombatFxStore.getState().cues[hex('ada')];
         expect(cue.role).toBe('action');
         expect(cue.seq).toBeLessThan(0);
+        act(() => { vi.advanceTimersByTime(2000); });
+        expect(mock.play.find(([n]) => n === 'whoosh')?.[1]).toMatchObject({ x: 40, z: 52 });
+        unregisterAvatarGroup(hex('ada'), ada);
+        // A swinger with no rendered avatar (you are in the Spire, say) makes no sound at all.
+        mock.play.length = 0;
+        act(() => store.pushSwingCue(hex('bo'), 102));
+        act(() => { vi.advanceTimersByTime(2000); });
+        expect(mock.play).toEqual([]);
         // Notices about another boss are ignored.
         const before = useClatterFxStore.getState().hit;
         act(() => store.pushNotice(notice(BossNoticeKind.YouHit, { boss: BossId.Spire, amount: 99 })));

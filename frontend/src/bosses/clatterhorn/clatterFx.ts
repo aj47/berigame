@@ -233,8 +233,12 @@ export function startClatterFx(): () => void {
       return { cues };
     }));
     if (hex === s.meHex) return; // your own blow: YouHit plays the impact and the number
+    // A swinger you cannot see (no rendered avatar: inside the Spire, in the Meadows, culled) makes no sound;
+    // the non-positional fallback would play it at full range.
+    const where = locateAvatar(hex);
+    if (!where) return;
     const weight = weaponWeight(weapon);
-    playAtPlayer('whoosh', hex, weight ? 0.6 : 0.35, Math.max(0, attack.impactMs - (weight ? 230 : 120)));
+    playAtWorld('whoosh', where, weight ? 0.6 : 0.35, Math.max(0, attack.impactMs - (weight ? 230 : 120)));
     playAtWorld(HIT_SOUND[weight], beetleWorld(s.clatter), 0.7, attack.impactMs);
     useClatterFxStore.setState({ flinchAt: now + attack.impactMs });
   };
