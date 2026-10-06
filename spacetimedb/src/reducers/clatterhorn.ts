@@ -27,9 +27,11 @@ export const attackClatterhorn = spacetimedb.reducer((ctx) => {
     throw new SenderError(`The beetle has burrowed away. Clatterhorn returns in ${s} s`);
   }
   touchInput(p, T);
-  // Re-selecting the beetle you are already swinging at in reach keeps the rhythm.
+  // Re-selecting the beetle you are already swinging at in reach keeps the rhythm (and drops a stale walk
+  // target left from before a charge moved it).
   const inReach = chebyshev(p, row) <= CLATTER_REACH;
   if (p.pending === Pending.Clatterhorn && !p.combatTarget && inReach) {
+    p.targetX = undefined; p.targetZ = undefined;
     savePlayer(ctx, p);
     return;
   }
