@@ -64,7 +64,9 @@ export const respondTrade = spacetimedb.reducer(
     if (!sameId(row.b, p.identity)) throw new SenderError('Wait for them to answer');
     if (row.accepted) return;
     if (!accept) { cancelTrade(ctx, row, `${p.name} declined the trade`); return; }
-    requirePartner(ctx, p, row.a, TRADE_RANGE);
+    const partner = requirePartner(ctx, p, row.a, TRADE_RANGE);
+    const problem = tradePartnerProblem(ctx, p, partner);
+    if (problem) throw new SenderError(problem);
     clearInteractions(ctx, p);
     savePlayer(ctx, p);
     for (const r of tradesOf(ctx, p.identity)) if (r.id !== row.id) cancelTrade(ctx, r, 'Trade cancelled');
