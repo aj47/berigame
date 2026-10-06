@@ -526,7 +526,7 @@ nobody on the floor: zero writes.
 Eight new tables, appended (no existing column changes): `boss_config` (one row,
 id 0), `clatterhorn` (one row, id 1), `clatterhorn_credit` (private),
 `spire_run`, `spire_member`, `spire_fight`, and the event tables `boss_event` and
-`boss_notice` (recipient-only through RLS). Only `u8`, `u32`, `u64`, `i32`,
+`boss_notice` (public with no RLS policy, because adding a policy is a client-breaking migration in SpacetimeDB 2.10; clients and the gateway keep only rows addressed to themselves). Only `u8`, `u32`, `u64`, `i32`,
 `bool`, `string` and `identity` columns.
 
 Enums (append-only u8): `Pending.Clatterhorn` 6; `BossId` Clatterhorn 1, Spire 2;

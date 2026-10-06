@@ -64,7 +64,9 @@ describe('bossStore rows and derived membership', () => {
   });
 
   it('keeps the last notices and events in rings', () => {
-    for (let i = 0; i < BOSS_NOTICE_RING + 5; i++) store().pushNotice({ tick: i } as any);
+    store().setMe('aa');
+    const mine = { toHexString: () => 'aa' };
+    for (let i = 0; i < BOSS_NOTICE_RING + 5; i++) store().pushNotice({ tick: i, player: mine } as any);
     for (let i = 0; i < BOSS_EVENT_RING + 5; i++) store().pushEvent({ tick: i } as any);
     expect(store().notices).toHaveLength(BOSS_NOTICE_RING);
     expect(store().notices[0].row.tick).toBe(5);
@@ -72,6 +74,14 @@ describe('bossStore rows and derived membership', () => {
     expect(store().events.at(-1)!.row.tick).toBe(BOSS_EVENT_RING + 4);
     const seqs = [...store().notices, ...store().events].map((e) => e.seq);
     expect(new Set(seqs).size).toBe(seqs.length);
+  });
+
+  it('drops notices addressed to other players (boss_notice has no server-side filter)', () => {
+    store().setMe('aa');
+    store().pushNotice({ tick: 1, player: { toHexString: () => 'bb' } } as any);
+    expect(store().notices).toHaveLength(0);
+    store().pushNotice({ tick: 2, player: { toHexString: () => 'aa' } } as any);
+    expect(store().notices.map((n) => n.row.tick)).toEqual([2]);
   });
 
   it('opens and closes the lobby panel', () => {
