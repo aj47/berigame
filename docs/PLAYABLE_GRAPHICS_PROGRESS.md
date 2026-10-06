@@ -169,3 +169,21 @@ Product change requested by the user: the rock-paper-scissors fighting style and
 - Scripts: the browser, mobile, cross-browser, lifecycle, liveness and appearance checks now target the quick slots and `window.__berigame.me.weapon`. `combat-animation-check.ts` covers three cases (punch vs punch, stick vs punch, punch vs stick) instead of the nine stance pairs. It checks the attacker clip, the defender `Hit`, the event `itemId`, and that a spectator sees the stick. Scripts get a stick by harvesting until one is found. The keyboard liveness probes now press quick-slot keys that are empty or hold only a stick, and assert that nothing changed.
 
 Verification of this entry is pending an end-to-end run against a local SpacetimeDB and Vite. Evidence directories written by the stance-era scripts (`combat-v4/`, `phone-{strike,grab,guard}.png`) are historical and will be replaced or joined by new captures when the scripts are re-run.
+
+## Renderer upgrade and graphics tiers (2026-10-05)
+
+three r149 → r186, R3F 8.11 → 8.18, drei 9.56 → 9.122, Vite 4 → 8 (Vitest 4). Lights are multiplied by π because three's lights became physically based; side-by-side screenshots of the island, landing (day and dusk) and art review pages match the r149 build within 1% mean luminance. Measured on the avatar bench (`perf/`, production build, Apple M1 Pro GPU through ANGLE Metal, GPU timer queries), against the r149 build:
+
+| Scene | CPU ms/frame r149 → r186 | GPU ms/frame r149 → r186 |
+| --- | --- | --- |
+| 1440×900, DPR 1.5, 8 / 32 / 64 avatars | 0.75 / 1.31 / 1.87 → 0.65 / 1.17 / 1.85 | 2.84 / 3.38 / 3.61 → 2.32 / 2.68 / 2.74 |
+| 390×844, DPR 1.5, 4× CPU throttle, 8 / 64 avatars | 2.56 / 6.95 → 2.27 / 5.96 | 1.39 / 1.46 → 1.05 / 1.26 |
+
+Settings › Graphics now has four choices (`renderQuality.ts`):
+
+- Low: pixel ratio 0.75, no ambient wildlife. About half Medium's GPU time.
+- Medium: pixel ratio 1–1.5, the previous look.
+- High: pixel ratio up to 2 and real-time sun shadows (`SunShadow.tsx`). The 2048 shadow map follows where the camera looks, moves in whole texels, and grows with zoom. Lit meshes receive; flat ground, tiny props and see-through materials do not cast. 1440×900 at DPR 2: 5.5–6.6 ms GPU, 1.0–3.1 ms CPU for 8–64 avatars.
+- Auto (default): starts from the GPU and device (strong desktop GPUs high, other desktops medium, phones medium at most, budget and software renderers low), steps up after 2.5 s at the display's frame rate and down on sustained slow frames. A tier that proved too slow is not retried in the session. The old adaptive pixel ratio counted every step up as a flip-flop and fell back to 1.0 after about ten seconds even on fast machines.
+
+Bench: `npx vite build --config perf/vite.bench.config.ts && npx vite preview --config perf/vite.bench.config.ts --port 6010`, then `BENCH_GPU=1 BENCH_VIEWPORT=1440x900 BENCH_DPR=2 BENCH_QUERY='&quality=high' node perf/run-bench.mjs` (`BENCH_CPU_THROTTLE=4` for the phone proxy). These are desktop-host numbers, not physical phone measurements.

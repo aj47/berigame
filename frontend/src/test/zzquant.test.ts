@@ -13,7 +13,7 @@ it('quant', async () => {
   // meshopt() reorders vertices: map each source vertex to its nearest shipped vertex in the Idle pose.
   const map: number[] = [];
   { a.pose(a.clip('Defeat'), 1.2); b.pose(b.clip('Defeat'), 1.2); const A: Vector3[] = [], B: Vector3[] = [];
-    for (let v = 0; v < pa.count; v++) { const x = new Vector3().fromBufferAttribute(pa, v); ma.boneTransform(v, x); A.push(x); const y = new Vector3().fromBufferAttribute(pb, v); mb.boneTransform(v, y); B.push(y); }
+    for (let v = 0; v < pa.count; v++) { const x = new Vector3().fromBufferAttribute(pa, v); ma.applyBoneTransform(v, x); A.push(x); const y = new Vector3().fromBufferAttribute(pb, v); mb.applyBoneTransform(v, y); B.push(y); }
     let mapWorst = 0;
     for (let v = 0; v < A.length; v++) { let best = 0, bd = Infinity; for (let u = 0; u < B.length; u++) { const d = A[v].distanceToSquared(B[u]); if (d < bd) { bd = d; best = u; } } map.push(best); mapWorst = Math.max(mapWorst, Math.sqrt(bd)); }
     console.log('MAPWORST', mapWorst.toFixed(5)); }
@@ -22,8 +22,8 @@ it('quant', async () => {
     for (let t = 0; t <= clip.duration; t += clip.duration / 7) {
       a.pose(clip, t); b.pose(cb, t);
       for (let v = 0; v < pa.count; v++) {
-        va.fromBufferAttribute(pa, v); ma.boneTransform(v, va); va.applyMatrix4(ma.matrixWorld);
-        vb.fromBufferAttribute(pb, map[v]); mb.boneTransform(map[v], vb); vb.applyMatrix4(mb.matrixWorld);
+        va.fromBufferAttribute(pa, v); ma.applyBoneTransform(v, va); va.applyMatrix4(ma.matrixWorld);
+        vb.fromBufferAttribute(pb, map[v]); mb.applyBoneTransform(map[v], vb); vb.applyMatrix4(mb.matrixWorld);
         const d = va.distanceTo(vb); const si = mb.geometry.attributes.skinIndex as BufferAttribute, sw = mb.geometry.attributes.skinWeight as BufferAttribute; let prop = false; for (let k = 0; k < 4; k++) if ([sw.getX(v),sw.getY(v),sw.getZ(v),sw.getW(v)][k] > 0 && mb.skeleton.bones[[si.getX(v),si.getY(v),si.getZ(v),si.getW(v)][k]].name.startsWith('Prop')) prop = true; if (prop) { propWorst = Math.max(propWorst, d); continue; } if (d > worst) { worst = d; where = `${clip.name}@${t.toFixed(2)} v${v}`; }
       }
     }

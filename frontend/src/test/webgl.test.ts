@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { useLoadingStore } from '../store';
-import { isWebGLError, watchWebGLContext, webglAvailable } from '../Components/3D/webgl';
+import { isWebGLError, watchWebGLContext, webglAvailable, webglSupport } from '../Components/3D/webgl';
 
 const state = () => useLoadingStore.getState();
 beforeEach(() => { state().resetLoading(); vi.useFakeTimers(); });
@@ -10,6 +10,18 @@ test('reports no WebGL when the browser returns no context', () => {
   const spy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
   expect(webglAvailable()).toBe(false);
   spy.mockRestore();
+});
+
+test('a browser with only WebGL 1 cannot play and is told it needs WebGL 2', () => {
+  const spy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(((kind: string) => kind === 'webgl' ? { getExtension: () => null } : null) as any);
+  expect(webglSupport()).toBe('webgl1');
+  expect(webglAvailable()).toBe(false);
+  spy.mockRestore();
+  state().addLoadedAsset('/models/starter-adventurer.glb');
+  state().setWebsocketConnected(true); state().setGameDataLoaded(true);
+  state().setGraphicsIssue('webgl1');
+  expect(state().isLoading).toBe(true);
+  expect(state().loadingMessage).toMatch(/WebGL 2/);
 });
 
 test('recognises renderer construction failures', () => {

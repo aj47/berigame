@@ -4,11 +4,11 @@
  * ?n=32   avatars including your own (a grid around spawn; the outer ones are off screen)
  * ?spread=3  tiles between neighbours (default 3: at 32+ avatars the outer rows are off screen)
  * ?still  nobody walks (for screenshots)
- * ?adaptive  the game's adaptive pixel ratio (PerformanceMonitor, 1.5 -> 1.0)
+ * ?quality=low|medium|high|auto  the graphics tier (default medium); auto adapts like the game
+ * ?dpr=2  pins the pixel ratio over the tier's
  * Exposes window.__bench = { ready, frames(ms) } and the game's __berigameRender.
  */
-import React, { Suspense, useEffect, useState } from 'react';
-import { PerformanceMonitor } from '@react-three/drei';
+import React, { Suspense, useEffect } from 'react';
 import * as animator from '../src/animation/avatarAnimator';
 import { createRoot } from 'react-dom/client';
 import { Canvas, addAfterEffect, addEffect, useFrame, useThree } from '@react-three/fiber';
@@ -21,6 +21,9 @@ import RenderOnlineUsers from '../src/Components/3D/RenderOnlineUsers';
 import PlayerController from '../src/Components/3D/PlayerController';
 import DebugBridge from '../src/Components/3D/DebugBridge';
 import AlphaIsland from '../src/Components/3D/AlphaIsland';
+import AdaptiveQuality from '../src/Components/3D/AdaptiveQuality';
+import { QUALITY, useGraphicsTier } from '../src/Components/3D/renderQuality';
+import { useSettingsStore, type Settings } from '../src/spacetime/stores/settingsStore';
 import '../src/App.css';
 
 const params = new URLSearchParams(location.search);
@@ -68,8 +71,23 @@ function GameCamera() {
   const gl = useThree((state) => state.gl);
   useEffect(() => {
     // Splits a frame into useFrame work (update) and gl.render (matrices, before-render hooks, draw submission).
+    // With EXT_disjoint_timer_query_webgl2 (hardware GPUs), each gl.render is also timed on the GPU.
+    const context = gl.getContext() as WebGL2RenderingContext;
+    const timer = context.getExtension('EXT_disjoint_timer_query_webgl2');
+    const pending: WebGLQuery[] = [];
     const render = gl.render;
-    gl.render = function (s, c) { renderStart = performance.now(); render.call(this, s, c); };
+    gl.render = function (s, c) {
+      renderStart = performance.now();
+      const query = timer && recording && pending.length < 8 ? context.createQuery() : null;
+      if (query) context.beginQuery(timer.TIME_ELAPSED_EXT, query);
+      render.call(this, s, c);
+      if (query) { context.endQuery(timer.TIME_ELAPSED_EXT); pending.push(query); }
+      while (pending.length && context.getQueryParameter(pending[0], context.QUERY_RESULT_AVAILABLE)) {
+        const done = pending.shift()!;
+        if (!context.getParameter(timer!.GPU_DISJOINT_EXT)) gpu.push(context.getQueryParameter(done, context.QUERY_RESULT) / 1e6);
+        context.deleteQuery(done);
+      }
+    };
     return () => { gl.render = render; };
   }, [gl]);
   useEffect(() => {
@@ -84,6 +102,7 @@ function GameCamera() {
 const frames: number[] = [];
 const work: number[] = [];
 const update: number[] = [];
+const gpu: number[] = [];
 let renderStart = 0;
 // React commit time of the avatar components (ticks re-render them), from <Profiler>.
 let reactMs = 0, reactCommits = 0;
@@ -94,7 +113,12 @@ let started = 0;
 addEffect(() => { started = performance.now(); });
 addAfterEffect(() => { if (recording) { work.push(performance.now() - started); update.push(renderStart - started); } });
 function FrameProbe() {
-  useFrame((_, dt) => { if (recording) frames.push(dt * 1000); });
+  const gl = useThree((state) => state.gl);
+  useFrame((_, dt) => {
+    if (recording) frames.push(dt * 1000);
+    // DebugBridge publishes these in dev builds only; a production bench build needs them too.
+    if (!import.meta.env.DEV) (window as any).__berigameRender = { calls: gl.info.render.calls, triangles: gl.info.render.triangles, pixelRatio: gl.getPixelRatio() };
+  });
   return null;
 }
 const stats = (values: number[]) => {
@@ -107,21 +131,23 @@ const stats = (values: number[]) => {
   async frames(ms: number) {
     const view = (animator as any).animationView;
     const skippedBefore = view?.skipped ?? 0;
-    frames.length = 0; work.length = 0; update.length = 0; reactMs = 0; reactCommits = 0; recording = true;
+    frames.length = 0; work.length = 0; update.length = 0; gpu.length = 0; reactMs = 0; reactCommits = 0; recording = true;
     await new Promise((r) => setTimeout(r, ms));
     recording = false;
-    return { interval: stats(frames), work: stats(work), update: stats(update), reactMsPerSecond: reactMs / (ms / 1000), reactCommits, skippedAnimatorUpdates: (view?.skipped ?? 0) - skippedBefore };
+    return { interval: stats(frames), work: stats(work), update: stats(update), gpu: gpu.length ? stats(gpu) : null, reactMsPerSecond: reactMs / (ms / 1000), reactCommits, skippedAnimatorUpdates: (view?.skipped ?? 0) - skippedBefore };
   },
 };
 
 const Ready = () => { useEffect(() => { setTimeout(() => { (window as any).__bench.ready = true; }, 500); }, []); return null; };
 
-const adaptive = params.has('adaptive');
+const graphics = (params.get('quality') ?? 'medium') as Settings['graphics'];
+useSettingsStore.setState({ graphics });
+const fixedDpr = params.has('dpr') ? Number(params.get('dpr')) : null;
 function Bench() {
-  const [dprCap, setDprCap] = useState(1.5);
+  const quality = QUALITY[useGraphicsTier()];
   return <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
-    <Canvas id="three-canvas" dpr={[1, dprCap]} camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true }}>
-      {adaptive && <PerformanceMonitor onDecline={() => setDprCap(1)} onIncline={() => setDprCap(1.5)} flipflops={3} onFallback={() => setDprCap(1)} />}
+    <Canvas id="three-canvas" dpr={fixedDpr ?? quality.dpr} shadows="percentage" camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true }}>
+      {graphics === 'auto' && <AdaptiveQuality />}
       <GameCamera />
       <FrameProbe />
       <Suspense fallback={null}>

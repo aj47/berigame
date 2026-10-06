@@ -93,7 +93,7 @@ export async function loadAdventurerRig(file = 'starter-adventurer.glb'): Promis
     const time = Math.min(Math.max(t, 0), clip.duration);
     for (const { node, property, interpolant } of list) node[property].fromArray(interpolant.evaluate(time) as unknown as number[]);
     scene.updateMatrixWorld(true);
-    posed.forEach((vertex, v) => { vertex.fromBufferAttribute(position, v); mesh.boneTransform(v, vertex); vertex.applyMatrix4(mesh.matrixWorld); });
+    posed.forEach((vertex, v) => { vertex.fromBufferAttribute(position, v); mesh.applyBoneTransform(v, vertex); vertex.applyMatrix4(mesh.matrixWorld); });
   };
 
   const triangle = new Triangle(), closest = new Vector3(), sample = new Vector3(), hit = new Vector3(), centre = new Vector3(), nearest = new Vector3();

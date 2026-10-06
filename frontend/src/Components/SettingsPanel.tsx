@@ -58,9 +58,10 @@ const ROTATE: { value: Settings["cameraRotateButton"]; label: string; hint: stri
 ];
 
 const GRAPHICS: { value: Settings["graphics"]; label: string; hint: string }[] = [
-  { value: "auto", label: "Auto", hint: "Adjusts for smoother play" },
-  { value: "high", label: "High", hint: "Sharpest picture" },
-  { value: "low", label: "Low", hint: "Fewer pixels · lighter on your device" },
+  { value: "auto", label: "Auto", hint: "Matches your device and adjusts for smoother play" },
+  { value: "low", label: "Low", hint: "Fewer pixels, no wildlife · lightest on your device" },
+  { value: "medium", label: "Medium", hint: "Balanced picture and speed" },
+  { value: "high", label: "High", hint: "Sun shadows and the sharpest picture" },
 ];
 
 /** Player preferences, bound to settingsStore (saved in this browser only). */
@@ -104,7 +105,7 @@ const SettingsPanel = ({ open, onClose, recoveryEnabled = false }: Props) => {
       </fieldset>
       <fieldset className="settings-group">
         <legend>Graphics</legend>
-        <div className="settings-segment" role="radiogroup" aria-label="Graphics quality">
+        <div className="settings-segment graphics-tiers" role="radiogroup" aria-label="Graphics quality">
           {GRAPHICS.map((g) => (
             <button
               key={g.value}
