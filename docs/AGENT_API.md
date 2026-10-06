@@ -464,10 +464,13 @@ rows, so `/state` and `GET /danger` always agree with what the server resolves.
   `knownUntilTick`), `stars`, `nextStars`, `boss`, `party` and `telegraph`. At most 4
   KiB.
 - **`POST /actions/dodge {"x", "z"}`.** A cheap step for the next tick: at most 2
-  tiles (422 `dodge_too_far`), only on the floor or at the glade (422
-  `dodge_unavailable`), to a standable tile (422 `dodge_target`), and not while your
-  run uses other Spire rules than the gateway (409 `rules_mismatch`). No path
-  search. Receipt: `resolvesAtTick`, `via` (the canonical middle tile), `to`, `safe`
+  tiles, or 1 while you carry the giant berry (422 `dodge_too_far`), only on the
+  floor or at the glade (422 `dodge_unavailable`), to a standable tile you reach in
+  that one tick, i.e. one of the /danger move destinations (422 `dodge_target`; a
+  tile 2 away past a stone or the dais corner takes longer), and not while your run
+  uses other Spire rules than the gateway (409 `rules_mismatch`). No path search.
+  While you carry the giant berry, /danger `moves`, `best` and `telegraph.escape`
+  list 1-tile moves only. Receipt: `resolvesAtTick`, `via` (the canonical middle tile), `to`, `safe`
   (whether that move is hit-free in that tick; null when nothing threatens). Dodges
   are ordinary actions (5/second, one in flight).
 - **Reference loop.**

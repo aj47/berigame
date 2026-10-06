@@ -13,6 +13,8 @@ import {
 } from '../spire';
 
 const cfg: BossConfigLike = { ...BOSS_CONFIG_DEFAULTS, clatterhornOpen: true, spireOpen: true };
+/** No trees: these tests are about the block's shape; the escape tests below pass the real world. */
+const W = { blocked: new Set<number>() };
 const ME = 'c'.repeat(56) + '0000abcd';
 const hex = (i: number) => i.toString(16).padStart(64, '0');
 const bytes = (v: unknown) => new TextEncoder().encode(JSON.stringify(v)).length;
@@ -24,11 +26,11 @@ describe('describeClatterhorn', () => {
   const me = { x: 84, z: 103, identity: ME };
 
   it('is null without a row', () => {
-    expect(describeClatterhorn(null, cfg, me, 1000, null)).toBeNull();
+    expect(describeClatterhorn(null, cfg, me, 1000, null, W)).toBeNull();
   });
 
   it('dormant, closed and burrowed', () => {
-    const dormant = describeClatterhorn(freshClatterhorn(cfg), cfg, me, 1000, null)!;
+    const dormant = describeClatterhorn(freshClatterhorn(cfg), cfg, me, 1000, null, W)!;
     expect(dormant).toMatchObject({
       open: true, state: 'dormant', tile: { x: 84, z: 106 }, home: { x: 84, z: 106 }, body: 1, reach: 2,
       glade: { x0: 76, z0: 98, x1: 92, z1: 114 }, health: 200, maxHealth: 200, challengers: 0, phase: 1, frenzy: false,
@@ -40,23 +42,23 @@ describe('describeClatterhorn', () => {
     expect(dormant.stones).toEqual(CLATTER_STONES.map((s) => [s.x, s.z]));
     expect(String(dormant.rule)).toContain('100 ticks');
     const closedCfg = { ...cfg, clatterhornOpen: false };
-    expect(describeClatterhorn(freshClatterhorn(closedCfg), closedCfg, me, 1000, null)).toMatchObject({ open: false, state: 'closed' });
-    const burrowed = describeClatterhorn(crow({ state: ClatterState.Burrowed, stateUntilTick: 1200, hp: 0 }), cfg, me, 1000, 30)!;
+    expect(describeClatterhorn(freshClatterhorn(closedCfg), closedCfg, me, 1000, null, W)).toMatchObject({ open: false, state: 'closed' });
+    const burrowed = describeClatterhorn(crow({ state: ClatterState.Burrowed, stateUntilTick: 1200, hp: 0 }), cfg, me, 1000, 30, W)!;
     expect(burrowed).toMatchObject({ state: 'burrowed', returnsInTicks: 200, health: 0, you: { contribution: 30, qualified: true, inReach: false } });
   });
 
   it('idle alone, flipped and frenzy', () => {
-    expect(describeClatterhorn(crow({ stateUntilTick: 1060 }), cfg, me, 1000, 5)).toMatchObject({ state: 'idle', resetInTicks: 60, you: { qualified: false } });
-    const flipped = describeClatterhorn(crow({ state: ClatterState.Flipped, stateUntilTick: 1005 }), cfg, { ...me, z: 104 }, 1000, null)!;
+    expect(describeClatterhorn(crow({ stateUntilTick: 1060 }), cfg, me, 1000, 5, W)).toMatchObject({ state: 'idle', resetInTicks: 60, you: { qualified: false } });
+    const flipped = describeClatterhorn(crow({ state: ClatterState.Flipped, stateUntilTick: 1005 }), cfg, { ...me, z: 104 }, 1000, null, W)!;
     expect(flipped).toMatchObject({ state: 'flipped', flipped: { endsInTicks: 5, damageMultiplier: 2 }, you: { inReach: true } });
-    expect(describeClatterhorn(crow({}), cfg, me, 900 + 450, null)).toMatchObject({ frenzy: true, phase: 3 });
+    expect(describeClatterhorn(crow({}), cfg, me, 900 + 450, null, W)).toMatchObject({ frenzy: true, phase: 3 });
   });
 
   it('charge telegraph: exact tiles, direction, end, bait and escape', () => {
     const lane = clatterLane({ x: 84, z: 106 }, 4); // north
     const row = crow({ state: ClatterState.ChargeWindup, attack: ClatterAttack.Charge, dir: 4, endX: lane.end.x, endZ: lane.end.z,
       endKind: lane.endKind, stateUntilTick: 1003, bait: identityKey32(ME) });
-    const d = describeClatterhorn(row, cfg, me, 1000, null)!;
+    const d = describeClatterhorn(row, cfg, me, 1000, null, W)!;
     const tel = d.telegraph as Record<string, unknown>;
     expect(d.bait).toBe(ME);
     expect(tel).toMatchObject({ attack: 'charge', landsInTicks: 3, damage: 10, dir: 'N', from: { x: 84, z: 106 }, to: { x: lane.end.x, z: lane.end.z },
@@ -65,17 +67,17 @@ describe('describeClatterhorn', () => {
     const escape = tel.escape as [number, number][];
     expect(escape.length).toBeGreaterThan(0);
     for (const [x, z] of escape) expect(lane.tiles).not.toContain(z * GRID_SIZE + x);
-    const other = describeClatterhorn({ ...row, bait: 0x1234abcd }, cfg, me, 1000, null)!;
+    const other = describeClatterhorn({ ...row, bait: 0x1234abcd }, cfg, me, 1000, null, W)!;
     expect(other.bait).toBe('1234abcd');
   });
 
   it('swarm block', () => {
     const windup = crow({ state: ClatterState.DrumWindup, attack: ClatterAttack.Drum, swarmSide: 1, swarmFree: 2, stateUntilTick: 1003 });
-    expect(describeClatterhorn(windup, cfg, me, 1000, null)!.swarm).toEqual({
+    expect(describeClatterhorn(windup, cfg, me, 1000, null, W)!.swarm).toEqual({
       side: 'east', firesInTicks: 3, activeUntilTick: 1023, axis: 'z', freeLines: clatterSwarmFreeLines(windup), damage: 4, tilesPerTick: 1,
     });
     const drumming = { ...windup, state: ClatterState.Drumming, swarmTick: 1003, stateUntilTick: 1023 };
-    const d = describeClatterhorn(drumming, cfg, me, 1010, null)!;
+    const d = describeClatterhorn(drumming, cfg, me, 1010, null, W)!;
     expect(d.swarm).toMatchObject({ side: 'east', firesInTicks: 0, activeUntilTick: 1023 });
     expect(d.telegraph).toBeNull();
   });
@@ -91,7 +93,7 @@ describe('describeClatterhorn', () => {
           endKind: lane.endKind, stateUntilTick: 1003, bait: identityKey32(hex(9)), challengers: 120, hp: 18200, maxHp: 18200 });
         const k = lane.tiles[Math.floor(lane.tiles.length / 2)];
         const at = { x: k % GRID_SIZE, z: Math.floor(k / GRID_SIZE), identity: ME };
-        worst = Math.max(worst, bytes(describeClatterhorn(row, cfg, at, 1000, 99999)));
+        worst = Math.max(worst, bytes(describeClatterhorn(row, cfg, at, 1000, 99999, W)));
       }
     }
     expect(worst).toBeGreaterThan(1000);

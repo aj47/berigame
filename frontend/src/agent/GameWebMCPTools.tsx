@@ -71,7 +71,7 @@ import { useBossStore } from "../bosses/bossStore";
 import { tickClock } from "../spacetime/tickClock";
 import { BossId, BossNoticeKind, TICK_MS, SPIRE_KEY_ITEM_ID } from "@sim";
 import {
-  clatterContributionOf, crossesSpireFloor, dangerFeed, describeBosses, dodgeCheck, onSpireFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows,
+  clatterContributionOf, crossesSpireFloor, dangerFeed, describeBosses, dodgeCheck, moveStepsOf, onSpireFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows,
 } from "../../agent-api/statePresentation";
 
 export type WebMCPStatus = "checking" | "ready" | "unsupported" | "error";
@@ -253,7 +253,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
             ? firstDayGoal({ me: player, slots, trees: state.trees, others: visible.filter((row: any) => row !== player), tick: state.tick, canFight: true, foragingXp: state.skills?.foragingXp ?? 0, done: memory.done, seen: memory.seen, giant: state.giants?.[0] ?? null }).goal
             : null;
           const keysHeld = slots.reduce((n: number, s: any) => n + (s?.itemId === SPIRE_KEY_ITEM_ID ? s.quantity : 0), 0);
-          const bosses = player ? describeBosses(rows, player, state.tick, { players: state.players, keysHeld, contribution: clatterContribution() }) : { clatterhorn: null, spire: null };
+          const bosses = player ? describeBosses(rows, player, state.tick, { players: state.players, keysHeld, contribution: clatterContribution(),
+            blocked: stableBlocked(state.trees), maxSteps: moveStepsOf(identityHex(player.identity), state.expeditions) }) : { clatterhorn: null, spire: null };
           return JSON.stringify({
             goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action } : null,
             objective: player ? describeObjective(region, goal, frontier) : null,
@@ -575,13 +576,14 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           const state = live.current;
           if (!state.me) return "Your character is still joining the island. Inspect the game again shortly.";
           const ageMs = tickClock.tick === state.tick && tickClock.arrivedAt > 0 ? performance.now() - tickClock.arrivedAt : 0;
-          return JSON.stringify(dangerFeed(bossRows(), state.me, state.tick, { players: state.players, blocked: stableBlocked(state.trees), ageMs, tickMs: TICK_MS }));
+          return JSON.stringify(dangerFeed(bossRows(), state.me, state.tick, { players: state.players, blocked: stableBlocked(state.trees), ageMs, tickMs: TICK_MS,
+            maxSteps: moveStepsOf(identityHex(state.me.identity), state.expeditions) }));
         },
         { readOnlyHint: true, untrustedContentHint: true },
       ),
       tool(
         "dodge_to_tile",
-        "Step to a tile at most 2 tiles away for the next tick, without the path search of move_to_tile. Only on the Sunken Spire floor or at Clatterhorn's glade, to a standable tile; pick one from inspect_danger moves.",
+        "Step to a tile at most 2 tiles away (1 while you carry the giant berry) for the next tick, without the path search of move_to_tile. Only on the Sunken Spire floor or at Clatterhorn's glade, to a standable tile you reach in that tick; pick one from inspect_danger moves.",
         {
           x: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: "Destination tile x." },
           z: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: "Destination tile z." },
@@ -592,7 +594,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           if (error) return error;
           if (!Number.isInteger(x) || !Number.isInteger(z) || x < 0 || x >= GRID_SIZE || z < 0 || z >= GRID_SIZE)
             return `Choose integer tile coordinates from 0 through ${GRID_SIZE - 1}.`;
-          const check = dodgeCheck(bossRows(), player, { x, z }, live.current.tick, stableBlocked(live.current.trees));
+          const check = dodgeCheck(bossRows(), player, { x, z }, live.current.tick, stableBlocked(live.current.trees),
+            moveStepsOf(identityHex(player.identity), live.current.expeditions));
           if ("problem" in check) return `${check.problem.message} (${check.problem.code}).`;
           const safety = check.safe === null ? "" : check.safe ? " That move is hit-free next tick." : " Careful: that move is hit next tick.";
           return reportAction(await live.current.actions.setTarget(x, z), `Dodging to ${x}, ${z} via ${check.via[0]}, ${check.via[1]} (lands at tick ${check.resolvesAtTick}).${safety}`);

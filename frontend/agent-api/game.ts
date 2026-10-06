@@ -1,7 +1,7 @@
 import { subscribeFrontier } from '../src/spacetime/frontierSubscription';
 import { frontierSnapshot, type FrontierSnapshot } from '../../shared/sim/frontier/snapshot';
 import { describeAction, describeDestination, describeGathering, describeObjective } from './statePresentation';
-import { bossError, ClatterContribution, crossesSpireFloor, describeBossEvent, describeBossNotice, describeBosses, dangerFeed, dodgeCheck, onSpireFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows } from './statePresentation';
+import { bossError, ClatterContribution, crossesSpireFloor, describeBossEvent, describeBossNotice, describeBosses, dangerFeed, dodgeCheck, moveStepsOf, onSpireFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows } from './statePresentation';
 import { subscribeSpire } from '../src/bosses/spireSubscription';
 import { validateCommand } from '../../shared/sim/frontier/engine';
 import { ADVENTURE_CAMP, BERRY_MARKET, GIANT_FEAST, BERRY_PATCH, TECHNIQUES, PATHS, PATH_FIELDS, techniqueUnlocked, hasTechnique } from '../../shared/sim';
@@ -207,6 +207,8 @@ export async function createGameService(credential: Credential, options: Connect
         config: [...conn.db.bossConfig.iter()][0] ?? null, clatter: [...conn.db.clatterhorn.iter()][0] ?? null,
         runs: [...conn.db.spireRun.iter()], members: [...conn.db.spireMember.iter()], fights: [...conn.db.spireFight.iter()],
       });
+      /** Your tiles per tick: 1 while you carry the giant berry (the server's cargoMovementSteps). */
+      const moveSteps = () => moveStepsOf(player.identity, conn.db.expedition.iter());
       const keysHeld = () => slotsOf().reduce((n, s) => n + (s?.itemId === SPIRE_KEY_ITEM_ID ? s.quantity : 0), 0);
       const currentTrade = () => {
         const rows = [...conn.db.trade.iter()];
@@ -249,7 +251,7 @@ export async function createGameService(credential: Credential, options: Connect
           const self = me();
           const tick = conn.db.world.id.find(0)?.tick ?? 0;
           return dangerFeed(bossRows(), self, tick, { players: conn.db.player.iter(), blocked: stableBlocked(conn.db.tree.iter()),
-            ageMs: Date.now() - tickAt, tickMs: TICK_MS });
+            ageMs: Date.now() - tickAt, tickMs: TICK_MS, maxSteps: moveSteps() });
         },
         state() {
           const self = me();
@@ -282,7 +284,8 @@ export async function createGameService(credential: Credential, options: Connect
           const inside = onSpireFloor(self);
           const outside = home && !inside;
           const rows = bossRows();
-          const bosses = describeBosses(rows, self, tick, { players: conn.db.player.iter(), keysHeld: keysHeld(), contribution: contribution.read(rows.clatter) });
+          const bosses = describeBosses(rows, self, tick, { players: conn.db.player.iter(), keysHeld: keysHeld(), contribution: contribution.read(rows.clatter),
+            blocked: stableBlocked(conn.db.tree.iter()), maxSteps: moveSteps() });
           const goal = outside ? goalFor(self, tick) : null;
           const now = Date.now();
           const frontier = frontierSnapshot(conn.db.frontierObject.iter(), conn.db.frontierView.iter(), player.identity, now);
@@ -545,8 +548,8 @@ export async function createGameService(credential: Credential, options: Connect
               break;
             }
             case 'dodge': {
-              // No reachability floods (move runs three): at most 2 tiles, on the floor or at the glade only.
-              const check = dodgeCheck(bossRows(), self, { x: input.x, z: input.z }, tick, stableBlocked(conn.db.tree.iter()));
+              // No reachability floods (move runs three): one tick's move (2 tiles, 1 carrying), on the floor or at the glade only.
+              const check = dodgeCheck(bossRows(), self, { x: input.x, z: input.z }, tick, stableBlocked(conn.db.tree.iter()), moveSteps());
               if ('problem' in check) throw new ApiError(check.problem.status, check.problem.code, check.problem.message);
               await r.setTarget({ x: input.x, z: input.z });
               return check;

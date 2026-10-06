@@ -64,14 +64,17 @@ test('the next objective follows the active region and advances after the stewar
 // ---- Bosses (FINAL_SPEC 8.2-8.5, CORE_SCOPE) ----------------------------------------------------------------------
 import {
   BOSS_CONFIG_DEFAULTS, BossId, BossNoticeKind, BossEventKind, ClatterState, SPIRE_NONE, SPIRE_PATTERNS, SPIRE_RULES_VERSION, SpireMemberState, SpireStage,
-  canonicalMiddle, freshClatterhorn, spireFightBullets, spireHitsMove, worldBlockedSet, type SpireFightLike,
+  ClatterAttack, NODE_SEEDS, TREE_SEEDS, canonicalMiddle, clatterLane, freshClatterhorn, spireFightBullets, spireHitsMove,
+  worldBlockedSet, type SpireFightLike,
 } from '../../shared/sim';
 import {
   ClatterContribution, bossError, crossesSpireFloor, dangerFeed, describeBossEvent, describeBossNotice, describeBosses, dodgeCheck,
-  visiblePlayers, type BossFight, type BossMember, type BossPlayer, type BossRows, type BossRun,
+  moveStepsOf, visiblePlayers, type BossFight, type BossMember, type BossPlayer, type BossRows, type BossRun,
 } from './statePresentation';
 
 const BLOCKED = worldBlockedSet([]);
+/** The live world's blocked set: every seeded tree and node (what the gateway's tree table holds). */
+const WORLD = worldBlockedSet([...TREE_SEEDS, ...NODE_SEEDS]);
 const hexId = (i: number) => ({ toHexString: () => i.toString(16).padStart(64, '0') });
 const person = (i: number, x: number, z: number, over: Partial<BossPlayer> = {}): BossPlayer =>
   ({ identity: hexId(i), name: `p${i}`, x, z, hp: 30, maxHp: 30, region: 'bramblewild', online: true, eatCooldownUntilTick: 0, ...over });
@@ -137,6 +140,82 @@ test('dodge: at most 2 tiles, only on the floor or at the glade, to a standable 
   assert.ok(!('problem' in glade) && glade.safe === true);
 });
 
+test('dodge refuses a 2-tile target that takes more than one tick around a stone or the dais', () => {
+  const clatter = { ...freshClatterhorn(BOSS_CONFIG_DEFAULTS), state: ClatterState.Idle };
+  const err = (r: ReturnType<typeof dodgeCheck>) => ('problem' in r ? r.problem.code : null);
+  // (78,103) is a standing stone: (79,103) is 4 steps from (77,103) without cutting its corners.
+  assert.equal(err(dodgeCheck(rowsOf({ clatter }), person(1, 77, 103), { x: 79, z: 103 }, 50, WORLD)), 'dodge_target');
+  // The dais (76..78, 61..63): (77,60) is 4 steps from (75,62).
+  assert.equal(err(dodgeCheck(rowsOf(), person(1, 75, 62), { x: 77, z: 60 }, 1010, WORLD)), 'dodge_target');
+  // Every accepted dodge is one tick's move: its via is a free tile next to both ends.
+  let accepted = 0;
+  for (const [me, rows] of [[person(1, 77, 103), rowsOf({ clatter })], [person(1, 75, 62), rowsOf()]] as const) {
+    for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+      const to = { x: me.x + dx, z: me.z + dz };
+      const r = dodgeCheck(rows, me, to, 50, WORLD);
+      if ('problem' in r) continue;
+      const via = { x: r.via[0], z: r.via[1] };
+      assert.ok(Math.max(Math.abs(via.x - me.x), Math.abs(via.z - me.z)) <= 1 && Math.max(Math.abs(via.x - to.x), Math.abs(via.z - to.z)) <= 1, `${to.x},${to.z}`);
+      assert.ok(!WORLD.has(via.z * 128 + via.x));
+      accepted++;
+    }
+  }
+  assert.ok(accepted > 20);
+});
+
+test('carrying the giant berry: one tile per tick for dodge, /danger moves and escapes', () => {
+  const me = hexId(1).toHexString();
+  assert.equal(moveStepsOf(me, []), 2);
+  assert.equal(moveStepsOf(me, [{ stage: 'hauling', carrier: hexId(1) }]), 1);
+  assert.equal(moveStepsOf(me, [{ stage: 'hauling', carrier: hexId(2) }, { stage: 'gathering', carrier: hexId(1) }]), 2);
+  const idle = rowsOf({ clatter: { ...freshClatterhorn(BOSS_CONFIG_DEFAULTS), state: ClatterState.Idle } });
+  const at = person(1, 84, 102);
+  const two = dodgeCheck(idle, at, { x: 86, z: 102 }, 50, WORLD, 1);
+  assert.ok('problem' in two && two.problem.code === 'dodge_too_far' && /1 tile/.test(two.problem.message));
+  assert.ok(!('problem' in dodgeCheck(idle, at, { x: 85, z: 102 }, 50, WORLD, 1)));
+  assert.ok(!('problem' in dodgeCheck(idle, at, { x: 86, z: 102 }, 50, WORLD)));
+  // A charge telegraphed through the carrier: every move, best and escape is at most one step.
+  const lane = clatterLane({ x: 84, z: 106 }, 4);
+  const charge = rowsOf({ clatter: { ...freshClatterhorn(BOSS_CONFIG_DEFAULTS), x: 84, z: 106, state: ClatterState.ChargeWindup, attack: ClatterAttack.Charge,
+    dir: 4, endX: lane.end.x, endZ: lane.end.z, endKind: lane.endKind, stateUntilTick: 51, engagedTick: 40, lastHitTick: 40 } });
+  const carrier = { players: [at], blocked: WORLD, ageMs: 0, tickMs: 600, maxSteps: 1 as const };
+  // On the lane's centre line only 2-step moves clear it: a walker gets them, a carrier is told nothing is safe.
+  const free = dangerFeed(charge, at, 50, { ...carrier, maxSteps: 2 });
+  assert.ok(free.moves.length > 0 && free.moves.every((m) => m.steps === 2) && free.telegraph!.escape.length > 0);
+  const feed = dangerFeed(charge, at, 50, carrier);
+  assert.equal(feed.where, 'clatterhorn');
+  assert.deepEqual([feed.moves, feed.best, feed.telegraph!.escape], [[], null, []]);
+  // On its edge a carrier steps out with one tile.
+  const edge = dangerFeed(charge, person(1, 85, 102), 50, carrier);
+  assert.ok(edge.moves.length > 0 && edge.moves.every((m) => m.steps <= 1) && edge.telegraph!.escape.length > 0);
+  for (let x = 80; x <= 88; x++) for (let z = 98; z <= 112; z++) {
+    const f = dangerFeed(charge, person(1, x, z), 50, carrier);
+    for (const [ex, ez] of f.telegraph?.escape ?? []) assert.ok(Math.max(Math.abs(ex - x), Math.abs(ez - z)) <= 1, `${x},${z} -> ${ex},${ez}`);
+    const s = describeBosses(charge, person(1, x, z), 50, { players: [], keysHeld: 0, contribution: null, blocked: WORLD, maxSteps: 1 }) as any;
+    assert.deepEqual(s.clatterhorn.telegraph?.escape ?? [], f.telegraph?.escape ?? []);
+  }
+});
+
+test('state.clatterhorn telegraph.escape matches /danger and never lists a tree or node tile', () => {
+  let compared = 0;
+  for (const [patch, players] of [
+    [{ state: ClatterState.DrumWindup, stateUntilTick: 53, swarmSide: 0, swarmFree: 0 }, [[92, 110], [83, 114], [86, 114], [76, 101], [76, 111]]],
+    [{ state: ClatterState.SpinWindup, stateUntilTick: 52, x: 84, z: 112, attack: ClatterAttack.Spin }, [[82, 114], [86, 114], [83, 110]]],
+  ] as const) {
+    const rows = rowsOf({ clatter: { ...freshClatterhorn(BOSS_CONFIG_DEFAULTS), engagedTick: 40, lastHitTick: 40, ...patch } });
+    for (const [x, z] of players) {
+      const me = person(1, x, z);
+      const state = (describeBosses(rows, me, 50, { players: [me], keysHeld: 0, contribution: null, blocked: WORLD }) as any).clatterhorn;
+      const feed = dangerFeed(rows, me, 50, { players: [me], blocked: WORLD, ageMs: 0, tickMs: 600 });
+      assert.ok(state.telegraph, `${x},${z}`);
+      assert.deepEqual(state.telegraph.escape, feed.telegraph?.escape);
+      for (const [ex, ez] of state.telegraph.escape) assert.ok(!WORLD.has(ez * 128 + ex), `escape ${ex},${ez} is blocked`);
+      compared++;
+    }
+  }
+  assert.equal(compared, 8);
+});
+
 test('dodge safety equals the server rule in tick + 1 inside an active run', () => {
   const runId = 9101n;
   const fight = fightOf(runId, { curKind: 0, curStart: 1005, curSeed: 3, phase: SPIRE_PATTERNS[0].phase });
@@ -177,7 +256,7 @@ test('state.clatterhorn and state.spire come from the shared presenters, null ou
     runs: [run(runId), run(89n, { stage: SpireStage.Lobby, endTick: 1100 })], members: [member(1, runId, 0), member(2, runId, 1), member(3, 89n, 0, SpireMemberState.Lobby)], fights: [fight] });
   const me = person(1, 74, 60);
   const players = [me, person(2, 75, 61, { region: 'settlement' }), person(3, 62, 46)];
-  const blocks = describeBosses(rows, me, 1010, { players, keysHeld: 2, contribution: 20 }) as any;
+  const blocks = describeBosses(rows, me, 1010, { players, keysHeld: 2, contribution: 20, blocked: WORLD }) as any;
   assert.equal(blocks.clatterhorn.state, 'dormant');
   assert.deepEqual(blocks.clatterhorn.you.contribution, 20);
   assert.equal(blocks.spire.key.held, 2);
@@ -185,7 +264,7 @@ test('state.clatterhorn and state.spire come from the shared presenters, null ou
   assert.equal(blocks.spire.lobbies[0].runId, '89');
   assert.equal(blocks.spire.run.runId, '88');
   assert.equal(blocks.spire.run.members[1].tile, null);
-  assert.deepEqual(describeBosses(rows, person(1, 74, 60, { region: 'settlement' }), 1010, { players, keysHeld: 0, contribution: null }), { clatterhorn: null, spire: null });
+  assert.deepEqual(describeBosses(rows, person(1, 74, 60, { region: 'settlement' }), 1010, { players, keysHeld: 0, contribution: null, blocked: WORLD }), { clatterhorn: null, spire: null });
 });
 
 test('the danger feed: where follows the reader, other regions read null', () => {

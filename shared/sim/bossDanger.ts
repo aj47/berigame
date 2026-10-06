@@ -42,6 +42,11 @@ export interface DangerInput {
   me: { identity: string; x: number; z: number; hp: number; maxHp: number; eatCooldownUntilTick: number };
   /** The world's blocked set (pass a stable instance: move tables are cached per Set). */
   blocked: Set<number>;
+  /**
+   * Tiles you move per tick (default 2): 1 while you carry the giant berry (`cargoMovementSteps`). Clatterhorn's
+   * moves, best and escapes keep to it; the Spire refuses carriers, so its feed always uses 2.
+   */
+  maxSteps?: 1 | 2;
   /** Your run (any stage) while you have a member row; the gateway passes null otherwise. */
   spire?: { run: SpireRunLike; fight: SpireFightLike; members: readonly DangerMemberInput[]; mySlot: number; safety: SpireSafety | null } | null;
   /** The Clatterhorn row (null outside Bramblewild). */
@@ -155,14 +160,19 @@ export function spireLiveStars(run: SpireRunLike, f: SpireFightLike, T: number):
 type Standable = (t: Tile) => boolean;
 interface MoveTable { standable: Standable; at(t: Tile): BulletMove[] }
 
-function moveTable(standable: Standable): MoveTable {
+/** Moves of at most `maxSteps` steps from each standable tile, memoized per tile. */
+function moveTable(standable: Standable, maxSteps: 1 | 2 = 2): MoveTable {
   const memo = new Map<number, BulletMove[]>();
   return {
     standable,
     at(t) {
       const k = key(t.x, t.z);
       let ms = memo.get(k);
-      if (!ms) { ms = standable(t) ? movesWithin(t, standable) : []; memo.set(k, ms); }
+      if (!ms) {
+        ms = standable(t) ? movesWithin(t, standable) : [];
+        if (maxSteps < 2) ms = ms.filter((m) => m.steps <= maxSteps);
+        memo.set(k, ms);
+      }
       return ms;
     },
   };
@@ -170,6 +180,7 @@ function moveTable(standable: Standable): MoveTable {
 
 const spireTables = new WeakMap<Set<number>, MoveTable>();
 const gladeTables = new WeakMap<Set<number>, MoveTable>();
+const gladeTables1 = new WeakMap<Set<number>, MoveTable>();
 
 function spireMoves(blocked: Set<number>): MoveTable {
   let m = spireTables.get(blocked);
@@ -181,19 +192,30 @@ const G = CLATTER_GLADE;
 const STONE_KEYS: ReadonlySet<number> = new Set(CLATTER_STONES.map((t) => key(t.x, t.z)));
 const inGladeXZ = (x: number, z: number) => x >= G.x0 && x <= G.x1 && z >= G.z0 && z <= G.z1;
 
-/** Glade tiles minus the stones; outside it plain land (never the Spire floor). */
-function gladeMoves(blocked: Set<number>): MoveTable {
-  let m = gladeTables.get(blocked);
+/** Glade tiles minus the stones; outside it plain land (never the Spire floor). Moves of at most `maxSteps`. */
+function gladeMoves(blocked: Set<number>, maxSteps: 1 | 2 = 2): MoveTable {
+  const tables = maxSteps === 1 ? gladeTables1 : gladeTables;
+  let m = tables.get(blocked);
   if (!m) {
     m = moveTable((t) => {
       if (!Number.isInteger(t.x) || !Number.isInteger(t.z) || t.x < 0 || t.z < 0 || t.x >= GRID_SIZE || t.z >= GRID_SIZE) return false;
       const k = key(t.x, t.z);
       if (blocked.has(k) || STONE_KEYS.has(k)) return false;
       return inGladeXZ(t.x, t.z) || (LAND_MASK[k] === 1 && !inSpireFloor(t));
-    });
-    gladeTables.set(blocked, m);
+    }, maxSteps);
+    tables.set(blocked, m);
   }
   return m;
+}
+
+/**
+ * The move from `from` that ends on `to` (BFS order, so its `mid` is the canonical middle), using the same
+ * standable rule and step cap as the /danger move tables; null when `to` cannot be reached within one tick.
+ */
+export function dangerMoveTo(where: 'spire' | 'clatterhorn', from: Tile, to: Tile, blocked: Set<number>, maxSteps: 1 | 2 = 2): BulletMove | null {
+  const table = where === 'spire' ? spireMoves(blocked) : gladeMoves(blocked, maxSteps);
+  const ms = table.standable(from) ? table.at(from) : movesWithin(from, table.standable).filter((m) => m.steps <= maxSteps);
+  return ms.find((m) => m.end.x === to.x && m.end.z === to.z && m.steps <= maxSteps) ?? null;
 }
 
 type HitFn = (k: number, p0: Tile, p1: Tile, p2: Tile) => number;
@@ -251,7 +273,7 @@ export function clatterBaitId(bait: number, meIdentity: string): string | null {
  * Whether `t` can be hit by the telegraphed attack (charge and spin: its tiles; drum: any glade tile off the free
  * lines), and up to 4 tiles within 2 steps of `me` that cannot, nearest first (BFS order).
  */
-export function clatterEscape(row: ClatterRowLike, tel: ClatterTelegraph, me: Tile, blocked: Set<number>): { inside: boolean; escape: DangerXZ[] } {
+export function clatterEscape(row: ClatterRowLike, tel: ClatterTelegraph, me: Tile, blocked: Set<number>, maxSteps: 1 | 2 = 2): { inside: boolean; escape: DangerXZ[] } {
   let hazard: (t: Tile) => boolean;
   if (tel.attack === 'drum') {
     const free = new Set(clatterSwarmFreeLines(row));
@@ -263,21 +285,24 @@ export function clatterEscape(row: ClatterRowLike, tel: ClatterTelegraph, me: Ti
   }
   const inside = hazard(me);
   if (!inside) return { inside, escape: [] };
-  const table = gladeMoves(blocked);
+  const table = gladeMoves(blocked, maxSteps);
   const from = { x: me.x, z: me.z };
   const ms = table.standable(from) ? table.at(from) : movesWithin(from, table.standable);
   const escape: DangerXZ[] = [];
-  for (const steps of [1, 2]) for (const m of ms) {
+  for (const steps of maxSteps === 1 ? [1] : [1, 2]) for (const m of ms) {
     if (m.steps === steps && !hazard(m.end) && escape.length < 4) escape.push(xz(m.end));
   }
   return { inside, escape };
 }
 
-/** The Clatterhorn telegraph block shared by /danger and state.clatterhorn. */
-export function clatterTelegraphView(row: ClatterRowLike, me: { x: number; z: number; identity: string }, tick: number, blocked: Set<number>) {
+/**
+ * The Clatterhorn telegraph block shared by /danger and state.clatterhorn. Both pass the world's blocked set and
+ * your step cap, so they list the same escapes.
+ */
+export function clatterTelegraphView(row: ClatterRowLike, me: { x: number; z: number; identity: string }, tick: number, blocked: Set<number>, maxSteps: 1 | 2 = 2) {
   const tel = clatterTelegraph(row);
   if (!tel) return null;
-  const { inside, escape } = clatterEscape(row, tel, me, blocked);
+  const { inside, escape } = clatterEscape(row, tel, me, blocked, maxSteps);
   return {
     tel,
     view: {
@@ -472,9 +497,10 @@ function spirePlan(start: Tile, tick: number, len: number, safety: SpireSafety, 
 
 function clatterFeed(feed: DangerFeed, input: DangerInput, row: ClatterRowLike): void {
   const { tick, me, blocked } = input;
+  const maxSteps = input.maxSteps ?? 2;
   feed.where = 'clatterhorn';
   feed.knownUntilTick = tick + DANGER_HORIZON;
-  const table = gladeMoves(blocked);
+  const table = gladeMoves(blocked, maxSteps);
   const hit: HitFn = (k, p0, p1, p2) => clatterHitsMove(row, tick + k, p0, p1, p2);
   const w = G.x1 - G.x0 + 1, h = G.z1 - G.z0 + 1;
   feed.grid = { x0: G.x0, z0: G.z0, w, h };
@@ -489,7 +515,7 @@ function clatterFeed(feed: DangerFeed, input: DangerInput, row: ClatterRowLike):
     }
     feed.map.push(line);
   }
-  const tv = clatterTelegraphView(row, me, tick, blocked);
+  const tv = clatterTelegraphView(row, me, tick, blocked, maxSteps);
   feed.telegraph = tv ? tv.view : null;
   const here = { x: me.x, z: me.z };
   if (me.hp <= 0 || !table.standable(here)) return;
