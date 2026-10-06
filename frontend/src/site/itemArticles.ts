@@ -133,9 +133,9 @@ const notes: Record<string, ItemNotes> = {
       'The Giant must be defeated within its raid window, and you must be online when the reward is granted. Bring a Stone Club for entry to the Boulders and food for the encounter. The outcrops provide an alternative that does not require completing a raid.',
     ] }, { id: 'workshop', title: 'Building the shared workshop', paragraphs: [
       'Contribute within four tiles of the gardener camp at (22, 18). Each action consumes one obsidian and awards 20 Building XP. The workshop’s shared target is 10 obsidian plus 20 driftwood; donations stop once that material’s target is complete.',
-      'When both targets are complete, newly started expeditions gain one cargo value. Obsidian is a community building material: it is not an ingredient in any current crafting recipe, cannot be wielded and does not heal.',
+      'When both targets are complete, newly started expeditions gain one cargo value. Obsidian also goes into Spire Keys (three each, with one gleamshell) and the Shard Circlet keepsake (two). It cannot be wielded and does not heal.',
     ] }],
-    related: ['boulders', 'giant-raids', 'item-stone-club', 'item-driftwood', 'expeditions'],
+    related: ['boulders', 'giant-raids', 'item-spire-key', 'item-stone-club', 'item-driftwood', 'expeditions'],
     sourceFiles: ['shared/sim/raid.ts', 'spacetimedb/src/reducers/tick.ts', 'spacetimedb/src/reducers/adventure.ts'],
   },
   gleamshell: {
@@ -148,7 +148,7 @@ const notes: Record<string, ItemNotes> = {
     ] }, { id: 'spire-keys', title: 'Spire keys', paragraphs: [
       'One gleamshell and three obsidian make a Spire Key at Crafting level 1. Each member of a Sunken Spire party spends one key when the party starts, so a regular party needs a steady supply of both.',
     ] }],
-    related: ['item-spire-key', 'item-obsidian', 'coast', 'crafting', 'combat'],
+    related: ['clatterhorn', 'item-spire-key', 'item-obsidian', 'coast', 'crafting'],
   },
   spire_key: {
     summary: "One descent into the Sunken Spire, spent when your party starts.",
@@ -158,7 +158,7 @@ const notes: Record<string, ItemNotes> = {
       'Opens: the Sunken Spire, consumed per member at the start. A party of one to four forms at the gate, (62, 45), which needs a Stone Club to reach. Keys are kept if the party breaks up in the lobby, and refunded when a run is closed or abandoned before it can finish.',
       'Keys stack to 10 per slot. They are ordinary bag items: you can trade them, and they drop with the rest of your bag if you die on the overworld. A knockout inside the Spire never touches your bag.',
     ] }],
-    related: ['item-gleamshell', 'item-obsidian', 'item-prism-shard', 'boulders', 'crafting'],
+    related: ['sunken-spire', 'item-gleamshell', 'item-obsidian', 'item-prism-shard', 'boulders', 'crafting'],
   },
   prism_shard: {
     summary: 'A splinter of the Shardmother, earned by clearing the Sunken Spire.',
@@ -169,7 +169,7 @@ const notes: Record<string, ItemNotes> = {
     ] }, { id: 'circlet', title: 'The Shard Circlet', paragraphs: [
       'At Crafting level 10, five Prism Shards and two obsidian make the Shard Circlet, a head keepsake. Like every keepsake it is cosmetic and gives no combat bonus.',
     ] }],
-    related: ['item-spire-key', 'item-obsidian', 'crafting', 'combat'],
+    related: ['sunken-spire', 'item-spire-key', 'item-obsidian', 'crafting'],
   },
   berry_mash: {
     summary: 'Seven HP in one bite, crafted from berries or split from expedition cargo.',
