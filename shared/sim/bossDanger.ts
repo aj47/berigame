@@ -144,15 +144,24 @@ export interface SpireLiveStars {
   nextTick: number;
 }
 
-/** The stars a present In member can catch in tick T (null outside an Active run's fight window). */
+/**
+ * The stars a present In member can catch in tick T (null outside an Active run's fight window). The window is
+ * startTick..endTick inclusive: the server runs swings, stars and bullets on T = endTick and times out after them.
+ */
 export function spireLiveStars(run: SpireRunLike, f: SpireFightLike, T: number): SpireLiveStars | null {
-  if (run.stage !== SpireStage.Active || T < run.startTick || T >= run.endTick) return null;
+  if (run.stage !== SpireStage.Active || T < run.startTick || T > run.endTick) return null;
   const wave = spireStarWave(run.startTick, T);
   const K = Math.max(1, Math.min(SPIRE_MAX_PARTY, run.partySize)) + 2;
   const mask = f.starWave === wave ? f.starMask : 0;
   const stars = spireStars(f.seed, wave, K).map((t, j) => ({ x: t.x, z: t.z, j })).filter((s) => ((mask >>> s.j) & 1) === 0);
   const nextTick = run.startTick + (wave + 1) * SPIRE_STAR_PERIOD;
-  return { wave, stars, lastTick: Math.min(nextTick, run.endTick) - 1, nextTick };
+  return { wave, stars, lastTick: Math.min(nextTick - 1, run.endTick), nextTick };
+}
+
+/** Ticks until the next star wave seen from tick + 1 = `T1`, or null when no wave lands by the run's last combat tick. */
+export function spireNextStarsIn(run: SpireRunLike, live: SpireLiveStars | null, T1: number): number | null {
+  const next = live ? live.nextTick : T1 < run.startTick ? run.startTick : null;
+  return next !== null && next <= run.endTick ? Math.max(1, next - (T1 - 1)) : null;
 }
 
 // ---- Move tables ---------------------------------------------------------------------------------------------------
@@ -421,8 +430,8 @@ function spireFeed(feed: DangerFeed, input: DangerInput, sp: NonNullable<DangerI
   const live = spireLiveStars(run, fight, T1);
   if (active) {
     feed.stars = live ? live.stars.map((s) => ({ x: s.x, z: s.z, ticksLeft: live.lastTick - tick })) : [];
-    const next = live ? live.nextTick : run.startTick;
-    if (next < run.endTick) feed.nextStars = { inTicks: Math.max(1, next - tick) };
+    const inTicks = spireNextStarsIn(run, live, T1);
+    if (inTicks !== null) feed.nextStars = { inTicks };
   }
   feed.knownUntilTick = spireKnownUntil(fight);
   if (feed.rulesMismatch) return;
@@ -446,7 +455,7 @@ function spireFeed(feed: DangerFeed, input: DangerInput, sp: NonNullable<DangerI
 
   const here = { x: me.x, z: me.z };
   const canMove = active && mine !== null && mine.state === SpireMemberState.In && mine.awaySinceTick === 0 && me.hp > 0
-    && T1 < run.endTick && table.standable(here);
+    && T1 <= run.endTick && table.standable(here); // endTick is still a combat tick on the server
   if (!canMove) return;
   const safety = sp.safety ?? spireSafetyCached(String(run.id), fight, run.rules, blocked);
   const scored = horizonMoves(here, table, (k, p0, p1, p2) => grids[k - 1].hits(p0, p1, p2));

@@ -293,7 +293,7 @@ state In. The run becomes Active with `startTick = T + 5` (intro) and
 |---|---|---|
 | Clear | Boss HP reaches 0 (swing or star) | Cleared, `clearTicks = T - startTick`. Present In members are ejected first (Done), away members become Left; then rewards (section 3.9). `SpireClear` world event. |
 | Wipe | No member In any more (away In members still count) | Failed(Wiped). No refund. |
-| Timeout | `T >= endTick` | Failed(TimedOut): present members ejected (Done), away members Left. No refund. |
+| Timeout | `T >= endTick`, checked after that tick's swings, stars and bullets (so `endTick` is the last combat tick; /danger and /state cover it) | Failed(TimedOut): present members ejected (Done), away members Left. No refund. |
 | Abandoned | Every In member away, the most recent for 50+ ticks | Failed(Abandoned), one key refunded to each In member at the exit. |
 | Owner close | `configure_bosses` with `spireOpen` false | Lobbies deleted ("The Sunken Spire was sealed; your party broke up"); Active runs Failed(Closed) with key refunds. |
 | Rules reset | A run's `rules != SPIRE_RULES_VERSION` after a publish | Lobbies deleted ("The Spire was updated: open a new party"); Active runs Failed(Reset) with key refunds. |

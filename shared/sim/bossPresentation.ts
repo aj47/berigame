@@ -9,7 +9,7 @@
 import type { BossConfigLike } from './bossConfig';
 import {
   CLATTER_DIR_NAMES, SPIRE_MEMBER_STATE_NAMES, SPIRE_OUTCOME_NAMES, SPIRE_STAGE_NAMES, clatterBaitId, clatterTelegraphView,
-  spireLiveStars,
+  spireLiveStars, spireNextStarsIn,
 } from './bossDanger';
 import { CLATTER_GLADE, CLATTER_HOME, CLATTER_STONES, SPIRE_CENTRE, SPIRE_EXIT, SPIRE_GATE, SPIRE_GATE_RANGE, inClatterGlade, inSpireFloor } from './bossZones';
 import {
@@ -182,7 +182,6 @@ function describeRun(run: SpireRunInput, fight: SpireFightLike, members: readonl
   const active = run.stage === SpireStage.Active;
   const enraged = active && spireEnraged(run.startTick, tick);
   const live = spireLiveStars(run, fight, tick + 1);
-  const nextTick = live ? live.nextTick : run.startTick;
   return {
     runId: String(run.id),
     stage: SPIRE_STAGE_NAMES[run.stage] ?? 'unknown',
@@ -200,7 +199,7 @@ function describeRun(run: SpireRunInput, fight: SpireFightLike, members: readonl
     stars: active ? {
       wave: live ? live.wave : -1,
       live: live ? live.stars.map((s) => ({ x: s.x, z: s.z, ticksLeft: live.lastTick - tick })) : [],
-      nextInTicks: nextTick < run.endTick ? Math.max(1, nextTick - tick) : null,
+      nextInTicks: spireNextStarsIn(run, live, tick + 1),
     } : null,
     members: members.map((m) => {
       const p = input.player(m.identity);

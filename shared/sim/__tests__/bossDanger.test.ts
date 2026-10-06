@@ -276,8 +276,30 @@ describe('stars', () => {
   it('has no stars before the start or after the end', () => {
     const fight = freshFight();
     expect(spireLiveStars(activeRun(), fight, S - 1)).toBeNull();
-    expect(spireLiveStars(activeRun(), fight, S + 600)).toBeNull();
+    expect(spireLiveStars(activeRun(), fight, S + 601)).toBeNull();
     expect(spireLiveStars(activeRun({ stage: SpireStage.Cleared }), fight, S + 5)).toBeNull();
+  });
+
+  it('counts the timeout tick: the server still runs swings, stars and bullets on T = endTick', () => {
+    const run = activeRun();
+    const fight = freshFight();
+    // Wave 50 lands on endTick (S + 600) and can be caught that tick only.
+    const last = spireLiveStars(run, fight, S + 600)!;
+    expect(last.wave).toBe(50);
+    expect(last.lastTick).toBe(S + 600);
+    expect(spireLiveStars(run, fight, S + 599)!.lastTick).toBe(S + 599);
+    const me = SPIRE_SPAWNS[0];
+    // One tick before: the wave still to come is announced.
+    expect(buildDangerFeed(spireInput(S + 588, me, fight, {}, run)).nextStars).toEqual({ inTicks: 12 });
+    // At endTick - 1 the feed covers tick endTick: its stars and hit-free moves, and no wave after it.
+    const feed = buildDangerFeed(spireInput(S + 599, me, fight, {}, run));
+    expect(feed.stars).toEqual(last.stars.map((t) => ({ x: t.x, z: t.z, ticksLeft: 1 })));
+    expect(feed.nextStars).toBeUndefined();
+    expect(feed.moves.length).toBeGreaterThan(0);
+    expect(feed.best).not.toBeNull();
+    // At endTick the run is over for the next tick: nothing to catch or dodge, and no stale "next wave in 1".
+    const over = buildDangerFeed(spireInput(S + 600, me, fight, {}, run));
+    expect([over.stars, over.nextStars, over.moves]).toEqual([[], undefined, []]);
   });
 });
 
