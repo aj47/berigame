@@ -9,6 +9,7 @@ import { readSlots, writeSlots } from '../lib/inventory';
 import { requireOwner } from '../lib/access';
 import { currentTick, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { grantXp, skillLevel } from '../lib/progress';
+import { refuseOnSpireFloor } from '../lib/spireGuards';
 import type { Ctx, GardenPlotRow } from '../lib/types';
 
 /**
@@ -28,6 +29,7 @@ export const plantGarden = spacetimedb.reducer(
   { plot: t.u8(), itemId: t.string() },
   (ctx, { plot, itemId }) => {
     const p = requireAlivePlayer(ctx);
+    refuseOnSpireFloor(p);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, currentTick(ctx));
     const snap = readSlots(ctx, p.identity);
@@ -49,6 +51,7 @@ export const harvestGarden = spacetimedb.reducer(
   { plot: t.u8() },
   (ctx, { plot }) => {
     const p = requireAlivePlayer(ctx);
+    refuseOnSpireFloor(p);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, currentTick(ctx));
     const row = plotRow(ctx, p.identity, plot);

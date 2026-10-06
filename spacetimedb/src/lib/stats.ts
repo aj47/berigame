@@ -79,7 +79,8 @@ export function statsItem(ctx: Ctx, id: Identity, itemId: string): void {
 /** Called for players whose row changed in a tick; only looks up stats outside the Grove. */
 export function statsPosition(ctx: Ctx, id: Identity, at: Tile): void {
   const area = areaOf(at);
-  if (area === 'grove') return;
+  // The Spire floor has no milestone: skip the PK read on every dodge step.
+  if (area === 'grove' || area === 'spire') return;
   edit(ctx, id, (row) => {
     if (area === 'hedge' && !row.reachedHedgeAt) return { ...row, reachedHedgeAt: ctx.timestamp, lastStep: furthest(row.lastStep, 'hedge') };
     // Past the boulder line counts as having reached the Coast (no separate Boulders column yet).

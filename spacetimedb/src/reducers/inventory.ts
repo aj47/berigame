@@ -15,6 +15,7 @@ import { unlockCosmetic } from '../lib/progress';
 import { Cosmetic } from '../../../shared/sim';
 import { foodHealing } from '../../../shared/sim/frontier/engine';
 import { frontierRepository, projectFrontier } from '../lib/frontier';
+import { onSpireFloor, refuseOnSpireFloor, spireEatGuard } from '../lib/spireGuards';
 
 /** A weapon is only held while a copy of it sits in the quick slots. Mutates `p`. */
 function sheatheIfGone(p: PlayerRow, slots: readonly Slot[]): void {
@@ -34,6 +35,8 @@ export function eatFromSlot(ctx: Ctx, slot: number) {
     if (!item) throw new SenderError('empty slot');
     const def = getItemDef(item.itemId);
     if (!def || def.healthRestore <= 0) throw new SenderError('not edible');
+    // At most SPIRE_MEALS meals per member per run (counted on the member row).
+    if (onSpireFloor(p)) spireEatGuard(ctx, p);
     const { slots } = removeFromSlot(snap.slots, slot, 1);
     writeSlots(ctx, p.identity, snap, slots);
     const before = p.hp;
@@ -77,6 +80,8 @@ export const dropItem = spacetimedb.reducer(
   (ctx, { slot, quantity }) => {
     if (slot >= INVENTORY_SIZE || quantity < 1) throw new SenderError('bad drop');
     const p = requireAlivePlayer(ctx, true);
+    // Ground items are global: one dropped on the floor would show in every run.
+    refuseOnSpireFloor(p, 'You cannot drop items inside the Sunken Spire');
     const T = currentTick(ctx);
     touchInput(p, T);
     const snap = readSlots(ctx, p.identity);
@@ -96,6 +101,7 @@ export const pickupItem = spacetimedb.reducer(
     const item = ctx.db.groundItem.id.find(id);
     if (!item) throw new SenderError('item is gone');
     const p = requireAlivePlayer(ctx);
+    refuseOnSpireFloor(p, 'You cannot pick that up inside the Sunken Spire');
     const T = currentTick(ctx);
     touchInput(p, T);
     clearInteractions(ctx, p);

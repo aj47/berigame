@@ -8,6 +8,7 @@ import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
 import { ensureGiant } from '../lib/giant';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
+import { refuseOnSpireFloor } from '../lib/spireGuards';
 
 /**
  * Walk up to the Giant and keep swinging at it with whatever you hold. Open to
@@ -19,6 +20,7 @@ export const attackGiant = spacetimedb.reducer(
   { giantId: t.u32() },
   (ctx, { giantId }) => {
     const p = requireAlivePlayer(ctx);
+    refuseOnSpireFloor(p);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const T = currentTick(ctx);
     const giant = giantId === GIANT_ID ? ensureGiant(ctx, T) : ctx.db.giant.id.find(giantId);

@@ -5,6 +5,7 @@ import { requireAlivePlayer, currentTick, touchInput, savePlayer, clearInteracti
 import { profile, saveProfile, progress, contribute, creditFor, carrying, spend, finishExpedition, syncShowcase, duelFor } from '../lib/adventure';
 import { giveItem } from '../lib/inventory';
 import { requireCapability } from '../lib/access';
+import { onSpireFloor, refuseOnSpireFloor } from '../lib/spireGuards';
 
 export const equipTechnique = spacetimedb.reducer({ technique: t.u8() }, (ctx, { technique }) => {
   const p = requireAlivePlayer(ctx); touchInput(p, currentTick(ctx));
@@ -20,6 +21,7 @@ export const expeditionAction = spacetimedb.reducer({ action: t.string(), expedi
   const { action, expeditionId, target, x, z, destination } = input;
   if (!(EXPEDITION_ACTIONS as readonly string[]).includes(action)) throw new SenderError('Unknown expedition action');
   const p = requireAlivePlayer(ctx), T = currentTick(ctx); touchInput(p, T);
+  refuseOnSpireFloor(p);
   if (p.hostile || duelFor(ctx, p.identity)) throw new SenderError('Finish combat before tending expedition cargo');
   const pp = profile(ctx, p.identity), previous = ctx.db.expeditionMember.identity.find(p.identity);
   const old = previous && ctx.db.expedition.id.find(previous.expeditionId);
@@ -134,6 +136,8 @@ export const duelAction = spacetimedb.reducer({ action: t.string(), target: t.id
   const existing = [...ctx.db.friendlyDuel.iter()].find(d => d.stage !== 'complete' && (sameId(d.a, p.identity) && sameId(d.b, target) || sameId(d.b, p.identity) && sameId(d.a, target)));
   if (action === 'surrender' || action === 'decline') { if (existing) ctx.db.friendlyDuel.id.update({ ...existing, stage: 'complete', expiresTick: T + 50, result: `${p.name} ${action === 'surrender' ? 'surrendered' : 'declined'}. No items lost.` }); savePlayer(ctx, p); return; }
   if (!['challenge', 'accept'].includes(action)) throw new SenderError('Choose challenge, accept, decline or surrender');
+  // Declining or surrendering stays possible; a new duel never starts across or inside the floor.
+  if (onSpireFloor(p) || onSpireFloor(other)) throw new SenderError('You cannot duel inside the Sunken Spire');
   requireCapability(ctx, p.identity, 'combat'); requireCapability(ctx, target, 'combat');
   if (!other.online || other.state !== PlayerState.Alive || chebyshev(p, other) > 4) throw new SenderError('Walk within four tiles of an available player');
   if (inSafeRing(p) || inSafeRing(other)) throw new SenderError('Both players must step outside the safe ring to duel');
