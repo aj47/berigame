@@ -10,7 +10,7 @@ import { useLoadingStore } from "../store";
 import SocialTabs from "./SocialTabs";
 import "./friends.css";
 
-const AREA_NAMES = { grove: "the Grove", hedge: "the brambles", coast: "the Coast", boulders: "the Boulders" } as const;
+const AREA_NAMES = { grove: "the Grove", hedge: "the brambles", coast: "the Coast", boulders: "the Boulders", spire: "the Sunken Spire" } as const;
 const PENDING_KEY = "berigame.pendingInvite";
 
 /**

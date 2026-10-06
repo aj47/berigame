@@ -1,4 +1,4 @@
-import { BRIDGES, FOREST_TREES, GRID_SIZE, LANDMARKS, TRAILS, inGiantHeadland, isBridge, terrainField } from '@sim';
+import { BRIDGES, ClatterState, FOREST_TREES, GRID_SIZE, LANDMARKS, TRAILS, inGiantHeadland, inSpireFloor, isBridge, terrainField } from '@sim';
 import { PLOTS, REGIONS, type Location } from '../../../shared/sim/frontier/catalog';
 import { HOME_GRID, homeLand, homeLocation, homePoint, MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
 import { meadowField, regionLand } from '../../../shared/sim/frontier/regions';
@@ -51,6 +51,7 @@ export function mapDestinationAt(x: number, y: number, size: number, view: HomeM
   const point = (connected ? homeMapProjection(size, view) : legacyMapProjection(size)).pointAt(x, y);
   const tile = { x: Math.round(point.x), z: Math.round(point.z) };
   const destination: Location = connected ? homeLocation(tile) : { region: 'bramblewild', ...tile };
+  if (destination.region === 'bramblewild' && inSpireFloor(destination)) return null;
   return regionLand(destination.region, destination) ? destination : null;
 }
 const plots = PLOTS.filter(p => p.region === 'settlement');
@@ -66,7 +67,8 @@ const geography = Array.from({ length: GEO_WIDTH * GEO_HEIGHT }, (_, i) => {
   const meadow = x >= MEADOW_OFFSET.x;
   const localX = x - MEADOW_OFFSET.x, localZ = z - MEADOW_OFFSET.z;
   const depth = meadow ? meadowField(localX, localZ) : terrainField(x, z);
-  if (!homeLand({ x, z })) {
+  // The Spire's sealed floor is drawn as the sea it sits in (it is not reachable land).
+  if (!homeLand({ x, z }) || (!meadow && inSpireFloor({ x, z }))) {
     if (depth < -4.5) return null;
     return { x, z, color: depth < -2.3 ? '#3c8991' : depth < -.9 ? '#66a6a5' : '#98c1b2' };
   }
@@ -220,6 +222,8 @@ export function drawHomeMap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
     ctx.font = '700 11px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#364936'; ctx.fillText(String(index + 1), p.x, p.z);
   });
+  // Boss markers stay on the small map (outside `detailed`).
+  drawBossMarkers(ctx, m, x, scale, size, z);
   for (const bag of m.bags) { dot(bag, '#425744', 3.4); dot(bag, '#ffe09a', 2.5); }
   for (const p of m.others) {
     dot(p, '#365344', detailed ? 2.7 : 1.8);
@@ -231,4 +235,56 @@ export function drawHomeMap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
     ctx.strokeStyle = '#223e30'; ctx.lineWidth = 1.3; ctx.stroke();
   }
   ctx.restore();
+}
+
+/**
+ * Clatterhorn (a teal beetle glyph with 'Z', '!' or its return countdown) and
+ * the Spire Gate (an obsidian arch with the parties inside). Drawn at every
+ * map size, so both show on the small map too.
+ */
+export function drawBossMarkers(ctx: CanvasRenderingContext2D, m: Pick<MinimapModel, 'clatter' | 'spire'>, px: (v: number) => number, scale: number, size: number, pz: (v: number) => number = px): void {
+  const font = Math.min(12, Math.max(8, Math.round(size / 13)));
+  const tag = (text: string, x: number, y: number, color: string) => {
+    ctx.font = `700 ${font}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(20,16,12,0.85)';
+    ctx.fillStyle = color;
+    ctx.strokeText(text, x, y);
+    ctx.fillText(text, x, y);
+  };
+  if (m.spire) {
+    const x = px(m.spire.x), y = pz(m.spire.z), k = Math.max(3.5, scale * 1.6);
+    ctx.fillStyle = m.spire.active > 0 ? '#b79bff' : '#3b2f55';
+    ctx.strokeStyle = '#1c1630';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x - k, y + k); ctx.lineTo(x - k, y - k * 0.2); ctx.arc(x, y - k * 0.2, k, Math.PI, 0); ctx.lineTo(x + k, y + k);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    const count = m.spire.active + m.spire.queued;
+    if (count > 0) tag(m.spire.queued ? `${m.spire.active}+${m.spire.queued}` : String(m.spire.active), x, Math.max(font + 1, y - k * 1.3), '#e9e3ff');
+  }
+  if (m.clatter) {
+    const x = px(m.clatter.x), y = pz(m.clatter.z), k = Math.max(3.5, scale * 1.8);
+    const resting = m.clatter.state === ClatterState.Dormant || m.clatter.state === ClatterState.Burrowed;
+    ctx.globalAlpha = resting ? 0.6 : 1;
+    ctx.fillStyle = '#2e7d6f';
+    ctx.strokeStyle = '#13302b';
+    ctx.lineWidth = 1.2;
+    // Beetle: an oval shell split down the back, with a forked horn.
+    ctx.beginPath();
+    ctx.ellipse(x, y, k * 0.8, k, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y - k * 0.6); ctx.lineTo(x, y + k);
+    ctx.moveTo(x, y - k); ctx.lineTo(x - k * 0.45, y - k * 1.45);
+    ctx.moveTo(x, y - k); ctx.lineTo(x + k * 0.45, y - k * 1.45);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    tag(m.clatter.label, x, Math.max(font + 1, y - k * 1.5), m.clatter.label === '!' ? '#ffcf7a' : '#e9e3ff');
+  }
 }

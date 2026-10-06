@@ -1,6 +1,6 @@
 import { MATERIALS } from "../../../shared/sim/frontier/catalog";
 import { homePoint, isHomeRegion } from "../../../shared/sim/frontier/homeMap";
-import { drawHomeMap, legacyMapProjection, type HomeMapView } from "../frontier/homeMapArt";
+import { drawBossMarkers, drawHomeMap, legacyMapProjection, type HomeMapView } from "../frontier/homeMapArt";
 import {
   terrainField, trailDistance, isBridge, areaOf, LANDMARKS, SCENERY_BLOCKERS,
   GiantState,
@@ -16,6 +16,11 @@ import {
   facingToYaw,
   getItemDef,
   type Facing,
+  ClatterState,
+  SPIRE_GATE,
+  SpireStage,
+  TICK_MS,
+  inSpireFloor,
 } from "@sim";
 
 /** Everything the minimap draws, in tile coordinates (x right, z down: north up). */
@@ -30,6 +35,31 @@ export interface MinimapModel {
   giant: { x: number; z: number; down: boolean; asleep?: boolean; label?: string } | null;
   /** Your garden terrace; `ripe` plots ready to harvest (a gold ring when > 0). */
   garden?: { x: number; z: number; ripe: number };
+  /** Clatterhorn (absent while Closed or unseeded): "Z" Dormant, "!" awake, a countdown while Burrowed. */
+  clatter?: { x: number; z: number; state: number; label: string };
+  /** The Spire Gate: parties fighting inside and parties queued. */
+  spire?: { x: number; z: number; active: number; queued: number };
+}
+
+/** The Clatterhorn marker for a row at `tick`, or undefined while Closed or missing. */
+export function clatterMarker(row: { x: number; z: number; state: number; stateUntilTick: number } | null | undefined, tick: number): MinimapModel["clatter"] {
+  if (!row || row.state === ClatterState.Closed) return undefined;
+  if (row.state === ClatterState.Burrowed) {
+    const seconds = Math.max(0, Math.ceil(((row.stateUntilTick - tick) * TICK_MS) / 1000));
+    // Burrowed at home; the countdown is to its return.
+    return { x: row.x, z: row.z, state: row.state, label: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` };
+  }
+  return { x: row.x, z: row.z, state: row.state, label: row.state === ClatterState.Dormant ? "Z" : "!" };
+}
+
+/** The Spire Gate marker: Active and Queued run counts. */
+export function spireMarker(runs: Iterable<{ stage: number }> | undefined): MinimapModel["spire"] {
+  let active = 0, queued = 0;
+  for (const r of runs ?? []) {
+    if (r.stage === SpireStage.Active) active++;
+    else if (r.stage === SpireStage.Queued) queued++;
+  }
+  return { x: SPIRE_GATE.x, z: SPIRE_GATE.z, active, queued };
 }
 
 interface Row { x: number; z: number }
@@ -56,12 +86,18 @@ export function minimapModel(input: {
   raid?: RaidRowLike | null;
   nowMs?: number;
   gardenRipe?: number;
+  /** The clatterhorn row (boss store). */
+  clatter?: { x: number; z: number; state: number; stateUntilTick: number } | null;
+  /** Spire runs (boss store), for the gate's count. */
+  spireRuns?: Iterable<{ stage: number }>;
 }): MinimapModel {
   const { meHex, tick } = input;
   let me: MinimapModel["me"] = null;
   const others: MinimapModel["others"] = [];
   for (const p of input.players) {
     if (!isHomeRegion(p.region || "bramblewild")) continue;
+    // The Spire's floor is a sealed instance: nobody standing on it shows on the map.
+    if ((p.region || "bramblewild") === "bramblewild" && inSpireFloor(p) && p.identity.toHexString() !== meHex) continue;
     const point = input.home ? homePoint(p, p.region || "bramblewild") : p;
     const hex = p.identity.toHexString();
     if (hex === meHex) me = { x: point.x, z: point.z, yaw: facingToYaw(p.facing as Facing) };
@@ -93,12 +129,16 @@ export function minimapModel(input: {
     ...homePoint(n, n.region), item: n.item, color: MATERIALS[n.item]?.color ?? getItemDef(n.item)?.color ?? '#7c8794',
     ready: !n.regrowsAt || n.regrowsAt <= (input.nowMs ?? Date.now()),
   }));
-  return { home: input.home, me, others, nodes, resources, bags, giant, garden: { x: GARDEN_CENTER.x - 0.5, z: GARDEN_CENTER.z - 0.5, ripe: input.gardenRipe ?? 0 } };
+  return {
+    home: input.home, me, others, nodes, resources, bags, giant, garden: { x: GARDEN_CENTER.x - 0.5, z: GARDEN_CENTER.z - 0.5, ripe: input.gardenRipe ?? 0 },
+    clatter: clatterMarker(input.clatter, tick), spire: spireMarker(input.spireRuns),
+  };
 }
 
 const mapTiles = Array.from({length:GRID_SIZE*GRID_SIZE},(_,k)=>{
   const x=k%GRID_SIZE,z=Math.floor(k/GRID_SIZE),t={x,z},a=areaOf(t),d=terrainField(x,z);
-  if(a==='sea')return d> -1.3?'#7ac7c4':null;
+  // The Spire's sealed floor is not land you can walk to: draw it as the sea around it.
+  if(a==='sea'||a==='spire')return d> -1.3?'#7ac7c4':null;
   if(isBridge(t))return '#b89562';
   if(a==='hedge')return '#344f2d';
   if(a==='boulder-line')return '#625c54';
@@ -181,6 +221,7 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
       ctx.stroke();
     }
   }
+  drawBossMarkers(ctx, m, px, s, size);
   // Your dropped bag: a red cross in a white ring.
   for (const b of m.bags) {
     const x = px(b.x), y = px(b.z), k = Math.max(3, s * 1.2);

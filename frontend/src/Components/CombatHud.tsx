@@ -7,6 +7,7 @@ import {
   STICK_ITEM_ID,
   chebyshev,
   getItemDef,
+  inSpireFloor,
   isSafe,
   isWeapon,
 } from "@sim";
@@ -126,6 +127,8 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag, frontier }: Props) => {
     ? players.get(me.combatTarget.toHexString())
     : undefined;
   const hostile = me.hostile && !dead;
+  // No PvP on the Spire floor: the opponent block steps aside for the Spire HUD.
+  const onFloor = inBramblewild && inSpireFloor(me);
   const targetAvailable =
     target && target.online && target.state !== PlayerState.Dead
       && (target.region || 'bramblewild') === (me.region || 'bramblewild');
@@ -183,7 +186,7 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag, frontier }: Props) => {
         </div>
         {dead ? (
           <span className="hud-status">Respawning…</span>
-        ) : hostile ? (
+        ) : hostile && !onFloor ? (
           <>
             <div
               className="hud-opponent"

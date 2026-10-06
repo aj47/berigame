@@ -11,6 +11,9 @@ import { useAppearanceRows, useChatMessages, useMyIdentityHex, useMyPlayer, useP
 import { CHAT_BUBBLE_TICKS, DUMMY_IDLE_RESET_TICKS, GIANT_REGEN_IDLE_TICKS, GiantState, bubbleText, type Appearance } from '@sim';
 import { identityHex } from '../../spacetime/identity';
 import { useStackedAvatars } from './avatarStacks';
+import Clatterhorn from '../../bosses/clatterhorn/Clatterhorn';
+import { useBossStore } from '../../bosses/bossStore';
+import { inSpire, isPlayerVisible } from '../../bosses/selectors';
 
 /** Latest chat line per sender that is still fresh enough to float above a head. */
 export function useRecentChatBySender(): Map<string, { text: string; tick: number }> {
@@ -51,6 +54,7 @@ export function useMyTargetHex(): string | null {
  * self-subscribing layers are not re-rendered by every server tick here.
  */
 const MARKERS = <><DeathBagMarker /><CameraLookProbe /></>;
+const CLATTERHORN = <Clatterhorn />;
 /* Shared by every avatar, including your own (PlayerController). */
 const SHARED_LAYERS = <><AvatarDecals /><AvatarOverlay /><AnimationCulling /></>;
 // After this many ticks without a hit the dummy's HP bar is gone and its HP is full,
@@ -66,13 +70,20 @@ const RenderOnlineUsers = ({ frontierBlocked, frontier }: { frontierBlocked?: Se
   const dummies = useTrainingDummies();
   const giants = useGiants();
   const tick = useTick();
-  const visible = useMemo(() => players.filter(p => p.online && (!p.region || p.region === 'bramblewild' || p.region === 'settlement')), [players]);
+  const runHexes = useBossStore((s) => s.myRunHexes);
+  const meRow = useMemo(() => (me ? players.find((p) => identityHex(p.identity) === me) ?? null : null), [players, me]);
+  const inside = inSpire(meRow);
+  // The Spire's logical instancing: inside you see only your own run; outside, nobody on the floor.
+  // Chat bubbles and stacks follow, since both are drawn only for these avatars.
+  const visible = useMemo(() => players.filter(p => p.online && (!p.region || p.region === 'bramblewild' || p.region === 'settlement')
+    && isPlayerVisible(p, meRow, runHexes)), [players, meRow, runHexes]);
   const shown = useStackedAvatars(visible, me, target, tick);
 
   return (
     <>
-      {dummies.map((d) => <TrainingDummy key={d.id} dummy={d} tick={Math.min(tick, d.lastHitTick + DUMMY_SETTLED_TICKS)} />)}
-      {giants.map((g) => <Giant key={g.id} giant={g} tick={g.state === GiantState.Defeated ? Math.min(tick, g.respawnTick) : Math.min(tick, g.lastHitTick + GIANT_REGEN_IDLE_TICKS)} />)}
+      {!inside && dummies.map((d) => <TrainingDummy key={d.id} dummy={d} tick={Math.min(tick, d.lastHitTick + DUMMY_SETTLED_TICKS)} />)}
+      {!inside && giants.map((g) => <Giant key={g.id} giant={g} tick={g.state === GiantState.Defeated ? Math.min(tick, g.respawnTick) : Math.min(tick, g.lastHitTick + GIANT_REGEN_IDLE_TICKS)} />)}
+      {!inside && CLATTERHORN}
       {MARKERS}
       {visible.map((p) => {
         const hex = identityHex(p.identity);

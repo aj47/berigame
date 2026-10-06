@@ -67,6 +67,7 @@ const GRAPHICS: { value: Settings["graphics"]; label: string; hint: string }[] =
 const SettingsPanel = ({ open, onClose, recoveryEnabled = false }: Props) => {
   const s = useSettingsStore();
   const attackHintId = useId();
+  const dodgeHintId = useId();
   if (!open) return null;
   return (
     <section className="game-panel settings-panel" aria-label="Settings">
@@ -85,6 +86,11 @@ const SettingsPanel = ({ open, onClose, recoveryEnabled = false }: Props) => {
           <span>One-click attack</span>
         </label>
         <p className="settings-hint" id={attackHintId}>Click an attackable target to walk up and attack. Hold for options.</p>
+        <label className="settings-toggle">
+          <input type="checkbox" checked={s.dodgeAssist} aria-describedby={dodgeHintId} onChange={(e) => s.set({ dodgeAssist: e.target.checked })} />
+          <span>Dodge assist</span>
+        </label>
+        <p className="settings-hint" id={dodgeHintId}>In the Sunken Spire, green dots mark the safe tiles for your next step.</p>
       </fieldset>
       <fieldset className="settings-group">
         <legend>Sound</legend>
