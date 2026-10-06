@@ -67,6 +67,12 @@ import { identityHex } from "../spacetime/identity";
 import { useFirstDayStore } from "../spacetime/stores/firstDayStore";
 import { slotsFromRows } from "../Components/itemUi";
 import { useLoadingStore } from "../store";
+import { useBossStore } from "../bosses/bossStore";
+import { tickClock } from "../spacetime/tickClock";
+import { BossId, BossNoticeKind, TICK_MS, SPIRE_KEY_ITEM_ID } from "@sim";
+import {
+  clatterContributionOf, crossesSpireFloor, dangerFeed, describeBosses, dodgeCheck, onSpireFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows,
+} from "../../agent-api/statePresentation";
 
 export type WebMCPStatus = "checking" | "ready" | "unsupported" | "error";
 
@@ -77,6 +83,30 @@ const describeWeapon = (weapon: string) => ({
   weapon: weapon ? getItemDef(weapon)?.name ?? weapon : "Punch",
   damage: swingDamage(weapon),
 });
+
+/** The boss rows of the browser cache (useBossStore), in the shape the shared presenters read. */
+const bossRows = (): BossRows => {
+  const s = useBossStore.getState();
+  return { config: s.config, clatter: s.clatter, runs: [...s.runs.values()], members: [...s.members.values()], fights: [...s.fights.values()] };
+};
+
+/** Your Clatterhorn damage this fight: the latest YouHit total since the beetle woke (the gateway's rule). */
+const clatterContribution = () => {
+  const s = useBossStore.getState();
+  if (!s.clatter) return null;
+  for (let i = s.notices.length - 1; i >= 0; i--) {
+    const n = s.notices[i].row;
+    if (n.boss === BossId.Clatterhorn && n.kind === BossNoticeKind.YouHit) return clatterContributionOf(n, s.clatter);
+  }
+  return null;
+};
+
+/** One blocked set per tree list, so the danger feed's move tables (cached per Set) survive between calls. */
+let blockedFor: { trees: unknown; set: Set<number> } | undefined;
+const stableBlocked = (trees: any[]) => {
+  if (blockedFor?.trees !== trees) blockedFor = { trees, set: worldBlockedSet(trees) };
+  return blockedFor.set;
+};
 
 /** Registers game actions in the current page and reuses the live game client. */
 export default function GameWebMCPTools({ onStatusChange }: Props) {
@@ -215,16 +245,22 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           });
           const slots = slotsFromRows(state.inventory);
           const memory = useFirstDayStore.getState();
-          const goal = player && home
-            ? firstDayGoal({ me: player, slots, trees: state.trees, others: state.players.filter((row: any) => row !== player), tick: state.tick, canFight: true, foragingXp: state.skills?.foragingXp ?? 0, done: memory.done, seen: memory.seen, giant: state.giants?.[0] ?? null }).goal
+          // Floor players are invisible from outside; inside you see only your run (the /state.players rule).
+          const rows = bossRows();
+          const inside = !!player && onSpireFloor(player);
+          const visible: any[] = player ? visiblePlayers(player, state.players, rows) : state.players;
+          const goal = player && home && !inside
+            ? firstDayGoal({ me: player, slots, trees: state.trees, others: visible.filter((row: any) => row !== player), tick: state.tick, canFight: true, foragingXp: state.skills?.foragingXp ?? 0, done: memory.done, seen: memory.seen, giant: state.giants?.[0] ?? null }).goal
             : null;
+          const keysHeld = slots.reduce((n: number, s: any) => n + (s?.itemId === SPIRE_KEY_ITEM_ID ? s.quantity : 0), 0);
+          const bosses = player ? describeBosses(rows, player, state.tick, { players: state.players, keysHeld, contribution: clatterContribution() }) : { clatterhorn: null, spire: null };
           return JSON.stringify({
             goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action } : null,
             objective: player ? describeObjective(region, goal, frontier) : null,
             frontier,
             world: {
               region,
-              map: home ? TERRAIN_MAP : null,
+              map: home && !inside ? TERRAIN_MAP : null,
               brambles: { center: SPAWN_TILE, ring: HEDGE_RING, tiles: brambleTiles(), key: STICK_ITEM_ID, rule: "The rounded woodland boundary is thorny brambles (see tiles): step onto one only while holding a stick, or from the Coast. You can always walk home." },
               safeRing: { center: SPAWN_TILE, radius: SAFE_RADIUS },
               boulders: { key: BOULDER_KEY_ITEM, rule: "Past the Coast's south-east corner, a boulder line on walkable land with max(x, z) = 50 and z >= 32 guards the Boulders: step onto it only while holding a stone club, or from the Boulders. You can always walk home. Check world.map.rows for the coastline, river and crossings." },
@@ -248,6 +284,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                 respawnInTicks: g.state === GiantState.Defeated ? Math.max(0, g.respawnTick - state.tick) : 0,
               };
             })(),
+            clatterhorn: bosses.clatterhorn,
+            spire: bosses.spire,
             connection: {
               online: typeof navigator === "undefined" ? true : navigator.onLine,
               connected: state.websocketConnected && state.gameDataLoaded && !state.worldUpdatesStalled,
@@ -273,7 +311,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                   action: describeAction(player, gathering, state.trees.find((tree: any) => tree.id === Number(player.pendingId))),
                 }
               : null,
-            onlinePlayers: state.players
+            onlinePlayers: visible
               .filter((row: any) => row.online)
               .map((row: any) => ({
                 id: identityHex(row.identity),
@@ -286,7 +324,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
                 alive: row.state === PlayerState.Alive,
                 isYou: player ? identityHex(row.identity) === identityHex(player.identity) : false,
               })),
-            berryTrees: (home ? state.trees : []).map((tree: any) => ({
+            berryTrees: (home && !inside ? state.trees : []).map((tree: any) => ({
               id: tree.id,
               berry: getItemDef(tree.itemId)?.name ?? tree.itemId,
               tile: { x: tree.x, z: tree.z },
@@ -316,7 +354,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
       ),
       tool(
         "move_to_tile",
-        `Walk your character to a tile. Coordinates are integer tile positions from 0 through ${GRID_SIZE - 1}: world.map.rows describes dry land, water and bridges; the Boulders lie in the south-east headlands. Water is impassable and routes use the bridges. This changes your live character position over time.`,
+        `Walk your character to a tile. Coordinates are integer tile positions from 0 through ${GRID_SIZE - 1}: world.map.rows describes dry land, water and bridges; the Boulders lie in the south-east headlands. Water is impassable and routes use the bridges. The Sunken Spire floor is sealed: only the Spire Gate (spire_party) takes you in, and from inside you stay on the floor. This changes your live character position over time.`,
         {
           x: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: `Horizontal tile coordinate, 0–${GRID_SIZE - 1}.` },
           z: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: `Vertical tile coordinate, 0–${GRID_SIZE - 1}.` },
@@ -327,6 +365,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           if (error) return error;
           if (!Number.isInteger(x) || !Number.isInteger(z) || x < 0 || x >= GRID_SIZE || z < 0 || z >= GRID_SIZE)
             return `Choose integer tile coordinates from 0 through ${GRID_SIZE - 1}.`;
+          if (crossesSpireFloor(player, { x, z }))
+            return reportAction(await live.current.actions.setTarget(x, z), `${SPIRE_FLOOR_MOVE}; you stop at its edge (blockedBy: spire).`);
           const blocked = worldBlockedSet(live.current.trees);
           const slots = slotsFromRows(live.current.inventory);
           const hasStick = holdsItem(slots, player.weapon ?? "", STICK_ITEM_ID);
@@ -492,6 +532,70 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           const definition = item ? getItemDef(item.itemId) : undefined;
           if (!item || !definition?.healthRestore) return "That slot does not contain a healing berry. Inspect your inventory and choose a berry slot.";
           return reportAction(await live.current.actions.eatBerry(slot), `Ate a ${definition.name.toLowerCase()}. Inspect the game state to see your health.`);
+        },
+      ),
+      tool(
+        "attack_clatterhorn",
+        "Walk to Clatterhorn, the beetle in its glade on the Coast (inspect_game_state clatterhorn; you need a stick to reach the Coast), and keep swinging from within 2 tiles of its centre. PvE, open to everyone, no PvP in the glade. Leave clatterhorn.telegraph.tiles before landsInTicks reaches 0 (inspect_danger lists safe moves; dodge_to_tile steps there), then call this again: moving stops your swings. A charge into a standing stone flips it for double damage. Everyone with 16+ damage and a recent swing at its defeat is rewarded.",
+        {},
+        [],
+        async () => {
+          const { error } = requirePlayer() as any;
+          if (error) return error;
+          return reportAction(await live.current.actions.attackClatterhorn(), "Walking to Clatterhorn; your character swings at it automatically. Watch its telegraphs.");
+        },
+      ),
+      tool(
+        "spire_party",
+        "The Sunken Spire bullet-hell dungeon for 1-4 players (inspect_game_state spire). Stand within 3 tiles of the Spire Gate (62,45). op open: start a public lobby you lead. op join: runId from spire.lobbies, or no runId to quick-join the newest lobby. op start (leader): every member spends a spire_key (3 obsidian + 1 gleamshell). op leave: leave a lobby, or forfeit a run (no rewards). Inside, call inspect_danger every tick and dodge_to_tile one of its moves; catch stars; at most 6 meals per run.",
+        {
+          op: { type: "string", enum: ["open", "join", "start", "leave"], description: "What to do." },
+          runId: { type: "string", pattern: "^[0-9]{1,20}$", description: "join only: the lobby's runId (omit to quick-join)." },
+        },
+        ["op"],
+        async ({ op, runId }) => {
+          const { error } = requirePlayer() as any;
+          if (error) return error;
+          if (!["open", "join", "start", "leave"].includes(op)) return "Choose op open, join, start or leave.";
+          if (runId !== undefined && (op !== "join" || !/^[0-9]{1,20}$/.test(String(runId)) || BigInt(runId) > 18446744073709551615n))
+            return "Only join takes a runId: a listed spire.lobbies runId.";
+          const a = live.current.actions;
+          if (op === "open") return reportAction(await a.spireOpen(), "Lobby open. Others can join; start when your party is ready.");
+          if (op === "join") return reportAction(await a.spireJoin(BigInt(runId ?? 0)), "Joined the party. Wait at the gate for the leader to start.");
+          if (op === "start") return reportAction(await a.spireStart(), "The run has started. Call inspect_danger every tick and dodge.");
+          return reportAction(await a.spireLeave(), "You left the Spire party.");
+        },
+      ),
+      tool(
+        "inspect_danger",
+        "The compact boss danger feed (the same JSON as GET /api/agent/v1/danger, free here): on the Sunken Spire floor or at Clatterhorn, a map of the next 3 ticks (. safe, 1-7 bitmask of unsafe ticks +1/+2/+3, # blocked, * star), the hit-free moves for the next tick (best first), a survival path, stars, boss, party and telegraph. where is null elsewhere.",
+        {},
+        [],
+        () => {
+          const state = live.current;
+          if (!state.me) return "Your character is still joining the island. Inspect the game again shortly.";
+          const ageMs = tickClock.tick === state.tick && tickClock.arrivedAt > 0 ? performance.now() - tickClock.arrivedAt : 0;
+          return JSON.stringify(dangerFeed(bossRows(), state.me, state.tick, { players: state.players, blocked: stableBlocked(state.trees), ageMs, tickMs: TICK_MS }));
+        },
+        { readOnlyHint: true, untrustedContentHint: true },
+      ),
+      tool(
+        "dodge_to_tile",
+        "Step to a tile at most 2 tiles away for the next tick, without the path search of move_to_tile. Only on the Sunken Spire floor or at Clatterhorn's glade, to a standable tile; pick one from inspect_danger moves.",
+        {
+          x: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: "Destination tile x." },
+          z: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: "Destination tile z." },
+        },
+        ["x", "z"],
+        async ({ x, z }) => {
+          const { player, error } = requirePlayer() as any;
+          if (error) return error;
+          if (!Number.isInteger(x) || !Number.isInteger(z) || x < 0 || x >= GRID_SIZE || z < 0 || z >= GRID_SIZE)
+            return `Choose integer tile coordinates from 0 through ${GRID_SIZE - 1}.`;
+          const check = dodgeCheck(bossRows(), player, { x, z }, live.current.tick, stableBlocked(live.current.trees));
+          if ("problem" in check) return `${check.problem.message} (${check.problem.code}).`;
+          const safety = check.safe === null ? "" : check.safe ? " That move is hit-free next tick." : " Careful: that move is hit next tick.";
+          return reportAction(await live.current.actions.setTarget(x, z), `Dodging to ${x}, ${z} via ${check.via[0]}, ${check.via[1]} (lands at tick ${check.resolvesAtTick}).${safety}`);
         },
       ),
       tool(
