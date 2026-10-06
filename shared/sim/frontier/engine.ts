@@ -428,7 +428,9 @@ function homeRoute(w: World, a: Actor, to: Point, respectBoundaries = true) {
 function queueHomeWalk(w: World, a: Actor, to: Location) {
   check(isHomeRegion(a.region) && !onboard(w, a.id), "Walking is available on the home island");
   check(to.region === a.region || (!a.hostile && (w.canLeaveHomeDistrict?.(a) ?? true)), "Finish your adventure or combat before taking the Meadows trail");
-  check(regionLand(to.region, to), "Choose dry ground in the requested district");
+  // The sealed Spire floor counts as land for the tick's movement mask, but no walk reaches it: refuse it before
+  // routing instead of exhausting two searches over the whole home grid.
+  check(regionLand(to.region, to) && !(to.region === "bramblewild" && inSpireFloor(to)), "Choose dry ground in the requested district");
   const target = homePoint(to, to.region);
   if (!homeRoute(w, a, target)) {
     // Only blame a progression boundary when removing that rule restores a
