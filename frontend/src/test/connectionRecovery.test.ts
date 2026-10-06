@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const test = vi.hoisted(() => ({ callbacks: {} as Record<string, any>, token: undefined as string | undefined, subscribe: vi.fn(), loading: { setConnectionIssue: vi.fn(), setWebsocketConnected: vi.fn(), setGameDataLoaded: vi.fn(), setLoadingMessage: vi.fn() } }));
 vi.mock('../module_bindings', () => ({
-  tables: { world: 'world', player: 'player', appearance: 'appearance', tree: 'tree', groundItem: 'groundItem', chatMessage: 'chat', inventorySlot: 'inventory', combatEvent: 'combat' },
+  tables: { world: 'world', player: 'player', appearance: 'appearance', tree: 'tree', groundItem: 'groundItem', chatMessage: 'chat', inventorySlot: 'inventory', combatEvent: 'combat',
+    // boss_notice is narrowed to your rows by the query (it has no RLS).
+    bossNotice: { where: (f: (row: any) => string) => `bossNotice where ${f({ player: { eq: (id: any) => `player = ${id.toHexString()}` } })}` } },
   DbConnection: { builder: () => {
     const builder: any = {};
     for (const name of ['withUri', 'withDatabaseName']) builder[name] = () => builder;
@@ -47,7 +49,7 @@ describe('failed connection recovery preserves identity', () => {
     test.callbacks.onConnect({ db: { player: { onInsert: vi.fn(), onUpdate: vi.fn(), iter: () => [] } }, subscriptionBuilder: () => subscription }, { toHexString: () => 'testidentity' }, 'new-token');
     expect(saved.get(TOKEN_KEY)).toBe('new-token');
     expect(test.loading.setConnectionIssue).toHaveBeenCalledWith(null, false);
-    expect(test.subscribe).toHaveBeenCalledWith(expect.arrayContaining(['appearance']));
+    expect(test.subscribe).toHaveBeenCalledWith(expect.arrayContaining(['appearance', 'bossNotice where player = testidentity']));
     log.mockRestore();
   });
 });
