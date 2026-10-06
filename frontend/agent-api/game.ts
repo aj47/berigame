@@ -33,6 +33,12 @@ export interface GameSession {
   action(name: string, input: Record<string, any>): Promise<ActionResult>;
   /** GET /danger: the compact boss feed. Throws 503 world_unavailable while the cache is stale (never revokes). */
   danger(): DangerFeed;
+  /**
+   * False once this session's own socket or the gateway control socket has dropped (neither reconnects), so a
+   * 503 from state()/danger() is permanent and the session must be dropped. Ignores tick age: a brief tick stall
+   * while both sockets stay open is still alive and clears by itself.
+   */
+  alive?(): boolean;
   close(): Promise<void>;
   suspend?(): Promise<void>;
 }
@@ -82,7 +88,7 @@ export async function deadline<T>(promise: Promise<T>, ms = 8000): Promise<T> {
 export type ConnectionOptions = { webSocketFactory?: Parameters<ReturnType<typeof DbConnection.builder>['withWSFn']>[0] };
 
 export function connect(credential: Credential, control = false, options: ConnectionOptions = {}) {
-  return new Promise<{ conn: DbConnection; live(): boolean }>((resolve, reject) => {
+  return new Promise<{ conn: DbConnection; live(): boolean; connected(): boolean }>((resolve, reject) => {
     let active = false;
     let lastTick = Date.now();
     let settled = false;
@@ -103,7 +109,7 @@ export function connect(credential: Credential, control = false, options: Connec
           connection.subscriptionBuilder().onError(fail).onApplied(() => {
             if (settled) return;
             settled = true; clearTimeout(timer); lastTick = Date.now();
-            resolve({ conn: connection, live: () => active && Date.now() - lastTick < TICK_MS * 8 });
+            resolve({ conn: connection, live: () => active && Date.now() - lastTick < TICK_MS * 8, connected: () => active });
           }).subscribe(control ? [tables.world, tables.accessPolicy] : [
             tables.frontierView, tables.world, tables.accessPolicy, tables.player.where(row => row.online.eq(true)), tables.tree,
             tables.groundItem, tables.inventorySlot, tables.chatMessage, tables.trainingDummy,
@@ -238,6 +244,7 @@ export async function createGameService(credential: Credential, options: Connect
         identity: player.identity,
         close,
         suspend: async () => { if (link) disconnect(link.conn); await suspend(player.identity); },
+        alive: () => control.connected() && link!.connected(),
         danger() {
           const self = me();
           const tick = conn.db.world.id.find(0)?.tick ?? 0;

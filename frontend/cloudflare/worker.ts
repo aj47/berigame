@@ -475,9 +475,15 @@ export class AgentGateway extends DurableObject<Env> {
         }
       }
       if (path === `${PREFIX}/danger` && request.method === 'GET') {
-        // An ordinary read (CORE_SCOPE). A stale world is a 503 that keeps the session; only 401 removes it.
+        // An ordinary read (CORE_SCOPE). A brief tick stall is a 503 that keeps the session. A dropped socket never
+        // reconnects, so that 503 is permanent: drop the session as /state does, and the agent re-joins cleanly.
         try { return send(200, (await this.sessionGame(row)).danger()); }
-        catch (error) { if (error instanceof ApiError && error.status === 401) await this.remove(row); throw error instanceof ApiError ? error : unavailable(); }
+        catch (error) {
+          const stale = this.live.get(key);
+          if (error instanceof ApiError && error.status === 401) await this.remove(row);
+          else if (stale && stale.alive?.() === false) { this.live.delete(key); if (stale.suspend) await stale.suspend(); else await stale.close(); await this.remove(row); }
+          throw error instanceof ApiError ? error : unavailable();
+        }
       }
       if (acting) {
         this.take(`action:${key}`, AGENT_ACTION_BUDGET.burst, AGENT_ACTION_BUDGET.perSecond, now);
