@@ -1,6 +1,6 @@
 import type { Identity } from 'spacetimedb';
 import { statsItem } from './stats';
-import { GROUND_ITEM_TTL_TICKS, INVENTORY_SIZE, TICK_MS, addItem, emptySlots, type Slot, type Tile } from '../../../shared/sim';
+import { GROUND_ITEM_TTL_TICKS, INVENTORY_SIZE, SPIRE_EXIT, TICK_MS, addItem, emptySlots, inSpireFloor, type Slot, type Tile } from '../../../shared/sim';
 import type { Ctx, GroundItemRow, InventorySlotRow } from './types';
 
 export interface SlotSnapshot {
@@ -60,12 +60,15 @@ export function dropOnGround(
     ctx.db.frontierObject.insert({ key: `drop:${id}`, kind: 'drop', region: at.region, data: JSON.stringify(data) });
     return;
   }
+  // Nothing can be picked up on the sealed Spire floor, and it is unreachable after the run: a pile that would
+  // land there (a raid or Clatterhorn reward paid to a player inside, say) lands at the gate exit instead.
+  const spot = inSpireFloor(at) ? SPIRE_EXIT : at;
   ctx.db.groundItem.insert({
     id: 0n,
     itemId,
     quantity,
-    x: at.x,
-    z: at.z,
+    x: spot.x,
+    z: spot.z,
     droppedBy: owner,
     droppedTick: tick,
     expiresTick: tick + GROUND_ITEM_TTL_TICKS,
