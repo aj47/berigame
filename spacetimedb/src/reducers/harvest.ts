@@ -6,6 +6,7 @@ import { harvestTicksForPlayer } from '../lib/progress';
 import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
 import { clearInteractions, currentTick, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
+import { refuseOnSpireFloor } from '../lib/spireGuards';
 
 /**
  * Walk next to a berry tree (or a Coast node: driftwood pile, tide rock) and pick from it. A regrowing or claimed tree is
@@ -19,6 +20,7 @@ export const startHarvest = spacetimedb.reducer(
     if (!tree) throw new SenderError('no such tree');
     const T = currentTick(ctx);
     const p = requireAlivePlayer(ctx);
+    refuseOnSpireFloor(p);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, T);
     // Picking the tree you are already harvesting keeps the harvest going. Releasing

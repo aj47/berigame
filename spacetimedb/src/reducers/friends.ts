@@ -2,7 +2,7 @@ import { t, SenderError } from 'spacetimedb/server';
 import type { Identity } from 'spacetimedb';
 import spacetimedb from '../schema';
 import {
-  Cosmetic, areaOf, INVITE_TTL_MICROS, MentorMilestone, MAX_FRIENDS, PlayerState, SocialNotice, chebyshev, generateInviteCode, joinSpot, normalizeInviteCode,
+  Cosmetic, SPIRE_EXIT, areaOf, INVITE_TTL_MICROS, MentorMilestone, MAX_FRIENDS, PlayerState, SocialNotice, chebyshev, generateInviteCode, joinSpot, normalizeInviteCode,
 } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
 import { heldKeys } from '../lib/brambles';
@@ -11,6 +11,7 @@ import { notify, notifyThrottled, readPair, writePair } from '../lib/social';
 import { unlockCosmetic } from '../lib/progress';
 import { mentorMilestone, recordInviter } from '../lib/mentor';
 import type { Ctx } from '../lib/types';
+import { onSpireFloor } from '../lib/spireGuards';
 
 function hasFriend(ctx: Ctx, owner: Identity, other: Identity): boolean {
   for (const row of ctx.db.friend.owner.filter(owner)) if (sameId(row.friend, other)) return true;
@@ -86,13 +87,16 @@ export const redeemInvite = spacetimedb.reducer(
     const attacked = [...ctx.db.player.iter()].some((o) => o.online && o.hostile && sameId(o.combatTarget, p.identity));
     if ((p.region || 'bramblewild') !== 'bramblewild' || (inviter.region || 'bramblewild') !== 'bramblewild') {
       text = `${lead} Meet them by travelling to their region.`;
+    } else if (onSpireFloor(p)) {
+      // A redeem never pulls a member out of a Spire run.
+      text = `${lead} Meet them after your Spire run.`;
     } else if (!inviter.online || inviter.state !== PlayerState.Alive) {
       text = `${lead} They are not around right now.`;
     } else if (p.state !== PlayerState.Alive) {
       text = joinerHas ? `${lead} Use Go to once you are back on your feet.` : `${lead} You cannot join them while you are down.`;
     } else if ((p.combatTarget && p.hostile) || attacked) {
       text = joinerHas ? `${lead} Finish your fight, then use Go to.` : `${lead} You cannot join them mid-fight.`;
-    } else if (chebyshev(p, inviter) <= 2) {
+    } else if (chebyshev(p, onSpireFloor(inviter) ? SPIRE_EXIT : inviter) <= 2) {
       text = joinerHas ? lead : `You are already beside ${inviter.name}. ${lead}`;
     } else {
       const keys = heldKeys(ctx, p);

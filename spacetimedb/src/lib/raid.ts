@@ -1,5 +1,5 @@
 import {
-  GIANT_ID, GIANT_MAX_HP, GiantEventKind, GiantState, PlayerState, RAID_WINDOW_MS, RaidOutcome, freshGiant, inBoulders, nextRaidWakeMs, raidMaxHp,
+  GIANT_ID, GIANT_MAX_HP, GiantEventKind, GiantState, PlayerState, RAID_WINDOW_MS, RaidOutcome, freshGiant, inBoulders, inSpireGateZone, nextRaidWakeMs, raidMaxHp,
 } from '../../../shared/sim';
 import { emitGiantEvent, ensureGiant } from './giant';
 import type { Ctx, GiantRaidRow, GiantRow, PlayerRow } from './types';
@@ -52,10 +52,10 @@ export function clearContributions(ctx: Ctx): void {
   for (const row of [...ctx.db.giantContribution.iter()]) ctx.db.giantContribution.identity.delete(row.identity);
 }
 
-/** Alive, online players in the Boulders: the raid's HP scale. */
+/** Alive, online players in the Boulders: the raid's HP scale. A Spire party waiting at the gate is not a raider. */
 export function countRaiders(players: Iterable<PlayerRow>): number {
   let n = 0;
-  for (const p of players) if (p.online && p.state === PlayerState.Alive && inBoulders(p)) n++;
+  for (const p of players) if (p.online && p.state === PlayerState.Alive && inBoulders(p) && !inSpireGateZone(p)) n++;
   return n;
 }
 

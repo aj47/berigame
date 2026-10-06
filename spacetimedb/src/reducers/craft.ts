@@ -7,6 +7,7 @@ import { MentorMilestone, STONE_CLUB_ITEM_ID, Skill, craft as craftSlots, craftR
 import { dropOnGround, readSlots, writeSlots } from '../lib/inventory';
 import { currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
 import { cosmeticRow, grantXp, skillLevel, unlockCosmetic } from '../lib/progress';
+import { refuseOnSpireFloor } from '../lib/spireGuards';
 
 /**
  * The verb "make": turn a recipe's inputs into its output, instantly.
@@ -21,6 +22,8 @@ export const craft = spacetimedb.reducer(
     const def = getRecipe(recipe);
     if (!def) throw new SenderError('no such recipe');
     const p = requireAlivePlayer(ctx, true);
+    // An overflow would land on the floor, and ground items are global.
+    refuseOnSpireFloor(p, 'You cannot craft inside the Sunken Spire');
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const T = currentTick(ctx);
     touchInput(p, T);

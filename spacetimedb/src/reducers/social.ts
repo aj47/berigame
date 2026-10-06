@@ -6,6 +6,7 @@ import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
 import { ensureDummy } from '../lib/dummy';
+import { refuseOnSpireFloor } from '../lib/spireGuards';
 
 /**
  * Walk up to a training dummy and keep swinging at it with whatever you hold.
@@ -17,6 +18,7 @@ export const attackDummy = spacetimedb.reducer(
   { dummyId: t.u32() },
   (ctx, { dummyId }) => {
     const p = requireAlivePlayer(ctx);
+    refuseOnSpireFloor(p);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const dummy = dummyId === DUMMY_ID ? ensureDummy(ctx) : ctx.db.trainingDummy.id.find(dummyId);
     if (!dummy) throw new SenderError('no such dummy');
