@@ -10,6 +10,8 @@ const mock = vi.hoisted(() => ({
   canvasEvents: null as any,
   focus: undefined as any,
   trees: [{ id: 1, x: 30, z: 30, kind: 0, itemId: 'blueberry', cooldownUntilTick: 0 }],
+  loads: 0,
+  failLoads: 0,
 }));
 const { stub } = vi.hoisted(() => ({ stub: (id: string) => () => <div data-testid={id} /> }));
 
@@ -46,9 +48,13 @@ vi.mock('../Components/3D/DebugBridge', () => ({ default: stub('debug') }));
 vi.mock('../fx/FxLayer', () => ({ default: stub('fx') }));
 vi.mock('../bosses/clatterhorn/ClatterGlade', () => ({ default: stub('clatter-glade') }));
 vi.mock('../bosses/spire/SpireGate', () => ({ default: stub('spire-gate') }));
-vi.mock('../bosses/spire/loadSpireScene', () => ({ loadSpireScene: () => Promise.resolve({ default: () => <div data-testid="spire-scene" /> }) }));
+vi.mock('../bosses/spire/loadSpireScene', () => ({ loadSpireScene: () => {
+  mock.loads++;
+  if (mock.failLoads > 0) { mock.failLoads--; return Promise.reject(new Error('chunk failed')); }
+  return Promise.resolve({ default: () => <div data-testid="spire-scene" /> });
+} }));
 
-import GameComponent, { SPIRE_CAMERA } from '../Components/3D/GameComponent';
+import GameComponent, { SPIRE_CAMERA, SPIRE_RETRY_MS } from '../Components/3D/GameComponent';
 import { groundTileFromRay } from '../Components/3D/walkTarget';
 
 const player = (x: number, z: number) => ({ identity: { toHexString: () => 'me' }, name: 'Me', region: 'bramblewild', x, z });
@@ -56,7 +62,7 @@ const OVERWORLD = ['alpha-island', 'tree', 'garden', 'adventure-world', 'clatter
 const KEPT = ['avatars', 'player', 'camera', 'hold-to-walk', 'world-hover', 'debug', 'fx'];
 const down = (tile: { x: number; z: number }) => new Ray(new Vector3(...tileToWorld(tile)).add(new Vector3(0, 8, 0)), new Vector3(0, -1, 0));
 
-afterEach(() => { cleanup(); mock.treeClicks = 0; mock.me = null; });
+afterEach(() => { cleanup(); mock.treeClicks = 0; mock.me = null; mock.loads = 0; mock.failLoads = 0; vi.useRealTimers(); });
 
 describe('the Spire scene swap', () => {
   it('mounts the overworld outside: a tree takes its click, the camera follows you', async () => {
@@ -92,6 +98,24 @@ describe('the Spire scene swap', () => {
     expect(screen.queryByTestId('spire-scene')).not.toBeInTheDocument();
     expect(mock.focus).toBeUndefined();
     expect(groundTileFromRay(down({ x: 73, z: 68 }))).toBeNull();
+  });
+
+  it('a failed Spire chunk load keeps the world mounted and retries with a fresh lazy component', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.useFakeTimers();
+    mock.failLoads = 1;
+    mock.me = player(72, 68);
+    render(<GameComponent />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(mock.loads).toBe(1);
+    expect(screen.queryByTestId('spire-scene')).not.toBeInTheDocument();
+    // WorldBoundary never saw the error: the Canvas and its avatars stay up.
+    for (const id of KEPT) expect(screen.getByTestId(id)).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(SPIRE_RETRY_MS + 10); });
+    expect(mock.loads).toBe(2);
+    expect(screen.getByTestId('spire-scene')).toBeInTheDocument();
+    vi.restoreAllMocks();
   });
 
   it('gives the Canvas the visible-only event filter', () => {

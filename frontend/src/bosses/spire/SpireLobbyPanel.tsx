@@ -46,7 +46,7 @@ export default function SpireLobbyPanel(_props: SpireLobbyPanelProps) {
   const [hidden, setHidden] = useState(false);
 
   // Fetch the Spire scene's chunk now, well before the teleport.
-  useEffect(() => { void loadSpireScene(); }, []);
+  useEffect(() => { loadSpireScene().catch(() => { /* A failed preload is fetched again when the scene mounts. */ }); }, []);
 
   const keys = inventory.reduce((n, r) => n + (r.itemId === SPIRE_KEY_ID ? r.quantity : 0), 0);
   const inLobby = !!myMember && !!myRun && (myRun.stage === SpireStage.Lobby || myRun.stage === SpireStage.Queued);
