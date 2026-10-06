@@ -80,8 +80,10 @@ export function readDeviceInfo(): DeviceInfo {
 
 export interface AutoQuality {
   tier: GraphicsTier;
-  /** Highest tier Auto may still try: lowered for good when a tier proves too slow. */
+  /** Highest tier Auto may still try: lowered for good when a tier it climbed to proves too slow. */
   ceiling: GraphicsTier;
+  /** The current tier was reached by stepping up (not the device's start, nor a step down). */
+  climbed?: boolean;
 }
 
 const rank = (tier: GraphicsTier) => TIERS.indexOf(tier);
@@ -89,13 +91,18 @@ const rank = (tier: GraphicsTier) => TIERS.indexOf(tier);
 /** Frames keep up with the display: try one tier up, up to the ceiling. */
 export function inclineTier(auto: AutoQuality): AutoQuality {
   const i = rank(auto.tier);
-  return i < rank(auto.ceiling) ? { ...auto, tier: TIERS[i + 1] } : auto;
+  return i < rank(auto.ceiling) ? { tier: TIERS[i + 1], ceiling: auto.ceiling, climbed: true } : auto;
 }
 
-/** Frames fall short: drop a tier, and never climb back to the one that was too slow. */
+/**
+ * Frames fall short: drop a tier. A tier Auto climbed to and then could not hold is not
+ * tried again this session. Other drops (a slow start, a frame cap from battery saving,
+ * a window moved to a slower display) leave the way back up open.
+ */
 export function declineTier(auto: AutoQuality): AutoQuality {
   const i = rank(auto.tier);
-  return i > 0 ? { tier: TIERS[i - 1], ceiling: TIERS[i - 1] } : auto;
+  if (i === 0) return auto;
+  return { tier: TIERS[i - 1], ceiling: auto.climbed ? TIERS[i - 1] : auto.ceiling, climbed: false };
 }
 
 let deviceStart: AutoQuality | null = null;
@@ -103,7 +110,7 @@ let deviceStart: AutoQuality | null = null;
 function startingAuto(): AutoQuality {
   if (!deviceStart) {
     const { start, ceiling } = deviceTiers(readDeviceInfo());
-    deviceStart = { tier: start, ceiling };
+    deviceStart = { tier: start, ceiling, climbed: false };
   }
   return deviceStart;
 }
