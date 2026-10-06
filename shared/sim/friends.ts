@@ -107,13 +107,15 @@ export interface ChatPlace { x: number; z: number }
 /**
  * Whether a message shows in the log for `mode`. Each message records where
  * its sender stood when they said it (x = -1 on messages older than that
- * column: they count as far away).
+ * column: they count as far away). `me.region` is the viewer's region
+ * (missing or '' = Bramblewild).
  */
-export function chatVisible(mode: ChatMode, me: Tile | null | undefined, said: ChatPlace): boolean {
+export function chatVisible(mode: ChatMode, me: (Tile & { region?: string }) | null | undefined, said: ChatPlace): boolean {
   if (mode === 'all') return true;
   if (!me || said.x < 0 || said.z < 0) return false;
-  // Nearby chat never crosses the Sunken Spire's floor boundary.
-  if (inSpireFloor(me) !== inSpireFloor(said)) return false;
+  // Nearby chat never crosses the Sunken Spire's floor boundary. The floor is a Bramblewild place: other regions
+  // reuse the same x/z numbers for ordinary land (the Meadows' plots among them), so only Bramblewild viewers split.
+  if ((me.region || 'bramblewild') === 'bramblewild' && inSpireFloor(me) !== inSpireFloor(said)) return false;
   return chebyshev(me, said) <= CHAT_NEARBY_RADIUS;
 }
 

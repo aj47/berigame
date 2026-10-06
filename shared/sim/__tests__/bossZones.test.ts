@@ -169,6 +169,16 @@ describe('registries and shared rules', () => {
     expect(chatVisible('nearby', { x: 72, z: 68 }, { x: 68, z: 68 })).toBe(false);
     expect(chatVisible('nearby', { x: 68, z: 68 }, { x: 72, z: 68 })).toBe(false);
     expect(chatVisible('all', { x: 68, z: 68 }, { x: 72, z: 68 })).toBe(true);
+    expect(chatVisible('nearby', { x: 68, z: 68, region: 'bramblewild' }, { x: 72, z: 68 })).toBe(false);
+    expect(chatVisible('nearby', { x: 68, z: 68, region: '' }, { x: 72, z: 68 })).toBe(false);
+  });
+
+  it('splits nearby chat only in Bramblewild: the Meadows reuse those numbers for open land', () => {
+    for (const region of ['settlement', 'reedwake', 'cinder']) {
+      expect(chatVisible('nearby', { x: 75, z: 60, region }, { x: 66, z: 60 })).toBe(true);
+      expect(chatVisible('nearby', { x: 66, z: 60, region }, { x: 72, z: 60 })).toBe(true);
+      expect(chatVisible('nearby', { x: 66, z: 60, region }, { x: 66 + 13, z: 60 })).toBe(false);
+    }
   });
 
   it('lands invite joiners near the exit when the inviter is inside the Spire', () => {
