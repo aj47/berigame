@@ -98,15 +98,27 @@ const shardGeo = new OctahedronGeometry(0.2, 0).scale(0.7, 1.6, 0.7);
 
 // ---- Scene --------------------------------------------------------------------------------------------------------
 
-/** Background and fog for the dungeon; the overworld's are restored on the way out. */
+/**
+ * Sets the dungeon's background and fog and returns the release. The release puts back what was there only while
+ * the scene still holds the Spire's own objects: on the way out AlphaIsland's `<color>`/`<fog>` attach in React's
+ * mutation phase, before this passive cleanup runs, so restoring unconditionally would overwrite the overworld's
+ * fresh values with stale ones (and from the second visit on, with the Spire's dark fog).
+ */
+export function claimSpireAtmosphere(scene: { background: unknown; fog: unknown }): () => void {
+  const prev = { bg: scene.background, fog: scene.fog };
+  const mine = { bg: new Color(BG), fog: new Fog(BG, 18, 40) };
+  scene.background = mine.bg;
+  scene.fog = mine.fog;
+  return () => {
+    if (scene.background === mine.bg) scene.background = prev.bg;
+    if (scene.fog === mine.fog) scene.fog = prev.fog;
+  };
+}
+
+/** Background and fog for the dungeon; the overworld's own come back when AlphaIsland remounts. */
 function SpireAtmosphere() {
   const scene = useThree((s) => s.scene);
-  useEffect(() => {
-    const background = scene.background, fog = scene.fog;
-    scene.background = new Color(BG);
-    scene.fog = new Fog(BG, 18, 40);
-    return () => { scene.background = background; scene.fog = fog; };
-  }, [scene]);
+  useEffect(() => claimSpireAtmosphere(scene as any), [scene]);
   return <>
     <hemisphereLight args={['#b9a8ff', '#1a1430', 0.75]} />
     <directionalLight position={[CX + 6, 14, CZ + 9]} intensity={0.9} color="#e8dcff" />
