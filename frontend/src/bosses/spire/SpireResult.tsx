@@ -10,20 +10,24 @@ import '../bosses.css';
 
 /**
  * The result card (FINAL_SPEC 7.6, `data-testid="spire-result"`), shown by
- * membership, not position: while your member row is Done, Out or Left and
- * its run is Cleared or Failed, wherever you stand (at a clear the eject and
- * the final fight row arrive together, so you are already at the exit). It
+ * membership, not position: while your member row is Done or Out and its
+ * run is Cleared or Failed, wherever you stand (at a clear the eject and the
+ * final fight row arrive together, so you are already at the exit). A Left
+ * row shows it only with the run's RunResult notice: the server sends none
+ * for a forfeit or for a member away at the end (WP4), so a player who gave
+ * the run up is not handed its result card minutes later. It
  * opens with a 1.2 s header, then the outcome, time, per-member stars / hits /
  * damage, rewards and keepsakes from your notices, and "Flawless!".
  * Dismissable; it closes itself when the run row is deleted.
  */
 export type SpireResultProps = Record<string, never>;
 
-const ENDED: ReadonlySet<number> = new Set([SpireMemberState.Done, SpireMemberState.Out, SpireMemberState.Left]);
+const ENDED: ReadonlySet<number> = new Set([SpireMemberState.Done, SpireMemberState.Out]);
 
-/** Whether the card shows for this membership. */
-export function resultVisible(member: { state: number } | null, run: { stage: number } | null): boolean {
-  return !!member && !!run && ENDED.has(member.state) && (run.stage === SpireStage.Cleared || run.stage === SpireStage.Failed);
+/** Whether the card shows for this membership (`gotResult`: your RunResult notice for this run arrived). */
+export function resultVisible(member: { state: number } | null, run: { stage: number } | null, gotResult = false): boolean {
+  if (!member || !run || (run.stage !== SpireStage.Cleared && run.stage !== SpireStage.Failed)) return false;
+  return ENDED.has(member.state) || (member.state === SpireMemberState.Left && gotResult);
 }
 
 /** The header of an ended run. */
@@ -42,8 +46,9 @@ export function resultHeadline(run: Pick<SpireRunRow, 'stage' | 'outcome'>): str
 export default function SpireResult(_props: SpireResultProps) {
   const member = useBossStore((s) => s.myMember);
   const run = useBossStore((s) => s.myRun);
+  const gotResult = useBossStore((s) => !!s.myRun && s.notices.some((n) => n.row.boss === BossId.Spire && n.row.kind === BossNoticeKind.RunResult && n.row.runId === s.myRun!.id));
   const [dismissed, setDismissed] = useState<string | null>(null);
-  if (!run || !resultVisible(member, run) || dismissed === String(run.id)) return null;
+  if (!run || !resultVisible(member, run, gotResult) || dismissed === String(run.id)) return null;
   return <ResultCard run={run} onClose={() => setDismissed(String(run.id))} />;
 }
 

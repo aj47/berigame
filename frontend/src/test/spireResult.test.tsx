@@ -58,9 +58,24 @@ describe('SpireResult', () => {
     expect(screen.getByTestId('spire-result')).toHaveTextContent('No reward this time');
     expect(screen.getByTestId('spire-result')).toHaveTextContent('Me (knocked out)');
     cleanup();
+    // A Left row shows the card with its RunResult notice.
     seedRun({ stage: SpireStage.Failed, outcome: SpireOutcome.Wiped }, { me: { state: SpireMemberState.Left } });
+    act(() => { useBossStore.getState().pushNotice(notice(BossNoticeKind.RunResult, { quantity: SpireOutcome.Wiped }) as any); });
     render(<SpireResult />);
     expect(screen.getByTestId('spire-result')).toHaveTextContent('The party fell');
+  });
+
+  it('a forfeit (Left, no RunResult) gets no card when the party later finishes', () => {
+    seedRun({ stage: SpireStage.Active }, { me: { state: SpireMemberState.Left }, ada: { state: SpireMemberState.In } });
+    render(<SpireResult />);
+    act(() => {
+      const s = useBossStore.getState();
+      s.setRow('spireRun', { ...s.myRun!, stage: SpireStage.Cleared, outcome: SpireOutcome.Cleared });
+      s.setRow('spireMember', { ...s.members.get('ada')!, state: SpireMemberState.Done });
+      // Another run's result does not count.
+      s.pushNotice(notice(BossNoticeKind.RunResult, { runId: 8n }) as any);
+    });
+    expect(screen.queryByTestId('spire-result')).not.toBeInTheDocument();
   });
 
   it('is hidden while the run is Active, and closes itself when the run row is deleted', () => {
@@ -82,11 +97,14 @@ describe('SpireResult', () => {
     expect(rows[3]).toHaveTextContent('left');
   });
 
-  it('decides visibility from membership only', () => {
+  it('decides visibility from membership (Left needs its RunResult)', () => {
     expect(resultVisible({ state: SpireMemberState.Done }, { stage: SpireStage.Cleared })).toBe(true);
     expect(resultVisible({ state: SpireMemberState.In }, { stage: SpireStage.Cleared })).toBe(false);
     expect(resultVisible({ state: SpireMemberState.Done }, { stage: SpireStage.Active })).toBe(false);
     expect(resultVisible(null, { stage: SpireStage.Failed })).toBe(false);
+    expect(resultVisible({ state: SpireMemberState.Left }, { stage: SpireStage.Cleared })).toBe(false);
+    expect(resultVisible({ state: SpireMemberState.Left }, { stage: SpireStage.Cleared }, true)).toBe(true);
+    expect(resultVisible({ state: SpireMemberState.Left }, { stage: SpireStage.Active }, true)).toBe(false);
     expect(resultHeadline({ stage: SpireStage.Failed, outcome: SpireOutcome.Closed })).toBe('The Sunken Spire was sealed');
   });
 });

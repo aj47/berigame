@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  SPIRE_GATE, SPIRE_GATE_RANGE, SPIRE_MAX_PARTY, SpireMode, SpireStage, TICK_MS, bossConfigOr, chebyshev,
+  SPIRE_GATE, SPIRE_GATE_RANGE, SPIRE_MAX_PARTY, SpireMemberState, SpireMode, SpireStage, TICK_MS, bossConfigOr, chebyshev,
 } from '@sim';
 import { useInventoryRows, useMyPlayer, usePlayersByHex, useTick } from '../../spacetime/hooks';
 import { useGameActions } from '../../spacetime/actions';
@@ -50,7 +50,8 @@ export default function SpireLobbyPanel(_props: SpireLobbyPanelProps) {
 
   const keys = inventory.reduce((n, r) => n + (r.itemId === SPIRE_KEY_ID ? r.quantity : 0), 0);
   const inLobby = !!myMember && !!myRun && (myRun.stage === SpireStage.Lobby || myRun.stage === SpireStage.Queued);
-  const stillFighting = !!myMember && myRun?.stage === SpireStage.Active;
+  // A forfeit (Left) frees you at once: the server deletes that row when you open or join again (spireMembershipProblem).
+  const stillFighting = !!myMember && myRun?.stage === SpireStage.Active && myMember.state !== SpireMemberState.Left;
   const active = spireActiveRuns({ runs });
   const full = active >= config.spireMaxRuns;
   const lobbies = spireLobbies({ runs }).filter((r) => r.isPublic && r.mode === SpireMode.Normal && r.id !== myRun?.id);

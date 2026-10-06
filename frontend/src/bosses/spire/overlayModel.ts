@@ -1,6 +1,6 @@
 import {
-  BULLET_STRIDE, SPIRE_ORIGINS, bulletTileAt, chebyshev, spireDangerTiles, spireHitsMove, spireMiddle, spireSafety,
-  spireStandable, tileKey, type SpireFightLike, type SpireSafety, type Tile,
+  BULLET_STRIDE, SPIRE_ORIGINS, SPIRE_RULES_VERSION, bulletTileAt, chebyshev, spireDangerTiles, spireHitsMove, spireMiddle,
+  spireSafetyCached, spireStandable, tileKey, type SpireFightLike, type SpireSafety, type Tile,
 } from '@sim';
 
 /**
@@ -80,16 +80,11 @@ export function hoverVerdict(
   return { tile, kind: winning ? 'safe' : 'risky', half: 0, damage: 0 };
 }
 
-const safetyMemo = new Map<string, SpireSafety>();
-
-/** spireSafety over the fight's known bullets, rebuilt only when curStart/prevStart change (one per rotation). */
-export function fightSafety(runKey: string, fight: SpireFightLike, bullets: Int32Array, blocked: Set<number>): SpireSafety {
-  const key = `${runKey}:${fight.curStart}:${fight.prevStart}:${fight.curKind}:${fight.prevKind}`;
-  let s = safetyMemo.get(key);
-  if (!s) {
-    s = spireSafety(bullets, fight.curStart, blocked);
-    if (safetyMemo.size >= 4) safetyMemo.delete(safetyMemo.keys().next().value as string);
-    safetyMemo.set(key, s);
-  }
-  return s;
+/**
+ * The fight's safety table, shared with /danger through WP3's `spireSafetyCached` (built once per pattern rotation,
+ * from the intro so the first pattern's winning tiles are known). `_bullets` is the same `spireFightBullets(fight)`
+ * the cache builds from; it stays in the signature so callers keep their memo dependency.
+ */
+export function fightSafety(runKey: string, fight: SpireFightLike, _bullets: Int32Array, blocked: Set<number>): SpireSafety {
+  return spireSafetyCached(runKey, fight, SPIRE_RULES_VERSION, blocked);
 }

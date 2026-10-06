@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { InstancedMesh, Matrix4, MeshBasicMaterial, PlaneGeometry, Vector3 } from 'three';
 import {
-  SPIRE_NONE, SPIRE_ORIGINS, spireDangerTiles, spireFightBullets, spirePatternBullets, spireStars, sweptHit, tileKey,
+  SPIRE_INTRO_TICKS, SPIRE_NONE, SPIRE_ORIGINS, SPIRE_RULES_VERSION, spireDangerTiles, spireSafetyCached, spireFightBullets, spirePatternBullets, spireStars, sweptHit, tileKey,
   worldToTile, type SpireFightLike,
 } from '@sim';
 import { DANGER_CAPACITY, writeDangerInstances } from '../bosses/DangerTiles';
@@ -70,6 +70,9 @@ describe('the danger overlay (server timeline)', () => {
     const bullets = spireFightBullets(f);
     const safety = fightSafety('run-1', f, bullets, SPIRE_BLOCKED);
     expect(fightSafety('run-1', f, bullets, SPIRE_BLOCKED)).toBe(safety);
+    // The same table /danger reads (WP3's cache), built from the intro so the first pattern's tiles are known early.
+    expect(spireSafetyCached('run-1', f, SPIRE_RULES_VERSION, SPIRE_BLOCKED)).toBe(safety);
+    expect(safety.from).toBe(f.curStart - SPIRE_INTRO_TICKS);
     let safe = 0, risky = 0;
     for (let tau = 100; tau < 126; tau++) {
       for (let x = 70; x <= 84; x++) for (const z of [57, 60, 66]) {

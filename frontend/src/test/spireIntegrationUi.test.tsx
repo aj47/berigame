@@ -44,6 +44,29 @@ describe('Spire HUD mounts', () => {
   });
 });
 
+describe('Spire HUD seams', () => {
+  it('closes the gate panel when your run starts, so it does not reappear at the exit', () => {
+    render(<SpireLayer inside={false} />);
+    act(() => useBossStore.getState().setLobbyOpen(true));
+    membership(SpireMemberState.Lobby, SpireStage.Lobby);
+    expect(shown()).toEqual(['spire-lobby', 'spire-result']);
+    membership(SpireMemberState.In, SpireStage.Active);
+    expect(useBossStore.getState().lobbyOpen).toBe(false);
+    // Cleared and ejected to the exit: only the result card.
+    membership(SpireMemberState.Done, SpireStage.Cleared);
+    expect(shown()).toEqual(['spire-result']);
+  });
+
+  it('a forfeit (Left) gets no party chip, and its gate panel stays open for a new party', () => {
+    render(<SpireLayer inside={false} />);
+    membership(SpireMemberState.Left, SpireStage.Active);
+    expect(shown()).toEqual(['spire-result']);
+    act(() => useBossStore.getState().setLobbyOpen(true));
+    expect(useBossStore.getState().lobbyOpen).toBe(true);
+    expect(shown()).toEqual(['spire-lobby', 'spire-result']);
+  });
+});
+
 describe('first-arrival boss tips', () => {
   it('names the glade and the gate zone, nothing elsewhere or in other regions', () => {
     expect(bossTipAt({ x: 84, z: 106 })).toBe('clatter-glade');

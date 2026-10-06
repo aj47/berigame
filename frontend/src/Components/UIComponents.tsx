@@ -49,7 +49,10 @@ type Panel = "bug" | "settlement" | "inventory" | "chat" | "help" | "appearance"
 export const SpireLayer = memo(({ inside }: { inside: boolean }) => {
   const lobbyOpen = useBossStore((s) => s.lobbyOpen);
   const inLobby = useBossStore((s) => s.myMember?.state === SpireMemberState.Lobby && (s.myRun?.stage === SpireStage.Lobby || s.myRun?.stage === SpireStage.Queued));
-  const runActive = useBossStore((s) => s.myRun?.stage === SpireStage.Active);
+  // A forfeit (Left) is out of the run: no party chip.
+  const runActive = useBossStore((s) => s.myRun?.stage === SpireStage.Active && s.myMember?.state !== SpireMemberState.Left);
+  // Your run started: the gate panel was for joining it, so it must not pop back up when you leave the floor.
+  useEffect(() => { if (runActive) useBossStore.getState().setLobbyOpen(false); }, [runActive]);
   return (
     <>
       {(inside || runActive) && <SpireHud />}
