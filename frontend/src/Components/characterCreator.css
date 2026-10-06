@@ -82,8 +82,9 @@
   .creator-footer-actions button { padding:10px 13px; font-size:12px; }
 }
 @media(max-height:500px) {
-  .creator-backdrop { padding:8px; }
-  .character-creator { height:calc(100dvh - 16px); border-radius:14px; }
+  /* Landscape phones: keep the dialog clear of the notch and home indicator. */
+  .creator-backdrop { padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); }
+  .character-creator { height:calc(100dvh - max(8px,env(safe-area-inset-top)) - max(8px,env(safe-area-inset-bottom))); border-radius:14px; }
   .creator-header { padding:10px 20px; }
   .creator-header h1 { font-size:23px; margin:3px 0 0; }
   .creator-header p { display:none; }
