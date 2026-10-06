@@ -12,6 +12,16 @@ import { regionLand } from '../../../shared/sim/frontier/regions';
 import type { Location, RegionId } from '../../../shared/sim/frontier/catalog';
 
 const ground = new Plane(new Vector3(0, 1, 0), 0);
+/** The notch and home indicator, in CSS px (0 outside viewport-fit=cover). */
+function safeAreaInsets() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+  document.body.appendChild(probe);
+  const style = getComputedStyle(probe);
+  const insets = { top: parseFloat(style.paddingTop) || 0, right: parseFloat(style.paddingRight) || 0, bottom: parseFloat(style.paddingBottom) || 0, left: parseFloat(style.paddingLeft) || 0 };
+  probe.remove();
+  return insets;
+}
 /** Home scenes share world coordinates; distant islands retain their local grid. */
 function walkDestination(selected: { walkTile?: { x: number; z: number }; e?: { ray?: Ray } }, region: RegionId): Location | null {
   const hit = selected.e?.ray?.intersectPlane(ground, new Vector3());
@@ -34,14 +44,15 @@ const ClickDropdown = ({ region = 'bramblewild' }: { region?: string }) => {
       const rect = ref.current?.getBoundingClientRect();
       const x = selected?.e?.clientX ?? window.innerWidth / 2;
       const y = selected?.e?.clientY ?? window.innerHeight / 2;
+      const inset = safeAreaInsets();
       setPosition({
         left: Math.max(
-          12,
-          Math.min(x, window.innerWidth - (rect?.width ?? 220) - 12),
+          12 + inset.left,
+          Math.min(x, window.innerWidth - (rect?.width ?? 220) - 12 - inset.right),
         ),
         top: Math.max(
-          12,
-          Math.min(y, window.innerHeight - (rect?.height ?? 200) - 12),
+          12 + inset.top,
+          Math.min(y, window.innerHeight - (rect?.height ?? 200) - 12 - inset.bottom),
         ),
       });
     };
