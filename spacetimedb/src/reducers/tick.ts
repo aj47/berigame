@@ -33,7 +33,8 @@ import { cancelTrade, notify } from '../lib/social';
 import { requestTradeInRange, tradePartnerProblem } from '../lib/trade';
 import { grantXp, harvestTicksForPlayer, unlockCosmetic } from '../lib/progress';
 import type { Ctx, GiantRow, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
-import { MentorMilestone, bossNoPvpZone, inSpireFloor } from '../../../shared/sim';
+import { MentorMilestone, bossNoPvpZone } from '../../../shared/sim';
+import { onSpireFloor } from '../lib/spireGuards';
 import { phaseClatterhorn } from '../lib/clatterhorn';
 import { phaseSpire } from '../lib/spire';
 import type { BossTick } from '../lib/bossTick';
@@ -536,7 +537,7 @@ function phaseDeath(s: TickState): void {
   for (const h of s.order) {
     const p = s.players.get(h)!;
     // Safety net: nobody dies (or drops a bag) on the Spire floor; phaseSpire knocks out and ejects instead.
-    if (inSpireFloor(p)) continue;
+    if (onSpireFloor(p)) continue;
     if (!alive(p) || p.hp > 0) continue;
 
     // Drop everything around the body.
