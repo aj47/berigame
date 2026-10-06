@@ -72,18 +72,30 @@ export function inIframes(hitTick: number, t: number): boolean {
 const SHIELD_ARGS: [number, number, number, number, number, boolean] = [0.55, 0.55, 2, 12, 1, true];
 
 /**
+ * Shows or hides the avatar model inside `group`: its children that carry
+ * `userData.berigameAvatar` (AdventurerModel's object). The model must stay a
+ * direct child of PlayerAvatar's group, because AdventurerModel registers
+ * `model.parent` as the avatar's ground group (avatarRegistry: world
+ * interactions, HitBack, knockback read its position and facing).
+ */
+export function setAvatarModelVisible(group: { children: { visible: boolean; userData: Record<string, unknown> }[] } | null | undefined, visible: boolean): void {
+  if (!group) return;
+  for (const child of group.children) if (child.userData.berigameAvatar) child.visible = visible;
+}
+
+/**
  * I-frame feedback on the avatar timeline (render tick = estimated tick - 1):
  * the model blinks, or with reduced motion a steady half-transparent shield
  * shows instead. Mounted only once a hit tick exists; never allocates per frame.
  */
-const IframeBlink = ({ model, hitTick }: { model: React.MutableRefObject<any>; hitTick: number }) => {
+const IframeBlink = ({ group, hitTick }: { group: React.MutableRefObject<any>; hitTick: number }) => {
   const shield = useRef<any>(null);
   const reduced = useSettingsStore((s) => s.reduceMotion);
-  useEffect(() => () => { if (model.current) model.current.visible = true; }, [model]);
+  useEffect(() => () => setAvatarModelVisible(group.current, true), [group]);
   useFrame(() => {
     const now = performance.now();
     const on = inIframes(hitTick, Math.floor(estimatedTick(now) - 1));
-    if (model.current) model.current.visible = reduced || !on || Math.floor(now / 90) % 2 === 0;
+    setAvatarModelVisible(group.current, reduced || !on || Math.floor(now / 90) % 2 === 0);
     if (shield.current) shield.current.visible = reduced && on;
   });
   return (
@@ -112,7 +124,6 @@ function useHealthShown(hp: number, maxHp: number): boolean {
  */
 const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = false, chatText, stacked = '', setPlayerRef, frontierBlocked, frontier: frontierState }: Props) => {
   const groupRef = useRef<any>(null);
-  const modelRef = useRef<any>(null);
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const hex = identityHex(row.identity);
   const gathering = useResourceHarvest(hex);
@@ -210,14 +221,12 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
       {floating && <DamageNumber key={`fx-${hex}-${floating.seq}`} playerPosition={origin} yOffset={1.8} kind={floating.kind} text={floating.text} itemId={floating.itemId} appearAt={floating.at + floating.delayMs} />}
       {found && <DamageNumber key={`find-${hex}-${found.seq}`} playerPosition={origin} yOffset={1.8} kind={found.kind} text={found.text} itemId={found.itemId} appearAt={found.at + found.delayMs} />}
       {xpFloat && <DamageNumber key={`xp-${xpFloat.seq}`} playerPosition={origin} yOffset={2.25} kind={XP_FLOAT_KIND} text={xpFloat.text} appearAt={xpFloat.at} />}
-      <group ref={modelRef}>
       <Suspense fallback={<mesh position={[0,1,0]}><capsuleGeometry args={[.25,1,4,6]} /><meshStandardMaterial color="#42699c" /></mesh>}>
         <HairBoundary key={url} fallback={<AdventurerModel url={BASE_MODEL_URL} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} gathering={gathering} motion={motion} transient={transient} head={head} neck={neck} />}>
           <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} gathering={gathering} motion={motion} transient={transient} head={head} neck={neck} />
         </HairBoundary>
       </Suspense>
-      </group>
-      {hitTick > 0 && <IframeBlink model={modelRef} hitTick={hitTick} />}
+      {hitTick > 0 && <IframeBlink group={groupRef} hitTick={hitTick} />}
     </group>
   );
 };

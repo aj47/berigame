@@ -55,3 +55,21 @@ describe('i-frame blink timing', () => {
     expect(inIframes(0, 1)).toBe(false);
   });
 });
+
+describe('i-frame blink target', () => {
+  it('hides only the avatar model and keeps it a direct child of the avatar group', async () => {
+    const { setAvatarModelVisible } = await vi.importActual<typeof import('../Components/3D/PlayerAvatar')>('../Components/3D/PlayerAvatar');
+    const model = { visible: true, userData: { berigameAvatar: { identity: 'mate' } } };
+    const label = { visible: true, userData: {} };
+    setAvatarModelVisible({ children: [label, model] }, false);
+    expect(model.visible).toBe(false);
+    expect(label.visible).toBe(true);
+    setAvatarModelVisible({ children: [label, model] }, true);
+    expect(model.visible).toBe(true);
+    // AdventurerModel registers model.parent as the avatar's ground group (world interactions read its
+    // position): a wrapper group between PlayerAvatar's group and the model would register a group at 0,0.
+    const source = (await import('node:fs')).readFileSync((await import('node:path')).resolve(__dirname, '../Components/3D/PlayerAvatar.tsx'), 'utf8');
+    expect(source).not.toMatch(/<group ref=\{modelRef\}/);
+  });
+});
+
