@@ -8,7 +8,8 @@ import { envTime } from '../Components/3D/envArt';
 import { terrainGeometry, terrainMaterial, coastTexture } from '../Components/3D/islandTerrainArt';
 import IslandLandmarks from '../Components/3D/IslandLandmarks';
 import React, { useRef } from 'react';
-import { BOULDER_KEY_ITEM, BOULDER_MESSAGE, BRAMBLE_MESSAGE, GRID_SIZE, SAFE_RADIUS, STICK_ITEM_ID, areaOf, holdsItem, isLandTile, worldToTile, tileToWorld } from '@sim';
+import { BOULDER_KEY_ITEM, BOULDER_MESSAGE, BRAMBLE_MESSAGE, GRID_SIZE, SAFE_RADIUS, STICK_ITEM_ID, areaOf, holdsItem, worldToTile, tileToWorld } from '@sim';
+import { inSpire, isOpenGround } from '../bosses/selectors';
 import { useGameActions } from '../spacetime/actions';
 import { useInventoryRows, useMyPlayer } from '../spacetime/hooks';
 import { useToastStore } from '../spacetime/stores/toastStore';
@@ -96,7 +97,8 @@ const GroundPlane = () => {
     }
     useUserInputStore.getState().setClickedOtherObject(null);
     const tile = worldToTile(e.point.x, e.point.z);
-    if (tile.x < 0 || tile.z < 0 || tile.x >= GRID_SIZE || tile.z >= GRID_SIZE || !isLandTile(tile)) return;
+    // From the overworld the Spire floor reads as water (no far-flood setTarget calls).
+    if (tile.x < 0 || tile.z < 0 || tile.x >= GRID_SIZE || tile.z >= GRID_SIZE || !isOpenGround(tile, inSpire(me))) return;
     const [x, , z] = tileToWorld(tile);
     marker.current.position.set(x, 0.045, z);
     clickedAt.current = performance.now();

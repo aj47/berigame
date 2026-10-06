@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import type { Goal } from "@sim";
+import { inClatterGlade, inSpireGateZone, type Goal, type Tile } from "@sim";
+import { useSettingsStore } from "../spacetime/stores/settingsStore";
 
 /** How long a first-time tip stays up unless tapped away. */
 export const TIP_MS = 7000;
@@ -98,6 +99,61 @@ export const OnboardingTip = ({ goal, onDone }: { goal: Goal; onDone: () => void
         role="status"
       >
         <span className="onboarding-tip-new">New</span> {spec.text}
+      </div>
+    </div>
+  );
+};
+
+/** First-arrival tips for the boss areas (FINAL_SPEC 9, in-game copy). */
+export const BOSS_TIPS = {
+  "clatter-glade": "It charges whoever stands farthest. Lure it into a standing stone.",
+  "spire-gate": "Bring a spire key and friends. Stars are your weapon.",
+} as const;
+export type BossTipId = keyof typeof BOSS_TIPS;
+const BOSS_TIPS_KEY = "berigame.bossTips.v1";
+
+/** The boss area you stand in, if it has a first-arrival tip. */
+export function bossTipAt(me: (Tile & { region?: string }) | null | undefined): BossTipId | null {
+  if (!me || (me.region || "bramblewild") !== "bramblewild") return null;
+  if (inClatterGlade(me)) return "clatter-glade";
+  if (inSpireGateZone(me)) return "spire-gate";
+  return null;
+}
+
+function seenBossTips(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(BOSS_TIPS_KEY) || "[]")); } catch { return new Set(); }
+}
+function markBossTip(id: BossTipId): void {
+  try { localStorage.setItem(BOSS_TIPS_KEY, JSON.stringify([...seenBossTips(), id])); } catch { /* private mode: shown again next visit */ }
+}
+
+/**
+ * A one-time tip on your first arrival in Clatterhorn's Glade and at the
+ * Spire Gate. Saved per browser; hidden with "Show tips and quest reminders"
+ * off; tap anywhere or wait to dismiss.
+ */
+export const BossAreaTip = ({ me }: { me: (Tile & { region?: string }) | null | undefined }) => {
+  const showGuidance = useSettingsStore((s) => s.showGuidance);
+  const here = bossTipAt(me);
+  const [tip, setTip] = useState<BossTipId | null>(null);
+  useEffect(() => {
+    if (!showGuidance || !here || tip || seenBossTips().has(here)) return;
+    markBossTip(here);
+    setTip(here);
+  }, [here, showGuidance, tip]);
+  useEffect(() => {
+    if (!tip) return;
+    const done = () => setTip(null);
+    const timer = window.setTimeout(done, TIP_MS);
+    window.addEventListener("pointerdown", done);
+    return () => { window.clearTimeout(timer); window.removeEventListener("pointerdown", done); };
+  }, [tip]);
+  if (!tip || !showGuidance) return null;
+  const width = Math.min(240, window.innerWidth - 24);
+  return (
+    <div className="onboarding-tip-layer" aria-hidden="false">
+      <div className="onboarding-tip" data-testid="boss-tip" style={{ left: Math.max(12, (window.innerWidth - width) / 2), top: 72, width }} role="status">
+        <span className="onboarding-tip-new">New</span> {BOSS_TIPS[tip]}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Plane, Raycaster, Vector2, Vector3 } from 'three';
-import { inBounds, isLandTile } from '@sim';
+import { inBounds, inSpireFloor, type Tile } from '@sim';
 import { useGameActions } from '../../spacetime/actions';
 import { useMyPlayer } from '../../spacetime/hooks';
 import { useFrontier } from '../../frontier/useFrontier';
@@ -9,6 +9,7 @@ import { homeLand, homeLocation } from '../../../../shared/sim/frontier/homeMap'
 import { useUserInputStore } from '../../store';
 import { TOUCH_TAP_RADIUS, holdState, openMenuNear } from './tapAssist';
 import { hoverTile, isWorldSurface } from './hoverTarget';
+import { inSpire, isOpenGround } from '../../bosses/selectors';
 
 /** Press this long without moving to start a hold. */
 export const HOLD_MS = 380;
@@ -24,6 +25,16 @@ const ndc = new Vector2();
 const point = new Vector3();
 
 /**
+ * A tile a held finger may walk to, on the walker's side of the Spire floor
+ * boundary (both the connected-island and the Bramblewild-only branches).
+ */
+export function holdWalkTile(t: Tile, connected: boolean, meOnFloor: boolean): boolean {
+  if (!connected) return inBounds(t) && isOpenGround(t, meOnFloor);
+  if (!homeLand(t)) return false;
+  return homeLocation(t).region === 'bramblewild' ? inSpireFloor(t) === meOnFloor : !meOnFloor;
+}
+
+/**
  * Touch (and mouse) press-and-hold:
  * - on a tree, item or adventurer: opens its action menu (a context menu);
  * - on the ground: walks continuously toward the finger until it lifts,
@@ -36,8 +47,8 @@ const HoldToWalk = () => {
   const connected = useThree((s) => s.events.connected);
   const { setTarget, frontier } = useGameActions();
   const me = useMyPlayer(), expansion = useFrontier();
-  const movement = useRef({ setTarget, frontier, enabled: expansion.enabled, region: me?.region });
-  movement.current = { setTarget, frontier, enabled: expansion.enabled, region: me?.region };
+  const movement = useRef({ setTarget, frontier, enabled: expansion.enabled, region: me?.region, onFloor: inSpire(me) });
+  movement.current = { setTarget, frontier, enabled: expansion.enabled, region: me?.region, onFloor: inSpire(me) };
 
   useEffect(() => {
     const el = gl.domElement;
@@ -49,7 +60,7 @@ const HoldToWalk = () => {
       raycaster.setFromCamera(ndc, camera);
       if (!raycaster.ray.intersectPlane(ground, point)) return null;
       const t = hoverTile(point.x, point.z);
-      return (movement.current.enabled ? homeLand(t) : inBounds(t) && isLandTile(t)) ? t : null;
+      return holdWalkTile(t, movement.current.enabled, movement.current.onFloor) ? t : null;
     };
     const aim = () => {
       const t = tileUnder();
