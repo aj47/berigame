@@ -609,6 +609,7 @@ floor boundary or into another run.
 | `boss-guards-server.test.ts` | No-PvP zones, floor refusals, owner reducers |
 | `bossDanger.test.ts`, `bossPresentation.test.ts` | The danger feed against brute force; `/state` shapes and size caps |
 | `frontend/src/test/*` (bullets, overlay, scene, HUD, lobby, telegraph, Clatterhorn, integration) | Client behaviour |
+| `frontend/scripts/boss-smoke.ts` | End to end against a local server: closed by default, wake, telegraph, blows, defeat, payout, respawn; keys, lobby, start, bullets, i-frames, stars, knockout, clear rewards, the owner close refund. Needs the publisher's token (`BOSS_OWNER_TOKEN` or `BOSS_CLI_CONFIG`); seeds its test items through owner SQL, so never run it against a shared world |
 
 ## 8. Deviations from FINAL_SPEC
 
