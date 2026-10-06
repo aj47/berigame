@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { markInstanceRange } from './instanceRange';
 import { useFrame } from '@react-three/fiber';
 import {
   BufferGeometry, DynamicDrawUsage, IcosahedronGeometry, InstancedMesh, Matrix4, MeshBasicMaterial, OctahedronGeometry,
@@ -131,8 +132,7 @@ export default function BulletLayer({ source, palette }: BulletLayerProps) {
       mesh.count = count;
       if (count > 0) {
         // Upload only the instances in use, not the whole capacity.
-        mesh.instanceMatrix.updateRange.offset = 0;
-        mesh.instanceMatrix.updateRange.count = count * 16;
+        markInstanceRange(mesh.instanceMatrix, count * 16);
         mesh.instanceMatrix.needsUpdate = true;
       }
       setBulletCount(styles[k], count);

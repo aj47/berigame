@@ -30,7 +30,7 @@ vi.mock('../Components/UIComponents', () => ({ default: () => null }));
 vi.mock('../Components/CharacterSetup', () => ({ default: () => null }));
 vi.mock('../Components/ClickDropdown', () => ({ default: () => null }));
 vi.mock('../Components/LoadingScreen', () => ({ default: () => null }));
-vi.mock('../Components/3D/webgl', () => ({ webglAvailable: () => true, isWebGLError: () => false, WebGLContextWatch: () => null }));
+vi.mock('../Components/3D/webgl', () => ({ webglAvailable: () => true, webglSupport: () => 'webgl2', isWebGLError: () => false, WebGLContextWatch: () => null }));
 vi.mock('../Components/3D/AlphaIsland', () => ({ default: stub('alpha-island') }));
 vi.mock('../Components/3D/BerryTree', () => ({ default: () => <button data-testid="tree" onClick={() => { mock.treeClicks++; }}>Berry tree</button> }));
 vi.mock('../Components/3D/nodes/CoastNode', () => ({ default: stub('coast-node') }));

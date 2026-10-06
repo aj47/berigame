@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { markInstanceRange } from './instanceRange';
 import {
   DataTexture, DynamicDrawUsage, InstancedMesh, Matrix4, MeshBasicMaterial, PlaneGeometry, RepeatWrapping, RGBAFormat,
 } from 'three';
@@ -54,8 +55,7 @@ export function writeDangerInstances(mesh: InstancedMesh, tiles: Iterable<number
   }
   mesh.count = count;
   if (count > 0) {
-    mesh.instanceMatrix.updateRange.offset = 0;
-    mesh.instanceMatrix.updateRange.count = count * 16;
+    markInstanceRange(mesh.instanceMatrix, count * 16);
     mesh.instanceMatrix.needsUpdate = true;
   }
   return count;
