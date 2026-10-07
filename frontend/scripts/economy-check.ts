@@ -115,8 +115,12 @@ async function main() {
     return { id, confirmedAt };
   };
   const instant = await trade({ x: 24, z: 25 });
-  await waitFor('instant swap', () => count(B, first.itemId) === 1, 3_000);
-  check('in the safe ring the swap runs at once', !A.conn.db.trade.id.find(instant.id));
+  let scheduled = false;
+  await waitFor('instant swap', () => {
+    scheduled ||= (B.conn.db.trade.id.find(instant.id)?.swapTick ?? 0) > 0;
+    return count(B, first.itemId) === 1 && !A.conn.db.trade.id.find(instant.id);
+  }, 3_000);
+  check('in the safe ring the swap runs at once (never scheduled)', !scheduled && tick(B) - instant.confirmedAt < TRADE_SWAP_TICKS, `${tick(B) - instant.confirmedAt} ticks`);
   // B hands it back outside the ring: the swap waits.
   await walk(B, 30, 31);
   await walk(A, 31, 31);
