@@ -108,7 +108,7 @@ The goal chip (M1) replaces the GatherShortcut button: one line, "tap to do it".
 - **No spare sticks:** while you hold a stick (bag or wielded), finished harvests do not find another. The `ctx.random` draw still happens on every harvest, so the draw order is unchanged.
 
 **Safety: one Safe badge** (the ring or any grace):
-- **Safe ring:** `SAFE_RADIUS = 2` (x and z both in 23–27). `attack` is rejected and no swing lands if either side is inside. The blueberry (30,25) and gold (20,30) trees stay outside.
+- **Safe ring:** `SAFE_RADIUS = 2` at M1 (x and z both in 23–27); now 3, see [ECONOMY.md](ECONOMY.md). `attack` is rejected and no swing lands if either side is inside. The blueberry (30,25) and gold (20,30) trees stay outside.
 - **Respawn grace:** 10 ticks after a death (`tick < respawnTick + 10`).
 - **First-spawn grace: until you get a stick, attack, or 3:00.** On first insert `respawnTick = now + 290` (same rule → 300 ticks). Getting a stick while `respawnTick > T` (a find or a pickup) sets `respawnTick = T`: 10 more ticks (6 s) to wield and step back. An accepted `attack` sets it to 0. A reconnect does not reset it. About 1 in 4 players on a near-worst busy server meet 3:00 unarmed, in the Grove, next to the safe ring.
 
@@ -168,7 +168,7 @@ Codes: never reuse a shipped code (EventKind 0 and 4–7, Pending 0–2); a new 
 What a new player sees: movement and camera; the goal chip; the stick-find banner; ripe/regrowing trees and the harvest bar; "Waiting: ripe in N s"; the quick bar and wield toggle; eating; HP and the Safe badge; the bramble hedge and its toast; death drops the bag.
 
 - **Schema: none.** Grace reuses `respawnTick`; the brambles are static data. No `break-clients` publish.
-- **Constants** (`shared/sim/constants.ts`): `HEDGE_RING = 17`, `SAFE_RADIUS = 2`, `RESPAWN_GRACE_TICKS = 10`, `FIRST_SPAWN_GRACE_TICKS = 300`, `FIRST_SPAWN_HP = 20`. `STICK_DROP_CHANCE` stays 0.25.
+- **Constants** (`shared/sim/constants.ts`): `HEDGE_RING = 17`, `SAFE_RADIUS = 2` (3 since the economy rules, ECONOMY.md), `RESPAWN_GRACE_TICKS = 10`, `FIRST_SPAWN_GRACE_TICKS = 300`, `FIRST_SPAWN_HP = 20`. `STICK_DROP_CHANCE` stays 0.25.
 - **Map** (new `shared/sim/areas.ts`): `ringOf(t)`, `isBramble(t)`, `areaOf(t)` (`'grove' | 'hedge' | 'coast'`), `canEnter(from, to, hasStick)` = `!isBramble(to) || hasStick || ringOf(from) > HEDGE_RING`.
 - **Pathfinding** (`shared/sim/pathfinding.ts`): `bfsPath`, `bfsNextStep` and `nearestReachableTile` take an optional `canEnter(from, to)`; `canStep` applies it to the destination and to both orthogonal tiles of a diagonal (no corner cutting through brambles). Default: allow all, so existing callers and tests are unchanged.
 - **Server:** `holdsItem(slots, weapon, itemId)` in `shared/sim`. `setTarget`, `startHarvest`, `pickupItem` and `phaseMovement` (moves and follows) build the predicate from `holdsItem(…, 'stick')`. Cheap check first: `p.weapon === 'stick'` already means you hold one (the weapon stays in the quick bar), so `readSlots` (an owner-index filter, ≤28 rows) runs only for moving players not wielding it. `blocked.ts` stays trees-only. `bfsPath` is recomputed every tick, so dropping the stick mid-route makes it fail and clears the target: the player stops where they are (not re-clamped to ring 16).

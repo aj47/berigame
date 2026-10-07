@@ -12,8 +12,8 @@ import { SPIRE_DAIS } from './bossZones';
 // ---- Training dummy ---------------------------------------------------------
 export const DUMMY_ID = 1;
 /**
- * The one practice post: 3 tiles south-east of spawn, diagonal to the safe
- * ring's corner (ring 3), off the four worn paths (x = 25, z = 25) and clear
+ * The one practice post: 3 tiles south-east of spawn, on the safe ring's
+ * south-east corner (ring 3), off the four worn paths (x = 25, z = 25) and clear
  * of every tree's harvest tiles. It blocks its tile like a tree.
  */
 export const DUMMY_TILE: Tile = { x: SPAWN_TILE.x + 3, z: SPAWN_TILE.z + 3 };

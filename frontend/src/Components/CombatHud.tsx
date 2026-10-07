@@ -23,6 +23,7 @@ import { useToastStore } from "../spacetime/stores/toastStore";
 import { isTyping } from "./keyboard";
 import { PUNCH_ICON, isWieldedSlot, slotsFromRows } from "./itemUi";
 import { useInventoryDrag } from "./useInventoryDrag";
+import EconomyHud from "./EconomyHud";
 import type { FrontierSnapshot } from "../../../shared/sim/frontier/snapshot";
 import { REGIONS } from "../../../shared/sim/frontier/catalog";
 import { foodHealing } from "../../../shared/sim/frontier/engine";
@@ -33,6 +34,8 @@ interface Props {
   /** False while a panel is open, so its keyboard controls cannot consume items. */
   quickKeysEnabled?: boolean;
   onOpenBag?: (slot: number) => void;
+  /** Opens the vault panel (at the Grove vault or a Coast drop box). */
+  onOpenVault?: () => void;
   frontier?: FrontierSnapshot;
 }
 
@@ -40,7 +43,7 @@ interface Props {
  * Bottom combat strip: health, opponent timing, the three quick slots
  * (inventory slots 0..HOTBAR_SIZE-1, keys 1-3) and Stop.
  */
-const CombatHud = ({ quickKeysEnabled = true, onOpenBag, frontier }: Props) => {
+const CombatHud = ({ quickKeysEnabled = true, onOpenBag, onOpenVault, frontier }: Props) => {
   const me = useMyPlayer();
   const players = usePlayersByHex();
   const tick = useTick();
@@ -201,6 +204,7 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag, frontier }: Props) => {
           weaponChip
         )}
       </div>
+      <EconomyHud onOpenVault={onOpenVault} />
       <div className="hotbar">
         {slots.slice(0, HOTBAR_SIZE).map((slot, index) => {
           const def = slot ? getItemDef(slot.itemId) : undefined;

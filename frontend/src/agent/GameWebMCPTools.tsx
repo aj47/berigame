@@ -1,6 +1,6 @@
 import { exportRecovery } from '../frontier/recovery';
 import { frontierSnapshot } from '../../../shared/sim/frontier/snapshot';
-import { describeAction, describeDestination, describeGathering, describeObjective } from '../../../shared/sim/agentState';
+import { describeAction, describeDestination, describeEconomy, describeGathering, describeObjective } from '../../../shared/sim/agentState';
 import { validateCommand } from '../../../shared/sim/frontier/engine';
 import { useFrontierObjects, useFrontierViews, useTradeRows } from '../spacetime/hooks';
 import { useToastStore } from "../spacetime/stores/toastStore";
@@ -213,6 +213,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
       tool('equip_technique', 'Toggle an unlocked technique at camp. Three equipped at once, no cost to change. Inspect techniques for numeric IDs and requirements.', { technique:{type:'integer',minimum:0,maximum:14} }, ['technique'], async({technique})=>reportAction(await live.current.actions.equipTechnique(technique),'Loadout updated.')),
       tool('friendly_duel', 'Challenge a nearby player outside the safe ring. The recipient accepts. Countdown, separate practice health, no bag loss. Either may surrender.', { action:{type:'string',enum:['challenge','accept','decline','surrender']}, playerId:{type:'string'} }, ['action','playerId'], async({action,playerId})=>reportAction(await live.current.actions.duelAction(action,Identity.fromString(playerId)),'Duel updated; inspect state.')),
       tool('contribute_project', 'Donate one driftwood or obsidian at camp to the shared workshop. 20 wood and 10 obsidian improves all future expedition rewards.', {itemId:{type:'string',enum:['driftwood','obsidian']}}, ['itemId'], async({itemId})=>reportAction(await live.current.actions.contributeProject(itemId),'Contribution saved.')),
+      tool('vault', 'Deposit to or withdraw from your personal vault (economy.vault in inspect_game_state). Instant in the Grove safe ring; a Coast drop box takes deposits only, over a few seconds, and a hit or a step stops it.', { action: { type: 'string', enum: ['deposit', 'withdraw'] }, itemId: { type: 'string', maxLength: 32 }, quantity: { type: 'integer', minimum: 1, maximum: 99 } }, ['action', 'itemId', 'quantity'],
+        async ({ action, itemId, quantity }) => reportAction(await (action === 'withdraw' ? live.current.actions.vaultWithdraw(itemId, quantity) : live.current.actions.vaultDeposit(itemId, quantity)), action === 'withdraw' ? 'Withdrawn.' : 'Deposit accepted; a drop-box deposit finishes in a few seconds unless you are hit.')),
       tool('share_garden', 'Publish or hide a read-only view of your garden. Only you can change its plants.', {shared:{type:'boolean'}}, ['shared'], async({shared})=>reportAction(await live.current.actions.shareGarden(shared),'Garden visibility updated.')),
       tool(
         "inspect_game_state",
@@ -259,11 +261,12 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
             goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action } : null,
             objective: player ? describeObjective(region, goal, frontier) : null,
             frontier,
+            economy: player ? describeEconomy({ self: player, slots, views: state.frontierViews, identity: identityHex(player.identity), now: Date.now() }) : null,
             world: {
               region,
               map: home && !inside ? TERRAIN_MAP : null,
               brambles: { center: SPAWN_TILE, ring: HEDGE_RING, tiles: brambleTiles(), key: STICK_ITEM_ID, rule: "The rounded woodland boundary is thorny brambles (see tiles): step onto one only while holding a stick, or from the Coast. You can always walk home." },
-              safeRing: { center: SPAWN_TILE, radius: SAFE_RADIUS },
+              safeRing: { center: SPAWN_TILE, radius: SAFE_RADIUS, rule: "No attack starts or lands here and your vault opens here. Stepping out gives a few ticks of protection, which attacking ends." },
               boulders: { key: BOULDER_KEY_ITEM, rule: "Past the Coast's south-east corner, a boulder line on walkable land with max(x, z) = 50 and z >= 32 guards the Boulders: step onto it only while holding a stone club, or from the Boulders. You can always walk home. Check world.map.rows for the coastline, river and crossings." },
             },
             giant: (() => {

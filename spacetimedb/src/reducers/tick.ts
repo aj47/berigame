@@ -9,7 +9,7 @@ import spacetimedb from '../schema';
 import { tickSchedule } from '../tables';
 import {
   DEATH_TICKS, EventKind, MELEE_RANGE, isBerryNode, Cosmetic, areaOf, harvestXp, skillForNode, regrowTicksFor, Pending, PlayerState, SPAWN_TILE,
-  MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS,
+  MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS, TICK_MS, energyCost,
   bfsPath, chebyshev, facingFromDelta, goalAdjacentTo,
   goalIsTile, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
   neighbors8, swingDamage, tileKey, DUMMY_TILE, dummyAfterHit, worldBlockedSet,
@@ -18,6 +18,7 @@ import {
   inBoulders, stepGiant, type GiantCandidate,
   RAID_REWARD, RaidOutcome, raidDue, raidRewardees,
   CLATTERHORN_ID, CLATTER_REACH, ClatterState,
+  DROP_BOX_REACH, dropBox, EXIT_PROTECT_TICKS, RESPAWN_GRACE_TICKS, LOAD_REFRESH_TICKS, carriedValue, loadLevel,
 } from '../../../shared/sim';
 import { emitGiantEvent, ensureGiant } from '../lib/giant';
 import { clearContributions as clearAllContributions, countRaiders, ensureRaid, nowMs, sleepGiant, wakeGiant } from '../lib/raid';
@@ -25,13 +26,16 @@ import { mentorMilestone } from '../lib/mentor';
 import { ensureDummy } from '../lib/dummy';
 import { playerEnterRule } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
+import { spendEnergyFor } from '../lib/energy';
+import { itemLabel, moveVaultItems } from '../lib/vault';
 import { seedMissingNodes } from '../lib/nodes';
 import { statsDeath, statsPosition } from '../lib/stats';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
-import { clearInteractions, hex, sameId } from '../lib/players';
+import { clearInteractions, hex, sameId, savePlayer } from '../lib/players';
 import { canPlay } from '../lib/access';
 import { cancelTrade, notify } from '../lib/social';
 import { requestTradeInRange, tradePartnerProblem } from '../lib/trade';
+import { completeTrade, stopSwapOnHit } from '../lib/tradeSwap';
 import { grantXp, harvestTicksForPlayer, unlockCosmetic } from '../lib/progress';
 import type { Ctx, GiantRow, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
 import { MentorMilestone, bossNoPvpZone } from '../../../shared/sim';
@@ -71,8 +75,9 @@ function releaseTreeInTick(s: TickState, p: PlayerRow): void {
   p.harvestEndTick = 0;
 }
 
-/** Damage interrupts gathering and queued interactions. */
+/** Damage interrupts gathering, queued interactions and a pending trade swap. */
 function interrupt(s: TickState, p: PlayerRow): void {
+  stopSwapOnHit(s.ctx, p.identity, p.name);
   if (p.harvestTreeId !== 0 || p.pending !== Pending.None) {
     releaseTreeInTick(s, p);
     if (p.pending === Pending.Trade) {
@@ -80,6 +85,7 @@ function interrupt(s: TickState, p: PlayerRow): void {
       p.targetX = undefined; p.targetZ = undefined;
       notify(s.ctx, p.identity, p.identity, SocialNotice.Info, 'Trade approach cancelled: you were hit');
     }
+    if (p.pending === Pending.Deposit) notify(s.ctx, p.identity, p.identity, SocialNotice.Info, 'Deposit stopped: you were hit');
     p.pending = Pending.None;
     p.pendingId = 0n;
     mark(s, p);
@@ -262,6 +268,7 @@ function phaseMovement(s: TickState): void {
       } else {
         // Milestone cosmetic: the step from the hedge onto the Coast (rare; one PK lookup when it happens).
         const fromArea = areaOf(p);
+        const wasSafe = inSafeRing(p);
         for (const step of path.slice(0, cargoMovementSteps(carrying(s.ctx, p.identity)))) {
           p.facing = facingFromDelta(step.x - p.x, step.z - p.z);
           p.x = step.x;
@@ -278,6 +285,9 @@ function phaseMovement(s: TickState): void {
             if (p.pending === Pending.None || (!p.combatTarget && p.targetX === undefined)) break;
           }
         }
+        // Stepping out of the safe ring: a short head start (grace), so nobody can camp its edge. Attacking ends it,
+        // and someone already attacking gets none.
+        if (wasSafe && !inSafeRing(p) && !(p.hostile && p.combatTarget)) p.respawnTick = Math.max(p.respawnTick, s.T + EXIT_PROTECT_TICKS - RESPAWN_GRACE_TICKS);
         if ((fromArea === 'grove' || fromArea === 'hedge') && areaOf(p) === 'coast' && unlockCosmetic(s.ctx, p.identity, Cosmetic.CoastScarf)) {
           mentorMilestone(s.ctx, p, MentorMilestone.Coast);
         }
@@ -309,17 +319,20 @@ function phaseHarvest(s: TickState): void {
     if (!alive(p) || p.harvestTreeId === 0 || p.harvestEndTick > s.T) continue;
     const tree = s.trees.get(p.harvestTreeId);
     if (tree && sameId(tree.harvester, p.identity) && chebyshev(p, tree) <= MELEE_RANGE) {
-      giveItem(s.ctx, p.identity, tree.itemId, 1, p, s.T);
+      // Energy: double while rested, normal, or (tired) only every fourth harvest pays. The node regrows either way.
+      const { payout } = spendEnergyFor(s.ctx, p.identity, energyCost(harvestTicksForPlayer(s.ctx, p.identity, tree) * TICK_MS));
+      if (payout) giveItem(s.ctx, p.identity, tree.itemId, payout, p, s.T);
+      else notify(s.ctx, p.identity, p.identity, SocialNotice.Info, 'You are tired: that harvest found nothing. Energy comes back with time, and a rest away from the game makes you rested.');
       tree.cooldownUntilTick = s.T + regrowTicksFor(tree.kind);
       tree.harvester = undefined;
       markTree(s, tree);
-      emitEvent(s.ctx, { tick: s.T, kind: EventKind.HarvestDone, attacker: p.identity, defender: p.identity, itemId: tree.itemId, defenderHp: p.hp });
+      emitEvent(s.ctx, { tick: s.T, kind: EventKind.HarvestDone, attacker: p.identity, defender: p.identity, itemId: payout ? tree.itemId : '', damage: payout, defenderHp: p.hp });
       // ctx.random is seeded from the tick timestamp and drawn in s.order, so replays agree.
       // Draw on every berry harvest; level 2 guarantees the first stick, then allows spares.
-      // Only berry trees find sticks: Coast nodes never draw.
-      const berry = isBerryNode(tree);
+      // Only berry trees find sticks: Coast nodes never draw, and neither does a tired harvest that paid nothing.
+      const berry = isBerryNode(tree) && payout > 0;
       const roll = berry ? s.ctx.random() : 1;
-      const level = grantXp(s.ctx, p.identity, skillForNode(tree.kind), harvestXp(tree.kind));
+      const level = payout ? grantXp(s.ctx, p.identity, skillForNode(tree.kind), harvestXp(tree.kind) * payout) : 0;
       const pp = profile(s.ctx, p.identity);
       if (berry && canFindStick(level, pp.stickClaimed, roll)) {
         saveProfile(s.ctx, { ...pp, stickClaimed: true });
@@ -584,6 +597,51 @@ function phaseDeath(s: TickState): void {
   }
 }
 
+/**
+ * Drop-box deposits (shared/sim/banking.ts). A deposit finishes on its
+ * `doneTick` while its player still stands in reach with Pending.Deposit;
+ * damage (interrupt), moving or any other action cleared that, and the stale
+ * row goes. Runs after every damage phase, so a blow on the last tick wins.
+ */
+function phaseDeposits(s: TickState): void {
+  const table = s.ctx.db.pendingDeposit;
+  if (!table || table.count() === 0n) return;
+  for (const row of [...table.iter()]) {
+    const p = s.players.get(hex(row.identity));
+    if (!p || !alive(p) || p.pending !== Pending.Deposit || Number(p.pendingId) !== row.boxId) {
+      table.identity.delete(row.identity);
+      continue;
+    }
+    const box = dropBox(row.boxId);
+    if (!box || chebyshev(p, box) > DROP_BOX_REACH) {
+      table.identity.delete(row.identity);
+      p.pending = Pending.None; p.pendingId = 0n; mark(s, p);
+      notify(s.ctx, p.identity, p.identity, SocialNotice.Info, 'Deposit stopped: you left the drop box');
+      continue;
+    }
+    if (s.T < row.doneTick) continue;
+    table.identity.delete(row.identity);
+    p.pending = Pending.None; p.pendingId = 0n; mark(s, p);
+    const result = moveVaultItems(s.ctx, p, row.itemId, row.quantity, 'deposit');
+    notify(s.ctx, p.identity, p.identity, SocialNotice.Info,
+      result.ok ? `Deposited ${itemLabel(row.itemId, row.quantity)} into your vault` : `Deposit failed: ${result.reason}`);
+  }
+}
+
+/**
+ * The glow over anyone carrying a large unbanked load, in every region. Runs
+ * every LOAD_REFRESH_TICKS after all other player writes (frontier included),
+ * so it never races a working copy; writes only rows whose level changed.
+ */
+function refreshLoads(ctx: Ctx, T: number): void {
+  if (T % LOAD_REFRESH_TICKS !== 0) return;
+  for (const row of ctx.db.player.iter()) {
+    if (!row.online) continue;
+    const level = row.state === PlayerState.Alive ? loadLevel(carriedValue(readSlots(ctx, row.identity).slots)) : 0;
+    if ((row.load ?? 0) !== level) ctx.db.player.identity.update({ ...row, load: level });
+  }
+}
+
 /** Field-by-field equality of a row and its working copy (identities by value). */
 function sameRow<T extends object>(a: T | undefined, b: T): boolean {
   if (!a) return false;
@@ -612,7 +670,19 @@ function phaseTrades(s: TickState): void {
     else if (a.state !== PlayerState.Alive || b.state !== PlayerState.Alive) reason = 'Trade cancelled';
     else if ((a.region || 'bramblewild') !== (b.region || 'bramblewild') || chebyshev(a, b) > TRADE_BREAK_RANGE) reason = 'Trade cancelled: you walked too far apart';
     else if (!row.accepted && s.T - row.createdTick > TRADE_REQUEST_TICKS) reason = 'Trade request expired';
-    if (reason) cancelTrade(s.ctx, row, reason);
+    if (reason) { cancelTrade(s.ctx, row, reason); continue; }
+    if (!row.swapTick || !row.aConfirmed || !row.bConfirmed) continue;
+    // Any damage source (frontier fights included) shows as lower HP than at the confirmation.
+    const hit = a!.hp < row.aHp ? a! : b!.hp < row.bHp ? b! : null;
+    if (hit) { stopSwapOnHit(s.ctx, hit.identity, hit.name); continue; }
+    // Healing raises the mark, so a later blow is still caught.
+    if (a!.hp > row.aHp || b!.hp > row.bHp) table.id.update({ ...row, aHp: Math.max(row.aHp, a!.hp), bHp: Math.max(row.bHp, b!.hp) });
+    if (s.T < row.swapTick) continue;
+    const fresh = table.id.find(row.id)!;
+    completeTrade(s.ctx, fresh, a!, b!, (side) => {
+      const working = s.players.get(hex(side.identity));
+      if (working) { working.weapon = ''; mark(s, working); } else savePlayer(s.ctx, { ...side, weapon: '' });
+    });
   }
 }
 
@@ -694,6 +764,7 @@ export const tick = spacetimedb.reducer(
     phaseGiant(s);
     phaseClatterhorn(api);   // after the Giant, before death: lethal blows resolve this tick
     phaseSpire(api);         // lobbies, runs (swings, stars, bullets, knockouts), cleanup, the stranded sweep
+    phaseDeposits(s);        // after every damage phase: a blow on the last tick stops the deposit
     phaseDeath(s);
     phaseTrades(s);
     phaseExpiry(s);
@@ -715,5 +786,6 @@ export const tick = spacetimedb.reducer(
     tickExpeditions(ctx, T);
     tickDuels(ctx, T);
     tickFrontier(ctx);
+    refreshLoads(ctx, T);
   }
 );

@@ -1,4 +1,4 @@
-import { BRIDGES, ClatterState, FOREST_TREES, GRID_SIZE, LANDMARKS, TRAILS, inGiantHeadland, inSpireFloor, isBridge, terrainField } from '@sim';
+import { BRIDGES, ClatterState, DROP_BOXES, FOREST_TREES, GRID_SIZE, LANDMARKS, TRAILS, inGiantHeadland, inSpireFloor, isBridge, terrainField } from '@sim';
 import { PLOTS, REGIONS, type Location } from '../../../shared/sim/frontier/catalog';
 import { HOME_GRID, homeLand, homeLocation, homePoint, MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
 import { meadowField, regionLand } from '../../../shared/sim/frontier/regions';
@@ -199,6 +199,11 @@ export function drawHomeMap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
 
   if (detailed) {
     for (const node of m.nodes) dot(node, node.ripe ? node.color : '#7e9275');
+    // Coast drop boxes (deposit to your vault): gold squares ringed in dark wood.
+    for (const box of DROP_BOXES) {
+      dot(box, '#3a2c1d', 4);
+      ctx.fillStyle = '#e3b65c'; ctx.fillRect(x(box.x) - 2.2, z(box.z) - 2.2, 4.4, 4.4);
+    }
     for (const node of m.resources ?? []) {
       const timber = node.item === 'timber';
       ctx.globalAlpha = node.ready ? 1 : .4;

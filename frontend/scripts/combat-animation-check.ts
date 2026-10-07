@@ -147,10 +147,10 @@ try {
       report.stick.handedToB = true;
     }
     await a.conn.reducers.cancel({}); await b.conn.reducers.cancel({});
-    // Just south of the safe ring (Chebyshev radius 2 around spawn), in view of the spawn camera.
-    await a.conn.reducers.setTarget({ x: 24, z: 28 });
-    await b.conn.reducers.setTarget({ x: 25, z: 28 });
-    await waitFor('actors in place', () => row(a)?.x===24 && row(a)?.z===28 && row(b)?.x===25 && row(b)?.z===28, 30000);
+    // Just south of the safe ring (Chebyshev radius 3 around spawn), in view of the spawn camera.
+    await a.conn.reducers.setTarget({ x: 24, z: 29 });
+    await b.conn.reducers.setTarget({ x: 25, z: 29 });
+    await waitFor('actors in place', () => row(a)?.x===24 && row(a)?.z===29 && row(b)?.x===25 && row(b)?.z===29, 30000);
     await sleep(850); // Let confirmed travel and its short animation hold finish.
     let before = 0, beforeRows: any[] = [], event: any;
     // Software GL can stall for over a second between frames, longer than the 1.4 s cue: a swing

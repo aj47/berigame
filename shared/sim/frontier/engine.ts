@@ -3,9 +3,11 @@ import { addItem, countItem, removeFromSlot } from "../inventory";
 import { getItemDef } from "../items";
 import { facingFromDelta } from "../grid";
 import { areaOf } from "../areas";
+import { atGroveVault } from "../banking";
 import { inSpireFloor } from "../bossZones";
 import { TICK_MS } from "../constants";
 import { levelForXp } from "../skills";
+import { energyCost, energyScaled, newEnergy, spendEnergy } from "../energy";
 import { buildingBlocker, buildingCollisionKeys, buildingsOverlap, isEdgeBuilding } from "./building";
 import { regionalPvPProblem } from "./combat";
 import { sameDisciplines, specializationSwitch } from './specialization';
@@ -415,7 +417,7 @@ function storagePermission(w: World, a: Actor, c: Container) {
       "Call your pack companion first",
     );
   } else
-    check(c.owner === a.id && atTown(a), "Your vault is available in town");
+    check(c.owner === a.id && (atTown(a) || atGroveVault(a)), "Your vault opens in Meadows town and in the Grove safe ring");
 }
 function homeRoute(w: World, a: Actor, to: Point, respectBoundaries = true) {
   const meadowBlocked: PathBlocker = blocked(w, { ...a, ...(a.region === "settlement" ? a : { x: -1, z: -1 }), region: "settlement" });
@@ -1517,17 +1519,23 @@ export function advance(w: World) {
     if (w.now < h.completesAt) continue;
     a.bag = w.loadBag?.(a) ?? a.bag;
     const p = profile(w, a.id);
-    const quantity = gatherYield(p, a, node.item);
+    // Energy sets the payout: double while rested, nothing on three of four tired gathers.
+    const spent = spendEnergy(r.get("energy", a.id) ?? newEnergy(a.id, w.now, w.bornAt?.(a.id) ?? w.now), w.now, energyCost(h.completesAt - h.startedAt));
+    const quantity = energyScaled(gatherYield(p, a, node.item), spent.payout);
     const result = addItem(a.bag, node.item, quantity);
     delete node.harvest;
-    if (result.remaining === 0) {
+    if (quantity === 0 || result.remaining < quantity) {
+      r.put("energy", spent.state);
       a.bag = result.slots;
-      event(p, `gather:${node.item}`, quantity);
-      xp(p, ["fibre", "reeds", "carrot_seed"].includes(node.item) ? 1 : 4, 8);
+      const got = quantity - result.remaining;
+      if (got) event(p, `gather:${node.item}`, got);
+      if (spent.payout) xp(p, ["fibre", "reeds", "carrot_seed"].includes(node.item) ? 1 : 4, energyScaled(8, spent.payout));
       if (node.item === "timber") {
         node.felledAt = w.now;
         node.regrowsAt = w.now + FRONTIER.timberRegrow;
       }
+      // On `p` itself: a separate note() would be overwritten by the profile saved just below.
+      if (!spent.payout) p.notes = [...p.notes.slice(-19), "You are tired: that gather found nothing. Energy comes back with time, and a rest away from the game makes you rested."];
       r.put("profile", p);
       w.save(a);
     } else note(w, a.id, "Gathering stopped because your bag is full.");

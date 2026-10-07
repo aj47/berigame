@@ -98,6 +98,8 @@ export const player = table(
     /** Item id of the wielded weapon, e.g. 'stick'; '' = bare fists (punch). Public so everyone can draw it. */
     weapon: t.string().default(''),
     region: t.string().default('bramblewild'),
+    /** Unbanked carried value, 0 none / 1 glowing / 2 bright (shared/sim/banking.ts loadLevel). Public so everyone sees the glow. */
+    load: t.u8().default(0),
   }
 );
 
@@ -323,6 +325,14 @@ export const trade = table(
     bConfirmed: t.bool(),
     createdTick: t.u32(),
     aCoins: t.u32().default(0), bCoins: t.u32().default(0),
+    /**
+     * Appended: 0 while not both confirmed. Otherwise the tick the swap runs on
+     * (shared/sim/banking.ts TRADE_SWAP_TICKS) and each side's HP when it was
+     * set: any damage to either side before then stops the swap.
+     */
+    swapTick: t.u32().default(0),
+    aHp: t.u8().default(0),
+    bHp: t.u8().default(0),
   }
 );
 
@@ -661,4 +671,17 @@ export const bossNotice = table({ name: 'boss_notice', public: true, event: true
   tick: t.u32(), boss: t.u8(), kind: t.u8(), player: t.identity(), runId: t.u64(),
   amount: t.u32(), total: t.u32(), hp: t.u8(), half: t.u8(), quantity: t.u8(),
   itemId: t.string(), x: t.i32(), z: t.i32(),
+});
+
+/**
+ * Private: a drop-box deposit in progress (shared/sim/banking.ts). The player
+ * row carries Pending.Deposit while it runs; the tick completes it at
+ * `doneTick` or deletes it once the player stops, moves away or is hit.
+ */
+export const pendingDeposit = table({ name: 'pending_deposit' }, {
+  identity: t.identity().primaryKey(),
+  boxId: t.u32(),
+  itemId: t.string(),
+  quantity: t.u8(),
+  doneTick: t.u32(),
 });

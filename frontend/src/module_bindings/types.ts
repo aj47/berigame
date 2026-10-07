@@ -399,6 +399,15 @@ export const MentorStat = __t.object("MentorStat", {
 });
 export type MentorStat = __Infer<typeof MentorStat>;
 
+export const PendingDeposit = __t.object("PendingDeposit", {
+  identity: __t.identity(),
+  boxId: __t.u32(),
+  itemId: __t.string(),
+  quantity: __t.u8(),
+  doneTick: __t.u32(),
+});
+export type PendingDeposit = __Infer<typeof PendingDeposit>;
+
 export const PlayStats = __t.object("PlayStats", {
   identity: __t.identity(),
   firstJoinAt: __t.timestamp(),
@@ -447,6 +456,7 @@ export const Player = __t.object("Player", {
   inputsThisTick: __t.u8(),
   weapon: __t.string(),
   region: __t.string(),
+  load: __t.u8(),
 });
 export type Player = __Infer<typeof Player>;
 
@@ -585,6 +595,9 @@ export const Trade = __t.object("Trade", {
   createdTick: __t.u32(),
   aCoins: __t.u32(),
   bCoins: __t.u32(),
+  swapTick: __t.u32(),
+  aHp: __t.u8(),
+  bHp: __t.u8(),
 });
 export type Trade = __Infer<typeof Trade>;
 

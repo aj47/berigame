@@ -46,13 +46,15 @@ describe('Grove geometry', () => {
     expect(HEDGE_CROSSINGS.every(isBramble)).toBe(true);
   });
 
-  it('safe ring is radius 2 (25 tiles); gold and blue trees stay outside', () => {
-    expect(SAFE_RADIUS).toBe(2);
+  it('safe ring is radius 3 (49 tiles); gold and blue trees stay outside', () => {
+    expect(SAFE_RADIUS).toBe(3);
     let n = 0;
     for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) if (inSafeRing({ x, z })) n++;
-    expect(n).toBe(25);
+    expect(n).toBe(49);
     expect(inSafeRing({ x: 30, z: 25 })).toBe(false);
     expect(inSafeRing({ x: 20, z: 30 })).toBe(false);
+    // No tree can be harvested from inside the ring.
+    for (const t of TREE_SEEDS) for (const n of neighbors8(t)) expect(inSafeRing(n)).toBe(false);
   });
 });
 

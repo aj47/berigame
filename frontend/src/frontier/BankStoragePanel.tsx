@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getItemDef, levelForXp, PlayerState } from '@sim';
+import { atGroveVault, getItemDef, levelForXp, PlayerState } from '@sim';
 import { FRONTIER, PIECES, REGIONS, SPECIES, type Location } from '../../../shared/sim/frontier/catalog';
 import { isHomeRegion } from '../../../shared/sim/frontier/homeMap';
 import type { FrontierSnapshot } from '../../../shared/sim/frontier/snapshot';
@@ -30,14 +30,15 @@ export default function BankStoragePanel({ state, onBag, onTravel, request }: {
   const destination = personal ? { region: 'settlement', ...REGIONS.settlement.spawn } as Location : building ?? boat ?? pet;
   const nearby = !!destination && destination.region === region
     && Math.max(Math.abs(me.x - destination.x), Math.abs(me.z - destination.z)) <= (personal ? 4 : 2);
-  const accessible = nearby || !!boat?.crew.includes(id);
+  // The personal vault also opens anywhere in the Grove safe ring (shared/sim/banking.ts).
+  const accessible = nearby || (personal && atGroveVault(me)) || !!boat?.crew.includes(id);
   const alive = me.state !== PlayerState.Dead;
   const aboard = state.boats.some(b => b.crew.includes(id));
   const canWalk = destination && !aboard && (destination.region === region || (isHomeRegion(region) && isHomeRegion(destination.region)));
   const needsBeastcraft = !!pet && (!state.profile.active.includes(3) || levelForXp(state.profile.xp[3]) < 2);
   const unavailable = !alive ? 'Respawn before moving items.' : needsBeastcraft ? 'Activate Beastcraft level 2 to use pack storage.'
     : pet && !pet.active ? 'Call your pack companion to use its storage.' : !accessible
-      ? personal ? 'Visit the bank beside the steward in Meadows town to deposit or withdraw.' : 'Move beside this storage to deposit or withdraw.' : '';
+      ? personal ? 'Visit the bank beside the steward in Meadows town, or the Grove safe ring, to deposit or withdraw.' : 'Move beside this storage to deposit or withdraw.' : '';
   const slots = container?.slots ?? [], occupied = slots.filter(Boolean).length;
   const capacity = personal ? Math.max(FRONTIER.bankSlots, slots.length) : slots.length;
   const bag = inventory.filter(row => row.owner.toHexString() === id);

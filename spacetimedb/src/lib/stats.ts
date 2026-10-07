@@ -98,3 +98,10 @@ export function statsCraft(ctx: Ctx, id: Identity): void {
 export function statsDeath(ctx: Ctx, id: Identity): void {
   edit(ctx, id, (row) => ({ ...row, deaths: row.deaths + 1 }));
 }
+
+/** When this identity first joined (Unix ms); now for an identity with no stats row. */
+export function firstPlayedMs(ctx: Ctx, id: Identity): number {
+  const stats = ctx.db.playStats?.identity.find(id);
+  const now = Number(ctx.timestamp.microsSinceUnixEpoch / 1000n);
+  return stats ? Math.min(now, Number(stats.firstJoinAt.microsSinceUnixEpoch / 1000n)) : now;
+}

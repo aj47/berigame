@@ -1,5 +1,5 @@
 // Shared by the HTTP API and browser WebMCP inspection.
-export { describeDestination, describeGathering, describeObjective, describeAction } from '../../shared/sim/agentState';
+export { describeDestination, describeGathering, describeObjective, describeAction, describeEconomy } from '../../shared/sim/agentState';
 import {
   BossEventKind, BossId, BossNoticeKind, ClatterState, GRID_SIZE, SPIRE_OUTCOME_NAMES, SPIRE_RULES_VERSION, SpireStage,
   atClatterhorn, bossConfigOr, buildDangerFeed, cargoMovementSteps, chebyshev, clatterHitsMove, dangerMoveTo, describeClatterhorn, describeSpire,

@@ -1,6 +1,7 @@
 import { ScheduleAt } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
+import { settleEnergyFor } from '../lib/energy';
 import {
   FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, MAX_HP, PlayerState, RESPAWN_GRACE_TICKS, Pending, SPAWN_TILE, TICK_MS, TREE_SEEDS, NodeKind,
 } from '../../../shared/sim';
@@ -41,7 +42,10 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   }
   // Only a real live connection counts as "already online": after a module
   // restart, stale session state is closed out and a new session starts.
-  statsSessionStart(ctx, ctx.sender, Boolean(existing && existing.online && existing.connections > 0));
+  const alreadyOnline = Boolean(existing && existing.online && existing.connections > 0);
+  statsSessionStart(ctx, ctx.sender, alreadyOnline);
+  // The time away fills the energy meter above the rested line (shared/sim/energy.ts).
+  if (existing && !alreadyOnline) settleEnergyFor(ctx, ctx.sender, false);
   if (existing) {
     savePlayer(ctx, {
       ...existing,
@@ -82,7 +86,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     eatCooldownUntilTick: 0,
     lastInputTick: 0,
     inputsThisTick: 0,
-    weapon: '', region: 'bramblewild',
+    weapon: '', region: 'bramblewild', load: 0,
   });
 });
 
@@ -94,6 +98,7 @@ export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
     p.online = false;
     clearInteractions(ctx, p);
     statsSessionEnd(ctx, p.identity);
+    settleEnergyFor(ctx, p.identity, true);
     // Nobody can keep fighting or following someone who left.
     for (const other of [...ctx.db.player.iter()]) {
       if (other.combatTarget && other.combatTarget.toHexString() === hex(p.identity)) {

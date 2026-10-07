@@ -72,6 +72,8 @@ export function useGameActions() {
     unwield: () => run('unwield', (c) => c.reducers.unwield({})),
     moveItem: (from: number, to: number) => run('moveItem', (c) => c.reducers.moveItem({ from, to })),
     dropItem: (slot: number, quantity: number) => run('dropItem', (c) => c.reducers.dropItem({ slot, quantity })),
+    vaultDeposit: (itemId: string, quantity: number) => run('vaultDeposit', (c) => c.reducers.vaultDeposit({ itemId, quantity })),
+    vaultWithdraw: (itemId: string, quantity: number) => run('vaultWithdraw', (c) => c.reducers.vaultWithdraw({ itemId, quantity })),
     pickupItem: (id: bigint) => run('pickupItem', (c) => c.reducers.pickupItem({ id })),
     sendChat: (text: string) => run('sendChat', (c) => c.reducers.sendChat({ text })),
     setAppearance: (appearance: Appearance) => run('setAppearance', (c) => c.reducers.setAppearance(appearance)),

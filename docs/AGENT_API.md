@@ -378,10 +378,23 @@ per cut. All current IDs and positions are in `frontier.resources`.
   `waiting {treeId, ripeInTicks}` when the tree is not ready yet. Without
   `treeId`, `harvest` picks the tree with the soonest claim for you.
 - **Safety.** No attack starts or lands while either player is inside the safe
-  ring (`world.safeRing`, radius 2 around spawn). A player is also protected for
-  10 ticks after respawning, and a new character is protected until it gets a
-  stick (then 10 more ticks), attacks, or 3:00 (300 ticks) pass. Attacking ends
-  your own protection. New characters start at 20/30 HP.
+  ring (`world.safeRing`, radius 3 around spawn). A player is also protected for
+  10 ticks after respawning, for 3 ticks after stepping out of the safe ring,
+  and a new character is protected until it gets a stick (then 10 more ticks),
+  attacks, or 3:00 (300 ticks) pass. Attacking ends your own protection. New
+  characters start at 20/30 HP.
+- **Energy, banking and risk** (`state.economy`, [design](./design/ECONOMY.md)).
+  Harvests and gathers pay by an energy meter measured in seconds of gathering:
+  double while rested (above `economy.energy.restedLine`), normal below it, and
+  one in four while tired. It refills one point per 6 s: online up to the
+  rested line, logged out up to the top, so only time away makes you rested.
+  Everything in the bag drops on defeat; `vault_deposit` / `vault_withdraw` are
+  instant in the safe ring, and the four Coast drop boxes
+  (`economy.vault.dropBoxes`) take deposits over 4 ticks that a hit or a step
+  stops (`player.action` is `depositing`). A bag worth 30+ glows for everyone
+  (`player.load`). Outside the safe ring, Meadows town and boss zones, a
+  confirmed trade swaps 3 ticks later (`state.trade.swapInTicks`) and a hit on
+  either side stops it.
 - **The goal.** `state.goal {id, text, hint, action, waiting?}` is the same
   "First Day" chip the browser shows: `pick-berry`, `eat-berry`, `find-stick`,
   `wield-stick` (only with combat access), `reach-coast`. `action` is the next

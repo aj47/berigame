@@ -84,7 +84,8 @@ export const useCombatFxStore = create<CombatFxState>((set, get) => ({
           delete numbers[defender];
           break;
         case EventKind.HarvestDone:
-          float(defender, '+1');
+          // `damage` is the energy payout (0 = a tired harvest that found nothing); older servers sent 0 with an item.
+          float(defender, e.itemId ? `+${e.damage || 1}` : 'tired');
           break;
         case EventKind.ItemFound: {
           finds = { ...s.finds, [defender]: { seq, kind: e.kind, amount: 1, text: `+ ${getItemDef(e.itemId)?.name ?? e.itemId}`, itemId: e.itemId, at, delayMs: FIND_DELAY_MS } };

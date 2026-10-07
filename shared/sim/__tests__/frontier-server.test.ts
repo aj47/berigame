@@ -209,6 +209,8 @@ describe("frontier database boundary", () => {
 
   it("coin trades bind confirmations to both displayed offers and conserve balances", () => {
     const h = harness();
+    // In Meadows town no attack can land, so the swap runs at once.
+    for (const n of [1, 2]) h.db.player.identity.update({ ...h.db.player.identity.find(id(n)), x: 31, z: 64 });
     const t = h.db.trade.insert({
       a: id(1),
       b: id(2),
@@ -237,6 +239,25 @@ describe("frontier database boundary", () => {
     expect(r.get("profile", id(1).toHexString())?.coins).toBe(60);
     expect(r.get("profile", id(2).toHexString())?.coins).toBe(140);
     expect(h.db.trade.id.find(t.id)).toBeUndefined();
+  });
+
+  it("away from town a confirmed coin trade waits for the tick instead of swapping at once", () => {
+    const h = harness();
+    const t = h.db.trade.insert({
+      a: id(1), b: id(2), accepted: true, aOffer: "", bOffer: "", aCoins: 0, bCoins: 0, aConfirmed: false, bConfirmed: false,
+    });
+    (setTradeCoins as any)(h.ctx, { tradeId: t.id, coins: 40 });
+    const confirm = () => (confirmTradeCoins as any)(h.ctx, { tradeId: t.id, aOffer: "", bOffer: "", aCoins: 40, bCoins: 0 });
+    confirm();
+    h.ctx.sender = id(2);
+    confirm();
+    const row = h.db.trade.id.find(t.id);
+    expect(row).toMatchObject({ aConfirmed: true, bConfirmed: true, swapTick: 13, aHp: 30, bHp: 30 });
+    const r = frontierRepository(h.ctx);
+    expect(r.get("profile", id(1).toHexString())?.coins).toBe(100);
+    // Confirming again does not restart the wait.
+    confirm();
+    expect(h.db.trade.id.find(t.id)?.swapTick).toBe(13);
   });
 
   it.runIf(process.env.FRONTIER_LOAD_CHECK === "1")("bounds simulation work with 32 active characters, 48 full plots and 8 moving boats", () => {

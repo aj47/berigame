@@ -173,9 +173,10 @@ const TradeWindowBody = ({ trades }: { trades: readonly Trade[] }) => {
       </div>
       <footer className="trade-footer">
       <p className="fine-print trade-status" aria-live="polite">
-        {myConfirmed && !theirConfirmed ? `Waiting for ${otherName} to confirm…` :
+        {myConfirmed && theirConfirmed && trade.swapTick ? "Swapping… stay close: a hit on either of you stops it." :
+          myConfirmed && !theirConfirmed ? `Waiting for ${otherName} to confirm…` :
           theirConfirmed && !myConfirmed ? `${otherName} is ready. Review, then confirm.` :
-          "Changes reset confirmations. Walking away cancels."}
+          "Changes reset confirmations. Walking away cancels. Outside the safe ring the swap takes a moment and a hit stops it."}
       </p>
       {mine.some(item => ['stick', 'stone_club'].includes(item.itemId) && item.quantity >= (bag.get(item.itemId) ?? 0) && !theirs.some(other => other.itemId === item.itemId)) && <p className="fine-print trade-warning" role="status">Last route tool! Keep a spare to cross brambles or Boulders again.</p>}
       <div className="trade-actions">

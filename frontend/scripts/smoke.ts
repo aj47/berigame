@@ -173,8 +173,9 @@ async function main() {
   await B.conn.reducers.setTarget({ x: 26, z: 25 });
   await waitFor('B at 26,25 (in the safe ring)', () => me(B).x === 26);
   check('nobody can attack into the safe ring', /safe ring/.test(await rejection(() => A.conn.reducers.attack({ target: me(B).identity }))));
-  await B.conn.reducers.setTarget({ x: 28, z: 25 });
-  await waitFor('B at 28,25', () => me(B).x === 28);
+  // Just outside the safe ring (Chebyshev 3 around spawn).
+  await B.conn.reducers.setTarget({ x: 29, z: 26 });
+  await waitFor('B at 29,26', () => me(B).x === 29 && me(B).z === 26);
   check('nobody can attack a newcomer in grace', /protected/.test(await rejection(() => A.conn.reducers.attack({ target: me(B).identity }))));
 
   // --- the bramble hedge: a stickless player stops inside it --------------------
@@ -183,8 +184,8 @@ async function main() {
   await B.conn.reducers.setTarget({ x: 2, z: 25 });
   await waitFor('B stops at the hedge', () => me(B).x === hedgeStop.x && me(B).z === hedgeStop.z && me(B).targetX === undefined, 15_000);
   check(`without a stick, a walk to the Coast stops at (${hedgeStop.x},${hedgeStop.z}) inside the hedge`, areaOf(me(B)) === 'grove' && !isBramble(me(B)));
-  await B.conn.reducers.setTarget({ x: 28, z: 25 });
-  await waitFor('B back at 28,25', () => me(B).x === 28, 15_000);
+  await B.conn.reducers.setTarget({ x: 29, z: 26 });
+  await waitFor('B back at 29,26', () => me(B).x === 29 && me(B).z === 26, 15_000);
 
   // --- harvest -----------------------------------------------------------------
   await availableTree(A, 4);

@@ -41,4 +41,5 @@ export default __t.row({
   inputsThisTick: __t.u8().name("inputs_this_tick"),
   weapon: __t.string(),
   region: __t.string(),
+  load: __t.u8(),
 });

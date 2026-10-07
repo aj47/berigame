@@ -1,6 +1,7 @@
 import { homePoint, homePath, HOME_JOIN, isHomeTarget, homeDestination } from "../frontier/homeMap";
 import { regionLand } from "../frontier/regions";
 import { enterRule } from '../areas';
+import { ENERGY_MAX, ENERGY_SEASON_MS } from '../energy';
 import { describe, expect, it } from "vitest";
 import {
   advance,
@@ -445,6 +446,22 @@ describe("timed frontier gathering", () => {
     expect(h.repo.get('resource',timber.id)?.regrowsAt).toBeUndefined();
     h.act({action:'gather',id:timber.id});
     expect(h.repo.get('resource',timber.id)?.harvest?.by).toBe('a');
+  });
+  it("energy sets the payout: rested gathers pay double, tired ones mostly nothing, and the stump still falls", () => {
+    const rested = begin();
+    rested.repo.put('energy', { id: 'a', points: ENERGY_MAX, at: rested.w.now, born: rested.w.now - ENERGY_SEASON_MS, tired: 0 });
+    rested.w.now += 3000;
+    advance(rested.w);
+    expect(rested.a.bag[0]).toEqual({ itemId: 'timber', quantity: 2 });
+    expect(rested.repo.get('energy', 'a')?.points).toBe(ENERGY_MAX - 3);
+    const tired = begin();
+    tired.repo.put('energy', { id: 'a', points: 0, at: tired.w.now, born: tired.w.now - ENERGY_SEASON_MS, tired: 0 });
+    tired.w.now += 3000;
+    advance(tired.w);
+    expect(tired.a.bag.every(slot => slot === null)).toBe(true);
+    expect(tired.repo.get('resource', timber.id)?.felledAt).toBe(tired.w.now);
+    expect(tired.repo.get('profile', 'a')?.notes.at(-1)).toMatch(/tired/);
+    expect(tired.repo.get('energy', 'a')?.tired).toBe(1);
   });
   it("reserves one tree for one player and preserves the first harvest on competing clicks", () => {
     const h = begin();

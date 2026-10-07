@@ -1,4 +1,5 @@
 import type { Slot } from "../types";
+import type { EnergyState } from "../energy";
 import {
   DAY,
   FRONTIER,
@@ -138,6 +139,8 @@ export type EntityMap = {
   config: Config;
   drop: GroundBag;
   resource: Resource;
+  /** Private gathering energy (shared/sim/energy.ts), one per character. */
+  energy: EnergyState;
 };
 export type Kind = keyof EntityMap;
 export interface Repository {
@@ -171,6 +174,8 @@ export interface World {
   canLeaveHomeDistrict?(actor: Actor): boolean;
   /** Authoritative cargo/adventure/combat movement budget, capped at three. */
   movementSteps?(actor: Actor): number;
+  /** When the character first played (Unix ms), for a new energy meter's size. Defaults to now. */
+  bornAt?(actorId: string): number;
 }
 export function newProfile(id: string): Profile {
   return {

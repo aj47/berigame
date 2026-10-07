@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import { tables, type DbConnection } from '../module_bindings';
 import type { Player } from '../module_bindings/types';
@@ -331,3 +331,30 @@ export function useFrontierObjectsSelector<T>(select: (rows: readonly import('..
   return useTableSelector(tables.frontierObject, select);
 }
 export function useFrontierViews() { return useRows<import('../module_bindings/types').FrontierView>(tables.frontierView); }
+
+/** Your energy meter (shared/sim/energy.ts), published to you alone through frontier_view. Undefined before your first harvest. */
+export function useMyEnergy(): import('@sim').EnergyState | undefined {
+  const me = useMyIdentityHex();
+  // Select the JSON string (stable between snapshots), then parse once per change.
+  const data = useTableSelector(tables.frontierView, (rows: readonly import('../module_bindings/types').FrontierView[]) => {
+    const row = me ? rows.find((r) => r.kind === 'energy' && r.source === `energy:${me}`) : undefined;
+    return row ? row.data : undefined;
+  });
+  return useMemo(() => {
+    if (!data) return undefined;
+    try { return JSON.parse(data) as import('@sim').EnergyState; } catch { return undefined; }
+  }, [data]);
+}
+
+/** Your personal vault's slots (the town bank and the Grove vault are one store). Empty before the first deposit. */
+export function useMyVaultSlots(): readonly import('@sim').Slot[] {
+  const me = useMyIdentityHex();
+  const data = useTableSelector(tables.frontierView, (rows: readonly import('../module_bindings/types').FrontierView[]) => {
+    const row = me ? rows.find((r) => r.kind === 'container' && r.source === `container:vault-${me}`) : undefined;
+    return row ? row.data : undefined;
+  });
+  return useMemo(() => {
+    if (!data) return EMPTY;
+    try { return (JSON.parse(data).slots ?? EMPTY) as readonly import('@sim').Slot[]; } catch { return EMPTY; }
+  }, [data]);
+}

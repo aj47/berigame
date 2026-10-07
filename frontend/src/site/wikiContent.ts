@@ -167,7 +167,8 @@ export const guideArticles: WikiArticle[] = [
         'Returning is more forgiving: you can cross from the Coast back into the Grove without a Stick, and from the Boulders back across the boulder line without a Stone Club. Returning outward again requires the appropriate item. Keep this in mind before gifting, trading or dropping a key.',
       ] },
       { id: 'landmarks', title: 'Useful landmarks', table: { headers: ['Landmark', 'Tile', 'Use'], rows: [
-        ['Safe ring', '(25, 25), radius 2', 'Starting point and protection from ordinary combat'],
+        ['Safe ring', '(25, 25), radius 3', 'Starting point, protection from ordinary combat and your vault'],
+        ['Coast drop boxes', '(9, 16), (40, 13), (8, 36), (41, 39)', 'Deposit into your vault; takes a few seconds and a hit stops it'],
         ['Gardener camp', '(22, 18)', 'Start expeditions, change techniques, contribute to the workshop'],
         ['Personal garden', '(21–22, 20–21)', 'Plant berries and harvest ripe crops'],
         ['Training dummy', '(28, 28)', 'Practice weapon swings'],

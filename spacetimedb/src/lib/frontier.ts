@@ -25,6 +25,7 @@ import { readSlots, writeSlots } from "./inventory";
 import { canPlay } from "./access";
 import type { Ctx } from "./types";
 import { advanceRegionalInteractions } from './regionalInteractions';
+import { firstPlayedMs } from './stats';
 const PUBLIC = new Set<Kind>([
   "claim",
   "building",
@@ -114,6 +115,7 @@ export function frontierWorld(ctx: Ctx): World {
     now: Number(ctx.timestamp.microsSinceUnixEpoch / 1000n),
     actors,
     loadBag(a) { return readSlots(ctx, Identity.fromString(a.id)).slots; },
+    bornAt(id) { return firstPlayedMs(ctx, Identity.fromString(id)); },
     homeBlocked(point) { return (homeObstacles ??= blockedTiles(ctx)).has(tileKey(point)); },
     homeStepRule(a) {
       const row = ctx.db.player.identity.find(Identity.fromString(a.id))!;
@@ -246,6 +248,12 @@ export function projectFrontier(ctx: Ctx, repo = frontierRepository(ctx)) {
     const p = repo.get("profile", id);
     publish(`profile:${id}`, "profile", id, p ? [id] : [], p);
   }
+  // Each character's energy meter, for its own HUD only.
+  for (const key of changes) {
+    if (!key.startsWith("energy:")) continue;
+    const id = key.slice(7), e = repo.get("energy", id);
+    publish(key, "energy", id, e ? [id] : [], e);
+  }
   for (const id of containers) {
     const c = repo.get("container", id),
       readers = new Set<string>();
@@ -280,6 +288,21 @@ export function projectFrontier(ctx: Ctx, repo = frontierRepository(ctx)) {
       else ctx.db.frontierObject.insert(row);
     }
   }
+}
+
+/**
+ * Publish one private record to its owner only, through the owner-filtered
+ * frontier_view (the same key layout as projectFrontier's publish). Callers pass
+ * the owner's Identity, so no hex round trip is needed.
+ */
+export function publishOwnView(ctx: Ctx, owner: Identity, kind: string, id: string, value: unknown): void {
+  if (!ctx.db.frontierView) return;
+  const source = `${kind}:${id}`, key = `${owner.toHexString()}:${source}`, data = JSON.stringify(value);
+  const old = ctx.db.frontierView.key.find(key);
+  if (old?.data === data && old.source === source) return;
+  const row = { key, source, owner, kind, data };
+  if (old) ctx.db.frontierView.key.update(row);
+  else ctx.db.frontierView.insert(row);
 }
 
 export function ensureFrontierProfile(ctx: Ctx, repo: Repository) {

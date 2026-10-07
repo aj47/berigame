@@ -805,14 +805,14 @@ describe('the safe ring and grace stop fights', () => {
   });
 
   it('no swing lands once the defender steps into the ring or while they are in grace', () => {
-    Object.assign(h.me(), { x: 28, z: 25 });
-    Object.assign(h.other(), { x: 29, z: 25, hp: 30 });
+    Object.assign(h.me(), { x: 29, z: 25 });
+    Object.assign(h.other(), { x: 30, z: 25, hp: 30 });
     attack(h.ctx, { target: B });
-    h.other().x = 27;
-    Object.assign(h.me(), { x: 28, z: 25 });
+    h.other().x = 28;
+    Object.assign(h.me(), { x: 29, z: 25 });
     run(1);
     expect(hits()).toEqual([]);
-    h.other().x = 29;
+    h.other().x = 30;
     h.other().respawnTick = worldTick();
     run(3);
     expect(hits()).toEqual([]);
@@ -1647,5 +1647,242 @@ describe('portable bag and quick-slot actions', () => {
     h.me().state = PlayerState.Dead;
     expect(() => eat(h.ctx, { slot: 0 })).toThrow('you are dead');
     expect(() => moveSlot(h.ctx, { from: 0, to: 1 })).toThrow('you are dead');
+  });
+});
+
+// ---- Economy: energy, the vault and drop boxes, the load glow, trade swaps, leaving the safe ring ----
+import { testTable } from './adventureHarness';
+import { ENERGY_SEASON_MS, energyRestedLine, ENERGY_MAX, type EnergyState } from '../energy';
+import { DROP_BOXES, DROP_BOX_DEPOSIT_TICKS, EXIT_PROTECT_TICKS, LOAD_REFRESH_TICKS, TRADE_SWAP_TICKS, vaultId } from '../banking';
+import { frontierRepository } from '../../../spacetimedb/src/lib/frontier';
+import { vaultDeposit as registeredDeposit, vaultWithdraw as registeredWithdraw } from '../../../spacetimedb/src/reducers/vault';
+import { confirmTrade as registeredConfirm } from '../../../spacetimedb/src/reducers/trade';
+import { onDisconnect as registeredDisconnect } from '../../../spacetimedb/src/reducers/lifecycle';
+const disconnect = registeredDisconnect as unknown as Reducer;
+
+describe('economy rules on the server', () => {
+  const deposit = registeredDeposit as unknown as Reducer;
+  const withdraw = registeredWithdraw as unknown as Reducer;
+  const confirm = registeredConfirm as unknown as Reducer;
+  const nowMs = () => Number(h.ctx.timestamp.microsSinceUnixEpoch / 1000n);
+  const setEnergy = (points: number, tired = 0) => frontierRepository(h.ctx as any).put('energy', { id: 'a', points, at: nowMs(), born: nowMs() - ENERGY_SEASON_MS, tired } as EnergyState);
+  const energy = () => frontierRepository(h.ctx as any).get('energy', 'a');
+  const count = (owner: string, itemId: string) => [...h.inventory.values()].filter((r) => r.owner.toHexString() === owner && r.itemId === itemId).reduce((n, r) => n + r.quantity, 0);
+  const notices = () => [...(h.ctx.db as any).socialEvent.iter()].map((n: any) => n.text as string);
+  const give = (owner: ReturnType<typeof identity>, slot: number, itemId: string, quantity: number) => {
+    const id = BigInt(1000 + h.inventory.size);
+    h.inventory.set(id, { id, owner, slot, itemId, quantity });
+  };
+  beforeEach(() => {
+    Object.assign(h.ctx.db, { socialEvent: testTable('id', true), socialPair: testTable('pair'), trade: testTable('id', true), pendingDeposit: testTable('identity') });
+    for (const t of NODE_SEEDS) h.trees.set(t.id, { ...t, cooldownUntilTick: 0, harvester: undefined });
+  });
+  function harvestBlueberry() {
+    h.trees.set(1, { id: 1, x: 31, z: 25, itemId: 'berry_blueberry', harvester: A, cooldownUntilTick: 0, kind: 0 });
+    Object.assign(h.me(), { x: 30, z: 25, harvestTreeId: 1, harvestEndTick: worldTick() + 1 });
+    run();
+  }
+
+  describe('energy', () => {
+    it('a fresh meter pays normally and is shown to its owner', () => {
+      harvestBlueberry();
+      expect(count('a', 'berry_blueberry')).toBe(3);
+      expect(h.skills.get('a').foragingXp).toBe(8);
+      const view = (h.ctx.db as any).frontierView.key.find('a:energy:a');
+      expect(view).toMatchObject({ kind: 'energy', source: 'energy:a' });
+      expect(JSON.parse(view.data).points).toBe(energy()!.points);
+    });
+
+    it('rested harvests pay double items and XP', () => {
+      setEnergy(energyRestedLine(ENERGY_MAX) + 10);
+      harvestBlueberry();
+      expect(count('a', 'berry_blueberry')).toBe(4);
+      expect(h.skills.get('a').foragingXp).toBe(16);
+    });
+
+    it('only time logged out earns the rested band: an hour online does not, an hour away does', () => {
+      setEnergy(energyRestedLine(ENERGY_MAX));
+      const later = (ms: number) => { h.ctx.timestamp = { microsSinceUnixEpoch: h.ctx.timestamp.microsSinceUnixEpoch + BigInt(ms) * 1000n }; };
+      later(3_600_000);
+      harvestBlueberry();
+      expect(count('a', 'berry_blueberry')).toBe(3);
+      Object.assign(h.me(), { connections: 1 });
+      // The harness makes A the world owner, whose connections are control connections; play as an ordinary player here.
+      (h.ctx.db as any).accessPolicy = { id: { find: () => ({ id: 0, owner: C, gateway: B, requireAdmission: false }) } };
+      disconnect(h.ctx);
+      expect(h.me().online).toBe(false);
+      later(3_600_000);
+      connect(h.ctx);
+      expect(energy()!.points).toBe(energyRestedLine(ENERGY_MAX) - 3 + 600);
+      expect(h.me().online).toBe(true);
+      harvestBlueberry();
+      expect(count('a', 'berry_blueberry')).toBe(5);
+    });
+
+    it('tired harvests pay one time in four, say so, and never roll for a stick', () => {
+      setEnergy(0);
+      h.skills.set('a', { identity: A, foragingXp: 1000, beachcombingXp: 0, craftingXp: 0 });
+      h.ctx.random.mockReturnValue(0);
+      for (let i = 0; i < 3; i++) harvestBlueberry();
+      expect(count('a', 'berry_blueberry')).toBe(2);
+      expect(count('a', STICK_ITEM_ID)).toBe(0);
+      expect(h.ctx.random).not.toHaveBeenCalled();
+      expect(notices().filter((t) => t.startsWith('You are tired'))).toHaveLength(3);
+      harvestBlueberry();
+      expect(count('a', 'berry_blueberry')).toBe(3);
+    });
+  });
+
+  describe('leaving the safe ring', () => {
+    it(`gives ${EXIT_PROTECT_TICKS} ticks of protection, which attacking ends`, () => {
+      Object.assign(h.me(), { x: 28, z: 25 });
+      move(h.ctx, { x: 33, z: 25 });
+      run();
+      const T = worldTick();
+      expect(h.me().x).toBe(30);
+      expect(inGrace(h.me(), T)).toBe(true);
+      expect(inGrace(h.me(), T + EXIT_PROTECT_TICKS - 1)).toBe(true);
+      expect(inGrace(h.me(), T + EXIT_PROTECT_TICKS)).toBe(false);
+      Object.assign(h.other(), { x: 31, z: 25 });
+      as(B, () => expect(() => attack(h.ctx, { target: A })).toThrow('protected'));
+      attack(h.ctx, { target: B });
+      expect(inGrace(h.me(), T)).toBe(false);
+    });
+
+    it('is not given to someone already attacking (chasing a target back out of the ring)', () => {
+      Object.assign(h.me(), { x: 28, z: 25, hostile: true, combatTarget: B, nextSwingTick: 99 });
+      Object.assign(h.other(), { x: 31, z: 25 });
+      run();
+      expect(h.me().x).toBe(30);
+      expect(inGrace(h.me(), worldTick())).toBe(false);
+    });
+
+    it('never shortens first-spawn grace', () => {
+      Object.assign(h.me(), { x: 28, z: 25, respawnTick: worldTick() + 200 });
+      move(h.ctx, { x: 33, z: 25 });
+      run();
+      expect(h.me().respawnTick).toBe(worldTick() + 199);
+    });
+  });
+
+  describe('the load glow', () => {
+    const toRefresh = () => { while ((worldTick() + 1) % LOAD_REFRESH_TICKS !== 0) run(); run(); };
+    it('glows faintly from 30 unbanked value and brightly from 90; your first weapon is kit', () => {
+      Object.assign(h.me(), { x: 35, z: 25 });
+      give(A, 5, STICK_ITEM_ID, 1);
+      toRefresh();
+      expect(h.me().load ?? 0).toBe(0);
+      give(A, 6, 'driftwood', 30);
+      toRefresh();
+      expect(h.me().load).toBe(1);
+      give(A, 7, 'flint', 60);
+      toRefresh();
+      expect(h.me().load).toBe(2);
+    });
+  });
+
+  describe('the vault and drop boxes', () => {
+    const box = DROP_BOXES[0];
+    const vault = () => frontierRepository(h.ctx as any).get('container', vaultId('a'));
+
+    it('deposits and withdraws at once in the safe ring and publishes the vault to its owner', () => {
+      Object.assign(h.me(), { x: 25, z: 26 });
+      give(A, 5, 'driftwood', 10);
+      deposit(h.ctx, { itemId: 'driftwood', quantity: 6 });
+      expect(count('a', 'driftwood')).toBe(4);
+      expect(vault()!.slots.filter(Boolean)).toEqual([{ itemId: 'driftwood', quantity: 6 }]);
+      expect((h.ctx.db as any).frontierView.key.find(`a:container:${vaultId('a')}`)).toBeTruthy();
+      h.tick(worldTick() + 1);
+      withdraw(h.ctx, { itemId: 'driftwood', quantity: 2 });
+      expect(count('a', 'driftwood')).toBe(6);
+      expect(() => withdraw(h.ctx, { itemId: 'driftwood', quantity: 9 })).toThrow('does not hold');
+    });
+
+    it('refuses away from the ring and the boxes, and withdrawing at a box', () => {
+      Object.assign(h.me(), { x: 35, z: 25 });
+      give(A, 5, 'driftwood', 10);
+      expect(() => deposit(h.ctx, { itemId: 'driftwood', quantity: 1 })).toThrow('drop box');
+      Object.assign(h.me(), { x: box.x + 1, z: box.z });
+      expect(() => withdraw(h.ctx, { itemId: 'driftwood', quantity: 1 })).toThrow('safe ring');
+    });
+
+    it(`a drop-box deposit finishes after ${DROP_BOX_DEPOSIT_TICKS} ticks`, () => {
+      Object.assign(h.me(), { x: box.x + 1, z: box.z });
+      give(A, 5, 'driftwood', 10);
+      deposit(h.ctx, { itemId: 'driftwood', quantity: 10 });
+      expect(h.me()).toMatchObject({ pending: Pending.Deposit, pendingId: BigInt(box.id) });
+      run(DROP_BOX_DEPOSIT_TICKS - 1);
+      expect(count('a', 'driftwood')).toBe(10);
+      run();
+      expect(count('a', 'driftwood')).toBe(0);
+      expect(vault()!.slots.filter(Boolean)).toEqual([{ itemId: 'driftwood', quantity: 10 }]);
+      expect(h.me().pending).toBe(Pending.None);
+      expect(notices()).toContain('Deposited 10 Driftwood into your vault');
+    });
+
+    it('a hit or a step away stops a drop-box deposit', () => {
+      Object.assign(h.me(), { x: box.x + 1, z: box.z, hp: 30 });
+      Object.assign(h.other(), { x: box.x + 2, z: box.z });
+      give(A, 5, 'driftwood', 10);
+      deposit(h.ctx, { itemId: 'driftwood', quantity: 10 });
+      as(B, () => attack(h.ctx, { target: A }));
+      run(DROP_BOX_DEPOSIT_TICKS + 1);
+      expect(count('a', 'driftwood')).toBe(10);
+      expect(vault()).toBeUndefined();
+      expect(notices()).toContain('Deposit stopped: you were hit');
+      expect((h.ctx.db as any).pendingDeposit.count()).toBe(0n);
+
+      as(B, () => cancel(h.ctx));
+      h.tick(worldTick() + 1);
+      deposit(h.ctx, { itemId: 'driftwood', quantity: 10 });
+      move(h.ctx, { x: box.x + 6, z: box.z });
+      run(DROP_BOX_DEPOSIT_TICKS + 1);
+      expect(count('a', 'driftwood')).toBe(10);
+    });
+  });
+
+  describe('trade swaps', () => {
+    function confirmedTrade(where: { x: number; z: number }) {
+      Object.assign(h.me(), { ...where, hp: 30 });
+      Object.assign(h.other(), { x: where.x + 1, z: where.z, hp: 30 });
+      give(A, 5, 'driftwood', 3);
+      const row = (h.ctx.db as any).trade.insert({ a: A, b: B, accepted: true, aOffer: 'driftwood:3', bOffer: '', aCoins: 0, bCoins: 0, aConfirmed: false, bConfirmed: false, createdTick: worldTick(), swapTick: 0, aHp: 0, bHp: 0 });
+      confirm(h.ctx, { tradeId: row.id, aOffer: 'driftwood:3', bOffer: '' });
+      as(B, () => confirm(h.ctx, { tradeId: row.id, aOffer: 'driftwood:3', bOffer: '' }));
+      return row.id as bigint;
+    }
+
+    it('swaps at once in the safe ring', () => {
+      confirmedTrade({ x: 24, z: 25 });
+      expect(count('b', 'driftwood')).toBe(3);
+    });
+
+    it(`waits ${TRADE_SWAP_TICKS} ticks where an attack could land, then swaps`, () => {
+      const id = confirmedTrade({ x: 35, z: 25 });
+      expect((h.ctx.db as any).trade.id.find(id)).toMatchObject({ swapTick: worldTick() + TRADE_SWAP_TICKS, aHp: 30, bHp: 30 });
+      run(TRADE_SWAP_TICKS - 1);
+      expect(count('b', 'driftwood')).toBe(0);
+      run();
+      expect(count('b', 'driftwood')).toBe(3);
+      expect((h.ctx.db as any).trade.id.find(id)).toBeUndefined();
+    });
+
+    it('a hit on either side stops the swap and clears both confirmations', () => {
+      const id = confirmedTrade({ x: 35, z: 25 });
+      Object.assign(h.ctx.db.player.identity.find(C), { x: 37, z: 25 });
+      as(C, () => attack(h.ctx, { target: B }));
+      run(TRADE_SWAP_TICKS + 1);
+      expect(count('b', 'driftwood')).toBe(0);
+      expect((h.ctx.db as any).trade.id.find(id)).toMatchObject({ aConfirmed: false, bConfirmed: false, swapTick: 0 });
+      expect(notices().some((t) => t.startsWith('Trade stopped'))).toBe(true);
+    });
+
+    it('damage from anywhere (lower HP than at the confirmation) also stops it', () => {
+      const id = confirmedTrade({ x: 35, z: 25 });
+      h.me().hp = 25;
+      run(TRADE_SWAP_TICKS + 1);
+      expect(count('b', 'driftwood')).toBe(0);
+      expect((h.ctx.db as any).trade.id.find(id)).toMatchObject({ swapTick: 0 });
+    });
   });
 });

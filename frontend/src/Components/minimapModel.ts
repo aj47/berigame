@@ -12,6 +12,7 @@ import {
   NodeKind,
   PlayerState,
   SAFE_RADIUS,
+  DROP_BOXES,
   SPAWN_TILE,
   facingToYaw,
   getItemDef,
@@ -180,6 +181,12 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
     } else ctx.fillRect(px(n.x) - r, px(n.z) - r, r * 2, r * 2);
   }
   ctx.globalAlpha = 1;
+  // Coast drop boxes (deposit to your vault): gold squares ringed in dark wood.
+  const k = Math.max(2.5, s * 1.1);
+  for (const box of DROP_BOXES) {
+    ctx.fillStyle = '#3a2c1d'; ctx.fillRect(px(box.x) - k - 1, px(box.z) - k - 1, (k + 1) * 2, (k + 1) * 2);
+    ctx.fillStyle = '#e3b65c'; ctx.fillRect(px(box.x) - k, px(box.z) - k, k * 2, k * 2);
+  }
   // The Giant: a big dark diamond on its footprint (dimmed while it rests).
   if (m.giant) {
     const x = px(m.giant.x), y = px(m.giant.z), k = Math.max(4, s * 2);

@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { BoxGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, MeshStandardMaterial, Object3D, TorusGeometry } from 'three';
-import { BRIDGES, FOREST_TREES, tileToWorld } from '@sim';
+import { BRIDGES, DROP_BOXES, FOREST_TREES, GROVE_VAULT_TILE, SAFE_RADIUS, tileToWorld } from '@sim';
 import { merged, part, withWind } from './envArt';
 const noRaycast = () => null;
 const mat = new MeshStandardMaterial({ vertexColors:true, roughness:1, flatShading:true });
@@ -56,6 +56,17 @@ const harbourGeo=merged([
   box(roof,[0,2.1,0],[2.9,.15,2.5],[0,0,.06]),
   ...[-1.2,1.2].map(x=>box(wood,[x,1,0],[.12,2,.12])),
 ]);
+/** Coast drop box (shared/sim/banking.ts): a banded crate with a slot, deposits only. */
+const dropBoxGeo=merged([
+  box(wood,[0,.38,0],[.9,.76,.7]),box(paleWood,[0,.8,0],[.98,.12,.78]),
+  box(0xd9b25c,[0,.38,.36],[.92,.14,.03]),box(0x2c241b,[0,.62,.36],[.36,.06,.02]),
+  box(wood,[0,1.05,-.3],[.08,.6,.08]),box(0xe8ba64,[0,1.35,-.3],[.34,.22,.06]),
+]);
+/** The Grove vault chest at the safe ring's corner: a larger iron-bound chest. */
+const vaultGeo=merged([
+  box(0x6e4f35,[0,.35,0],[1.2,.7,.8]),box(0x7c5a3d,[0,.78,0],[1.24,.2,.84]),
+  ...[-.45,.45].map(x=>box(0x55595e,[x,.45,0],[.08,.92,.86])),box(0xd9b25c,[0,.55,.42],[.18,.2,.04]),
+]);
 const signGeo=merged([box(wood,[0,.52,0],[.1,1.05,.1]),box(paleWood,[0,.88,0],[.7,.28,.1]),box(wood,[0,.82,.06],[.32,.035,.012])]);
 
 export default function IslandLandmarks({onGroundClick}:{onGroundClick?:(e:any)=>void}){
@@ -74,6 +85,8 @@ export default function IslandLandmarks({onGroundClick}:{onGroundClick?:(e:any)=
     <group position={[20,0,23]} raycast={noRaycast}>{[-2,2].map(x=><mesh key={x} position={[x,.6,0]}><cylinderGeometry args={[.38,.5,1.2,6]}/><meshStandardMaterial color="#959482" flatShading/></mesh>)}</group>
     <mesh name="Driftwood Harbour" position={[22,0,4]} geometry={harbourGeo} material={mat} raycast={noRaycast}/>
     <mesh ref={boat} name="Fishing skiff" position={[25.8,-.18,5.5]} rotation={[0,.4,0]} geometry={boatGeo} material={mat} raycast={noRaycast}/>
+    {DROP_BOXES.map(b=><mesh key={`drop-${b.id}`} name="land_mesh" userData={{ landmark: `${b.name} · deposits to your vault` }} position={tileToWorld(b)} geometry={dropBoxGeo} material={mat} onClick={onGroundClick}/>)}
+    <mesh name="land_mesh" userData={{ landmark: 'Grove vault · deposit and withdraw anywhere in the safe ring' }} position={tileToWorld({x:GROVE_VAULT_TILE.x+SAFE_RADIUS,z:GROVE_VAULT_TILE.z-SAFE_RADIUS})} rotation={[0,-Math.PI/4,0]} geometry={vaultGeo} material={mat} onClick={onGroundClick}/>
     {[{x:24,z:19},{x:21,z:21},{x:13,z:31},{x:34,z:36},{x:43,z:28},{x:44,z:43}].map((t,i)=><mesh key={i} position={tileToWorld(t)} geometry={signGeo} material={mat} raycast={noRaycast}/>)}
   </group>;
 }

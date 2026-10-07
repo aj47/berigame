@@ -30,6 +30,7 @@ vi.mock('../Components/TickDebug', () => ({ default: () => null }));
 vi.mock('../Components/Minimap', () => ({ default: () => null }));
 vi.mock('../Components/FriendsPanel', () => ({ default: () => null, FriendSync: () => null, InviteRedeemer: () => null }));
 vi.mock('../Components/TradeWindow', () => ({ default: () => null }));
+vi.mock('../Components/VaultPanel', () => ({ default: ({ open }: any) => open ? <section aria-label="Vault">Vault</section> : null }));
 afterEach(() => { region.value = "bramblewild"; cleanup(); useSettingsStore.getState().reset(); vi.restoreAllMocks(); });
 
 describe('one-click attack toggle', () => {
@@ -171,7 +172,9 @@ describe('settlements share the game panel slot', () => {
     expect(screen.getByRole('region', { name: 'Inventory' })).toBeVisible();
     expect(screen.queryByRole('region', { name: 'Crafting' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Storage from bag' }));
-    expect(screen.getByRole('region', { name: 'Settlements' })).toHaveTextContent('Storage');
+    // Bramblewild banks at the Grove vault; the Meadows use the town bank in Settlements.
+    if (district === 'bramblewild') expect(screen.getByRole('region', { name: 'Vault' })).toBeVisible();
+    else expect(screen.getByRole('region', { name: 'Settlements' })).toHaveTextContent('Storage');
     expect(screen.queryByRole('region', { name: 'Inventory' })).not.toBeInTheDocument();
   });
 

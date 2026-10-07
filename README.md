@@ -6,6 +6,10 @@ A multiplayer 3D web game built with React Three Fiber on top of a SpacetimeDB g
 
 Land claims, modular building, quests, five disciplines, companions, coin trading and sailing are available behind the expansion flag. See [Settlements](docs/SETTLEMENTS.md) for play instructions, recovery, enabling/disabling and verification.
 
+## Energy, banking and risk
+
+Gathering pays by an energy meter: double while rested (earned only by time logged out), normal in a session, and one in four when a character never stops. Everything in your bag drops on defeat, so bank it in your vault: instantly in the Grove safe ring (now radius 3), or over a few interruptible seconds at four Coast drop boxes. A big unbanked load glows for everyone, and a trade outside safe spots takes 3 ticks that a hit stops. The same rules apply to every character, with no bot detection. See [docs/design/ECONOMY.md](docs/design/ECONOMY.md).
+
 ## Boss fights
 
 Clatterhorn, a charging stag beetle in a glade on the Coast, and the Sunken Spire, a bullet-hell dungeon for parties of one to four, share the integer simulation in `shared/sim` (`clatterhorn.ts`, `spire.ts`, `bullets.ts`). Both ship closed; the world owner opens them with `configure_bosses`. Rules and numbers are in [docs/design/BOSSES.md](docs/design/BOSSES.md); the release and rollback steps are in [docs/CLOUDFLARE_BETA.md](docs/CLOUDFLARE_BETA.md). `SPIRE_VALIDATE=full npm test --prefix shared -- --run spire-patterns` runs the full 46,464-instance pattern validator.
@@ -180,7 +184,7 @@ against the Vite dev server (movement, quick slots, combat, harvest, eat, chat,
 refresh persistence and death/respawn). `mobile-check.mjs` covers touch interactions, `cross-browser-check.mjs` covers installed WebKit/Firefox engines, and `render-check.ts` records rendering/resource measurements. See [graphics progress and verification](docs/PLAYABLE_GRAPHICS_PROGRESS.md) for local-runtime details and qualification limits.
 
 The browser scripts follow the Grove rules: they fight outside the safe ring
-(Chebyshev radius 2 around spawn) and end first-spawn grace by finding or
+(Chebyshev radius 3 around spawn) and end first-spawn grace by finding or
 picking up a stick, attacking, or waiting out the 3:00. Point them at any
 server with `GAME_URL`, `SPACETIME_URI` and `SPACETIME_DB`; `SHOT_DIR` (and
 `OUT_DIR`, `RENDER_REPORT`, `COMBAT_REPORT_DIR`, `SWING_CAPTURE_DIR`) keep

@@ -11,9 +11,9 @@ import {
 } from '../social';
 
 describe('training dummy placement', () => {
-  it('stands just outside the safe ring, in the Grove, off the worn paths', () => {
-    expect(inSafeRing(DUMMY_TILE)).toBe(false);
-    expect(ringOf(DUMMY_TILE)).toBe(SAFE_RADIUS + 1);
+  it('stands on the safe ring corner, in the Grove, off the worn paths', () => {
+    expect(inSafeRing(DUMMY_TILE)).toBe(true);
+    expect(ringOf(DUMMY_TILE)).toBe(SAFE_RADIUS);
     // The four worn paths run along x = 25 and z = 25.
     expect(DUMMY_TILE.x).not.toBe(SPAWN_TILE.x);
     expect(DUMMY_TILE.z).not.toBe(SPAWN_TILE.z);

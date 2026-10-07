@@ -56,6 +56,7 @@ const mock = vi.hoisted(() => ({
 }));
 vi.mock("../spacetime/hooks", () => ({
   useInventoryRows: () => mock.rows,
+  useMyEnergy: () => undefined,
   useMyPlayer: () => mock.player,
   usePlayersByHex: () => mock.players,
   useTick: () => mock.tick,

@@ -8,6 +8,7 @@ import { useTileMotion } from '../../hooks/useTileMotion';
 import { useCombatFxStore } from '../../spacetime/stores/combatFxStore';
 import { useUserInputStore } from '../../store';
 import DamageNumber from './DamageNumber';
+import LoadGlow from './LoadGlow';
 import { useAvatarDecal } from './AvatarDecals';
 import { useAvatarLabels } from './AvatarOverlay';
 
@@ -227,6 +228,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
         </HairBoundary>
       </Suspense>
       {hitTick > 0 && <IframeBlink group={groupRef} hitTick={hitTick} />}
+      {!dead && (row.load ?? 0) > 0 && <LoadGlow level={row.load} />}
     </group>
   );
 };

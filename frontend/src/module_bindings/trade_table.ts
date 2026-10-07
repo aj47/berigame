@@ -22,4 +22,7 @@ export default __t.row({
   createdTick: __t.u32().name("created_tick"),
   aCoins: __t.u32().name("a_coins"),
   bCoins: __t.u32().name("b_coins"),
+  swapTick: __t.u32().name("swap_tick"),
+  aHp: __t.u8().name("a_hp"),
+  bHp: __t.u8().name("b_hp"),
 });

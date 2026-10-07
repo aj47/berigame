@@ -62,8 +62,12 @@ export const MAX_INPUTS_PER_TICK = 5;
 // ---- Areas / safety (M1 "The Grove") ---------------------------------------
 /** Chebyshev ring around SPAWN_TILE holding the one-tile bramble hedge. Inside: the Grove; outside: the Coast. */
 export const HEDGE_RING = 17;
-/** Tiles within this Chebyshev radius of spawn are the safe ring: no attacks start or land there. */
-export const SAFE_RADIUS = 2;
+/**
+ * Tiles within this Chebyshev radius of spawn are the safe ring: no attacks start or land there, and
+ * your vault opens. Ring 3 (49 tiles) stops one short of the nearest trees' harvest tiles (ring 4),
+ * so nobody can harvest from inside it.
+ */
+export const SAFE_RADIUS = 3;
 /** Ticks after a respawn during which nobody can hit you. */
 export const RESPAWN_GRACE_TICKS = 10;
 /** A new character is protected until it finds a stick, attacks, or this many ticks pass (3:00). */

@@ -12,7 +12,7 @@ export const PlayerState = { Alive: 0, Dead: 1 } as const;
 export type PlayerState = (typeof PlayerState)[keyof typeof PlayerState];
 
 /** A "walk there, then do X" interaction queued on the server. */
-export const Pending = { None: 0, Harvest: 1, Pickup: 2, /** Walk up to the training dummy (pendingId = dummy id) and keep swinging at it. */ Dummy: 3, /** Walk up to the Giant (pendingId = giant id) and keep swinging at it. */ Giant: 4, /** Walk into trade range of combatTarget, then request once. */ Trade: 5, /** Walk into reach of Clatterhorn (pendingId = 1) and keep swinging; its blows never clear this. */ Clatterhorn: 6 } as const;
+export const Pending = { None: 0, Harvest: 1, Pickup: 2, /** Walk up to the training dummy (pendingId = dummy id) and keep swinging at it. */ Dummy: 3, /** Walk up to the Giant (pendingId = giant id) and keep swinging at it. */ Giant: 4, /** Walk into trade range of combatTarget, then request once. */ Trade: 5, /** Walk into reach of Clatterhorn (pendingId = 1) and keep swinging; its blows never clear this. */ Clatterhorn: 6, /** Depositing at the Coast drop box `pendingId` (shared/sim/banking.ts); damage, moving or another action stops it. */ Deposit: 7 } as const;
 export type Pending = (typeof Pending)[keyof typeof Pending];
 
 /**

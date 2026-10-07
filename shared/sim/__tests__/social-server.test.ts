@@ -190,7 +190,10 @@ function openTrade() {
   return h.trades.get(row.id);
 }
 const current = () => [...h.trades.values()][0];
+/** Confirm on both sides inside the safe ring, where no attack can land, so the swap runs at once. */
 function bothConfirm() {
+  Object.assign(h.p(A), { x: 24, z: 25 });
+  Object.assign(h.p(B), { x: 25, z: 25 });
   const row = current();
   confirmTrade(h.as(A), { tradeId: row.id, aOffer: row.aOffer, bOffer: row.bOffer });
   h.advance();

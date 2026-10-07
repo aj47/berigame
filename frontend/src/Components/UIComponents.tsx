@@ -5,6 +5,7 @@ import ChatBox from "./ChatBox";
 import Inventory from "./Inventory";
 import CraftingPanel from "./CraftingPanel";
 import AppearancePanel from "./AppearancePanel";
+import VaultPanel from "./VaultPanel";
 import CombatHud from "./CombatHud";
 import HelpPanel from "./HelpPanel";
 import { isTyping } from "./keyboard";
@@ -38,7 +39,7 @@ import FrontierPanel, { type BuildDraft } from "../frontier/FrontierPanel";
 import { FRONTIER_EVENT, type FrontierRequest } from "../frontier/navigation";
 import type { FrontierSnapshot } from "../../../shared/sim/frontier/snapshot";
 
-type Panel = "bug" | "settlement" | "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | null;
+type Panel = "bug" | "settlement" | "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | "vault" | null;
 /**
  * The Spire's DOM layer (FINAL_SPEC 7.6): inside the floor the HUD and step
  * controls; outside, the lobby panel (gate clicked, or a lobby membership) and
@@ -273,7 +274,8 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
         <DuelHud />
         <AdventureHud visible={panel === null} />
       </div>}
-      <Inventory open={panel === "inventory"} onClose={close} onCraft={() => setPanel('crafting')} onStorage={frontierEnabled ? () => openFrontier({ tab: 'Storage' }) : undefined} frontier={frontier} initialQuickSlot={quickSlotTarget} />
+      <Inventory open={panel === "inventory"} onClose={close} onCraft={() => setPanel('crafting')} onStorage={inFrontier ? (frontierEnabled ? () => openFrontier({ tab: 'Storage' }) : undefined) : () => setPanel('vault')} frontier={frontier} initialQuickSlot={quickSlotTarget} />
+      <VaultPanel open={panel === "vault"} onClose={close} />
       <CraftingPanel open={panel === 'crafting'} onClose={close} frontier={frontierEnabled ? frontier : undefined} />
       {/* Friends and invites live behind Chat (no new toolbar button). */}
       <ChatBox open={panel === "chat"} onClose={close} onOpenFriends={openFriends} />
@@ -285,7 +287,7 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
       {panel === "help" && <HelpPanel onClose={close} />}
       {panel === "bug" && <BugReportPanel onClose={close} />}
       <GameDiagnostics />
-      <CombatHud quickKeysEnabled={panel === null} onOpenBag={openBag} frontier={frontier} />
+      <CombatHud quickKeysEnabled={panel === null} onOpenBag={openBag} onOpenVault={() => setPanel('vault')} frontier={frontier} />
       <TradeWindow />
       <InviteRedeemer />
       <FriendSync />

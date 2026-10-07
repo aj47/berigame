@@ -29,6 +29,6 @@ export function requestTradeInRange(ctx: Ctx, p: PlayerRow, other: PlayerRow, ti
   }
   if (mine.some(r => sameId(r.b, target))) return;
   for (const r of mine) withdrawTrade(ctx, r, p.identity, 'Trade cancelled');
-  ctx.db.trade.insert({ id: 0n, a: p.identity, b: target, accepted: false, aOffer: '', bOffer: '', aCoins: 0, bCoins: 0, aConfirmed: false, bConfirmed: false, createdTick: tick });
+  ctx.db.trade.insert({ id: 0n, a: p.identity, b: target, accepted: false, aOffer: '', bOffer: '', aCoins: 0, bCoins: 0, aConfirmed: false, bConfirmed: false, createdTick: tick, swapTick: 0, aHp: 0, bHp: 0 });
   notifyThrottled(ctx, target, p.identity, SocialNotice.TradeRequest, `${p.name} wants to trade`);
 }

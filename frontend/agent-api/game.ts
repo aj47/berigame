@@ -1,6 +1,6 @@
 import { subscribeFrontier } from '../src/spacetime/frontierSubscription';
 import { frontierSnapshot, type FrontierSnapshot } from '../../shared/sim/frontier/snapshot';
-import { describeAction, describeDestination, describeGathering, describeObjective } from './statePresentation';
+import { describeAction, describeDestination, describeEconomy, describeGathering, describeObjective } from './statePresentation';
 import { bossError, ClatterContribution, crossesSpireFloor, describeBossEvent, describeBossNotice, describeBosses, dangerFeed, dodgeCheck, moveStepsOf, onSpireFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows } from './statePresentation';
 import { subscribeSpire } from '../src/bosses/spireSubscription';
 import { validateCommand } from '../../shared/sim/frontier/engine';
@@ -13,7 +13,7 @@ import {
   holdsItem, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, isSafe, nearestReachableTile, PlayerState, PUNCH_DAMAGE, SAFE_RADIUS, SPAWN_TILE,
   STICK_DROP_CHANCE, STICK_ITEM_ID, swingDamage, TICK_MS, treeReadyTick, type Slot,
   NodeKind, nodeKindDef, recipeStatus,
-  CHAT_NEARBY_RADIUS, INVITE_PARAM, TRADE_BREAK_RANGE, TRADE_RANGE, chatVisible, normalizeInviteCode, parseOffer, formatOffer,
+  CHAT_NEARBY_RADIUS, INVITE_PARAM, TRADE_BREAK_RANGE, TRADE_RANGE, TRADE_SWAP_TICKS, chatVisible, normalizeInviteCode, parseOffer, formatOffer,
   BOULDER_KEY_ITEM, BOULDER_LINE, BOULDER_MESSAGE, BOULDERS_ENTRY, BOULDERS_MIN, GIANT_ID, GIANT_AGGRO_RANGE,
   GIANT_REACH, GiantAttack, GiantState, attackDamage, attackRadius, giantHpAt, isLandTile,
   COSMETICS, CosmeticSlot, SKILLS, SKILL_MAX_LEVEL, Skill, harvestTickBonus, hasCosmetic, levelForXp, levelProgress,
@@ -223,6 +223,7 @@ export async function createGameService(credential: Credential, options: Connect
         combatTarget: p.combatTarget?.toHexString() ?? null, hostile: p.hostile,
         destination: describeDestination(p),
         region: p.region || 'bramblewild', area: p.region && p.region !== 'bramblewild' ? p.region : areaOf(p),
+        load: p.load ?? 0,
         gathering,
         action: describeAction(p, gathering, conn.db.tree.id.find(Number(p.pendingId))),
         };
@@ -298,6 +299,7 @@ export async function createGameService(credential: Credential, options: Connect
           return {
             tick, tickMs: TICK_MS, gridSize: self.region && self.region !== 'bramblewild' ? 128 : GRID_SIZE, player: describePlayer(self, frontier, now),
             frontier,
+            economy: describeEconomy({ self, slots: slotsOf(), views: conn.db.frontierView.iter(), identity: player.identity, now }),
             me: { area: home ? areaOf(self) : self.region, safe: home && isSafe(self, tick), graceTicks: inGrace(self, tick) ? Math.max(0, self.respawnTick + RESPAWN_GRACE_TICKS - tick) : 0,
               noPvp: home && (bossNoPvpZone(self) !== null || inSafeRing(self)),
               hasBrambleKey: hasKey, hasBoulderKey },
@@ -423,7 +425,8 @@ export async function createGameService(credential: Credential, options: Connect
                 yourOffer: parseOffer(iAmA ? t.aOffer : t.bOffer) ?? [], theirOffer: parseOffer(iAmA ? t.bOffer : t.aOffer) ?? [],
                 warnings: (parseOffer(iAmA ? t.aOffer : t.bOffer) ?? []).filter(o => [STICK_ITEM_ID, BOULDER_KEY_ITEM].includes(o.itemId) && o.quantity >= slotsOf().reduce((n, s) => n + (s?.itemId === o.itemId ? s.quantity : 0), 0) && !(parseOffer(iAmA ? t.bOffer : t.aOffer) ?? []).some(incoming => incoming.itemId === o.itemId)).map(o => `Giving away your last ${getItemDef(o.itemId)?.name}. Its outward route closes until you find another.`),
                 youConfirmed: iAmA ? t.aConfirmed : t.bConfirmed, theyConfirmed: iAmA ? t.bConfirmed : t.aConfirmed,
-                rule: `Request within ${TRADE_RANGE} tiles; cancelled beyond ${TRADE_BREAK_RANGE}, on death or disconnect. Any offer change clears both confirmations; the swap is all or nothing.` };
+                swapInTicks: t.aConfirmed && t.bConfirmed && t.swapTick ? Math.max(0, t.swapTick - tick) : null,
+                rule: `Request within ${TRADE_RANGE} tiles; cancelled beyond ${TRADE_BREAK_RANGE}, on death or disconnect. Any offer change clears both confirmations; the swap is all or nothing. Where no attack can land (the safe ring, boss zones, Meadows town) it runs as soon as both confirm; elsewhere it runs ${TRADE_SWAP_TICKS} ticks later (swapInTicks) and a hit on either side stops it and clears both confirmations.` };
             })(),
             notices: [...notices, ...bossNotices].sort((a, b) => a.tick - b.tick),
             appearance: conn.db.appearance.identity.find(id) ? { ...conn.db.appearance.identity.find(id), identity: player.identity } : appearance.DEFAULT_APPEARANCE,
@@ -486,6 +489,8 @@ export async function createGameService(credential: Credential, options: Connect
             case 'follow': await r.follow({ target: Identity.fromString(input.playerId) }); break;
             case 'pickup': await r.pickupItem({ id: BigInt(input.id) }).catch(brambles); break;
             case 'drop': await r.dropItem({ slot: input.slot, quantity: input.quantity }); break;
+            case 'vault_deposit': await r.vaultDeposit({ itemId: input.itemId, quantity: input.quantity }); break;
+            case 'vault_withdraw': await r.vaultWithdraw({ itemId: input.itemId, quantity: input.quantity }); break;
             case 'inventory_move': await r.moveItem({ from: input.from, to: input.to }); break;
             case 'name': await r.setName({ name: input.name }); break;
             case 'appearance': await r.setAppearance(input as any); break;

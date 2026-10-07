@@ -1,18 +1,16 @@
-import { frontierRepository, projectFrontier } from '../lib/frontier';
-import { newProfile } from '../../../shared/sim/frontier/model';
-import { progress } from '../lib/adventure';
-import { Feat } from '../../../shared/sim';
 import { t, SenderError } from 'spacetimedb/server';
 import type { Identity } from 'spacetimedb';
 import spacetimedb from '../schema';
 import {
-  Pending, PlayerState, SocialNotice, TRADE_BREAK_RANGE, TRADE_RANGE, chebyshev, describeOffer, executeTrade, formatOffer, inHotbar, offerProblem, parseOffer,
+  Pending, PlayerState, SocialNotice, TICK_MS, TRADE_BREAK_RANGE, TRADE_RANGE, TRADE_SWAP_TICKS, attackProofSpot, chebyshev, formatOffer, offerProblem, parseOffer,
 } from '../../../shared/sim';
-import { readSlots, writeSlots } from '../lib/inventory';
+import { readSlots } from '../lib/inventory';
+import { frontierRepository } from '../lib/frontier';
 import { clearInteractions, currentTick, findPlayer, requireAlivePlayer, requirePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { cancelTrade, notify, tradesOf, withdrawTrade } from '../lib/social';
 import type { Ctx, PlayerRow, TradeRow } from '../lib/types';
 import { requestTradeInRange, tradePartnerProblem } from '../lib/trade';
+import { completeTrade } from '../lib/tradeSwap';
 
 function requireTrade(ctx: Ctx, id: bigint, me: Identity): TradeRow {
   const row = ctx.db.trade.id.find(id);
@@ -101,6 +99,7 @@ export const setTradeOffer = spacetimedb.reducer(
       bOffer: isA ? row.bOffer : canonical,
       aConfirmed: false,
       bConfirmed: false,
+      swapTick: 0,
     });
   }
 );
@@ -119,6 +118,8 @@ function confirmTradeCore(ctx: Ctx, tradeId: bigint, aOffer: string, bOffer: str
     if (!row.accepted) throw new SenderError('The trade has not been accepted yet');
     if ((row.aCoins ?? 0) !== aCoins || (row.bCoins ?? 0) !== bCoins || row.aOffer !== aOffer || row.bOffer !== bOffer) throw new SenderError('The offer changed. Check it again.');
     const isA = sameId(row.a, p.identity);
+    // Already swapping: confirming again must not restart the wait.
+    if (row.aConfirmed && row.bConfirmed && row.swapTick) return;
     const next = { ...row, aConfirmed: isA ? true : row.aConfirmed, bConfirmed: isA ? row.bConfirmed : true };
     if (!next.aConfirmed || !next.bConfirmed) {
       if (!(isA ? row.aConfirmed : row.bConfirmed)) ctx.db.trade.id.update(next);
@@ -130,42 +131,15 @@ function confirmTradeCore(ctx: Ctx, tradeId: bigint, aOffer: string, bOffer: str
       cancelTrade(ctx, row, 'Trade cancelled: too far apart');
       return;
     }
-    const snapA = readSlots(ctx, a.identity);
-    const snapB = readSlots(ctx, b.identity);
-    const offerA = parseOffer(row.aOffer) ?? [];
-    const offerB = parseOffer(row.bOffer) ?? [];
-    const result = executeTrade(
-      { slots: snapA.slots, offer: offerA, name: a.name },
-      { slots: snapB.slots, offer: offerB, name: b.name },
-    );
-    if (!result.ok) {
-      ctx.db.trade.id.update({ ...row, aConfirmed: false, bConfirmed: false });
-      notify(ctx, a.identity, b.identity, SocialNotice.TradeFailed, `Trade not done: ${result.reason}`);
-      notify(ctx, b.identity, a.identity, SocialNotice.TradeFailed, `Trade not done: ${result.reason}`);
+    // Where an attack could land, the swap waits a few ticks and any damage stops it (the tick runs it).
+    if (!attackProofSpot(a) || !attackProofSpot(b)) {
+      ctx.db.trade.id.update({ ...next, swapTick: currentTick(ctx) + TRADE_SWAP_TICKS, aHp: a.hp, bHp: b.hp });
+      const text = `Both confirmed: the swap happens in ${(TRADE_SWAP_TICKS * TICK_MS / 1000).toFixed(1)} s unless either of you is hit`;
+      notify(ctx, a.identity, b.identity, SocialNotice.Info, text);
+      notify(ctx, b.identity, a.identity, SocialNotice.Info, text);
       return;
     }
-    if (aCoins || bCoins) {
-      const repo = frontierRepository(ctx);
-      const pa = repo.get('profile', a.identity.toHexString()) ?? newProfile(a.identity.toHexString());
-      const pb = repo.get('profile', b.identity.toHexString()) ?? newProfile(b.identity.toHexString());
-      if (pa.coins < aCoins || pb.coins < bCoins) throw new SenderError('An offered coin balance changed');
-      pa.coins += bCoins - aCoins; pb.coins += aCoins - bCoins;
-      repo.put('profile', pa); repo.put('profile', pb);
-      for (const [owner, amount] of [[pa.id, bCoins-aCoins],[pb.id,aCoins-bCoins]] as const)
-        repo.put('ledger',{id:`trade-${row.id}-${owner}`,owner,amount,reason:'player trade',at:Number(ctx.timestamp.microsSinceUnixEpoch/1000n)});
-      projectFrontier(ctx, repo);
-    }
-    writeSlots(ctx, a.identity, snapA, result.a);
-    writeSlots(ctx, b.identity, snapB, result.b);
-    // Wielding requires a copy in a quick slot. Reconcile only after the swap
-    // succeeds; offers, cancellations and failed trades leave equipment alone.
-    if (a.weapon && !inHotbar(result.a, a.weapon)) savePlayer(ctx, { ...a, weapon: '' });
-    if (b.weapon && !inHotbar(result.b, b.weapon)) savePlayer(ctx, { ...b, weapon: '' });
-    ctx.db.trade.id.delete(row.id);
-    if (offerA.length && !offerB.length) progress(ctx, a.identity, 4, 8, Feat.Befriend);
-    if (offerB.length && !offerA.length) progress(ctx, b.identity, 4, 8, Feat.Befriend);
-    notify(ctx, a.identity, b.identity, SocialNotice.TradeDone, offerB.length ? `Received ${describeOffer(offerB)} from ${b.name}` : `Gift delivered to ${b.name}: ${describeOffer(offerA)}`);
-    notify(ctx, b.identity, a.identity, SocialNotice.TradeDone, offerA.length ? `Received ${describeOffer(offerA)} from ${a.name}` : `Gift delivered to ${a.name}: ${describeOffer(offerB)}`);
+    completeTrade(ctx, row, a, b, (side) => savePlayer(ctx, { ...side, weapon: '' }));
 }
 export const confirmTrade = spacetimedb.reducer(
   { tradeId: t.u64(), aOffer: t.string(), bOffer: t.string() },
@@ -183,7 +157,7 @@ export const setTradeCoins = spacetimedb.reducer({tradeId:t.u64(),coins:t.u32()}
   if(coins>balance)throw new SenderError('Not enough coins');
   const field=sameId(row.a,p.identity)?'aCoins':'bCoins';
   if((row[field]??0)===coins)return;
-  ctx.db.trade.id.update({...row,[field]:coins,aConfirmed:false,bConfirmed:false});
+  ctx.db.trade.id.update({...row,[field]:coins,aConfirmed:false,bConfirmed:false,swapTick:0});
 });
 
 /** Leave a trade or withdraw a request. */

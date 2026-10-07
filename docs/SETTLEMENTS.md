@@ -41,7 +41,7 @@ Saved parcels, buildings and local coordinates remain unchanged. `homeMap.ts` pl
 | Tools | Axe doubles timber yield. A pick enables the level-ten Might mining perk. A watering can shortens newly planted carrots from two hours to 90 minutes. |
 | Creatures | Four tameable species and hostile Bristlebacks. Observe before feeding; one active companion and three additional pets after building a stable. Advanced utilities require active Beastcraft. |
 | Companion utilities | Burrowbun finds seed; Reedhorn carries six slots; Glowmoth reports resources; Shellback guards carried expedition cargo for 12 seconds. Defeated companions rest for a minute. |
-| Defeat | Frontier combat drops the backpack and active pack contents in a public bag for five minutes, and respawns the character at that island's town after five ticks. Defeat aboard a boat removes that passenger and uses the last port's region. Coins, property and the town vault survive. |
+| Defeat | Frontier combat drops the backpack and active pack contents in a public bag for five minutes, and respawns the character at that island's town after five ticks. Defeat aboard a boat removes that passenger and uses the last port's region. Coins, property and the town vault survive. The same personal vault also opens in Bramblewild's safe ring and takes deposits at the Coast drop boxes ([ECONOMY.md](design/ECONOMY.md)). |
 | Boats | One owned skiff, four crew, twelve cargo slots. Separate boarding, helm and cargo permissions. Bounded sea, direct steering, three ports. After five minutes with no connected crew, the boat and passengers return to the last port. |
 
 No naval combat, sinking, wind simulation, guild ownership, terrain editing, multiple storeys or destructible sieges are included.

@@ -13,9 +13,9 @@ try{
  const labels=()=>page.evaluate(()=>[...document.querySelectorAll('[data-player-name]')].map(e=>({id:e.dataset.playerName,text:e.textContent,visibility:getComputedStyle(e).visibility,rect:e.getBoundingClientRect().toJSON()})));
  const spawn=await labels();check('shared spawn preserves You and hides overlapping ambient names',spawn.filter(e=>e.visibility==='visible').length===1&&spawn.find(e=>e.visibility==='visible').text==='You',spawn);
  await page.screenshot({path:out+'/same-spawn.png'});
- // M1: spawn is a safe ring (Chebyshev radius 2) and newcomers are in grace for up to 3:00, so the two
+ // M1: spawn is a safe ring (Chebyshev radius 3) and newcomers are in grace for up to 3:00, so the two
  // others share a tile just south of the ring and the target is attacked once its grace runs out.
- const ring={x:25,z:28};
+ const ring={x:25,z:29};
  for(const p of others){const at=await p.evaluate(([x,z])=>window.__berigameProject(x,z,0),[ring.x,ring.z]);await p.mouse.click(at.x,at.y);await p.waitForFunction(([x,z])=>window.__berigame.me.x===x&&window.__berigame.me.z===z,[ring.x,ring.z],{timeout:15000})}
  const initial=await page.evaluate(()=>window.__berigame.me),point=await page.evaluate(([x,z])=>window.__berigameProject(x,z,0),[ring.x,ring.z+2]);await page.touchscreen.tap(point.x,point.y);await page.waitForFunction(z=>window.__berigame.me.z===z,ring.z+2,{timeout:15000});
  await page.waitForTimeout(1500);

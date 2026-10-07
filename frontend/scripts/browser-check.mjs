@@ -223,9 +223,9 @@ try {
     }
     // A found a stick, which ends A's grace 10 ticks later. B walks out of the safe ring and punches A
     // (an accepted attack ends B's own grace too), so A can hit back with the stick below.
-    await clickTile(B, 25, 28);
-    await waitFor(B, 'B leaves the safe ring', (s) => s.me.x === 25 && s.me.z === 28, 10_000);
-    await walkViaUi(A, 27, 28);
+    await clickTile(B, 25, 29);
+    await waitFor(B, 'B leaves the safe ring', (s) => s.me.x === 25 && s.me.z === 29, 10_000);
+    await walkViaUi(A, 27, 29);
     // The Safe badge shows while in the safe ring or in grace.
     await A.waitForSelector('.combat-hud .safe-badge', { state: 'detached', timeout: 15_000 });
     // B attacks A: click A's avatar in B's page, choose Attack from the dropdown.

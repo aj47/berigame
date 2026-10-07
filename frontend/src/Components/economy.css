@@ -1,0 +1,102 @@
+/* The economy strip under the health bar (EconomyHud.tsx). Matches the weapon chip's size and palette. */
+.hud-economy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+.energy-meter {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 15px;
+  background: #201d18;
+  border: 1px solid #7f6c4e;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.energy-fill {
+  height: 100%;
+  background: #6d7f45;
+  transition: width 0.4s ease;
+}
+.energy-meter.rested .energy-fill { background: #c99a3c; }
+.energy-meter.tired .energy-fill { background: #6b5d4c; }
+/* Above this line gathering pays double. */
+.energy-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #f1d79a;
+  opacity: 0.75;
+}
+.energy-meter > span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 9px;
+  font-weight: bold;
+  color: #f2e7d1;
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+}
+.carry-chip,
+.bank-button {
+  flex: 0 0 auto;
+  height: 17px;
+  padding: 0 7px;
+  border-radius: 9px;
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 15px;
+  white-space: nowrap;
+}
+.carry-chip {
+  background: #403930;
+  border: 1px solid #7f6c4e;
+  color: #e9dbc2;
+}
+.carry-chip.load-1 {
+  border-color: #e3b65c;
+  box-shadow: 0 0 6px #e3b65c88;
+}
+.carry-chip.load-2 {
+  border-color: #ffd67a;
+  color: #fff1cf;
+  box-shadow: 0 0 10px #ffd67acc;
+}
+.bank-button {
+  background: #57452f;
+  border: 1px solid #d2a664;
+  color: #ffe6b8;
+  cursor: pointer;
+}
+.bank-button:hover,
+.bank-button:focus-visible {
+  background: #6b5539;
+}
+
+/* The Bramblewild vault panel (VaultPanel.tsx), in the shared game-panel frame. */
+.vault-panel { display: flex; flex-direction: column; overflow: hidden; }
+.vault-panel .vault-scroll { overflow-y: auto; min-height: 0; padding-right: 2px; }
+.vault-status { margin: 0 0 8px; color: var(--ink-soft); font-size: 13px; line-height: 1.4; }
+.vault-unbanked { margin: 0 0 10px; font-size: 13px; }
+.vault-walk { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.vault-walk button { font-size: 13px; padding: 7px 9px; }
+.vault-amount { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
+.vault-amount select { width: 150px; }
+.vault-panel section { margin: 14px 0; }
+.vault-panel h3 { margin: 0 0 4px; font-size: 14px; }
+.vault-items { padding: 0; margin: 0; list-style: none; }
+.vault-item { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #dde0ce; padding: 6px 0; }
+.vault-item > img { width: 30px; height: 30px; object-fit: contain; flex: none; }
+.vault-item > span { min-width: 0; flex: 1; }
+.vault-item strong { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.vault-item small { display: block; font-size: 11px; color: var(--ink-soft); }
+.vault-item button { flex: none; margin: 0; padding: 7px 8px; min-height: 36px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.vault-hint { color: var(--ink-soft); font-size: 13px; }

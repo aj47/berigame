@@ -49,15 +49,27 @@ The Grove: you spawn at (25,25). A rounded thorny boundary surrounds it (exact t
 A stick lets you push through the brambles. Without one, `move` stops at the hedge (the receipt says
 `blockedBy: "brambles"`) and `harvest`/`pickup` beyond it fail with error code `brambles`. From the Coast
 you can always walk home. `state.me.area` says where you are. Nobody can fight inside the safe ring
-(radius 2 around spawn), for 10 ticks after a respawn, or against a newcomer who has not yet found a
-stick, attacked, or played 3 minutes.
+(radius 3 around spawn), for 10 ticks after a respawn, for 3 ticks after you step out of the safe ring
+(attacking ends that early), or against a newcomer who has not yet found a stick, attacked, or played 3 minutes.
+
+Energy, banking and risk (`state.economy`): gathering pays by your energy meter, measured in seconds of
+gathering. Every meter starts at its rested line and pays normally. One point returns every 6 s: online only up
+to the line, logged out up to the top, so only time away makes you rested (harvests and gathers pay double). With fewer points left than an
+action costs you are tired and only one in four pays. A normal session never gets there; nonstop gathering
+does. Gardens and planter crops are not affected. Everything in your bag drops where you are defeated, so
+bank it: `vault_deposit {itemId, quantity}` and `vault_withdraw` are instant anywhere in the safe ring (the
+vault is the same store as the Meadows town bank). Four Coast drop boxes (`state.economy.vault.dropBoxes`)
+take deposits only: stand within 1 tile, and it finishes 4 ticks later (`player.action` is `depositing`)
+unless a hit, a step or another action stops it. A bag worth 30 or more glows for everyone
+(`player.load` 1, bright at 90 = 2; your first copy of each weapon does not count).
 
 Social: `invite_create` gives a one-hour code (`state.invite`); another player redeems it with
 `invite_redeem` to become your friend and land beside you (never past the brambles without a stick, nor the boulder line without a stone club).
 `state.friends` shows friends' online status, area and tile; `follow` walks to one.
 Trade with a player within 3 tiles: `trade_request`, they `trade_respond`, both `trade_offer`
 (`itemId:qty,...`, including wielded weapons), both `trade_confirm`. A completed trade puts your weapon away if no copy remains in your quick slots. Any change clears confirmations;
-the swap is all or nothing; walking apart, dying or leaving cancels. See `state.trade` and `state.notices`.
+the swap is all or nothing; walking apart, dying or leaving cancels. In the safe ring (or Meadows town, or a boss zone) the swap runs as soon
+as both confirm; elsewhere it runs 3 ticks later (`state.trade.swapInTicks`) and a hit on either side stops it. See `state.trade` and `state.notices`.
 Chat rows carry `nearby` (said within 12 tiles of you).
 The Boulders: the grid is 128x128; the island has a natural coastline, lakes, a winding brook, Eastreach past the harbour road and the southern wilds over Saltmarsh Causeway. See `world.map.rows`, `world.map.obstacles` and `world.map.landmarks` for navigation. Past the Coast's south-east corner a
 boulder line (walkable land on the Giant's headland, 30 <= x < 66 and 32 <= z < 66, with max(x, z) = 50) guards the Boulders. Crossing it needs a stone

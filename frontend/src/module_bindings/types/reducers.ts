@@ -60,6 +60,8 @@ import SpireStartReducer from "../spire_start_reducer";
 import StartHarvestReducer from "../start_harvest_reducer";
 import TriggerGiantRaidReducer from "../trigger_giant_raid_reducer";
 import UnwieldReducer from "../unwield_reducer";
+import VaultDepositReducer from "../vault_deposit_reducer";
+import VaultWithdrawReducer from "../vault_withdraw_reducer";
 import WearCosmeticReducer from "../wear_cosmetic_reducer";
 import WieldItemReducer from "../wield_item_reducer";
 
@@ -117,6 +119,8 @@ export type SpireStartParams = __Infer<typeof SpireStartReducer>;
 export type StartHarvestParams = __Infer<typeof StartHarvestReducer>;
 export type TriggerGiantRaidParams = __Infer<typeof TriggerGiantRaidReducer>;
 export type UnwieldParams = __Infer<typeof UnwieldReducer>;
+export type VaultDepositParams = __Infer<typeof VaultDepositReducer>;
+export type VaultWithdrawParams = __Infer<typeof VaultWithdrawReducer>;
 export type WearCosmeticParams = __Infer<typeof WearCosmeticReducer>;
 export type WieldItemParams = __Infer<typeof WieldItemReducer>;
 
