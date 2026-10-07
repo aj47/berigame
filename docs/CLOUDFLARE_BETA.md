@@ -235,6 +235,27 @@ it: live runs then fail with key refunds, and tabs on the old bundle are refused
 at the gate ("This client is out of date; reload the page to enter the Spire")
 until `beta:deploy` lands, so deploy straight after the module.
 
+### Admin panel release (`daily_activity` and the admin procedures)
+
+An additive, non-breaking publish: one private table (`daily_activity`) and two
+owner/gateway-only procedures (`admin_snapshot`, `admin_player`). Rehearsed
+locally on top of the economy-release module: the plan is the single step
+"Created user table: daily_activity (private)" and connected clients stay
+connected. What the panel shows is in [ANALYTICS.md](ANALYTICS.md).
+
+1. Verify the live hashes (see above) and build from a tree that contains them.
+2. Publish the module to the VM exactly as in "Publish updates", with
+   `--delete-data=never --yes=migrate,skip-login`.
+3. `npm run beta:deploy` right after. The Worker gains `POST /api/admin/stats` and
+   `POST /api/admin/player`, and the site bundle gains `/admin`. A Worker deployed
+   before the module still works; its admin routes return 503 until the module is
+   published.
+4. Open `https://beta.berigame.com/admin` and paste the existing `ADMIN_TOKEN`
+   Worker secret (`.spacetime-data/deploy-beta/cloudflare-secrets.json`).
+
+Rollback: redeploy the previous Worker. The table and procedures are harmless to
+leave in place; dropping them needs a migration, so prefer fixing forward.
+
 ### First deployment credentials
 
 The initial deployment stores credentials with mode 0600 beneath the ignored
@@ -491,6 +512,11 @@ The SDK's binary codecs use runtime code generation. Cloudflare permits this
 during Worker startup, so `cloudflare/codecs.ts` prepares the checked-in game
 schema and SDK protocol codecs before serving requests. Wrangler aliases the
 SDK to one source instance so its caches are shared. No caller input is compiled.
+Procedures need one more step: every `DbConnection` builds its procedure
+argument types afresh, so the SDK's identity-keyed cache misses inside a request.
+`codecs.ts` compiles them at startup and serves later lookups of the same shape;
+without it, any module procedure in the bindings makes every gateway connection
+fail with `world_unavailable`.
 The socket adapter uses Cloudflare's `fetch` WebSocket upgrade with authorization
 in a header. Review these two adapters when upgrading SpacetimeDB.
 

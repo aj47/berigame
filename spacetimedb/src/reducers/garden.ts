@@ -8,6 +8,7 @@ import {
 import { readSlots, writeSlots } from '../lib/inventory';
 import { requireOwner } from '../lib/access';
 import { currentTick, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
+import { activityAction } from '../lib/activity';
 import { grantXp, skillLevel } from '../lib/progress';
 import { refuseOnSpireFloor } from '../lib/spireGuards';
 import type { Ctx, GardenPlotRow } from '../lib/types';
@@ -32,6 +33,7 @@ export const plantGarden = spacetimedb.reducer(
     refuseOnSpireFloor(p);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, currentTick(ctx));
+    activityAction(ctx, p.identity, 'garden-plant');
     const snap = readSlots(ctx, p.identity);
     const occupied = plotRow(ctx, p.identity, plot) !== undefined;
     const why = gardenPlantRejection(snap.slots, p, plot, itemId, skillLevel(ctx, p.identity, Skill.Foraging), occupied);
@@ -54,6 +56,7 @@ export const harvestGarden = spacetimedb.reducer(
     refuseOnSpireFloor(p);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     touchInput(p, currentTick(ctx));
+    activityAction(ctx, p.identity, 'garden-harvest');
     const row = plotRow(ctx, p.identity, plot);
     const snap = readSlots(ctx, p.identity);
     const plant = row ? { itemId: row.itemId, plantedAtMs: Number(row.plantedAtMicros / 1000n) } : null;

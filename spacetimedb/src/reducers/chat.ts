@@ -3,6 +3,7 @@ import spacetimedb from '../schema';
 import { CHAT_KEEP_ROWS, MAX_CHAT_LEN, NAME_MAX_LEN, NAME_MIN_LEN } from '../../../shared/sim';
 import { currentTick, requirePlayer, savePlayer, touchInput } from '../lib/players';
 import { requireCapability } from '../lib/access';
+import { activity } from '../lib/activity';
 
 export const sendChat = spacetimedb.reducer(
   { text: t.string() },
@@ -20,6 +21,7 @@ export const sendChat = spacetimedb.reducer(
     touchInput(p, T);
     savePlayer(ctx, p);
     ctx.db.chatMessage.insert({ id: 0n, sender: p.identity, text: trimmed, tick: T, sentAt: ctx.timestamp, x: p.x, z: p.z });
+    activity(ctx, p.identity, 'chats');
     const all = [...ctx.db.chatMessage.iter()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     for (let i = 0; i < all.length - CHAT_KEEP_ROWS; i++) ctx.db.chatMessage.id.delete(all[i].id);
   }

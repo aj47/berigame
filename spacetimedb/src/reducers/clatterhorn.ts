@@ -5,6 +5,7 @@ import { carrying } from '../lib/adventure';
 import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
+import { activityAction } from '../lib/activity';
 import { readBossConfig } from '../lib/rows';
 import { refuseOnSpireFloor } from '../lib/spireGuards';
 
@@ -27,6 +28,7 @@ export const attackClatterhorn = spacetimedb.reducer((ctx) => {
     throw new SenderError(`The beetle has burrowed away. Clatterhorn returns in ${s} s`);
   }
   touchInput(p, T);
+  activityAction(ctx, p.identity, 'clatterhorn');
   // Re-selecting the beetle you are already swinging at in reach keeps the rhythm (and drops a stale walk
   // target left from before a charge moved it).
   const inReach = chebyshev(p, row) <= CLATTER_REACH;

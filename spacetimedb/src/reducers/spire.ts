@@ -8,6 +8,7 @@ import {
 import { carrying, duelFor } from '../lib/adventure';
 import { readSlots } from '../lib/inventory';
 import { currentTick, hex, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
+import { activityAction } from '../lib/activity';
 import { readBossConfig } from '../lib/rows';
 import {
   spireForfeit, spireLeaveLobby, spireLiveMembership, spireMembers, spireMembershipProblem, spireStartRun,
@@ -177,5 +178,6 @@ export const spireStart = spacetimedb.reducer(
       save: (q) => savePlayer(ctx, q),
       others: () => [...ctx.db.player.iter()],
     });
+    for (const m of members) activityAction(ctx, m.identity, 'spire-run');
   }
 );

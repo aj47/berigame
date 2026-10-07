@@ -157,6 +157,25 @@ export const CombatEvent = __t.object("CombatEvent", {
 });
 export type CombatEvent = __Infer<typeof CombatEvent>;
 
+export const DailyActivity = __t.object("DailyActivity", {
+  key: __t.string(),
+  day: __t.u32(),
+  identity: __t.identity(),
+  agent: __t.bool(),
+  sessions: __t.u32(),
+  playSeconds: __t.u32(),
+  harvests: __t.u32(),
+  gathered: __t.u32(),
+  crafts: __t.u32(),
+  kills: __t.u32(),
+  deaths: __t.u32(),
+  trades: __t.u32(),
+  deposits: __t.u32(),
+  chats: __t.u32(),
+  actions: __t.string(),
+});
+export type DailyActivity = __Infer<typeof DailyActivity>;
+
 export const DummyEvent = __t.object("DummyEvent", {
   tick: __t.u32(),
   dummyId: __t.u32(),
