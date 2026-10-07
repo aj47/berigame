@@ -71,8 +71,8 @@ const Scene = () => {
     <Rig target={target} dist={dist} />
     <color attach="background" args={['#cdeef0']} />
     <fog attach="fog" args={['#cdeef0', 55, 150]} />
-    <directionalLight position={[-12, 24, 10]} intensity={1.0} color="#ffe2b8" />
-    <hemisphereLight args={['#cfe8ff', '#8c7a52', 0.55]} />
+    <directionalLight position={[-12, 24, 10]} intensity={1.0 * Math.PI} color="#ffe2b8" />
+    <hemisphereLight args={['#cfe8ff', '#8c7a52', 0.55 * Math.PI]} />
     <Ocean />
     {/* The old island's south-east Coast, for context. */}
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}><planeGeometry args={[50, 50]} /><meshStandardMaterial color="#86a03c" roughness={1} /></mesh>

@@ -23,6 +23,7 @@ export const useUserInputStore = create((set) => ({
 
 const GRAPHICS_MESSAGES = {
   unsupported: "Your browser could not start 3D graphics (WebGL).",
+  webgl1: "BeriGame needs WebGL 2, which this browser does not offer.",
   lost: "The 3D graphics stopped (WebGL context lost).",
 };
 
@@ -43,7 +44,7 @@ export const useLoadingStore = create((set) => ({
   assetsToLoad: ["/models/starter-adventurer.glb"],
   loadedAssets: [],
   assetError: null,
-  /** 'unsupported' when WebGL cannot start, 'lost' when the GPU context dies and stays dead. */
+  /** 'unsupported' when WebGL cannot start, 'webgl1' when only WebGL 1 is offered, 'lost' when the GPU context dies and stays dead. */
   graphicsIssue: null,
   setGraphicsIssue: (graphicsIssue) => set((state) => {
     if (state.graphicsIssue === graphicsIssue) return state;

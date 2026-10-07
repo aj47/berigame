@@ -12,6 +12,8 @@ function pointer(target: EventTarget, type: string, x: number, button = 0, point
 }
 function drag(button: number, pointerType = 'mouse') {
   pointer(wrapper, 'pointerdown', 100, button, pointerType);
+  // camera-controls applies drag movement once per update (a rendered frame).
+  controls.update(1);
   pointer(document, 'pointermove', 160, button, pointerType);
   controls.update(1);
   pointer(document, 'pointerup', 160, button, pointerType);

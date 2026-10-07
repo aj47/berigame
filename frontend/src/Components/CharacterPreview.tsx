@@ -22,7 +22,7 @@ export default function CharacterPreview({ appearance, name, head = 0, neck = 0,
     <div className="creator-preview-heading"><strong title={name.trim()}>{name.trim() || 'A new story'}</strong></div>
     <PreviewBoundary>
       <Canvas dpr={[1,1.5]} camera={{ position:[0,1.2,4.9], fov:32 }} gl={{alpha:true,antialias:true}}>
-        <ambientLight intensity={.7}/><directionalLight position={[3,5,4]} intensity={1.3}/><directionalLight position={[-3,2,-2]} intensity={.6} color="#b6d5ec"/>
+        <ambientLight intensity={.7*Math.PI}/><directionalLight position={[3,5,4]} intensity={1.3*Math.PI}/><directionalLight position={[-3,2,-2]} intensity={.6*Math.PI} color="#b6d5ec"/>
         <Suspense fallback={<Html center><span className="creator-loading">Loading preview…</span></Html>}>
           <group rotation={[0,turn,0]}>
             <AdventurerModel url={modelUrl(appearance.hairStyle)} appearance={appearance} identity="character-preview" isSelf={false} state={0} weapon="" head={head} neck={neck} motion={motion} transient={transient} preview />

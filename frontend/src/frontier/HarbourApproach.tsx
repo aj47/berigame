@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { BoxGeometry, BufferGeometry, CanvasTexture, ConeGeometry, IcosahedronGeometry, MeshStandardMaterial, sRGBEncoding } from 'three';
+import { BoxGeometry, BufferGeometry, CanvasTexture, ConeGeometry, IcosahedronGeometry, MeshStandardMaterial, SRGBColorSpace } from 'three';
 import { merged, part } from '../Components/3D/envArt';
 import { islandGrassGeometry, islandGrassMaterial, islandFlowerGeometry, islandFlowerMaterial } from '../Components/3D/IslandDetails';
 import { linear } from '../Components/3D/nodes/lowPoly';
@@ -86,7 +86,7 @@ export default function HarbourApproach() {
     ctx.strokeStyle = '#b0bf8a'; ctx.lineWidth = 3; ctx.strokeRect(12, 12, 744, 136);
     ctx.font = 'bold 62px Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#f7e7bd'; ctx.fillText('THE MEADOWS', 384, 83);
-    const texture = new CanvasTexture(canvas); texture.encoding = sRGBEncoding;
+    const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace;
     return texture;
   }, []);
   useEffect(() => () => sign.dispose(), [sign]);

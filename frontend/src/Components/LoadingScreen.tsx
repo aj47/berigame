@@ -87,7 +87,7 @@ const LoadingScreen = () => {
             </p>
           </>
         )}
-        {graphicsIssue && <GraphicsHelp />}
+        {graphicsIssue && <GraphicsHelp issue={graphicsIssue} />}
         {(waitingLong || disconnected || assetError || graphicsIssue || connectionIssue || worldUpdatesStalled) && (
           <div className="loading-recovery">
             <p>
@@ -130,10 +130,16 @@ const LoadingScreen = () => {
   );
 };
 /** Chromium pages cannot open its internal pages, so the flag address is copyable. */
-const GraphicsHelp = () => {
+const GraphicsHelp = ({ issue }: { issue: string }) => {
   const [copied, setCopied] = useState(false);
   const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
   const scheme = /Edg\//.test(ua) ? "edge" : /Chrome\//.test(ua) ? "chrome" : null;
+  // Outside Chromium, a browser with only WebGL 1 needs updating; in Chromium the blocklist steps can turn WebGL 2 on.
+  if (issue === "webgl1" && !scheme) return (
+    <div className="loading-recovery graphics-help" role="alert">
+      <p>Update your browser or device: current Chrome, Edge, Firefox and Safari 15 or later run BeriGame.</p>
+    </div>
+  );
   const flag = `${scheme}://flags/#ignore-gpu-blocklist`;
   const copy = () => {
     void navigator.clipboard?.writeText(flag).then(() => setCopied(true), () => {});

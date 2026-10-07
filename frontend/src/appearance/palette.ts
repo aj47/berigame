@@ -40,7 +40,7 @@ export function acquirePalette(base: MeshStandardMaterial, appearance: Appearanc
     const colors=paletteColors(appearance);
     for (let i=0;i<64;i++) { context.fillStyle='#'+colors[i%colors.length];context.fillRect((i%8)*8,56-Math.floor(i/8)*8,8,8); }
     const texture=new CanvasTexture(canvas);
-    if (base.map) { texture.encoding=base.map.encoding;texture.flipY=base.map.flipY;texture.magFilter=base.map.magFilter;texture.minFilter=base.map.minFilter; }
+    if (base.map) { texture.colorSpace=base.map.colorSpace;texture.flipY=base.map.flipY;texture.magFilter=base.map.magFilter;texture.minFilter=base.map.minFilter; }
     const material=base.clone();material.map=texture;material.needsUpdate=true;
     entry={material,texture,users:0};cache.set(key,entry);
   }

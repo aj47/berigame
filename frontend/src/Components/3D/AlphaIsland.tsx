@@ -1,12 +1,14 @@
 import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { BackSide, Mesh, ShaderMaterial, SphereGeometry } from 'three';
+import { BackSide, Mesh, ShaderMaterial, SphereGeometry, type DirectionalLight } from 'three';
 import IslandDetails from './IslandDetails';
 import AmbientLife from './AmbientLife';
 import BrambleHedge from './BrambleHedge';
 import BouldersArea from './BouldersArea';
 import GroundPlane from '../../Objects/GroundPlane';
 import { envTime } from './envArt';
+import SunShadow from './SunShadow';
+import { QUALITY, useGraphicsTier } from './renderQuality';
 
 /** Horizon tone shared by the sky, fog and clear colour so the ocean melts into the sky. */
 const HORIZON = '#cdeef0';
@@ -39,21 +41,26 @@ const Sky = () => {
 const Clock = () => { useFrame((_, dt) => { envTime.value += Math.min(dt, 0.1); }); return null; };
 
 /** Lights, sky and the ground. Trees now come from the server's `tree` table. */
-const AlphaIsland = () => (
-  <>
-    <color attach="background" args={[HORIZON]} />
-    <fog attach="fog" args={[HORIZON, 55, 150]} />
-    <Sky />
-    {/* Warm late-morning sun as the key, cool sky bounce as the fill. */}
-    <directionalLight position={[-12, 24, 10]} intensity={1.0} color="#ffe2b8" />
-    <hemisphereLight args={['#cfe8ff', '#8c7a52', 0.55]} />
-    <Clock />
-    <GroundPlane />
-    <IslandDetails />
-    <AmbientLife />
-    <BrambleHedge />
-    <BouldersArea />
-  </>
-);
+const AlphaIsland = () => {
+  const sun = useRef<DirectionalLight>(null);
+  const quality = QUALITY[useGraphicsTier()];
+  return (
+    <>
+      <color attach="background" args={[HORIZON]} />
+      <fog attach="fog" args={[HORIZON, 55, 150]} />
+      <Sky />
+      {/* Warm late-morning sun as the key, cool sky bounce as the fill. */}
+      <directionalLight ref={sun} position={[-12, 24, 10]} intensity={1.0 * Math.PI} color="#ffe2b8" />
+      {quality.shadows && <SunShadow light={sun} />}
+      <hemisphereLight args={['#cfe8ff', '#8c7a52', 0.55 * Math.PI]} />
+      <Clock />
+      <GroundPlane />
+      <IslandDetails />
+      {quality.ambientLife && <AmbientLife />}
+      <BrambleHedge />
+      <BouldersArea />
+    </>
+  );
+};
 
 export default AlphaIsland;

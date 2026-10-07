@@ -11,8 +11,8 @@ export interface Settings {
   /** 0..1, multiplied by masterVolume (waves, wind) */
   ambientVolume: number;
   muted: boolean;
-  /** 'auto' lets the renderer lower resolution on slow devices. */
-  graphics: 'auto' | 'high' | 'low';
+  /** Render quality tier (renderQuality.ts); 'auto' picks one for the device and frame rate. */
+  graphics: 'auto' | 'low' | 'medium' | 'high';
   showNameplates: boolean;
   showWorldLabels: boolean;
   showGuidance: boolean;

@@ -34,7 +34,7 @@ function instanced(geometry: CircleGeometry | RingGeometry, material: MeshBasicM
   mesh.instanceMatrix.setUsage(DynamicDrawUsage);
   if (colors) mesh.setColorAt(0, colors);
   mesh.count = 0;
-  // Instances span the island; three 0.149 cannot bound them.
+  // Instances span the island and move every frame; bounding them each frame would cost more than it culls.
   mesh.frustumCulled = false;
   // Blob, then faint rings, then bright rings, all after the rest of the transparent ground.
   mesh.renderOrder = renderOrder;
@@ -43,8 +43,8 @@ function instanced(geometry: CircleGeometry | RingGeometry, material: MeshBasicM
 
 function upload(attribute: InstancedMesh['instanceMatrix'], count: number) {
   if (count === 0) return;
-  attribute.updateRange.offset = 0;
-  attribute.updateRange.count = count;
+  attribute.clearUpdateRanges();
+  attribute.addUpdateRange(0, count);
   attribute.needsUpdate = true;
 }
 

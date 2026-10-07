@@ -52,7 +52,7 @@ const AdventurerModel=({url,appearance,identity,isSelf,state,weapon,carrying=fal
   const model=useMemo(()=>{const clone=SkeletonUtils.clone(scene);skipBoneEulerSync(clone);return clone;},[scene]);
   const base=useMemo(()=>{let material:MeshStandardMaterial;scene.traverse((o:any)=>{if(o.isSkinnedMesh)material=o.material;});return material!;},[scene]);
   const seed=useMemo(()=>seedFromIdentity(identity),[identity]);
-  const animator=useMemo(()=>new AvatarAnimator(model,clipSet,{seed,locate:locateAvatar}),[model,clipSet,seed]);
+  const animator=useMemo(()=>new AvatarAnimator(model,clipSet,{seed,locate:locateAvatar,cull:!preview}),[model,clipSet,seed,preview]);
   useEffect(()=>()=>animator.dispose(),[animator]);
   // Hit flash, footsteps, respawn chime and the harvest reach (fx/avatarFx.ts).
   const fx=useMemo(()=>new AvatarFx(model,identity,isSelf),[model,identity,isSelf]);

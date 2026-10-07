@@ -44,10 +44,10 @@ function App() {
       <label><input type="checkbox" checked={roofOn} onChange={e => setRoofOn(e.target.checked)} />Roof</label>
       <label><input type="checkbox" checked={fade} onChange={e => setFade(e.target.checked)} />Indoors cutaway</label>
     </header>
-    <Canvas shadows camera={{ position: [10, 11, 15], fov: 40 }} dpr={[1, 1.5]}>
+    <Canvas shadows="percentage" camera={{ position: [10, 11, 15], fov: 40 }} dpr={[1, 1.5]}>
       <color attach="background" args={['#d9eadf']} />
-      <hemisphereLight args={['#fff7de', '#788e7d', .9]} />
-      <directionalLight position={[20, 35, 10]} intensity={1.1} color="#ffeaca" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-15} shadow-camera-right={15} shadow-camera-top={15} shadow-camera-bottom={-15} />
+      <hemisphereLight args={['#fff7de', '#788e7d', .9 * Math.PI]} />
+      <directionalLight position={[20, 35, 10]} intensity={1.1 * Math.PI} color="#ffeaca" castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-15} shadow-camera-right={15} shadow-camera-top={15} shadow-camera-bottom={-15} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[2, -.01, 2]} receiveShadow><planeGeometry args={[60, 60]} /><meshStandardMaterial color="#6a9a4a" roughness={1} /></mesh>
       <Suspense fallback={null}>
         {view === 'cottage' && <group position={[-2, 0, -2]}>

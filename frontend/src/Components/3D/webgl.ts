@@ -2,17 +2,28 @@ import { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import { useLoadingStore } from '../../store';
 
-/** Probe once with a throwaway canvas; blocklisted GPUs return no context. */
-export function webglAvailable(): boolean {
+/**
+ * Probe once with throwaway canvases. three.js renders with WebGL 2 only (since r163);
+ * 'webgl1' means the browser or device is too old to play, null that the GPU is
+ * blocklisted or graphics acceleration is off.
+ */
+export function webglSupport(): 'webgl2' | 'webgl1' | null {
   try {
-    const canvas = document.createElement('canvas');
-    const gl = (canvas.getContext('webgl2') || canvas.getContext('webgl')) as WebGLRenderingContext | null;
-    if (!gl) return false;
-    gl.getExtension('WEBGL_lose_context')?.loseContext();
-    return true;
+    const probe = (kind: 'webgl2' | 'webgl') => {
+      const gl = document.createElement('canvas').getContext(kind) as WebGLRenderingContext | null;
+      gl?.getExtension('WEBGL_lose_context')?.loseContext();
+      return !!gl;
+    };
+    if (probe('webgl2')) return 'webgl2';
+    return probe('webgl') ? 'webgl1' : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** Whether the world renderer can start. */
+export function webglAvailable(): boolean {
+  return webglSupport() === 'webgl2';
 }
 
 /** Renderer construction errors that mean the browser refused WebGL. */

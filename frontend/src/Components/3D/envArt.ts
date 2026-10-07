@@ -1,5 +1,5 @@
 import { BufferGeometry, Color, Float32BufferAttribute, Material, Matrix4, Euler, Quaternion, Vector3 } from 'three';
-import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
 import { linear } from './nodes/lowPoly';
 
 /**
@@ -65,7 +65,7 @@ export function part(geometry: BufferGeometry, hex: number, pos: [number, number
 
 /** Merge parts into one geometry (one draw call) with recomputed flat normals. */
 export function merged(parts: BufferGeometry[]) {
-  const g = mergeBufferGeometries(parts)!;
+  const g = mergeGeometries(parts)!;
   g.computeVertexNormals();
   g.computeBoundingSphere();
   return g;

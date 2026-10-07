@@ -6,7 +6,7 @@ import {
   CylinderGeometry, DataTexture, Float32BufferAttribute, Group, IcosahedronGeometry,
   Mesh, MeshBasicMaterial, MeshStandardMaterial, OrthographicCamera, Points, PointsMaterial, RGBAFormat, Sprite, SpriteMaterial,
 } from 'three';
-import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
 
 type Point = [number, number, number];
@@ -196,7 +196,7 @@ function islandGeometry() {
   // Little mossy outcrops under the main island give the silhouette some depth.
   stone('#7c8860', [-2.88, -.60, 1.88], [.48, .70, .45]);
   stone('#627652', [2.54, -.94, .35], [.38, .56, .36]);
-  const merged = mergeBufferGeometries(parts, false)!;
+  const merged = mergeGeometries(parts, false)!;
   parts.forEach(geometry => geometry.dispose());
   return merged;
 }
@@ -367,7 +367,7 @@ function GroundShade() {
       circle.translate(x, .221, z);
       return circle;
     });
-    const geometry = mergeBufferGeometries(circles, false)!;
+    const geometry = mergeGeometries(circles, false)!;
     circles.forEach(circle => circle.dispose());
     const texture = softDiscTexture();
     const material = new MeshBasicMaterial({ color: '#163c2b', map: texture, transparent: true, opacity: .28, depthWrite: false });
@@ -455,10 +455,10 @@ function World({ paused, lighting, onReady }: { paused: boolean; lighting: Light
     island.current.position.y = Math.sin(idleTime.current * .34) * .025;
   });
   return <>
-    <ambientLight intensity={dusk ? .18 : .19} color={dusk ? '#b6bee0' : '#eef4fa'} />
-    <hemisphereLight args={[dusk ? '#829bc5' : '#d1e5f6', dusk ? '#263645' : '#425747', dusk ? .38 : .43]} />
-    <directionalLight position={[-4, 8, 5]} intensity={dusk ? .45 : 1.05} color={dusk ? '#b3c4ec' : '#fff2dc'} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-6} shadow-camera-right={6} shadow-camera-top={6} shadow-camera-bottom={-6} shadow-camera-near={.1} shadow-camera-far={24} shadow-bias={-.0004} shadow-normalBias={.025} />
-    <directionalLight position={[5, 4, -5]} intensity={dusk ? .70 : .44} color={dusk ? '#7c9ef1' : '#c6e5e8'} />
+    <ambientLight intensity={(dusk ? .18 : .19) * Math.PI} color={dusk ? '#b6bee0' : '#eef4fa'} />
+    <hemisphereLight args={[dusk ? '#829bc5' : '#d1e5f6', dusk ? '#263645' : '#425747', (dusk ? .38 : .43) * Math.PI]} />
+    <directionalLight position={[-4, 8, 5]} intensity={(dusk ? .45 : 1.05) * Math.PI} color={dusk ? '#b3c4ec' : '#fff2dc'} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-6} shadow-camera-right={6} shadow-camera-top={6} shadow-camera-bottom={-6} shadow-camera-near={.1} shadow-camera-far={24} shadow-bias={-.0004} shadow-normalBias={.025} />
+    <directionalLight position={[5, 4, -5]} intensity={(dusk ? .70 : .44) * Math.PI} color={dusk ? '#7c9ef1' : '#c6e5e8'} />
     <group ref={island} rotation={[0, -.13, 0]}>
       <mesh geometry={geometry} material={material} castShadow receiveShadow dispose={null} />
       <GroundShade />
@@ -474,7 +474,7 @@ function World({ paused, lighting, onReady }: { paused: boolean; lighting: Light
         <boxGeometry args={[.29, .33, .008]} />
         <meshStandardMaterial color={dusk ? '#ffd896' : '#d1b989'} emissive="#ffc372" emissiveIntensity={dusk ? 1.9 : .13} roughness={.45} toneMapped={!dusk} />
       </mesh>
-      <pointLight position={[-.20, 1.16, -.15]} intensity={dusk ? 1.4 : 0} color="#ffc082" distance={3.5} decay={2} />
+      <pointLight position={[-.20, 1.16, -.15]} intensity={dusk ? 2.2 : 0} color="#ffc082" distance={3.5} decay={2} />
     </group>
     <OrbitControls makeDefault target={[0, .65, 0]} enableZoom={false} enablePan={false} enableDamping={!paused} dampingFactor={.065} rotateSpeed={.4} minPolarAngle={.80} maxPolarAngle={1.14} minAzimuthAngle={-.35} maxAzimuthAngle={1.35}
       onStart={() => { dragging.current = true; gl.domElement.style.cursor = 'grabbing'; }}
@@ -513,7 +513,7 @@ export default function IslandScene({ paused, lighting = 'day', onReady, onUnava
   const still = (paused ?? reducedMotion) || offscreen || hidden;
   return <div ref={host} style={{ width: '100%', height: '100%', touchAction: 'pan-y' }}>
     {!lostContext && <SceneBoundary onUnavailable={onUnavailable}>
-      <Canvas orthographic camera={{ position: [8, 6.8, 10], near: .1, far: 50, zoom: 55 }} dpr={[1, 1.5]} shadows frameloop={still ? 'demand' : 'always'} gl={{ alpha: true, antialias: true, powerPreference: 'low-power' }} fallback={null} style={{ cursor: 'grab' }} onCreated={({ gl }) => {
+      <Canvas orthographic camera={{ position: [8, 6.8, 10], near: .1, far: 50, zoom: 55 }} dpr={[1, 1.5]} shadows="percentage" frameloop={still ? 'demand' : 'always'} gl={{ alpha: true, antialias: true, powerPreference: 'low-power' }} fallback={null} style={{ cursor: 'grab' }} onCreated={({ gl }) => {
         gl.setClearColor('#132c26', 0);
         gl.domElement.addEventListener('webglcontextlost', () => { setLostContext(true); onUnavailable?.(); }, { once: true });
       }}>
