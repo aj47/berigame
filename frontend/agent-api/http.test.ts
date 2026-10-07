@@ -6,14 +6,17 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import { createAgentServer } from './http';
+import { ApiError } from './portable';
 import { InviteStore } from './security';
-import { AGENT_ACTION_BUDGET } from './admissionPolicy';
+import { AGENT_ACTION_BUDGET, AGENT_READ_BUDGET } from './admissionPolicy';
 import { GRID_SIZE } from '../../shared/sim/constants';
 
-async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean } = {}) {
+async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean; link?: { stalled: boolean; alive: boolean } } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'berigame-agent-api-'));
   let now = Date.now();
   const calls: string[] = [];
+  const inputs: Record<string, unknown>[] = [];
+  let dangerReads = 0;
   const closed: string[] = [];
   let created = 0;
   let release: (() => void) | undefined;
@@ -25,7 +28,12 @@ async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: numbe
       const identity = String(++created).padStart(64, '0');
       await gate;
       return { identity, state: () => ({ player: { id: identity }, inventory: [] }),
-        async action(name: string) { calls.push(name); }, async close() { closed.push(identity); } };
+        danger: () => {
+          if (options.link?.stalled) throw new ApiError(503, 'world_unavailable', 'The live world is unavailable. Retry shortly.');
+          return { v: 1, tick: ++dangerReads, where: null, moves: [], best: null, path: [] } as any;
+        },
+        ...(options.link ? { alive: () => options.link!.alive } : {}),
+        async action(name: string, input: Record<string, unknown>) { calls.push(name); inputs.push(input); }, async close() { closed.push(identity); } };
     },
   } });
   await new Promise<void>(r => api.server.listen(0, '127.0.0.1', r));
@@ -41,7 +49,7 @@ async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: numbe
     const req = httpRequest(base + path, { headers }, res => { res.resume(); resolve(res.statusCode!); });
     req.on('error', reject); req.end();
   });
-  return { directory, request, rawStatus, issue, enter, calls, closed, release, created: () => created, advance: (ms: number) => { now += ms; },
+  return { directory, request, rawStatus, issue, enter, calls, inputs, closed, release, created: () => created, advance: (ms: number) => { now += ms; },
     async close() { release?.(); await api.close(); await rm(directory, { recursive: true, force: true }); } };
 }
 
@@ -87,7 +95,7 @@ test('wield and unwield reach the game with the documented quick-slot range', as
     assert.equal((await f.request('/actions/unwield', token, {}, { 'Idempotency-Key': randomUUID() })).status, 200);
     assert.deepEqual(f.calls, ['wield', 'unwield']);
     const spec = await (await f.request('/openapi.json')).json() as any;
-    assert.equal(spec.info.version, '1.6.0');
+    assert.equal(spec.info.version, '1.7.0');
     assert.equal(spec.paths['/actions/stance'], undefined);
     assert.deepEqual(spec.paths['/actions/wield'].post.requestBody.content['application/json'].schema.properties.slot, { type: 'integer', minimum: 0, maximum: 2 });
   } finally { await f.close(); }
@@ -210,4 +218,92 @@ test('a LAN can fill 64 agent slots without an address cap', async () => {
   const f = await fixture();
   try { for (let i = 0; i < 64; i++) await f.enter(); assert.equal(f.created(), 64); }
   finally { await f.close(); }
+});
+
+test('GET /danger returns the feed and is billed as an ordinary read, sharing the state budget', async () => {
+  const f = await fixture();
+  try {
+    const { token } = await f.enter();
+    const first = await f.request('/danger', token);
+    assert.equal(first.status, 200);
+    assert.deepEqual(await first.json(), { v: 1, tick: 1, where: null, moves: [], best: null, path: [] });
+    for (let i = 1; i < AGENT_READ_BUDGET.burst; i++) assert.equal((await f.request(i % 2 ? '/state' : '/danger', token)).status, 200);
+    const limited = await f.request('/danger', token);
+    assert.equal(limited.status, 429);
+    assert.ok(Number(limited.headers.get('Retry-After')) >= 1);
+    assert.equal((await f.request('/state', token)).status, 429);
+    // Actions keep their own budget.
+    assert.equal((await f.request('/actions/dodge', token, { x: 75, z: 60 }, { 'Idempotency-Key': randomUUID() })).status, 200);
+    f.advance(1000);
+    assert.equal((await f.request('/danger/next/5', token)).status, 404);
+    assert.equal((await f.request('/danger', token, {}, {}, 'POST')).status, 404);
+  } finally { await f.close(); }
+});
+
+test('GET /danger keeps the session through a tick stall but closes it once the link has dropped', async () => {
+  const link = { stalled: false, alive: true };
+  const f = await fixture({ link });
+  try {
+    const { token } = await f.enter();
+    assert.equal((await f.request('/danger', token)).status, 200);
+    link.stalled = true;
+    assert.equal((await f.request('/danger', token)).status, 503);
+    assert.deepEqual(f.closed, []);
+    link.stalled = false;
+    assert.equal((await f.request('/danger', token)).status, 200);
+    link.stalled = true; link.alive = false;
+    f.advance(1000);
+    assert.equal((await f.request('/danger', token)).status, 503);
+    assert.equal(f.closed.length, 1);
+    assert.equal((await f.request('/danger', token)).status, 401);
+  } finally { await f.close(); }
+});
+
+test('boss actions validate their documented fields before reaching the game', async () => {
+  const f = await fixture();
+  try {
+    const { token } = await f.enter();
+    const cases: [string, object, number][] = [
+      ['spire', {}, 400], ['spire', { op: 'kick' }, 400], ['spire', { op: 'open', practice: 1 }, 400], ['spire', { op: 'open', public: 0 }, 400],
+      ['spire', { op: 'open', runId: '4' }, 400], ['spire', { op: 'start', runId: '4' }, 400], ['spire', { op: 'join', runId: '4x' }, 400],
+      ['spire', { op: 'join', runId: '18446744073709551616' }, 400], ['spire', { op: 'leave', playerId: '0'.repeat(64) }, 400],
+      ['dodge', { x: 1 }, 400], ['dodge', { x: GRID_SIZE, z: 1 }, 400], ['dodge', { x: 1.5, z: 1 }, 400], ['dodge', { x: 1, z: 1, y: 0 }, 400],
+      ['attack_clatterhorn', { id: 1 }, 400],
+    ];
+    for (const [name, body, status] of cases) {
+      f.advance(1100);
+      const response = await f.request(`/actions/${name}`, token, body, { 'Idempotency-Key': randomUUID() });
+      assert.equal(response.status, status, `${name} ${JSON.stringify(body)}`);
+    }
+    f.advance(1100);
+    const big = await f.request('/actions/spire', token, { op: 'join', runId: '18446744073709551616' }, { 'Idempotency-Key': randomUUID() });
+    assert.equal((await big.json() as any).error.code, 'invalid_id');
+    assert.deepEqual(f.calls, []);
+    const ok: [string, object][] = [['spire', { op: 'open' }], ['spire', { op: 'join' }], ['spire', { op: 'join', runId: '41' }], ['spire', { op: 'start' }],
+      ['spire', { op: 'leave' }], ['dodge', { x: 76, z: 60 }], ['attack_clatterhorn', {}]];
+    for (const [name, body] of ok) {
+      f.advance(1100);
+      assert.equal((await f.request(`/actions/${name}`, token, body, { 'Idempotency-Key': randomUUID() })).status, 200, name);
+    }
+    assert.deepEqual(f.calls, ['spire', 'spire', 'spire', 'spire', 'spire', 'dodge', 'attack_clatterhorn']);
+    assert.deepEqual(f.inputs[2], { op: 'join', runId: '41' });
+  } finally { await f.close(); }
+});
+
+test('OpenAPI 1.7.0 documents /danger and the boss actions without a capability', async () => {
+  const f = await fixture();
+  try {
+    const spec = await (await f.request('/openapi.json')).json() as any;
+    assert.equal(spec.info.version, '1.7.0');
+    assert.equal(spec.paths['/danger'].get.operationId, 'inspect_danger');
+    assert.equal(spec.paths['/danger/next/{afterTick}'], undefined);
+    for (const name of ['attack_clatterhorn', 'spire', 'dodge']) {
+      assert.equal(spec.paths[`/actions/${name}`].post.operationId, name);
+      assert.equal(spec.paths[`/actions/${name}`].post['x-required-capability'], undefined);
+    }
+    const spire = spec.paths['/actions/spire'].post.requestBody.content['application/json'].schema;
+    assert.deepEqual(spire.properties.op.enum, ['open', 'join', 'start', 'leave']);
+    assert.deepEqual(Object.keys(spire.properties).sort(), ['op', 'runId']);
+    assert.deepEqual(spec.paths['/actions/dodge'].post.requestBody.content['application/json'].schema.required, ['x', 'z']);
+  } finally { await f.close(); }
 });

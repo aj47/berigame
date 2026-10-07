@@ -17,6 +17,7 @@ import {
   projectFrontier,
 } from "../lib/frontier";
 import { readSlots } from "../lib/inventory";
+import { SPIRE_LOBBY_TRAVEL, inSpireLobby, leavesBramblewild, refuseOnSpireFloor } from "../lib/spireGuards";
 export const frontierAction = spacetimedb.reducer(
   { command: t.string() },
   (ctx, { command }) => {
@@ -42,8 +43,19 @@ export const frontierAction = spacetimedb.reducer(
       eatFromSlot(ctx, slot);
       return;
     }
+    // Home walks and boats must never start from a sealed tile (eating above is capped by eatFromSlot).
+    refuseOnSpireFloor(player, "You cannot use region actions inside the Sunken Spire");
     touchInput(player, currentTick(ctx));
     const w = frontierWorld(ctx);
+    // A Spire lobby member must stay in Bramblewild until the start checks run: refuse any
+    // save that moves them out now (boat, region) or later (a queued cross-district walk).
+    if (inSpireLobby(ctx, ctx.sender)) {
+      const save = w.save, me = ctx.sender.toHexString();
+      w.save = (a) => {
+        if (a.id === me && leavesBramblewild(a)) throw new SenderError(SPIRE_LOBBY_TRAVEL);
+        save.call(w, a);
+      };
+    }
     ensureFrontierProfile(ctx, w.repo);
     const actor = w.actors.find((a) => a.id === ctx.sender.toHexString())!;
     actor.bag = readSlots(ctx, ctx.sender).slots;

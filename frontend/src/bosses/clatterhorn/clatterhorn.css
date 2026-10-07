@@ -1,0 +1,22 @@
+/* Clatterhorn: the HP bar reuses .giant-hp*; these add the flip badge and the gold x2 damage numbers. */
+.clatter-hp .giant-hp-fill.clatter-hp-fill { background: linear-gradient(90deg, #3b5ba9, #7e4fa8); }
+.clatter-x2 {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: #ffd36e;
+  color: #3a2a08;
+  font-weight: 800;
+  box-shadow: 0 0 6px #ffd36eaa;
+}
+.damage-number.clatter-crit {
+  color: #ffd36e;
+  font-size: 31px;
+  text-shadow:
+    -1px -1px 0 #3a2a08,
+    1px -1px 0 #3a2a08,
+    -1px 1px 0 #3a2a08,
+    1px 1px 0 #3a2a08,
+    0 0 8px #ffd36ecc;
+}

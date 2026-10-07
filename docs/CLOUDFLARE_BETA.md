@@ -150,6 +150,91 @@ npm run beta:deploy   # immediately afterwards (new bindings: tree.kind, the cra
   publish this one with `--delete-data=never --yes=break-clients`; player,
   inventory and tree rows survive and the eight nodes appear on the next tick.
 
+### Boss fights release (Clatterhorn and the Sunken Spire)
+
+An additive, non-breaking publish. Rules and numbers: [docs/design/BOSSES.md](design/BOSSES.md).
+
+- **Schema.** Eight new tables (`boss_config`, `clatterhorn`, `clatterhorn_credit`,
+  `spire_run`, `spire_member`, `spire_fight`, and the event tables `boss_event` and
+  `boss_notice`) and seven new reducers (`attack_clatterhorn`, `spire_open`,
+  `spire_join`, `spire_leave`, `spire_start`, `configure_bosses`, `boss_debug`).
+  Enum values are appended; no column on an existing table changes, and the new
+  columns use only types the Worker codecs already handle. Connected clients stay
+  connected.
+- **Terrain.** The eight standing stones of Clatterhorn's Glade and the Spire Gate
+  at (62,45) are new scenery blockers, and the sealed Spire floor joins the land
+  mask (`TERRAIN_VERSION` `bramblewild-expanse-v2`). The tick's `reconcileTerrain`
+  moves anyone saved on a new blocker to the nearest dry tile.
+- **Both bosses ship closed.** With no `boss_config` row the defaults keep them
+  closed, so the publish changes nothing a player can do until the owner opens them.
+
+Release steps:
+
+1. **Rehearse locally.** On an isolated local server, publish the previous `main`
+   module, create a few players, then publish this build with
+   `--delete-data=never --yes=migrate,skip-login` (not a bare `--yes`). The plan
+   must list only the eight "Creating table" steps; player, inventory and tree
+   rows must survive.
+2. **Verify the live hashes** (peers deploy often): note the `index-*.js` bundle
+   the beta serves and `npx wrangler deployments list`, and make sure the working
+   tree contains everything already live.
+3. **Publish the module** to the VM:
+
+   ```sh
+   .spacetime-data/tools/spacetimedb-cli build --module-path spacetimedb
+   scp -i ~/.ssh/exe_dev_techfren spacetimedb/dist/bundle.js berigame-db.exe.xyz:/tmp/berigame-bundle.js
+   ssh -i ~/.ssh/exe_dev_techfren berigame-db.exe.xyz \
+     'spacetime publish --server http://127.0.0.1:3000 --js-path /tmp/berigame-bundle.js \
+        --delete-data=never --yes=migrate,skip-login berigame-beta'
+   ```
+
+4. **`npm run beta:deploy` immediately afterwards.** The Worker and browser bundle
+   carry the new bindings, the per-run `spire_fight` subscription, `/danger` and
+   the boss actions. Keep this order: a bundle that subscribes to the new tables
+   before the module has them fails its subscribe calls.
+5. **Open the bosses** (owner, over SSH on the VM). The arguments are
+   `clatterhornOpen spireOpen spirePracticeOpen spireMaxRuns spireHpBase spireHpPerMember clatterHpBase clatterHpPerChallenger`;
+   `spirePracticeOpen` is stored but unused in this release, `spireMaxRuns` takes
+   1..32 and every HP value 50..20,000:
+
+   ```sh
+   spacetime call --server http://127.0.0.1:3000 berigame-beta configure_bosses true true false 12 1000 700 200 150
+   spacetime sql --server http://127.0.0.1:3000 berigame-beta "SELECT * FROM boss_config"
+   spacetime sql --server http://127.0.0.1:3000 berigame-beta "SELECT * FROM clatterhorn"
+   ```
+
+   To open one boss at a time, pass `true false false …` (Clatterhorn only) or
+   `false true false …` (the Spire only). Opening Clatterhorn inserts its row
+   (Dormant at home) in the same call.
+6. **Check in a browser**: walk into the glade at (84,106) and watch the beetle
+   wake and telegraph; open a Spire party at the gate with a key and start a run.
+   Owner-only `boss_debug op runId value` helps a short check: `clatter_wake`,
+   `clatter_respawn`, `clatter_hp` and `clatter_drum` (runId 0, value a percent
+   for `clatter_hp`), `spire_hp` and `spire_phase` (an Active run's id), and
+   `spire_fail_all` (fails every Active run with key refunds). Watch tick time,
+   egress and gateway Durable Object resets for the first hour.
+7. **`npm run site:deploy`** for the wiki articles and changelog entry. Add the
+   "Live beta update." note to the changelog entry only after the bosses are open
+   and verified, then deploy the site again.
+
+**Rollback** is the kill switch, never a schema downgrade or `--delete-data`:
+
+```sh
+spacetime call --server http://127.0.0.1:3000 berigame-beta configure_bosses false false false 12 1000 700 200 150
+```
+
+Closing Clatterhorn returns it home as Closed, stops every swing and deletes
+unearned credit; rewards already earned keep paying. Closing the Spire deletes
+open lobbies and fails every Active run with one key refunded to each member still
+fighting. Calling it again while closed is harmless.
+
+**Spire rules version.** Every run stores `SPIRE_RULES_VERSION` (1 in this
+release), and browsers and the gateway send theirs when opening, joining or
+starting. A later publish that changes bullet maths, patterns or stars must bump
+it: live runs then fail with key refunds, and tabs on the old bundle are refused
+at the gate ("This client is out of date; reload the page to enter the Spire")
+until `beta:deploy` lands, so deploy straight after the module.
+
 ### First deployment credentials
 
 The initial deployment stores credentials with mode 0600 beneath the ignored

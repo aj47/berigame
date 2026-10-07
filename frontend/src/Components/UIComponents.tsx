@@ -25,12 +25,44 @@ import "./responsiveHud.css";
 import "./inventory.css";
 import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 import { useSettingsStore } from "../spacetime/stores/settingsStore";
+import { SpireMemberState, SpireStage } from "@sim";
+import { useBossStore } from "../bosses/bossStore";
+import { inSpire } from "../bosses/selectors";
+import SpireHud from "../bosses/spire/SpireHud";
+import SpireControls from "../bosses/spire/SpireControls";
+import SpireLobbyPanel from "../bosses/spire/SpireLobbyPanel";
+import SpireResult from "../bosses/spire/SpireResult";
+import { BossAreaTip } from "./OnboardingTip";
 
 import FrontierPanel, { type BuildDraft } from "../frontier/FrontierPanel";
 import { FRONTIER_EVENT, type FrontierRequest } from "../frontier/navigation";
 import type { FrontierSnapshot } from "../../../shared/sim/frontier/snapshot";
 
 type Panel = "bug" | "settlement" | "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | null;
+/**
+ * The Spire's DOM layer (FINAL_SPEC 7.6): inside the floor the HUD and step
+ * controls; outside, the lobby panel (gate clicked, or a lobby membership) and
+ * the party chip (SpireHud draws it while your run fights on); the result
+ * card anywhere, by membership. Reads only the boss store, so a tick that
+ * moves nobody across the floor boundary re-renders nothing here.
+ */
+export const SpireLayer = memo(({ inside }: { inside: boolean }) => {
+  const lobbyOpen = useBossStore((s) => s.lobbyOpen);
+  const inLobby = useBossStore((s) => s.myMember?.state === SpireMemberState.Lobby && (s.myRun?.stage === SpireStage.Lobby || s.myRun?.stage === SpireStage.Queued));
+  // A forfeit (Left) is out of the run: no party chip.
+  const runActive = useBossStore((s) => s.myRun?.stage === SpireStage.Active && s.myMember?.state !== SpireMemberState.Left);
+  // Your run started: the gate panel was for joining it, so it must not pop back up when you leave the floor.
+  useEffect(() => { if (runActive) useBossStore.getState().setLobbyOpen(false); }, [runActive]);
+  return (
+    <>
+      {(inside || runActive) && <SpireHud />}
+      {inside && <SpireControls />}
+      {!inside && (lobbyOpen || inLobby) && <SpireLobbyPanel />}
+      <SpireResult />
+    </>
+  );
+});
+
 /** Name and online count: the only part of the HUD shell that follows player rows. */
 const WorldHeader = memo(({ coins }: { coins?: number }) => {
   const me = useMyPlayer();
@@ -56,6 +88,8 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
   const me = useMyPlayer();
   const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
   const inFrontier = !!me?.region && me.region !== 'bramblewild';
+  // Inside the Spire the overworld HUD (map, goals, adventure, duels, milestones) steps aside.
+  const inside = inSpire(me);
   const regionRef = useRef(inFrontier);
   regionRef.current = inFrontier;
   const [frontierRequest, setFrontierRequest] = useState<FrontierRequest & { id: number }>({ tab: 'Journal', id: 0 });
@@ -234,7 +268,7 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
       </nav>
       {frontierEnabled && <FrontierPanel draft={draft} onDraft={onDraft} open={panel === "settlement"} setOpen={open => setPanel(open ? "settlement" : null)} request={frontierRequest} onTab={tab => openFrontier({ tab })} showGoal={panel === null} />}
       <AdventurePanel onSettlements={frontierEnabled ? () => openFrontier() : undefined} key={adventureRequest.id} open={panel === "adventure"} initialView={adventureRequest.view} onClose={close} />
-      {!inFrontier && <div className="world-objectives">
+      {!inFrontier && !inside && <div className="world-objectives">
         <GoalChip visible={panel === null} />
         <DuelHud />
         <AdventureHud visible={panel === null} />
@@ -247,7 +281,7 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
       <AppearancePanel open={panel === "appearance"} onClose={close} onSkills={() => setPanel("skills")} />
       <SkillsPanel open={panel === "skills"} onClose={close} onStyle={() => setPanel("appearance")} />
       <SettingsPanel open={panel === "settings"} onClose={close} recoveryEnabled={frontierEnabled} />
-      {(!inFrontier || me?.region === "settlement") && <Minimap hidden={panel !== null} />}
+      {(!inFrontier || me?.region === "settlement") && !inside && <Minimap hidden={panel !== null} />}
       {panel === "help" && <HelpPanel onClose={close} />}
       {panel === "bug" && <BugReportPanel onClose={close} />}
       <GameDiagnostics />
@@ -256,7 +290,9 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
       <InviteRedeemer />
       <FriendSync />
       <Toast />
-      {!inFrontier && <MilestoneBanner />}
+      {!inFrontier && !inside && <MilestoneBanner />}
+      <SpireLayer inside={inside} />
+      {!inFrontier && panel === null && <BossAreaTip me={me} />}
       {import.meta.env.DEV && <TickDebug />}
     </div>
   );

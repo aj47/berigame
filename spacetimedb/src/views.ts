@@ -34,3 +34,7 @@ export const gardenPlotVisibility = spacetimedb.clientVisibilityFilter.sql(
 );
 
 export const frontierVisibility = spacetimedb.clientVisibilityFilter.sql('SELECT * FROM frontier_view WHERE owner = :sender');
+
+// Boss notices (boss_notice) carry no visibility filter on purpose: adding a row-level-security policy is a
+// client-breaking migration in SpacetimeDB 2.10 (every client is disconnected on publish). Clients and the agent
+// gateway keep only rows whose `player` is themselves, like the Giant's public giant_event. See docs/design/BOSSES.md.

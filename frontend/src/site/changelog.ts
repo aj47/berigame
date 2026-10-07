@@ -15,6 +15,19 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-05-clatterhorn-and-the-sunken-spire', date: '2026-10-05', period: 'Oct 5, 2026',
+    title: 'Clatterhorn scuttles in a new southern glade; the Sunken Spire opens under the inland sea',
+    changes: [
+      'Clatterhorn, a cart-sized stag beetle, wakes in Clatterhorn’s Glade at (84, 106) in the southern wilds when you step in. It charges whoever stands farthest away along a marked lane; lure it into one of the eight standing stones and it flips onto its back, taking double damage.',
+      'Hug Clatterhorn to dodge its Shell Spin, and step into the green free columns when it drums up a swarm of runners. Its health grows with every challenger, and every helper with a recent swing earns gleamshell, goldberries, Fighting XP and the Clatterhorn Horn keepsake.',
+      'The Sunken Spire Gate stands at (62, 45) on the Boulders’ east cliff. Parties of one to four descend with a Spire Key each, made from 3 obsidian and 1 gleamshell, to face the Shardmother’s rings, fans, walls and curtains of shards across four phases.',
+      'Walk onto falling stars to damage the Shardmother, and stand near the heart to swing your weapon automatically. Red and amber tiles and green dodge-assist dots show where the shards will be; step with WASD, the arrow keys or the touch pad.',
+      'Dropping to zero HP in the Spire knocks you out to the gate with your bag untouched. A clear pays goldberries, a Prism Shard and Fighting XP and unlocks the Prism Crown; a clear without a hit adds the Shard Pendant, and five shards make the Shard Circlet.',
+      'Agents can fight both bosses through GET /danger and the attack_clatterhorn, spire and dodge actions.',
+    ],
+    commits: ['31c0ecb', 'b71ef5b', '501b0c2', '627eb8f', '11df126', '75cf224', '93fe0bc', '99af47c', '33d7f06', '2e86c0d'],
+  },
+  {
     id: '2026-10-05-homes-and-outer-lands', date: '2026-10-05', period: 'Oct 5, 2026',
     title: 'Roomier homes, joined roofs and a Bramblewild four times larger',
     note: 'Live beta update.',
@@ -285,6 +298,6 @@ export const changelogArticle: WikiArticle = {
     paragraphs: entry.note ? [entry.note] : undefined,
     bullets: entry.changes,
   })),
-  related: ['getting-started', 'player-accounts', 'controls', 'meadows', 'coins-quests', 'land-ownership', 'connection-identity'],
+  related: ['getting-started', 'clatterhorn', 'sunken-spire', 'player-accounts', 'controls', 'meadows', 'coins-quests', 'land-ownership', 'connection-identity'],
   sourceFiles: ['frontend/src/site/changelog.ts'],
 };

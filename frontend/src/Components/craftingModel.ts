@@ -52,5 +52,7 @@ export function craftCategory(itemId: string | null): CraftCategory {
   const item = itemId ? getItemDef(itemId) : undefined;
   if (!item || item.weaponDamage > 0 || itemId === 'padded_vest') return 'gear';
   if (item.healthRestore > 0 || itemId === 'taming_feed') return 'food';
+  // Spire keys stack to 10 but are a tool: one opens the Sunken Spire's gate stair.
+  if (itemId === 'spire_key') return 'tools';
   return item.maxStack === 1 ? 'tools' : 'materials';
 }

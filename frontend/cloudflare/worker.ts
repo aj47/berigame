@@ -51,7 +51,7 @@ export default {
       if (request.headers.get('Origin') && request.headers.get('Origin') !== env.PUBLIC_ORIGIN) {
         throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       }
-      if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/sessions`, `${PREFIX}/renewals`, `${PREFIX}/session`, `${PREFIX}/state`,
+      if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/sessions`, `${PREFIX}/renewals`, `${PREFIX}/session`, `${PREFIX}/state`, `${PREFIX}/danger`,
         '/api/play/v1/sessions', '/api/play/v1/renewals', '/api/play/v1/recovery', '/api/play/v1/recover', `${PREFIX}/recovery`, `${PREFIX}/recover`, '/api/admin/invites', '/api/admin/revoke'].includes(url.pathname)
         && !account && !Object.keys(ACTIONS).some(name => url.pathname === `${PREFIX}/actions/${name}`)) {
         throw new ApiError(404, 'not_found', 'Unknown endpoint. See /api/agent/v1/openapi.json.');
@@ -472,6 +472,17 @@ export class AgentGateway extends DurableObject<Env> {
           if (error instanceof ApiError && error.status === 401) await this.remove(row);
           else { const stale = this.live.get(key); this.live.delete(key); if (stale?.suspend) await stale.suspend(); else if (stale) await stale.close(); await this.remove(row); }
           throw error;
+        }
+      }
+      if (path === `${PREFIX}/danger` && request.method === 'GET') {
+        // An ordinary read (CORE_SCOPE). A brief tick stall is a 503 that keeps the session. A dropped socket never
+        // reconnects, so that 503 is permanent: drop the session as /state does, and the agent re-joins cleanly.
+        try { return send(200, (await this.sessionGame(row)).danger()); }
+        catch (error) {
+          const stale = this.live.get(key);
+          if (error instanceof ApiError && error.status === 401) await this.remove(row);
+          else if (stale && stale.alive?.() === false) { this.live.delete(key); if (stale.suspend) await stale.suspend(); else await stale.close(); await this.remove(row); }
+          throw error instanceof ApiError ? error : unavailable();
         }
       }
       if (acting) {

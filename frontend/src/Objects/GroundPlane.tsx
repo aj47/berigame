@@ -3,14 +3,21 @@ import { HOME_GRID, MEADOW_OFFSET } from "../../../shared/sim/frontier/homeMap";
 import { useFrontier } from "../frontier/useFrontier";
 import { useFrame, useThree } from '@react-three/fiber';
 import { MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, holdState, openMenuNear } from '../Components/3D/tapAssist';
-import { PlaneGeometry, ShaderMaterial, Vector2, UniformsLib, UniformsUtils } from 'three';
+import { Mesh, MeshBasicMaterial, Plane, PlaneGeometry, Raycaster, ShaderMaterial, Vector2, Vector3, UniformsLib, UniformsUtils } from 'three';
 import { envTime } from '../Components/3D/envArt';
 import { terrainGeometry, terrainMaterial, coastTexture } from '../Components/3D/islandTerrainArt';
 import IslandLandmarks from '../Components/3D/IslandLandmarks';
-import React, { useRef } from 'react';
-import { BOULDER_KEY_ITEM, BOULDER_MESSAGE, BRAMBLE_MESSAGE, GRID_SIZE, SAFE_RADIUS, STICK_ITEM_ID, areaOf, holdsItem, isLandTile, worldToTile, tileToWorld } from '@sim';
+import React, { useEffect, useMemo, useRef } from 'react';
+import {
+  BOULDER_KEY_ITEM, BOULDER_MESSAGE, BRAMBLE_MESSAGE, GRID_SIZE, SAFE_RADIUS, STICK_ITEM_ID, areaOf, clatterSwarmFreeLines, clatterTelegraph,
+  holdsItem, inClatterGlade, worldToTile, tileToWorld, type ClatterRowLike,
+} from '@sim';
+import { inSpire, isOpenGround } from '../bosses/selectors';
+import { useBossStore } from '../bosses/bossStore';
+import { clatterHoverVerdict, hoverTile, isWorldSurface } from '../Components/3D/hoverTarget';
+import { useSettingsStore } from '../spacetime/stores/settingsStore';
 import { useGameActions } from '../spacetime/actions';
-import { useInventoryRows, useMyPlayer } from '../spacetime/hooks';
+import { useInventoryRows, useMyPlayer, useTick, useWorldBlocked } from '../spacetime/hooks';
 import { useToastStore } from '../spacetime/stores/toastStore';
 import { slotsFromRows } from '../Components/itemUi';
 import { useUserInputStore } from '../store';
@@ -59,6 +66,79 @@ homeOceanMat.uniforms.uMapSize.value=new Vector2(HOME_GRID.width,HOME_GRID.heigh
 /** The ocean plane, shaded around the island and the Boulders. */
 export const Ocean = ({connected=false}:{connected?:boolean}) => <mesh rotation={[-Math.PI / 2, 0, 0]} position={[100, -0.34, 40]} geometry={oceanGeo} material={connected?homeOceanMat:oceanMat} />;
 
+/** A charge, spin or drum is telegraphed, or the swarm runs. */
+export function clatterHazardLive(row: ClatterRowLike | null | undefined): boolean {
+  return !!row && (clatterTelegraph(row) !== null || clatterSwarmFreeLines(row).length > 0);
+}
+
+const dodgeGeo = new PlaneGeometry(0.94, 0.94).rotateX(-Math.PI / 2);
+const DODGE_COLOR = { safe: '#5ff2a0', hit: '#ff4d5e' } as const;
+const noRaycast = () => {};
+
+/**
+ * Clatterhorn dodge assist (Settings, default on): while you stand in the glade during a telegraph or the swarm,
+ * the ground tile under the mouse is tinted green (the move is hit-free through the hazard) or red (it is hit),
+ * judged by `clatterHoverVerdict` exactly as the Spire's safe-move hover judges a floor tile. The pointer is read
+ * like WorldHover's (a ground plane, never the terrain mesh); mounted only while it can apply.
+ */
+export const ClatterDodgeHover = () => {
+  const assist = useSettingsStore((s) => s.dodgeAssist);
+  const me = useMyPlayer();
+  const here = !!me && (me.region || 'bramblewild') === 'bramblewild' && inClatterGlade(me);
+  const live = useBossStore((s) => clatterHazardLive(s.clatter));
+  return assist && here && live ? <ClatterDodgeTint /> : null;
+};
+
+const ClatterDodgeTint = () => {
+  const gl = useThree((s) => s.gl);
+  const camera = useThree((s) => s.camera);
+  const connected = useThree((s) => s.events.connected);
+  const me = useMyPlayer(), tick = useTick(), blocked = useWorldBlocked();
+  const tint = useRef<Mesh>(null);
+  const pointer = useRef({ x: 0, y: 0, active: false });
+  const seen = useRef<{ key: string; row: unknown }>({ key: '', row: null });
+  const scratch = useMemo(() => ({ ray: new Raycaster(), ndc: new Vector2(), plane: new Plane(new Vector3(0, 1, 0), 0), point: new Vector3() }), []);
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const move = (e: PointerEvent) => {
+      pointer.current = { x: e.clientX, y: e.clientY, active: e.pointerType === 'mouse' && e.buttons === 0 && isWorldSurface(e.target, canvas, connected) };
+    };
+    const leave = () => { pointer.current.active = false; };
+    const surface = canvas.parentElement ?? canvas;
+    window.addEventListener('pointermove', move);
+    window.addEventListener('blur', leave);
+    surface.addEventListener('pointerleave', leave);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('blur', leave);
+      surface.removeEventListener('pointerleave', leave);
+    };
+  }, [gl, connected]);
+  useFrame(() => {
+    const m = tint.current, p = pointer.current;
+    if (!m) return;
+    if (!p.active || !me || holdState.active) { m.visible = false; seen.current.key = ''; return; }
+    const rect = gl.domElement.getBoundingClientRect();
+    scratch.ndc.set(((p.x - rect.left) / rect.width) * 2 - 1, -((p.y - rect.top) / rect.height) * 2 + 1);
+    scratch.ray.setFromCamera(scratch.ndc, camera);
+    if (!scratch.ray.ray.intersectPlane(scratch.plane, scratch.point)) { m.visible = false; return; }
+    const tile = hoverTile(scratch.point.x, scratch.point.z);
+    const row = useBossStore.getState().clatter;
+    const key = `${tile.x},${tile.z}:${tick}:${me.x},${me.z}`;
+    if (key === seen.current.key && row === seen.current.row) return;
+    seen.current = { key, row };
+    const v = clatterHoverVerdict(row, tick, me, tile, blocked);
+    m.visible = !!v;
+    if (!v) return;
+    m.position.set(...tileToWorld(tile));
+    m.position.y = 0.05;
+    (m.material as MeshBasicMaterial).color.set(DODGE_COLOR[v.kind]);
+  });
+  return <mesh ref={tint} geometry={dodgeGeo} visible={false} raycast={noRaycast} renderOrder={99}>
+    <meshBasicMaterial transparent opacity={0.45} depthWrite={false} toneMapped={false} />
+  </mesh>;
+};
+
 /** The terrain exactly covers the server grid; its coastline never hides walkable tiles. */
 const GroundPlane = () => {
   const { setTarget, frontier } = useGameActions();
@@ -96,7 +176,8 @@ const GroundPlane = () => {
     }
     useUserInputStore.getState().setClickedOtherObject(null);
     const tile = worldToTile(e.point.x, e.point.z);
-    if (tile.x < 0 || tile.z < 0 || tile.x >= GRID_SIZE || tile.z >= GRID_SIZE || !isLandTile(tile)) return;
+    // From the overworld the Spire floor reads as water (no far-flood setTarget calls).
+    if (tile.x < 0 || tile.z < 0 || tile.x >= GRID_SIZE || tile.z >= GRID_SIZE || !isOpenGround(tile, inSpire(me))) return;
     const [x, , z] = tileToWorld(tile);
     marker.current.position.set(x, 0.045, z);
     clickedAt.current = performance.now();
@@ -119,6 +200,7 @@ const GroundPlane = () => {
     <mesh name="land_mesh" onClick={onClick} geometry={terrainGeometry} material={terrainMaterial} />
     <IslandLandmarks onGroundClick={onClick} />
     <Ocean connected={expansion.enabled} />
+    <ClatterDodgeHover />
     <mesh ref={marker} visible={false} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.28, 0.36, 24]} /><meshBasicMaterial color="#fff2bd" transparent depthWrite={false} />
     </mesh>

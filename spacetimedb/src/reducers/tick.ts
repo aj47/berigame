@@ -17,6 +17,7 @@ import {
   GIANT_ID, GIANT_REACH, GIANT_TILE, GiantEventKind, GiantState, giantAfterHit, giantForgot,
   inBoulders, stepGiant, type GiantCandidate,
   RAID_REWARD, RaidOutcome, raidDue, raidRewardees,
+  CLATTERHORN_ID, CLATTER_REACH, ClatterState,
 } from '../../../shared/sim';
 import { emitGiantEvent, ensureGiant } from '../lib/giant';
 import { clearContributions as clearAllContributions, countRaiders, ensureRaid, nowMs, sleepGiant, wakeGiant } from '../lib/raid';
@@ -33,7 +34,11 @@ import { cancelTrade, notify } from '../lib/social';
 import { requestTradeInRange, tradePartnerProblem } from '../lib/trade';
 import { grantXp, harvestTicksForPlayer, unlockCosmetic } from '../lib/progress';
 import type { Ctx, GiantRow, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
-import { MentorMilestone } from '../../../shared/sim';
+import { MentorMilestone, bossNoPvpZone } from '../../../shared/sim';
+import { onSpireFloor } from '../lib/spireGuards';
+import { phaseClatterhorn } from '../lib/clatterhorn';
+import { phaseSpire } from '../lib/spire';
+import type { BossTick } from '../lib/bossTick';
 
 interface TickState {
   ctx: Ctx;
@@ -150,6 +155,16 @@ function resolvePending(s: TickState, p: PlayerRow): void {
     if (chebyshev(p, GIANT_TILE) <= GIANT_REACH && p.targetX !== undefined) {
       p.targetX = undefined; p.targetZ = undefined;
       mark(s, p);
+    }
+  } else if (p.pending === Pending.Clatterhorn) {
+    // Stop at the first tile in reach of where the beetle stands now: a charge can move it after the walk began,
+    // and the stale target would lead the swinger back out of reach.
+    if (p.targetX !== undefined && !p.combatTarget) {
+      const row = s.ctx.db.clatterhorn?.id.find(CLATTERHORN_ID);
+      if (row && row.state !== ClatterState.Closed && row.state !== ClatterState.Burrowed && chebyshev(p, row) <= CLATTER_REACH) {
+        p.targetX = undefined; p.targetZ = undefined;
+        mark(s, p);
+      }
     }
   } else if (p.pending === Pending.Pickup) {
     const item = s.ctx.db.groundItem.id.find(p.pendingId);
@@ -341,6 +356,9 @@ function phaseSwings(s: TickState): void {
       continue;
     }
     if (duelFor(s.ctx, a.identity) || duelFor(s.ctx, d.identity)) continue;
+    // No PvP inside the Sunken Spire, in Clatterhorn's Glade or at the Spire Gate (bossNoPvpZone covers the floor):
+    // the attacker keeps its target and swings once both leave.
+    if (bossNoPvpZone(a) || bossNoPvpZone(d)) continue;
     if (chebyshev(a, d) > MELEE_RANGE) continue;
     // Nothing lands in the safe ring or on a player in grace; the fight waits.
     if (inSafeRing(a) || inSafeRing(d) || inGrace(d, s.T)) continue;
@@ -529,6 +547,8 @@ function phaseGiant(s: TickState): void {
 function phaseDeath(s: TickState): void {
   for (const h of s.order) {
     const p = s.players.get(h)!;
+    // Safety net: nobody dies (or drops a bag) on the Spire floor; phaseSpire knocks out and ejects instead.
+    if (onSpireFloor(p)) continue;
     if (!alive(p) || p.hp > 0) continue;
 
     // Drop everything around the body.
@@ -658,6 +678,13 @@ export const tick = spacetimedb.reducer(
       blocked: worldBlockedSet(trees.values()),
     };
 
+    // The boss phases' view of this tick (lib/bossTick.ts).
+    const api: BossTick = {
+      ctx, T, players: s.players, order: s.order, before: original, blocked: s.blocked,
+      mark: (p) => mark(s, p), interrupt: (p) => interrupt(s, p), combatDamage: (p) => combatDamage(s, p),
+      enterRule: (p) => playerEnterRule(ctx, p),
+    };
+
     phaseRespawn(s);
     phaseMovement(s);
     phaseTradeApproaches(s);
@@ -665,6 +692,8 @@ export const tick = spacetimedb.reducer(
     phaseSwings(s);
     phaseDummySwings(s);
     phaseGiant(s);
+    phaseClatterhorn(api);   // after the Giant, before death: lethal blows resolve this tick
+    phaseSpire(api);         // lobbies, runs (swings, stars, bullets, knockouts), cleanup, the stranded sweep
     phaseDeath(s);
     phaseTrades(s);
     phaseExpiry(s);

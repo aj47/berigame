@@ -1,6 +1,6 @@
 import { recordDiagnostic } from './diagnostics';
 import { PLAYER_ACTION } from '../frontier/worldInteraction';
-import { normalizeAppearance, type Appearance } from '@sim';
+import { normalizeAppearance, SPIRE_RULES_VERSION, type Appearance } from '@sim';
 import { useCallback } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import type { Identity } from 'spacetimedb';
@@ -101,5 +101,16 @@ export function useGameActions() {
     /** Personal garden: plant one berry in a plot / harvest a ripe plot (stand within reach of it). */
     plantGarden: (plot: number, itemId: string) => run('plantGarden', (c) => c.reducers.plantGarden({ plot, itemId })),
     harvestGarden: (plot: number) => run('harvestGarden', (c) => c.reducers.harvestGarden({ plot })),
+    // Bosses. The Spire calls pass this bundle's rules version, so an older tab is refused instead of drawing other bullets.
+    /** Walk up to Clatterhorn in its glade and keep swinging (open to everyone; needs a stick to reach the Coast). */
+    attackClatterhorn: () => run('attackClatterhorn', (c) => c.reducers.attackClatterhorn({})),
+    /** Open a public Sunken Spire lobby at the gate (you lead it). */
+    spireOpen: () => run('spireOpen', (c) => c.reducers.spireOpen({ clientRules: SPIRE_RULES_VERSION })),
+    /** Join a lobby by run id, or quick-join an open one with 0n. */
+    spireJoin: (runId: bigint = 0n) => run('spireJoin', (c) => c.reducers.spireJoin({ runId, clientRules: SPIRE_RULES_VERSION })),
+    /** Leave a lobby, or forfeit a run (no rewards). */
+    spireLeave: () => run('spireLeave', (c) => c.reducers.spireLeave({})),
+    /** Leader: start the run (every member's spire key is spent). */
+    spireStart: () => run('spireStart', (c) => c.reducers.spireStart({ clientRules: SPIRE_RULES_VERSION })),
   };
 }

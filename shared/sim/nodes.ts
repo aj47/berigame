@@ -154,6 +154,24 @@ export const RECIPES: readonly Recipe[] = [
     level: 5,
     xp: 30,
   },
+  {
+    // One per member per Sunken Spire run, spent at the start: obsidian's repeatable sink.
+    id: 'spire_key',
+    name: 'Spire Key',
+    inputs: [{ itemId: 'obsidian', quantity: 3 }, { itemId: 'gleamshell', quantity: 1 }],
+    output: { itemId: 'spire_key', quantity: 1 },
+    level: 1,
+    xp: 30,
+  },
+  {
+    id: 'shard_circlet',
+    name: 'Shard Circlet',
+    inputs: [{ itemId: 'prism_shard', quantity: 5 }, { itemId: 'obsidian', quantity: 2 }],
+    // Cosmetic.ShardCirclet in skills.ts (a literal here avoids an import cycle).
+    cosmetic: 15,
+    level: 10,
+    xp: 60,
+  },
 ];
 
 export function getRecipe(id: string): Recipe | undefined {

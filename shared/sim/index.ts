@@ -20,3 +20,11 @@ export * from './garden';
 export * from './adventure';
 
 export * from './terrain';
+export * from './bossZones';
+export * from './bullets';
+export * from './bossConfig';
+export * from './bossEvents';
+export * from './spire';
+export * from './clatterhorn';
+export * from './bossDanger';
+export * from './bossPresentation';

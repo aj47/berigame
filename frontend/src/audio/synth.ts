@@ -7,6 +7,8 @@
 
 export const SFX = [
   'footstep', 'punch', 'stick', 'club', 'whoosh', 'pop', 'chime', 'craft', 'eat', 'rustle', 'thud', 'respawn', 'click', 'levelup',
+  // Bosses: telegraph start, volley fire, phase change / clear / defeat, swarm, Clatterhorn's flip.
+  'warn', 'shard', 'shatter', 'skitter', 'crash',
 ] as const;
 export type SfxName = (typeof SFX)[number];
 export const AMBIENT = ['ocean', 'wind'] as const;
@@ -15,6 +17,7 @@ export type AmbientName = (typeof AMBIENT)[number];
 /** Round-robin variants per sound, so repeats (footsteps above all) don't sound machine-gunned. */
 export const VARIANTS: Record<SfxName, number> = {
   footstep: 4, punch: 2, stick: 2, club: 2, whoosh: 2, pop: 2, chime: 1, craft: 1, eat: 1, rustle: 2, thud: 1, respawn: 1, click: 1, levelup: 1,
+  warn: 1, shard: 3, shatter: 1, skitter: 2, crash: 1,
 };
 
 /** Deterministic PRNG (mulberry32) so a sound renders identically every time. */
@@ -90,10 +93,12 @@ function normalize(out: Float32Array, peak: number): Float32Array {
 /** Duration in seconds of each sound. */
 const LENGTH: Record<SfxName, number> = {
   footstep: 0.14, punch: 0.2, stick: 0.26, club: 0.4, whoosh: 0.3, pop: 0.14, chime: 0.9, craft: 0.85, eat: 0.36, rustle: 0.5, thud: 0.6, respawn: 1.0, click: 0.05, levelup: 1.3,
+  warn: 0.4, shard: 0.12, shatter: 0.9, skitter: 0.5, crash: 0.5,
 };
 /** Peak level of each sound relative to full scale: the mix is set here, the engine only scales. */
 const PEAK: Record<SfxName, number> = {
   footstep: 0.32, punch: 0.75, stick: 0.8, club: 0.95, whoosh: 0.4, pop: 0.55, chime: 0.5, craft: 0.6, eat: 0.5, rustle: 0.45, thud: 0.85, respawn: 0.5, click: 0.3, levelup: 0.55,
+  warn: 0.45, shard: 0.35, shatter: 0.6, skitter: 0.4, crash: 0.9,
 };
 
 export function renderSound(name: SfxName, sr: number, variant = 0): Float32Array {
@@ -179,6 +184,35 @@ export function renderSound(name: SfxName, sr: number, variant = 0): Float32Arra
       break;
     case 'click':
       sweep(out, sr, 0, 1500, 1100, 0.02, 0.0005, 0.008, 1);
+      break;
+    case 'warn': // a hazard is telegraphed: a soft rising two-voice tone
+      sweep(out, sr, 0, 440, 760, 0.34, 0.03, 0.22, 0.8);
+      sweep(out, sr, 0, 660, 1140, 0.34, 0.03, 0.16, 0.25);
+      break;
+    case 'shard': // a volley fires: a short glassy tick
+      knock(out, sr, 0, [[2350 * v, 0.03, 0.6], [3720 * v, 0.02, 0.35], [5450 * v, 0.012, 0.2]]);
+      noise(out, sr, rand, 0, () => 6000, 'high', 0.9, 0.0005, 0.006, 0.35);
+      break;
+    case 'shatter': { // phase change, clear or defeat: a cascade of glass partials over a breaking crunch
+      noise(out, sr, rand, 0, (t) => 5200 - t * 3000, 'high', 0.8, 0.001, 0.08, 0.7);
+      for (let i = 0; i < 7; i++) {
+        const f = 1700 + rand() * 2600;
+        knock(out, sr, i * 0.045 + rand() * 0.02, [[f, 0.18, 0.5], [f * 2.32, 0.08, 0.2], [f * 3.9, 0.04, 0.1]]);
+      }
+      sweep(out, sr, 0, 180, 70, 0.2, 0.002, 0.12, 0.35);
+      break;
+    }
+    case 'skitter': // a beetling swarm: dry chitinous clicks
+      for (let i = 0; i < 16; i++) {
+        const start = (i / 16) * 0.44 + rand() * 0.02;
+        knock(out, sr, start, [[2800 * v + rand() * 900, 0.006, 0.6], [5200 * v, 0.003, 0.25]]);
+        noise(out, sr, rand, start, () => 4200, 'band', 2.2, 0.0005, 0.004, 0.35);
+      }
+      break;
+    case 'crash': // Clatterhorn flips onto its back: a heavy thump, a shell crunch and a hollow knock
+      sweep(out, sr, 0, 95, 36, 0.22, 0.002, 0.18, 1);
+      noise(out, sr, rand, 0, (t) => 1800 - t * 2500, 'low', 0.9, 0.002, 0.07, 0.8);
+      knock(out, sr, 0.02, [[230, 0.09, 0.45], [520, 0.05, 0.3], [1150, 0.025, 0.15]]);
       break;
   }
   return normalize(out, PEAK[name]);

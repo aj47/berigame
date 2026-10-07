@@ -18,6 +18,9 @@ import { useCombatFxStore } from './stores/combatFxStore';
 import { useSocialStore } from './stores/socialStore';
 import { useGiantStore } from './stores/giantStore';
 import { useProgressStore } from './stores/progressStore';
+import BossSync from '../bosses/BossSync';
+import { isPlayerVisible } from '../bosses/selectors';
+import { useBossStore } from '../bosses/bossStore';
 
 /**
  * Listen to one table of the connection's own world subscription. Unlike
@@ -41,8 +44,28 @@ function useRowListener(accessor: string, onInsert?: (row: any) => void, onUpdat
   }, [conn, isActive, accessor]);
 }
 
+/**
+ * Combat FX of players the viewer cannot see (the Spire's floor seen from the
+ * overworld, or another run seen from inside) never reach the FX stores.
+ */
+function combatEventVisible(conn: any, row: CombatEvent): boolean {
+  const players = conn?.db?.player?.identity;
+  const myId = conn?.identity;
+  if (!players || !myId) return true;
+  const viewer = players.find(myId) ?? null;
+  const hexes = useBossStore.getState().myRunHexes;
+  for (const id of [row.attacker, row.defender]) {
+    const p = players.find(id);
+    if (p && !isPlayerVisible(p, viewer, hexes)) return false;
+  }
+  return true;
+}
+
 /** Feeds the tick clock and the combat FX store from table updates. */
 const TableSync = () => {
+  const { getConnection } = useSpacetimeDB<DbConnection>();
+  const connRef = useRef<any>(null);
+  connRef.current = getConnection();
   useEffect(startWorldLivenessMonitor, []);
   useRowListener('world', (row) => onWorldTick(row.tick), (_old, row) => onWorldTick(row.tick));
   const me = useMyIdentityHex();
@@ -50,6 +73,7 @@ const TableSync = () => {
   meRef.current = me;
   // combat_event is an event table: rows only ever arrive through onInsert.
   useRowListener('combatEvent', (row: CombatEvent) => {
+    if (!combatEventVisible(connRef.current, row)) return;
     useCombatFxStore.getState().pushEvent(row);
     useFirstDayStore.getState().onEvent(meRef.current, row);
   });
@@ -62,7 +86,8 @@ const TableSync = () => {
   });
   // The Boulders' Giant: blows, slams, defeats, rewards and raid announcements (an event table).
   useRowListener('giantEvent', (row) => useGiantStore.getState().pushEvent(row, meRef.current));
-  return null;
+  // Clatterhorn and the Sunken Spire: rows, notices and swing cues into useBossStore.
+  return <BossSync />;
 };
 
 /** Test hooks: `?reconnectAttempts=2&reconnectMaxMs=1000` shortens the give-up path for browser checks. */

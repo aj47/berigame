@@ -15,6 +15,7 @@ import { NODE_SEEDS, NodeKind } from '../nodes';
 import { bfsPath, goalIsTile, reachableTiles } from '../pathfinding';
 import { worldBlockedSet } from '../social';
 import type { Tile } from '../types';
+import { inSpireFloor } from '../bossZones';
 
 const blocked = worldBlockedSet([...TREE_SEEDS, ...NODE_SEEDS]);
 const keyed = enterRule(true, true);
@@ -61,7 +62,8 @@ describe('M3: the Boulders geometry and gate', () => {
   });
 
   it('reachability: a stick alone stops at the line; stick + club reach all walkable land; the way home is one-way', () => {
-    const land = allTiles().filter(isLandTile).filter((t) => !blocked.has(tileKey(t)));
+    // The Sunken Spire's floor is sealed land (teleport only), so it is not walkable from spawn.
+    const land = allTiles().filter(isLandTile).filter((t) => !blocked.has(tileKey(t))).filter((t) => !inSpireFloor(t));
     const withStick = reachableTiles(SPAWN_TILE, blocked, stickOnly);
     expect([...withStick].some((k) => inBoulders({ x: k % GRID_SIZE, z: Math.floor(k / GRID_SIZE) }))).toBe(false);
     expect(reachableTiles(SPAWN_TILE, blocked, keyed).size).toBe(land.length);

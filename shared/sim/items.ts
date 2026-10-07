@@ -22,6 +22,9 @@ export const STONE_CLUB_ITEM_ID = 'stone_club';
 export const OBSIDIAN_ITEM_ID = 'obsidian';
 export const BERRY_MASH_ITEM_ID = 'berry_mash';
 export const FLINT_KNIFE_ITEM_ID = 'flint_knife';
+export const GLEAMSHELL_ITEM_ID = 'gleamshell';
+export const SPIRE_KEY_ITEM_ID = 'spire_key';
+export const PRISM_SHARD_ITEM_ID = 'prism_shard';
 
 /**
  * Berries started as a copy of shared/itemDefinitions.js (the legacy CommonJS
@@ -41,6 +44,10 @@ export const ITEM_DEFS: Record<string, ItemDef> = {
   // F2 recipes. Mash: 3 berries (7 HP) in one bite, still below a goldberry. Knife: a stick's damage, not a key.
   [BERRY_MASH_ITEM_ID]: { id: BERRY_MASH_ITEM_ID, description: 'A portable meal. Eat it to heal or give it to another adventurer.', name: 'Berry Mash', icon: '/items/berry_mash.png', healthRestore: 7, weaponDamage: 0, maxStack: MAX_STACK, color: '#B0415C' },
   [FLINT_KNIFE_ITEM_ID]: { id: FLINT_KNIFE_ITEM_ID, name: 'Flint Knife', icon: '/items/flint_knife.png', healthRestore: 0, weaponDamage: 6, maxStack: 1, color: '#56606E' },
+  // Boss materials: Clatterhorn's shell plates and Spire keys make the obsidian sink; prism shards come from Spire clears.
+  [GLEAMSHELL_ITEM_ID]: { id: GLEAMSHELL_ITEM_ID, description: 'An iridescent shell plate shed by Clatterhorn. With obsidian it makes Spire keys.', name: 'Gleamshell', icon: '/items/gleamshell.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#5FC9B4' },
+  [SPIRE_KEY_ITEM_ID]: { id: SPIRE_KEY_ITEM_ID, description: "Opens the Sunken Spire's gate stair for one descent. Spent when your party starts.", name: 'Spire Key', icon: '/items/spire_key.png', healthRestore: 0, weaponDamage: 0, maxStack: 10, color: '#5B4A8F' },
+  [PRISM_SHARD_ITEM_ID]: { id: PRISM_SHARD_ITEM_ID, description: 'A splinter of the Shardmother. Five make a Shard Circlet.', name: 'Prism Shard', icon: '/items/prism_shard.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#9FE7FF' },
 };
 
 export function getItemDef(itemId: string): ItemDef | undefined {

@@ -30,7 +30,7 @@ export const REF_DISTANCE = 4;
 export const MAX_DISTANCE = 28;
 export const MAX_VOICES = 24;
 /** A sound is not restarted sooner than this after itself (ms), e.g. a crowd's footsteps. */
-export const MIN_INTERVAL_MS: Partial<Record<SfxName, number>> = { footstep: 35, click: 30, rustle: 250, whoosh: 30 };
+export const MIN_INTERVAL_MS: Partial<Record<SfxName, number>> = { footstep: 35, click: 30, rustle: 250, whoosh: 30, warn: 150, shard: 120, skitter: 200 };
 const SILENT = 0.004;
 
 /** Full level near the listener, inverse-distance beyond, silent at MAX_DISTANCE. */

@@ -1,4 +1,5 @@
 import { subscribeFrontier } from './frontierSubscription';
+import { subscribeSpire } from '../bosses/spireSubscription';
 import { DbConnection, tables } from '../module_bindings';
 import { useLoadingStore } from '../store';
 
@@ -110,6 +111,8 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
       console.log('SpacetimeDB connected as', identity.toHexString().slice(0, 8));
       useLoadingStore.getState().setWebsocketConnected(true);
       subscribeFrontier(conn, identity.toHexString(), () => useLoadingStore.getState().setGameDataLoaded(false));
+      // Your Spire run's fight row only (a per-run SQL subscription that follows your spire_member row).
+      subscribeSpire(conn, identity.toHexString(), () => console.error('Spire fight subscription failed'));
       conn
         .subscriptionBuilder()
         .onApplied(() => useLoadingStore.getState().setGameDataLoaded(true))
@@ -141,6 +144,10 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
           tables.giantRaid,
           tables.mentorStat,
           tables.gardenPlot, tables.adventureProfile, tables.expedition, tables.expeditionMember, tables.islandProject, tables.gardenShowcase, tables.friendlyDuel,
+          // Bosses: lifecycle rows whole-table; notices narrowed to your own by the query (boss_notice has no RLS);
+          // spire_fight per run (bosses/spireSubscription.ts).
+          tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossEvent,
+          tables.bossNotice.where((row) => row.player.eq(identity)),
         ]);
     })
     .onConnectError((ctx, error) => {

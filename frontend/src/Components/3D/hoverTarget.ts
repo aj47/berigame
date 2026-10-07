@@ -1,11 +1,16 @@
 import type { Object3D, Vector3 } from 'three';
-import { areaOf, enterRule, inBounds, isLandTile, nearestReachableTile, tileEquals, tileKey, TILE_ORIGIN, type Tile } from '@sim';
+import {
+  areaOf, canonicalMiddle, chebyshev, CLATTER_SWARM_TICKS, ClatterState, clatterHitsMove, clatterSwarmFreeLines, clatterSwarmHit,
+  clatterTelegraph, enterRule, inBounds, inClatterGlade, inSpireFloor, nearestReachableTile, tileEquals, tileKey, TILE_ORIGIN,
+  CLATTER_DAMAGE, type ClatterRowLike, type Tile,
+} from '@sim';
 import { HOME_JOIN, homeLand, homeLocation, homePath, homePoint } from '../../../../shared/sim/frontier/homeMap';
 import { PIECES } from '../../../../shared/sim/frontier/catalog';
 import { can } from '../../../../shared/sim/frontier/model';
 import { buildingBlocker, buildingCollisionKeys } from '../../../../shared/sim/frontier/building';
 import type { Location } from '../../../../shared/sim/frontier/catalog';
 import type { FrontierSnapshot } from '../../../../shared/sim/frontier/snapshot';
+import { isOpenGround } from '../../bosses/selectors';
 
 export interface HoverHint {
   title: string;
@@ -49,8 +54,17 @@ export function hoverTile(x: number, z: number): Tile {
   return { x: Math.round(x + TILE_ORIGIN), z: Math.round(z + TILE_ORIGIN) };
 }
 
+/** The hint for a tile across the Spire floor boundary (or the sea). */
+function unreachable(tile: Tile, meOnFloor: boolean): HoverHint {
+  return meOnFloor
+    ? { title: 'Out of the arena', action: 'Choose a spot on the floor', tone: 'muted', tile }
+    : { title: 'Water', action: 'Choose a spot on land', tone: 'muted', tile };
+}
+
 export function groundHover(tile: Tile, me: Tile, blocked: Set<number>, hasStick: boolean, hasClub: boolean): HoverHint {
-  if (!inBounds(tile) || !isLandTile(tile)) return { title: 'Water', action: 'Choose a spot on land', tone: 'muted', tile };
+  // From the overworld the Spire floor reads as water; from inside, the overworld is out of reach.
+  const meOnFloor = inSpireFloor(me);
+  if (!inBounds(tile) || !isOpenGround(tile, meOnFloor)) return unreachable(tile, meOnFloor);
   const destination = nearestReachableTile(me, tile, blocked, enterRule(hasStick, hasClub));
   const fromArea = areaOf(me), toArea = areaOf(tile);
   if (!hasStick && fromArea === 'grove' && toArea !== 'grove') {
@@ -82,7 +96,8 @@ export function meadowBlockedTiles(state: Pick<FrontierSnapshot, 'buildings' | '
 export function connectedGroundHover(tile: Tile, me: Tile & { region?: string }, blocked: Set<number>, meadowBlocked: Set<string>, hasStick: boolean, hasClub: boolean): HoverHint {
   const region = me.region || 'bramblewild', target = homeLocation(tile);
   if (region === 'bramblewild' && target.region === 'bramblewild') return groundHover(tile, me, blocked, hasStick, hasClub);
-  if (!homeLand(tile)) return { title: 'Water', action: 'Choose a spot on land', tone: 'muted', tile };
+  if (region === 'bramblewild' && inSpireFloor(me)) return unreachable(tile, true);
+  if (!homeLand(tile) || (target.region === 'bramblewild' && inSpireFloor(target))) return { title: 'Water', action: 'Choose a spot on land', tone: 'muted', tile };
   const rule = enterRule(hasStick, hasClub);
   const meadow = buildingBlocker(meadowBlocked);
   const obstacles = Object.assign((p: Location) => p.region === 'bramblewild' ? blocked.has(tileKey(p)) : meadow(p), {
@@ -102,4 +117,37 @@ export function connectedGroundHover(tile: Tile, me: Tile & { region?: string },
     return { title: 'Boulder boundary', action: 'Carry a stone club to cross', tone: 'muted', tile };
   }
   return { title: 'Path blocked', action: 'Choose a clear spot', detail: 'A building or obstacle blocks this route', tone: 'muted', tile };
+}
+
+/** Clatterhorn dodge-assist verdict for a hovered tile: green (`safe`) or red (`hit`, with the damage you would take). */
+export interface ClatterHoverVerdict { tile: Tile; kind: 'safe' | 'hit'; damage: number }
+
+/** Ticks of runners checked after the swarm fires (they cross the 17-tile glade in about 20). */
+const SWARM_LOOKAHEAD = CLATTER_SWARM_TICKS + 4;
+
+/**
+ * Dodge assist at Clatterhorn (mirrors the Spire's exact-move hover): while a charge, spin or drum is telegraphed or
+ * the swarm runs, and you stand in the glade, a walkable tile within Chebyshev 2 of your true tile is judged as the
+ * move you would make in tick + 1 (with its canonical middle, as the server tests it) and then standing there until
+ * the hazard is over, all through `clatterHitsMove`. Null when there is nothing to judge.
+ */
+export function clatterHoverVerdict(row: ClatterRowLike | null | undefined, tick: number, me: Tile, tile: Tile, blocked: Set<number>): ClatterHoverVerdict | null {
+  if (!row || row.state === ClatterState.Closed || !inClatterGlade(me)) return null;
+  const tel = clatterTelegraph(row);
+  const swarm = clatterSwarmFreeLines(row).length > 0;
+  if (!tel && !swarm) return null;
+  if (!inBounds(tile) || chebyshev(me, tile) > 2 || !isOpenGround(tile, false) || blocked.has(tileKey(tile))) return null;
+  const windup = row.state === ClatterState.ChargeWindup || row.state === ClatterState.SpinWindup;
+  const blowTiles = windup && tel ? new Set(tel.tiles) : null;
+  const until = Math.max(windup ? row.stateUntilTick - tick : 0, swarm ? Math.max(0, row.stateUntilTick - tick) + SWARM_LOOKAHEAD : 0, 1);
+  const mid = canonicalMiddle(me, tile, blocked);
+  let damage = 0;
+  for (let k = 1; k <= until; k++) {
+    const T = tick + k;
+    const [p0, p1] = k === 1 ? [me, mid] : [tile, tile];
+    if (!clatterHitsMove(row, T, p0, p1, tile)) continue;
+    if (blowTiles && T === row.stateUntilTick && blowTiles.has(tileKey(tile))) damage += tel!.damage;
+    if (clatterSwarmHit(row, T, p0, p1, tile)) damage += CLATTER_DAMAGE.runner;
+  }
+  return { tile, kind: damage > 0 ? 'hit' : 'safe', damage };
 }

@@ -2,10 +2,13 @@ import { PlayerState, SocialNotice } from '../../../shared/sim';
 import { sameId } from './players';
 import { notify, notifyThrottled, tradesOf, withdrawTrade } from './social';
 import type { Ctx, PlayerRow } from './types';
+import { onSpireFloor } from './spireGuards';
 
 /** Rechecked on approach and arrival; a failed queued action must not throw from the tick. */
 export function tradePartnerProblem(ctx: Ctx, me: PlayerRow, other: PlayerRow | undefined): string | null {
   if (!other || (other.region || 'bramblewild') !== (me.region || 'bramblewild') || !other.online || other.state !== PlayerState.Alive) return 'They are not available to trade';
+  // Ground overflow and cross-run swaps: no trading on the sealed floor.
+  if (onSpireFloor(me) || onSpireFloor(other)) return 'You cannot trade inside the Sunken Spire';
   const theirs = tradesOf(ctx, other.identity);
   if (theirs.some(r => r.accepted && !sameId(r.a, me.identity) && !sameId(r.b, me.identity))) return `${other.name} is busy trading`;
   return null;

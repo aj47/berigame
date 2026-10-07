@@ -1,12 +1,13 @@
 import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { HOTBAR_SIZE, PlayerState, TICK_MS, inGrace, inSafeRing, isWeapon, retaliationSwingTick } from '../../../shared/sim';
+import { HOTBAR_SIZE, PlayerState, TICK_MS, bossNoPvpZone, inGrace, inSafeRing, isWeapon, retaliationSwingTick } from '../../../shared/sim';
 import { regionalPvPProblem } from '../../../shared/sim/frontier/combat';
 import { ensureFrontierProfile, frontierWorld, projectFrontier } from '../lib/frontier';
 import { readSlots } from '../lib/inventory';
 import { clearInteractions, currentTick, findPlayer, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { requireCapability } from '../lib/access';
+import { onSpireFloor, spireFollowProblem } from '../lib/spireGuards';
 
 /**
  * Hold the weapon in quick slot `slot` (0..HOTBAR_SIZE-1). Takes effect at the
@@ -69,6 +70,11 @@ export const attack = spacetimedb.reducer(
       savePlayer(ctx, p);
       return;
     }
+    // Boss zones are no-PvP (the tick skips swings there too); the floor also hides other runs.
+    if (onSpireFloor(p) || onSpireFloor(tgt)) throw new SenderError('No fighting inside the Sunken Spire');
+    const zone = bossNoPvpZone(p) ?? bossNoPvpZone(tgt);
+    if (zone === 'glade') throw new SenderError("No fighting in Clatterhorn's Glade");
+    if (zone === 'gate') throw new SenderError('No fighting at the Spire gate');
     requireCapability(ctx, ctx.sender, 'combat');
     requireCapability(ctx, target, 'combat');
     if (inSafeRing(p) || inSafeRing(tgt)) throw new SenderError('No fighting in the safe ring');
@@ -109,6 +115,8 @@ export const follow = spacetimedb.reducer(
     const tgt = findPlayer(ctx, target);
     if (!tgt || (tgt.region || 'bramblewild') !== (p.region || 'bramblewild') || !tgt.online || tgt.state !== PlayerState.Alive) throw new SenderError('target unavailable');
     if (p.region === 'sea') throw new SenderError('Disembark before following');
+    const sealed = spireFollowProblem(ctx, p, tgt);
+    if (sealed) throw new SenderError(sealed);
     touchInput(p, currentTick(ctx));
     clearInteractions(ctx, p);
     p.combatTarget = target;

@@ -148,6 +148,8 @@ export function createAgentServer(options: Options) {
       if (route === '/session' && req.method === 'DELETE') { await remove(key, 'left'); send(204); return; }
       try {
         if (route === '/state' && req.method === 'GET') { send(200, session.game.state()); return; }
+        // CORE_SCOPE: an ordinary read (the reads budget above), no long poll and no separate lane.
+        if (route === '/danger' && req.method === 'GET') { send(200, session.game.danger()); return; }
         if (acting) {
           session.actions.take(now()); // Failed validation and denied actions count too.
           const action = route.slice('/actions/'.length);
@@ -185,6 +187,9 @@ export function createAgentServer(options: Options) {
         throw new ApiError(404, 'not_found', 'Unknown endpoint or method. See openapi.json.');
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) await remove(key, 'revoked');
+        // A read's 503 from a dropped socket is permanent (links never reconnect): close the session so the agent
+        // re-joins. A tick stall with the sockets still open keeps it.
+        else if (!acting && error instanceof ApiError && error.status === 503 && session.game.alive?.() === false) await remove(key, 'disconnected');
         throw error;
       }
     } catch (error) {

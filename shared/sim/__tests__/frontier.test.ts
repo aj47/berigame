@@ -809,6 +809,16 @@ describe("connected home island", () => {
     expect(()=>h.act({action:'walk',id:'bramblewild',x:70,z:50})).toThrow();
   });
 
+  it('refuses a walk onto the sealed Spire floor at once, without routing', () => {
+    const h = harness(); Object.assign(h.a, { region: 'bramblewild', x: 22, z: 18 });
+    h.w.homeStepRule = () => () => true;
+    for (const [x, z] of [[72, 57], [70, 55], [84, 69]]) {
+      // Not 'No walkable route', which only comes after two full searches.
+      expect(() => h.act({ action: 'walk', id: 'bramblewild', x, z })).toThrow('Choose dry ground');
+    }
+    expect(h.a.target).toBeUndefined();
+  });
+
   it('names obstacles instead of a hedge when Meadows walls enclose the destination', () => {
     const h = harness();
     for (let rotation = 0; rotation < 4; rotation++) h.repo.put('building', {

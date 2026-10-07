@@ -133,10 +133,43 @@ const notes: Record<string, ItemNotes> = {
       'The Giant must be defeated within its raid window, and you must be online when the reward is granted. Bring a Stone Club for entry to the Boulders and food for the encounter. The outcrops provide an alternative that does not require completing a raid.',
     ] }, { id: 'workshop', title: 'Building the shared workshop', paragraphs: [
       'Contribute within four tiles of the gardener camp at (22, 18). Each action consumes one obsidian and awards 20 Building XP. The workshop’s shared target is 10 obsidian plus 20 driftwood; donations stop once that material’s target is complete.',
-      'When both targets are complete, newly started expeditions gain one cargo value. Obsidian is a community building material: it is not an ingredient in any current crafting recipe, cannot be wielded and does not heal.',
+      'When both targets are complete, newly started expeditions gain one cargo value. Obsidian also goes into Spire Keys (three each, with one gleamshell) and the Shard Circlet keepsake (two). It cannot be wielded and does not heal.',
     ] }],
-    related: ['boulders', 'giant-raids', 'item-stone-club', 'item-driftwood', 'expeditions'],
+    related: ['boulders', 'giant-raids', 'item-spire-key', 'item-stone-club', 'item-driftwood', 'expeditions'],
     sourceFiles: ['shared/sim/raid.ts', 'spacetimedb/src/reducers/tick.ts', 'spacetimedb/src/reducers/adventure.ts'],
+  },
+  gleamshell: {
+    summary: "Clatterhorn's iridescent shell plates: the beetle's reward and half of every Spire key.",
+    lead: "Gleamshell is a stackable material shed by Clatterhorn, the stag beetle of Clatterhorn's Glade on the southern Coast. Every qualifying helper at a defeat receives two. Its use is crafting Spire keys with obsidian.",
+    source: 'Clatterhorn defeats',
+    sections: [{ id: 'earning', title: 'Earning gleamshell', paragraphs: [
+      'Clatterhorn rewards every online helper who dealt at least 16 damage and landed a swing in the last 100 ticks (about a minute) before its defeat: 2 gleamshell, 2 goldberries and 40 Fighting XP each. Equal shares; extra damage adds nothing.',
+      'The glade is Coast, so a Stick is enough to reach it. Rewards that do not fit in your bag drop at your feet.',
+    ] }, { id: 'spire-keys', title: 'Spire keys', paragraphs: [
+      'One gleamshell and three obsidian make a Spire Key at Crafting level 1. Each member of a Sunken Spire party spends one key when the party starts, so a regular party needs a steady supply of both.',
+    ] }],
+    related: ['clatterhorn', 'item-spire-key', 'item-obsidian', 'coast', 'crafting'],
+  },
+  spire_key: {
+    summary: "One descent into the Sunken Spire, spent when your party starts.",
+    lead: 'A Spire Key opens the stair under the Sunken Spire Gate on the Boulders\' east cliff for one descent. Every member of a party needs one in the bag; each key is consumed when the leader starts the run.',
+    source: 'Crafting · level 1',
+    sections: [{ id: 'opens', title: 'What it opens', paragraphs: [
+      'Opens: the Sunken Spire, consumed per member at the start. A party of one to four forms at the gate, (62, 45), which needs a Stone Club to reach. Keys are kept if the party breaks up in the lobby, and refunded when a run is closed or abandoned before it can finish.',
+      'Keys stack to 10 per slot. They are ordinary bag items: you can trade them, and they drop with the rest of your bag if you die on the overworld. A knockout inside the Spire never touches your bag.',
+    ] }],
+    related: ['sunken-spire', 'item-gleamshell', 'item-obsidian', 'item-prism-shard', 'boulders', 'crafting'],
+  },
+  prism_shard: {
+    summary: 'A splinter of the Shardmother, earned by clearing the Sunken Spire.',
+    lead: 'Prism Shards are a stackable material. Every qualifying member of a party that clears the Sunken Spire receives one, together with four goldberries and 100 Fighting XP. Five shards and two obsidian make the Shard Circlet keepsake.',
+    source: 'Sunken Spire clears',
+    sections: [{ id: 'earning', title: 'Earning prism shards', paragraphs: [
+      'At a clear, members who caught at least three stars and are online receive the reward at the gate\'s exit tile. Members who left the run, or who were offline at the clear, receive nothing.',
+    ] }, { id: 'circlet', title: 'The Shard Circlet', paragraphs: [
+      'At Crafting level 10, five Prism Shards and two obsidian make the Shard Circlet, a head keepsake. Like every keepsake it is cosmetic and gives no combat bonus.',
+    ] }],
+    related: ['sunken-spire', 'item-spire-key', 'item-obsidian', 'crafting'],
   },
   berry_mash: {
     summary: 'Seven HP in one bite, crafted from berries or split from expedition cargo.',

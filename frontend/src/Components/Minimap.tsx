@@ -9,6 +9,7 @@ import { areaOf, countRipe, getItemDef, LANDMARKS, ISLAND_NAME, GRID_SIZE, Playe
 import { useGameActions } from "../spacetime/actions";
 import { useToastStore } from "../spacetime/stores/toastStore";
 import { drawMinimap, mapAccessLabel, minimapModel } from "./minimapModel";
+import { useBossStore } from "../bosses/bossStore";
 import "./minimap.css";
 
 /** Redraws per second: the map is a glance aid, not a per-frame view. */
@@ -50,8 +51,10 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const busy = useRef(false), mapSession = useRef(0), pointerStart = useRef<{ x: number; y: number } | null>(null);
   const close = () => { mapSession.current++; setExpanded(false); };
-  const latest = useRef(() => minimapModel({ home, meHex, players, trees, groundItems, tick, giants, raid, gardenRipe, resources: settlements.resources, nowMs: Date.now() }));
-  latest.current = () => minimapModel({ home, meHex, players, trees, groundItems, tick, giants, raid, gardenRipe, resources: settlements.resources, nowMs: Date.now() });
+  const clatter = useBossStore(s => s.clatter), spireRuns = useBossStore(s => s.runs);
+  const model = () => minimapModel({ home, meHex, players, trees, groundItems, tick, giants, raid, gardenRipe, resources: settlements.resources, nowMs: Date.now(), clatter, spireRuns: spireRuns.values() });
+  const latest = useRef(model);
+  latest.current = model;
   const small = useMapCanvas(120, latest), big = useMapCanvas(expanded ? 480 : 0, latest, view);
   useEffect(() => {
     if (!expanded) return;
@@ -146,7 +149,7 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
               {home && view !== 'bramblewild' && settlements.plots.filter(p => p.region === 'settlement' && p.claim?.owner === meHex).map(p => <button key={p.id} onClick={() => walk('settlement', p.marker.x, p.marker.z)}><span className="map-place-number">⚑</span><span>Your homestead<small>Plot {p.id.split('-').pop()}</small></span></button>)}
             </div>
             {home && view === 'settlement' && <section className="map-resources"><h3>Gather nearby</h3><div className="map-places">{resourceKinds.map(item => <button key={item} onClick={() => { const n = nearestResource(item); if (n) walk('settlement', n.x - 1, n.z); }}><span className="map-resource-swatch" style={{ background: MATERIALS[item]?.color ?? getItemDef(item)?.color }} aria-hidden="true">{item === 'timber' ? '♠' : ''}</span><span>{MATERIALS[item]?.name ?? getItemDef(item)?.name ?? item}<small>Walk to nearest {item === 'timber' ? 'tree' : 'spot'}</small></span></button>)}</div></section>}
-            <details className="map-more-key"><summary>More map symbols</summary><ul className="minimap-legend"><li><i className="lg-berry" />Berry trees</li><li><i className="lg-coast" />Gathering spots</li><li><i className="lg-boulders" />The Giant</li><li><i className="lg-bag" />Dropped bag</li><li><i className="lg-garden" />Garden · gold when ripe</li></ul></details>
+            <details className="map-more-key"><summary>More map symbols</summary><ul className="minimap-legend"><li><i className="lg-berry" />Berry trees</li><li><i className="lg-coast" />Gathering spots</li><li><i className="lg-boulders" />The Giant</li><li><i className="lg-bag" />Dropped bag</li><li><i className="lg-garden" />Garden · gold when ripe</li><li><i style={{ background: "#2e7d6f", borderRadius: "50%" }} />Clatterhorn</li><li><i style={{ background: "#3b2f55", borderRadius: "40% 40% 0 0" }} />Spire Gate · parties inside</li></ul></details>
           </div>
         </div>
       </div>

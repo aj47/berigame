@@ -1,5 +1,8 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_APPEARANCE, normalizeAppearance, APPEARANCE_KEYS, PlayerState, RESPAWN_GRACE_TICKS, type Appearance } from '@sim';
+import { DEFAULT_APPEARANCE, normalizeAppearance, APPEARANCE_KEYS, PlayerState, RESPAWN_GRACE_TICKS, SPIRE_IFRAME_TICKS, type Appearance } from '@sim';
+import { useFrame } from '@react-three/fiber';
+import { useBossStore, type BossState } from '../../bosses/bossStore';
+import { estimatedTick } from '../../fx/harvestProgress';
 import type { Player } from '../../module_bindings/types';
 import { useTileMotion } from '../../hooks/useTileMotion';
 import { useCombatFxStore } from '../../spacetime/stores/combatFxStore';
@@ -49,6 +52,60 @@ interface Props {
   setPlayerRef?: (ref: React.MutableRefObject<any>) => void;
 }
 
+/**
+ * The tick of this player's last Spire bullet hit (`spire_fight.hitTick{slot}`
+ * of the run you watch), or 0. Only your own run's fight row is subscribed, so
+ * this is 0 for everyone outside it.
+ */
+export function spireHitTick(s: Pick<BossState, 'members' | 'fights'>, hex: string): number {
+  const m = s.members.get(hex);
+  const f = m ? s.fights.get(String(m.runId)) : undefined;
+  if (!m || !f || m.slot > 3) return 0;
+  return (f as unknown as Record<string, number>)[`hitTick${m.slot}`] ?? 0;
+}
+
+/** Immune (i-frames) at render tick `t`: the hit tick and the next SPIRE_IFRAME_TICKS server ticks. */
+export function inIframes(hitTick: number, t: number): boolean {
+  return hitTick > 0 && t >= hitTick && t < hitTick + SPIRE_IFRAME_TICKS + 1;
+}
+
+const SHIELD_ARGS: [number, number, number, number, number, boolean] = [0.55, 0.55, 2, 12, 1, true];
+
+/**
+ * Shows or hides the avatar model inside `group`: its children that carry
+ * `userData.berigameAvatar` (AdventurerModel's object). The model must stay a
+ * direct child of PlayerAvatar's group, because AdventurerModel registers
+ * `model.parent` as the avatar's ground group (avatarRegistry: world
+ * interactions, HitBack, knockback read its position and facing).
+ */
+export function setAvatarModelVisible(group: { children: { visible: boolean; userData: Record<string, unknown> }[] } | null | undefined, visible: boolean): void {
+  if (!group) return;
+  for (const child of group.children) if (child.userData.berigameAvatar) child.visible = visible;
+}
+
+/**
+ * I-frame feedback on the avatar timeline (render tick = estimated tick - 1):
+ * the model blinks, or with reduced motion a steady half-transparent shield
+ * shows instead. Mounted only once a hit tick exists; never allocates per frame.
+ */
+const IframeBlink = ({ group, hitTick }: { group: React.MutableRefObject<any>; hitTick: number }) => {
+  const shield = useRef<any>(null);
+  const reduced = useSettingsStore((s) => s.reduceMotion);
+  useEffect(() => () => setAvatarModelVisible(group.current, true), [group]);
+  useFrame(() => {
+    const now = performance.now();
+    const on = inIframes(hitTick, Math.floor(estimatedTick(now) - 1));
+    setAvatarModelVisible(group.current, reduced || !on || Math.floor(now / 90) % 2 === 0);
+    if (shield.current) shield.current.visible = reduced && on;
+  });
+  return (
+    <mesh ref={shield} position={[0, 1, 0]} visible={false} raycast={() => null}>
+      <cylinderGeometry args={SHIELD_ARGS} />
+      <meshBasicMaterial color="#9fe7ff" transparent opacity={0.5} depthWrite={false} />
+    </mesh>
+  );
+};
+
 /** Health bar: while below max, and for 5 s after any change. */
 function useHealthShown(hp: number, maxHp: number): boolean {
   const [recent, setRecent] = useState(false);
@@ -70,6 +127,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
   const hex = identityHex(row.identity);
   const gathering = useResourceHarvest(hex);
+  const hitTick = useBossStore((s) => spireHitTick(s, hex));
   const expeditions=useExpeditions();
   const carrying=expeditions.some(e=>e.stage==='hauling' && e.carrier?.toHexString()===hex);
   const preview = useAppearancePreview((value) => isSelf ? value.draft : null);
@@ -168,6 +226,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
           <AdventurerModel url={url} appearance={appearance} identity={hex} isSelf={isSelf} state={row.state} weapon={row.weapon} carrying={carrying} gathering={gathering} motion={motion} transient={transient} head={head} neck={neck} />
         </HairBoundary>
       </Suspense>
+      {hitTick > 0 && <IframeBlink group={groupRef} hitTick={hitTick} />}
     </group>
   );
 };
