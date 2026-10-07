@@ -9,7 +9,7 @@ runs:
   steps:
     - name: Cache SpacetimeDB
       id: cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: |
           ~/.local/bin/spacetime
