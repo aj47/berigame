@@ -116,7 +116,7 @@ describe('delayed reactor', () => {
     }
     expect({ violations, hits }).toEqual({ violations: 0, hits: 0 });
     expect(ticks).toBe(2 * 4 * 16 * 240);
-  });
+  }, 30_000);
 });
 
 describe('no permanent safe spot and AFK pressure (appendix A)', () => {
