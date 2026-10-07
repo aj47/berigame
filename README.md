@@ -38,8 +38,6 @@ frontend/          Vite + React + React Three Fiber client. Subscribes to tables
                    the SpacetimeDB SDK (frontend/src/spacetime) and renders them.
 frontend/agent-api/ Browser-independent HTTP API, invite issuance, scoped player
                    sessions and abuse controls. Reuses the generated SDK bindings.
-backend/           Legacy AWS Lambda / DynamoDB backend. No longer used by the game;
-                   kept until its auth pieces are migrated. Will be removed.
 ```
 
 ### Data flow
