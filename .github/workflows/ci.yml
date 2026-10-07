@@ -18,12 +18,12 @@ env:
 jobs:
   unit:
     name: Tests, build and typecheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -76,7 +76,7 @@ jobs:
 
   e2e:
     name: Local server smoke + browser reconnect check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       STDB_PORT: 3000
@@ -84,9 +84,9 @@ jobs:
       STDB_DATA: ${{ github.workspace }}/.stdb-ci
       ARTIFACTS: ${{ github.workspace }}/e2e-artifacts
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -164,7 +164,7 @@ jobs:
 
       - name: Upload artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-artifacts
           path: e2e-artifacts
