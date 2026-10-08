@@ -19,7 +19,7 @@ vi.mock('@react-three/drei', async () => {
 });
 vi.mock('../spacetime/hooks', () => ({
   useMyPlayer: () => mock.me, useMyIdentityHex: () => 'me', usePlayerByHex: () => null,
-  useGiantRaid: () => null, useNow: () => 0,
+  useMyPlayerSelector: (select: any) => select(mock.me), useGiantRaid: () => null, useNow: () => 0,
 }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ attackDummy: mock.attackDummy, attackGiant: mock.attackGiant }) }));
 vi.mock('../fx/HarvestRing', () => ({ default: () => null }));

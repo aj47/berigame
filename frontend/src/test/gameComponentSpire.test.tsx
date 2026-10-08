@@ -6,6 +6,7 @@ import { SPAWN_TILE, SPIRE_CENTRE, tileToWorld } from '@sim';
 
 const mock = vi.hoisted(() => ({
   me: null as any,
+  enabled: false,
   treeClicks: 0,
   canvasEvents: null as any,
   focus: undefined as any,
@@ -21,9 +22,13 @@ vi.mock('@react-three/fiber', () => ({
 }));
 vi.mock('@react-three/drei', () => ({ PerformanceMonitor: () => null }));
 vi.mock('../spacetime/hooks', () => ({
-  useMyPlayer: () => mock.me, useGroundItems: () => [], usePlayersByHex: () => new Map(), useTick: () => 100, useTrees: () => mock.trees,
+  useMyPlayer: () => mock.me, useMyPlayerSelector: (select: any) => select(mock.me),
+  useGroundItems: () => [], usePlayersByHex: () => new Map(), useTick: () => 100, useTrees: () => mock.trees,
 }));
-vi.mock('../frontier/useFrontier', () => ({ useFrontier: () => ({ enabled: false, profile: { coins: 0 }, plots: [], buildings: [], resources: [] }) }));
+vi.mock('../frontier/useFrontier', () => ({
+  useFrontier: () => ({ enabled: mock.enabled, profile: { coins: 0 }, plots: [], buildings: [], resources: [] }),
+  useFrontierEnabled: () => mock.enabled, useAvatarFrontier: () => undefined, FrontierSync: () => null,
+}));
 vi.mock('../frontier/avatarFrontierState', () => ({ avatarFrontierState: () => undefined }));
 vi.mock('../frontier/WorldInteractionController', () => ({ default: () => null }));
 vi.mock('../frontier/FrontierWorld', () => ({ default: stub('frontier-world'), BramblewildCreatures: stub('creatures'), FrontierScene: stub('meadows') }));
@@ -62,7 +67,7 @@ const OVERWORLD = ['alpha-island', 'tree', 'garden', 'adventure-world', 'clatter
 const KEPT = ['avatars', 'player', 'camera', 'hold-to-walk', 'world-hover', 'debug', 'fx'];
 const down = (tile: { x: number; z: number }) => new Ray(new Vector3(...tileToWorld(tile)).add(new Vector3(0, 8, 0)), new Vector3(0, -1, 0));
 
-afterEach(() => { cleanup(); mock.treeClicks = 0; mock.me = null; mock.loads = 0; mock.failLoads = 0; vi.useRealTimers(); });
+afterEach(() => { cleanup(); mock.treeClicks = 0; mock.me = null; mock.enabled = false; mock.loads = 0; mock.failLoads = 0; vi.useRealTimers(); });
 
 describe('the Spire scene swap', () => {
   it('mounts the overworld outside: a tree takes its click, the camera follows you', async () => {
@@ -143,3 +148,24 @@ describe('the Spire scene swap', () => {
     expect(focusDistance({ ...SPIRE_CAMERA, distance: 40 }, 1280, 720)).toBe(34);
   });
 });
+
+describe('embedded Meadows', () => {
+    it('stays unmounted in the Grove even when the expansion is on', () => {
+      mock.enabled = true;
+      mock.me = player(SPAWN_TILE.x, SPAWN_TILE.z);
+      render(<GameComponent />);
+      expect(screen.queryByTestId('meadows')).not.toBeInTheDocument();
+      expect(screen.getByTestId('harbour')).toBeInTheDocument();
+      expect(screen.getByTestId('creatures')).toBeInTheDocument();
+    });
+
+    it('mounts on the harbour road and while you are in Meadows', () => {
+      mock.enabled = true;
+      mock.me = player(90, 25);
+      const ui = render(<GameComponent />);
+      expect(screen.getByTestId('meadows')).toBeInTheDocument();
+      mock.me = { ...player(31, 64), region: 'settlement' };
+      ui.rerender(<GameComponent />);
+      expect(screen.getByTestId('meadows')).toBeInTheDocument();
+    });
+  });

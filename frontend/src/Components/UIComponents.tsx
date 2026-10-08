@@ -28,7 +28,8 @@ import { useMyPlayer, usePlayers } from "../spacetime/hooks";
 import { useSettingsStore } from "../spacetime/stores/settingsStore";
 import { SpireMemberState, SpireStage } from "@sim";
 import { useBossStore } from "../bosses/bossStore";
-import { inSpire } from "../bosses/selectors";
+import { useFrontier, useFrontierCoins } from "../frontier/useFrontier";
+import { isAwayDistrict, isHomeScene, useMyRegion, useOnSpireFloor } from "./3D/homePresence";
 import SpireHud from "../bosses/spire/SpireHud";
 import SpireControls from "../bosses/spire/SpireControls";
 import SpireLobbyPanel from "../bosses/spire/SpireLobbyPanel";
@@ -37,7 +38,6 @@ import { BossAreaTip } from "./OnboardingTip";
 
 import FrontierPanel, { type BuildDraft } from "../frontier/FrontierPanel";
 import { FRONTIER_EVENT, type FrontierRequest } from "../frontier/navigation";
-import type { FrontierSnapshot } from "../../../shared/sim/frontier/snapshot";
 
 type Panel = "bug" | "settlement" | "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | "vault" | null;
 /**
@@ -83,14 +83,18 @@ const WorldHeader = memo(({ coins }: { coins?: number }) => {
   );
 });
 
-const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontier, draft = null, onDraft = () => {} }: {
-  frontierEnabled?: boolean; frontierCoins?: number; frontier?: FrontierSnapshot; draft?: BuildDraft | null; onDraft?: (draft: BuildDraft | null) => void;
+const UIComponents = memo(({ frontierEnabled = false, draft = null, onDraft = () => {} }: {
+  frontierEnabled?: boolean; draft?: BuildDraft | null; onDraft?: (draft: BuildDraft | null) => void;
 }) => {
   const me = useMyPlayer();
+  const region = useMyRegion();
+  const frontier = useFrontier();
+  const frontierCoins = useFrontierCoins();
   const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
-  const inFrontier = !!me?.region && me.region !== 'bramblewild';
+  const inFrontier = isAwayDistrict(region);
   // Inside the Spire the overworld HUD (map, goals, adventure, duels, milestones) steps aside.
-  const inside = inSpire(me);
+  const inside = useOnSpireFloor();
+  const showMinimap = isHomeScene(region, frontierEnabled) && !inside;
   const regionRef = useRef(inFrontier);
   regionRef.current = inFrontier;
   const [frontierRequest, setFrontierRequest] = useState<FrontierRequest & { id: number }>({ tab: 'Journal', id: 0 });
@@ -283,7 +287,7 @@ const UIComponents = memo(({ frontierEnabled = false, frontierCoins = 0, frontie
       <AppearancePanel open={panel === "appearance"} onClose={close} onSkills={() => setPanel("skills")} />
       <SkillsPanel open={panel === "skills"} onClose={close} onStyle={() => setPanel("appearance")} />
       <SettingsPanel open={panel === "settings"} onClose={close} recoveryEnabled={frontierEnabled} />
-      {(!inFrontier || me?.region === "settlement") && !inside && <Minimap hidden={panel !== null} />}
+      {showMinimap && <Minimap hidden={panel !== null} />}
       {panel === "help" && <HelpPanel onClose={close} />}
       {panel === "bug" && <BugReportPanel onClose={close} />}
       <GameDiagnostics />

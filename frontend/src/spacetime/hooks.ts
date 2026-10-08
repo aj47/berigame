@@ -322,6 +322,19 @@ export function useGardenPlots() {
 export function useAdventureProfiles() { return useRows<any>(tables.adventureProfile) as readonly import('../module_bindings/types').AdventureProfile[]; }
 export function useExpeditions() { return useRows<any>(tables.expedition) as readonly import('../module_bindings/types').Expedition[]; }
 export function useExpeditionMembers() { return useRows<any>(tables.expeditionMember) as readonly import('../module_bindings/types').ExpeditionMember[]; }
+
+const carryingCache = new WeakMap<readonly any[], Map<string, true>>();
+const buildCarrying = (rows: readonly any[]) => {
+  const m = new Map<string, true>();
+  for (const e of rows) if (e.stage === 'hauling' && e.carrier) m.set(identityHex(e.carrier), true);
+  return m;
+};
+
+/** Whether this avatar is hauling a giant berry. Other expeditions do not re-render it. */
+export function useCarryingExpedition(hex: string): boolean {
+  const select = useCallback((rows: readonly any[]) => derived(carryingCache, rows, buildCarrying).has(hex), [hex]);
+  return useTableSelector(tables.expedition, select);
+}
 export function useIslandProjects() { return useRows<any>(tables.islandProject) as readonly import('../module_bindings/types').IslandProject[]; }
 export function useGardenShowcases() { return useRows<any>(tables.gardenShowcase) as readonly import('../module_bindings/types').GardenShowcase[]; }
 export function useFriendlyDuels() { return useRows<any>(tables.friendlyDuel) as readonly import('../module_bindings/types').FriendlyDuel[]; }

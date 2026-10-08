@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import { BufferGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, MeshBasicMaterial, MeshStandardMaterial, CircleGeometry, OctahedronGeometry } from 'three';
 import { HARVEST_TICKS, getItemDef, tileToWorld } from '@sim';
 import type { Player, Tree } from '../../module_bindings/types';
 import { harvestStatus } from '../harvestUi';
-import { useMyIdentityHex, useMyPlayer, usePlayerByHex } from '../../spacetime/hooks';
+import { useMyIdentityHex, useMyPlayerSelector } from '../../spacetime/hooks';
 import { identityHex } from '../../spacetime/identity';
+import { locateAvatar } from '../../animation/avatarRegistry';
 import { useUserInputStore } from '../../store';
 import { merged, part, withWind } from './envArt';
 import HarvestRing from '../../fx/HarvestRing';
@@ -100,15 +102,23 @@ const shadowGeo = new CircleGeometry(.85, 10).rotateX(-Math.PI / 2);
 const shadowMat = new MeshBasicMaterial({ color: '#2f4a2a', transparent: true, opacity: .22, depthWrite: false });
 
 interface Props { tree: Tree; tick: number; harvester: Player | null; }
+const CANOPY_FADE = 2.3;
+const selectTargetHex = (me: { combatTarget?: { toHexString(): string } } | null) => (me?.combatTarget ? identityHex(me.combatTarget) : null);
 const BerryTree = ({ tree, tick, harvester }: Props) => {
   const setClickedOtherObject = useUserInputStore((s: any) => s.setClickedOtherObject);
-  const me = useMyPlayer();
   const myHex = useMyIdentityHex();
-  // Only your row and your target's: other players' moves do not re-render every tree.
-  const target = usePlayerByHex(me?.combatTarget ? identityHex(me.combatTarget) : null);
-  const faded = [me, target].some((p) => p && Math.hypot(p.x-tree.x, p.z-tree.z) < 2.3);
+  const targetHex = useMyPlayerSelector(selectTargetHex);
+  const canopy = useRef<any>(null);
   const def = getItemDef(tree.itemId);
   const [wx, wy, wz] = tileToWorld(tree);
+  useFrame(() => {
+    if (!canopy.current) return;
+    const self = myHex ? locateAvatar(myHex) : null;
+    const foe = targetHex ? locateAvatar(targetHex) : null;
+    const faded = (!!self && Math.hypot(self.x - wx, self.z - wz) < CANOPY_FADE) || (!!foe && Math.hypot(foe.x - wx, foe.z - wz) < CANOPY_FADE);
+    const next = faded ? bodyFaded : bodyMat;
+    if (canopy.current.material !== next) canopy.current.material = next;
+  });
   const { label, busy, regrowTicks, unavailable: disabled } = harvestStatus(tree, tick, harvester, myHex);
   const endTick = harvester?.harvestEndTick ?? 0;
   const onClick = (e: any) => {
@@ -123,7 +133,7 @@ const BerryTree = ({ tree, tick, harvester }: Props) => {
   return <group position={[wx, wy, wz]} onClick={onClick} userData={{ hoverTarget: {
     title: `${def?.name ?? 'Berry'} tree`, action: 'Click for harvest options', click: 'panel', detail: label, tone: disabled ? 'muted' : 'ready', radius: 1.2,
   } }}>
-    <mesh geometry={s.body} material={faded ? bodyFaded : bodyMat} />
+    <mesh ref={canopy} geometry={s.body} material={bodyMat} />
     <mesh geometry={shadowGeo} material={shadowMat} position={[0, .015, 0]} />
     <mesh geometry={ripe ? s.berries : s.unripe} material={ripe ? berryMat(def?.color ?? '#d9423b') : unripeMat} />
     {busy && endTick > 0 && <HarvestRing endTick={endTick} totalTicks={HARVEST_TICKS} color={def?.color} y={3.05} />}

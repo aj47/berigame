@@ -1,11 +1,9 @@
 import WorldInteractionController from '../../frontier/WorldInteractionController';
-import { useFrontier } from "../../frontier/useFrontier";
-import { avatarFrontierState } from '../../frontier/avatarFrontierState';
+import { useAvatarFrontier, useFrontierEnabled } from "../../frontier/useFrontier";
 import { type BuildDraft } from '../../frontier/FrontierPanel';
 import FrontierWorld, { BramblewildCreatures, FrontierScene } from '../../frontier/FrontierWorld';
 import HarbourApproach from '../../frontier/HarbourApproach';
 import { MEADOW_OFFSET } from '../../../../shared/sim/frontier/homeMap';
-import { useMyPlayer } from '../../spacetime/hooks';
 import { Canvas, events as pointerEvents } from '@react-three/fiber';
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import CameraController from './CameraController';
@@ -34,7 +32,7 @@ import { isWebGLError, WebGLContextWatch, webglAvailable, webglSupport } from '.
 import AdaptiveQuality from './AdaptiveQuality';
 import { QUALITY, useGraphicsTier } from './renderQuality';
 import { SPIRE_CENTRE, tileToWorld } from '@sim';
-import { inSpire } from '../../bosses/selectors';
+import { isAwayDistrict, isHomeScene, useHasPlayer, useMeadowsMounted, useMyRegion, useOnSpireFloor } from './homePresence';
 import { withVisibleFilter } from '../../bosses/visibleEvents';
 import { loadSpireScene } from '../../bosses/spire/loadSpireScene';
 import ClatterGlade from '../../bosses/clatterhorn/ClatterGlade';
@@ -112,18 +110,20 @@ const WorldObjects = () => {
 };
 
 const GameComponent = () => {
-  const me = useMyPlayer();
-  const frontier = useFrontier();
-  const avatarFrontier = avatarFrontierState(frontier);
+  const hasPlayer = useHasPlayer();
+  const region = useMyRegion();
+  const frontierEnabled = useFrontierEnabled();
+  const avatarFrontier = useAvatarFrontier();
   const [draft, setDraft] = useState<BuildDraft | null>(null);
   // Without WebGL 2 the renderer throws; skip it and show browser fix steps instead.
   const [webgl] = useState(webglSupport);
   useEffect(() => { if (webgl !== 'webgl2') useLoadingStore.getState().setGraphicsIssue(webgl === 'webgl1' ? 'webgl1' : 'unsupported'); }, [webgl]);
-  const homeScene = !me?.region || me.region === 'bramblewild' || (frontier.enabled && me.region === 'settlement');
-  const inFrontier = !!me?.region && me.region !== 'bramblewild';
+  const homeScene = isHomeScene(region, frontierEnabled);
+  const inFrontier = isAwayDistrict(region);
   // Position-based, so it flips on the teleport row. Inside, the overworld is unmounted, not hidden:
   // R3F raycasts invisible meshes, and its useFrame loops would keep running during the bullet-hell.
-  const inside = inSpire(me);
+  const inside = useOnSpireFloor();
+  const meadows = useMeadowsMounted(frontierEnabled, !!draft);
   useEffect(() => { setWalkViewerOnFloor(inside); }, [inside]);
   const [playerRef, setPlayerRef] = useState<any>();
   const clickedOtherObject = useUserInputStore((state: any) => state.clickedOtherObject);
@@ -136,10 +136,10 @@ const GameComponent = () => {
     <div style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
       <LoadingScreen />
       <WorldInteractionController disabled={!!draft} />
-      <UIComponents frontier={frontier} frontierEnabled={frontier.enabled} frontierCoins={frontier.profile.coins} draft={draft} onDraft={setDraft} />
+      <UIComponents frontierEnabled={frontierEnabled} draft={draft} onDraft={setDraft} />
       {!inFrontier && <CharacterSetup />}
       {homeScene && !draft && <WorldHoverTooltip />}
-      {!draft && clickedOtherObject && <ClickDropdown region={me?.region || 'bramblewild'} />}
+      {!draft && clickedOtherObject && <ClickDropdown region={region} />}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       {webgl === 'webgl2' && <WorldBoundary>
       {!homeScene ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" data-world-floor data-spire={inside || undefined} events={canvasEvents} dpr={quality.dpr} shadows="percentage" camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
@@ -149,10 +149,10 @@ const GameComponent = () => {
           {!inside && <>
             <AlphaIsland />
             <WorldObjects />
-            <Garden /><AdventureWorld frontierEnabled={frontier.enabled} />
-            {frontier.enabled && <HarbourApproach />}
-            {frontier.enabled && me && <BramblewildCreatures disabled={!!draft} />}
-            {frontier.enabled && me && <group position={[MEADOW_OFFSET.x, 0, MEADOW_OFFSET.z]}>
+            <Garden /><AdventureWorld frontierEnabled={frontierEnabled} />
+            {frontierEnabled && <HarbourApproach />}
+            {frontierEnabled && hasPlayer && <BramblewildCreatures disabled={!!draft} />}
+            {meadows && <group position={[MEADOW_OFFSET.x, 0, MEADOW_OFFSET.z]}>
               <FrontierScene embedded draft={draft} onDraft={setDraft} />
             </group>}
             <ClatterGlade />

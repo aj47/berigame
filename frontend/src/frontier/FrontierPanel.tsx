@@ -17,7 +17,7 @@ import HideGuidanceButton from "../Components/HideGuidanceButton";
 import { deadlineLabel, defaultPlot, missingMaterials, plotName, unlockHint } from "./panelModel";
 import { wikiUrl } from "../site/siteUrls";
 import { isHomeRegion } from "../../../shared/sim/frontier/homeMap";
-import { renewalPrice } from "../../../shared/sim/frontier/model";
+import { claimStatus, renewalPrice } from "../../../shared/sim/frontier/model";
 import { BUILDING_SIDES } from "../../../shared/sim/frontier/building";
 import { previewIssue } from "./preview";
 import { distance } from "../../../shared/sim/frontier/regions";
@@ -376,7 +376,7 @@ export default function FrontierPanel({
                 {plot ? <article className="frontier-feature">
                   <small>{plot.claim?.owner === id ? "YOUR HOME" : !plot.claim ? "AVAILABLE LAND" : "HOMESTEAD"}</small>
                   <h3>{plotName(plot)}</h3>
-                  <p className="frontier-hint">{plot.claim ? FRONTIER.sizes[plot.claim.tier] : 8} × {plot.claim ? FRONTIER.sizes[plot.claim.tier] : 8} tiles · {plot.claim?.owner === id ? "Yours to build on" : plot.status}</p>
+                  <p className="frontier-hint">{plot.claim ? FRONTIER.sizes[plot.claim.tier] : 8} × {plot.claim ? FRONTIER.sizes[plot.claim.tier] : 8} tiles · {plot.claim?.owner === id ? "Yours to build on" : (plot.claim ? claimStatus(plot.claim, now) : plot.status)}</p>
                   <div className="frontier-controls">
                     <button disabled={!canWalkTo(plot.region)} onClick={() => void walkTo(plot.marker, plot.region)}>Walk to plot</button>
                     {canBuild && <button onClick={() => setTab("Build")}>Build on this plot</button>}
@@ -403,14 +403,14 @@ export default function FrontierPanel({
                     </> : <p className="frontier-hint">Owned by {players.find(p => p.identity.toHexString() === plot.claim!.owner)?.name ?? "another neighbour"}.</p>}
                     {plot.claim.challenge && <p role="status">Ownership is being challenged. Capture opens {when(plot.claim.challenge.opens)}. Pay overdue upkeep before capture to keep your home.</p>}
                     <details><summary>Manage plot</summary>
-                      <p className="frontier-hint">{plot.status} · Grace ends {when(plot.claim.paidUntil + FRONTIER.grace)}.</p>
+                      <p className="frontier-hint">{claimStatus(plot.claim, now)} · Grace ends {when(plot.claim.paidUntil + FRONTIER.grace)}.</p>
                       {plot.claim.owner === id ? <>
                         {button(plot.claim.tier === 2 ? "Fully expanded" : `Expand · from ${FRONTIER.upgradeCoins[plot.claim.tier]} coins`, { action: "upgrade", id: plot.id }, plot.claim.tier === 2)}
                         {plot.claim.tier < 2 && <p className="frontier-hint">Also needs {plot.claim.tier === 0 ? "10 planks and 10 stone" : "20 planks and 20 bricks"}. Prepaid upkeep is adjusted for the larger plot.</p>}
                         <h4>Give someone access</h4>
                         {permissionEditor()}
                         {button("Abandon empty plot", { action: "abandon", id: plot.id })}
-                      </> : button("Announce capture challenge", { action: "challenge", id: plot.id }, plot.status !== "vulnerable")}
+                      </> : button("Announce capture challenge", { action: "challenge", id: plot.id }, claimStatus(plot.claim, now) !== "vulnerable")}
                       {plot.claim.challenge && <>
                         <p className="frontier-hint">Joining either side enables contest combat.</p>
                         {button("Join defense", { action: "join_contest", id: plot.id, target: "defend" })}
@@ -429,7 +429,7 @@ export default function FrontierPanel({
                   <label>Choose a plot nearby
                     <select aria-label="Plot" value={visiblePlots.some(p => p.id === plot?.id) ? plot!.id : ""} onChange={e => { setSelected(e.target.value); }}>
                       <option value="" disabled>Choose a plot</option>
-                      {visiblePlots.map(p => <option key={p.id} value={p.id}>{plotName(p)} · {p.claim?.owner === id ? "your home" : p.status}</option>)}
+                      {visiblePlots.map(p => <option key={p.id} value={p.id}>{plotName(p)} · {p.claim?.owner === id ? "your home" : (p.claim ? claimStatus(p.claim, now) : p.status)}</option>)}
                     </select>
                   </label>
                   {myPlot && myPlot.id !== plot?.id && <button onClick={() => setSelected(myPlot.id)}>Show my home</button>}
