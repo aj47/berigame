@@ -102,6 +102,15 @@ describe('crowd update isolation', () => {
     expect(mock.labels.mock.calls.map(([id]) => id)).toEqual(['player-2']);
   });
 
+  it('does not rerender 32 unchanged avatars when another player starts hauling',
+    () => {
+      const crowd = Array.from({ length: 32 }, (_, i) => player(i + 2));
+      render(<>{crowd.map(row => <PlayerAvatar key={row.name} row={row} isSelf={false} />)}</>);
+      mock.labels.mockClear();
+      act(() => mock.connection.db.expedition.change([{ stage: 'hauling', carrier: identity(3) }], 'haul-start'));
+      expect(mock.labels.mock.calls.map(([id]) => id)).toEqual(['player-3']);
+    });
+
   it('keeps regional claim expiry live even when no player or claim row changes', () => {
     const plot = PLOTS.find(plot => plot.region === 'reedwake')!;
     me = player(1, { region: plot.region, x: plot.x, z: plot.z });

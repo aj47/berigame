@@ -26,6 +26,7 @@ import { useInventoryDrag } from "./useInventoryDrag";
 import EconomyHud from "./EconomyHud";
 import type { FrontierSnapshot } from "../../../shared/sim/frontier/snapshot";
 import { REGIONS } from "../../../shared/sim/frontier/catalog";
+import { claimStatus } from "../../../shared/sim/frontier/model";
 import { foodHealing } from "../../../shared/sim/frontier/engine";
 
 const QUICK_KEYS = Array.from({ length: HOTBAR_SIZE }, (_, i) => String(i + 1));
@@ -122,7 +123,7 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag, onOpenVault, frontier }
   if (!me) return null;
   const inBramblewild = !me.region || me.region === 'bramblewild';
   const protectedFromPlayers = (me.region === 'settlement' && chebyshev(me, REGIONS.settlement.spawn) <= 4)
-    || !!frontier?.plots.some(plot => plot.region === me.region && plot.status === 'protected'
+    || !!frontier?.plots.some(plot => plot.region === me.region && plot.claim && claimStatus(plot.claim, Date.now()) === 'protected'
       && me.x >= plot.x && me.x < plot.x + 16 && me.z >= plot.z && me.z < plot.z + 16);
   const safe = !dead && (inBramblewild ? isSafe(me, tick) : protectedFromPlayers);
   const hp =Math.max(0, Math.min(100, (me.hp / Math.max(1, me.maxHp)) * 100));

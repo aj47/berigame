@@ -16,19 +16,24 @@ interface Preview { hint: HoverHint; x: number; y: number }
 const useHoverPreview = create<{ preview: Preview | null }>(() => ({ preview: null }));
 const noRaycast = () => {};
 const readyColor = '#ffe3a0', mutedColor = '#d5b995';
+function hintSignature(x: number, y: number, hint: HoverHint): string {
+  return `${x}|${y}|${hint.title}|${hint.action}|${hint.detail ?? ''}|${hint.tone ?? ''}|${hint.radius ?? ''}|${hint.tile ? `${hint.tile.x},${hint.tile.z}` : ''}`;
+}
+
+/** Live hover inputs, kept off the mesh so a walk does not rebuild the probe. */
+function HoverBindings({ live }: { live: React.MutableRefObject<{ me: ReturnType<typeof useMyPlayer>; inventory: ReturnType<typeof useInventoryRows>; blocked: ReturnType<typeof useWorldBlocked>; frontier: ReturnType<typeof useFrontier> }> }) {
+  const me = useMyPlayer(), inventory = useInventoryRows(), blocked = useWorldBlocked();
+  const frontier = useFrontier();
+  live.current = { me, inventory, blocked, frontier };
+  return null;
+}
 
 /** A read-only preview, sampled like mouse click assist, without raycasting the terrain 17 times. */
 export default function WorldHover() {
   const { gl, scene, camera } = useThree();
   const connected = useThree(s => s.events.connected);
-  const me = useMyPlayer(), inventory = useInventoryRows(), blocked = useWorldBlocked();
-  const frontier = useFrontier();
-  // Snapshot arrays update every tick. Preserve this set while the actual obstacles stay the same.
-  const meadowKey = me && frontier.enabled ? Array.from(meadowBlockedTiles(frontier, me, me.identity.toHexString())).sort().join(';') : '';
-  const meadowBlocked = useMemo(() => new Set(meadowKey ? meadowKey.split(';') : []), [meadowKey]);
-  const slots = useMemo(() => slotsFromRows(inventory), [inventory]);
-  const hasStick = holdsItem(slots, me?.weapon ?? '', STICK_ITEM_ID);
-  const hasClub = holdsItem(slots, me?.weapon ?? '', BOULDER_KEY_ITEM);
+  const live = useRef({ me: null as ReturnType<typeof useMyPlayer>, inventory: [] as ReturnType<typeof useInventoryRows>, blocked: new Set<number>(), frontier: null as ReturnType<typeof useFrontier> | null });
+  const meadowCache = useRef<{ key: string; set: Set<string> }>({ key: '', set: new Set() });
   const ring = useRef<Mesh>(null);
   const pointer = useRef({ x: 0, y: 0, active: false });
   const lastProbe = useRef(0), lastPreview = useRef('');
@@ -69,7 +74,18 @@ export default function WorldHover() {
     if (clock.elapsedTime - lastProbe.current < .08) return;
     lastProbe.current = clock.elapsedTime;
     const p = pointer.current, canvas = gl.domElement;
+    const { me, inventory, blocked, frontier } = live.current;
     if (!p.active || !me || holdState.active || useLoadingStore.getState().isLoading || useUserInputStore.getState().clickedOtherObject || !isWorldSurface(document.elementFromPoint(p.x, p.y), canvas, connected)) { clear(); return; }
+    const slots = slotsFromRows(inventory);
+    const hasStick = holdsItem(slots, me.weapon ?? '', STICK_ITEM_ID);
+    const hasClub = holdsItem(slots, me.weapon ?? '', BOULDER_KEY_ITEM);
+    const expansion = !!frontier?.enabled;
+    let meadowBlocked = meadowCache.current.set;
+    if (expansion) {
+      const meadowKey = Array.from(meadowBlockedTiles(frontier!, me, me.identity.toHexString())).sort().join(';');
+      if (meadowCache.current.key !== meadowKey) meadowCache.current = { key: meadowKey, set: new Set(meadowKey ? meadowKey.split(';') : []) };
+      meadowBlocked = meadowCache.current.set;
+    } else if (meadowCache.current.key) meadowCache.current = { key: '', set: new Set() };
     const rect = canvas.getBoundingClientRect();
     const hit = clickableNear(scene, camera, rect, p.x, p.y, MOUSE_TAP_RADIUS, t => !hoverTargetOf(t.hit.object, t.hit.point), hoverRoots(scene));
     const target = hit && hoverTargetOf(hit.hit.object, hit.hit.point);
@@ -83,10 +99,10 @@ export default function WorldHover() {
       scratch.ray.setFromCamera(scratch.ndc, camera);
       if (!scratch.ray.ray.intersectPlane(scratch.plane, scratch.point)) { clear(); return; }
       const tile = hoverTile(scratch.point.x, scratch.point.z);
-      const key = `${tile.x},${tile.z}:${me.region}:${me.x},${me.z}:${hasStick}:${hasClub}:${frontier.enabled}`;
+      const key = `${tile.x},${tile.z}:${me.region}:${me.x},${me.z}:${hasStick}:${hasClub}:${expansion}`;
       if (groundCache.current?.key !== key || groundCache.current.blocked !== blocked || groundCache.current.meadowBlocked !== meadowBlocked) groundCache.current = {
         key, blocked, meadowBlocked,
-        hint: frontier.enabled ? connectedGroundHover(tile, me, blocked, meadowBlocked, hasStick, hasClub) : groundHover(tile, me, blocked, hasStick, hasClub),
+        hint: expansion ? connectedGroundHover(tile, me, blocked, meadowBlocked, hasStick, hasClub) : groundHover(tile, me, blocked, hasStick, hasClub),
       };
       hint = groundCache.current.hint;
       scratch.point.set(...tileToWorld(hint.tile!));
@@ -99,16 +115,19 @@ export default function WorldHover() {
     }
     canvas.style.cursor = target ? 'pointer' : ['Water', 'Path blocked'].includes(hint.title) ? 'not-allowed' : 'crosshair';
     if (canvas.parentElement) canvas.parentElement.style.cursor = canvas.style.cursor;
-    const signature = JSON.stringify([p.x, p.y, hint]);
+    const signature = hintSignature(p.x, p.y, hint);
     if (signature !== lastPreview.current) {
       lastPreview.current = signature;
       useHoverPreview.setState({ preview: { hint, x: p.x, y: p.y } });
     }
   });
-  return <mesh ref={ring} visible={false} rotation={[-Math.PI / 2, 0, 0]} renderOrder={100} raycast={noRaycast}>
+  return <>
+    <HoverBindings live={live} />
+    <mesh ref={ring} visible={false} rotation={[-Math.PI / 2, 0, 0]} renderOrder={100} raycast={noRaycast}>
     <ringGeometry args={[.92, 1, 48]} />
     <meshBasicMaterial color={readyColor} transparent opacity={.9} depthWrite={false} depthTest={false} />
-  </mesh>;
+  </mesh>
+  </>;
 }
 
 export function WorldHoverTooltip() {

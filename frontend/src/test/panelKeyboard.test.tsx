@@ -17,7 +17,8 @@ vi.mock('../Components/AdventurePanel', () => ({
   AdventureHud: () => null, DuelHud: () => null,
 }));
 vi.mock('../Components/SkillsPanel', () => ({ default: () => null }));
-vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => ({ name: "Tester", region: region.value }), usePlayers: () => [], useMySkills: () => null, useMyCosmetics: () => null }));
+vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => ({ name: "Tester", region: region.value, x: 25, z: 25 }), usePlayers: () => [], useMySkills: () => null, useMyCosmetics: () => null, useMyPlayerSelector: (select: any) => select({ name: "Tester", region: region.value, x: 25, z: 25 }) }));
+vi.mock('../frontier/useFrontier', () => ({ useFrontier: () => ({ enabled: false, profile: { coins: 0 }, plots: [], buildings: [], resources: [] }), useFrontierCoins: () => 0, FrontierSync: () => null }));
 vi.mock('../Components/ChatBox', () => ({ default: ({ open }: any) => open ? <div>Opened chat</div> : null }));
 vi.mock('../Components/Inventory', () => ({ default: ({ open, onCraft, onStorage }: any) => open ? <section aria-label="Inventory"><button onClick={onCraft}>Craft from bag</button>{onStorage && <button onClick={onStorage}>Storage from bag</button>}</section> : null }));
 vi.mock('../Components/CraftingPanel', () => ({ default: ({ open }: any) => open ? <section aria-label="Crafting">Recipes</section> : null }));

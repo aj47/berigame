@@ -43,10 +43,29 @@ export function hoverTargetOf(object: Object3D | null, point: Vector3): { root: 
   return undefined;
 }
 
+let hoverRootCache: { scene: Object3D; signature: string; roots: Object3D[] } | null = null;
+
+/** Cheap graph fingerprint: top-level count plus each child's own child count. */
+function sceneSignature(scene: Object3D): string {
+  const kids = scene.children;
+  let signature = `${kids.length}`;
+  for (let i = 0; i < kids.length; i++) signature += `,${kids[i].id}:${kids[i].children.length}`;
+  return signature;
+}
+
+/** Interactive hover subtrees, reused while the scene's immediate graph is unchanged. */
 export function hoverRoots(scene: Object3D): Object3D[] {
+  const signature = sceneSignature(scene);
+  if (hoverRootCache && hoverRootCache.scene === scene && hoverRootCache.signature === signature) return hoverRootCache.roots;
   const roots: Object3D[] = [];
   scene.traverse(o => { if (o.userData.hoverTarget) roots.push(o); });
+  hoverRootCache = { scene, signature, roots };
   return roots;
+}
+
+/** Test hook: drop the hover-root cache. */
+export function resetHoverRootCache(): void {
+  hoverRootCache = null;
 }
 
 /** Unlike worldToTile, preserve out-of-bounds ocean instead of clamping it to shore. */

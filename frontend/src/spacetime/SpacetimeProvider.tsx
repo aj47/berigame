@@ -18,6 +18,7 @@ import { useCombatFxStore } from './stores/combatFxStore';
 import { useSocialStore } from './stores/socialStore';
 import { useGiantStore } from './stores/giantStore';
 import { useProgressStore } from './stores/progressStore';
+import { FrontierSync } from '../frontier/useFrontier';
 import BossSync from '../bosses/BossSync';
 import { isPlayerVisible } from '../bosses/selectors';
 import { useBossStore } from '../bosses/bossStore';
@@ -207,6 +208,7 @@ const SpacetimeProvider = ({ children }: { children: React.ReactNode }) => {
     <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
       <TableSync />
       <ProgressSync />
+      <FrontierSync />
       {children}
     </SpacetimeDBProvider>
   );

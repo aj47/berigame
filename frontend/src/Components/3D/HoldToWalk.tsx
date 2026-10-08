@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { inBounds, inSpireFloor, type Tile } from '@sim';
 import { useGameActions } from '../../spacetime/actions';
 import { useMyPlayer } from '../../spacetime/hooks';
-import { useFrontier } from '../../frontier/useFrontier';
+import { useFrontierEnabled } from '../../frontier/useFrontier';
 import { homeLand, homeLocation } from '../../../../shared/sim/frontier/homeMap';
 import { useUserInputStore } from '../../store';
 import { TOUCH_TAP_RADIUS, holdState, openMenuNear } from './tapAssist';
@@ -40,15 +40,19 @@ export function holdWalkTile(t: Tile, connected: boolean, meOnFloor: boolean): b
  * - on the ground: walks continuously toward the finger until it lifts,
  *   with camera dragging paused meanwhile.
  */
+function HoldBindings({ live }: { live: React.MutableRefObject<{ setTarget: (x: number, z: number) => unknown; frontier: (c: any) => unknown; enabled: boolean; region: string | undefined; onFloor: boolean }> }) {
+  const { setTarget, frontier } = useGameActions();
+  const me = useMyPlayer(), enabled = useFrontierEnabled();
+  live.current = { setTarget, frontier, enabled, region: me?.region, onFloor: inSpire(me) };
+  return null;
+}
+
 const HoldToWalk = () => {
   const gl = useThree((s) => s.gl);
   const camera = useThree((s) => s.camera);
   const scene = useThree((s) => s.scene);
   const connected = useThree((s) => s.events.connected);
-  const { setTarget, frontier } = useGameActions();
-  const me = useMyPlayer(), expansion = useFrontier();
-  const movement = useRef({ setTarget, frontier, enabled: expansion.enabled, region: me?.region, onFloor: inSpire(me) });
-  movement.current = { setTarget, frontier, enabled: expansion.enabled, region: me?.region, onFloor: inSpire(me) };
+  const movement = useRef({ setTarget: ((_x: number, _z: number) => {}) as (x: number, z: number) => unknown, frontier: ((_c: any) => {}) as (c: any) => unknown, enabled: false, region: undefined as string | undefined, onFloor: false });
 
   useEffect(() => {
     const el = gl.domElement;
@@ -134,6 +138,6 @@ const HoldToWalk = () => {
       el.removeEventListener('contextmenu', menu);
     };
   }, [gl, camera, scene, connected]);
-  return null;
+  return <HoldBindings live={movement} />;
 };
 export default HoldToWalk;

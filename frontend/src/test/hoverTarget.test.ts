@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PerspectiveCamera, Scene, Vector3 } from 'three';
 import { GARDEN_PLOT_TILES, SPAWN_TILE, TILE_ORIGIN, tileKey, tileToWorld, gardenPlotAt, worldToTile } from '@sim';
-import { connectedGroundHover, groundHover, hoverRoots, hoverTargetOf, hoverTile, isWorldSurface, meadowBlockedTiles } from '../Components/3D/hoverTarget';
+import { connectedGroundHover, groundHover, hoverRoots, hoverTargetOf, hoverTile, isWorldSurface, meadowBlockedTiles, resetHoverRootCache } from '../Components/3D/hoverTarget';
 import { clickableNear, isDirectAttackClick, MOUSE_TAP_RADIUS, openMenuNear } from '../Components/3D/tapAssist';
 import { useUserInputStore } from '../store';
 import { homePoint, MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
@@ -26,7 +26,7 @@ function fixture() {
   return { scene, camera, object };
 }
 
-beforeEach(() => useUserInputStore.getState().setClickedOtherObject(null));
+beforeEach(() => { useUserInputStore.getState().setClickedOtherObject(null); resetHoverRootCache(); });
 
 describe('world hover targeting', () => {
   it('accepts the pointer-transparent canvas wrapper but excludes UI and labels', () => {
@@ -77,6 +77,17 @@ describe('world hover targeting', () => {
     expect(sceneryRaycast).not.toHaveBeenCalled();
     expect(targetRaycast).toHaveBeenCalledTimes(17);
     expect(target.handler).not.toHaveBeenCalled();
+  });
+
+  it('reuses hover roots while the scene graph size is unchanged', () => {
+    const f = fixture();
+    f.object();
+    const first = hoverRoots(f.scene);
+    expect(hoverRoots(f.scene)).toBe(first);
+    f.object(1);
+    const next = hoverRoots(f.scene);
+    expect(next).not.toBe(first);
+    expect(next).toHaveLength(2);
   });
 
   it('preserves unannotated and nested clickable objects when filtering scenery', () => {

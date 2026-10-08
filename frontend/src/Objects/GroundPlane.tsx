@@ -1,6 +1,6 @@
 import { homeCoastTexture } from "../frontier/homeCoast";
 import { HOME_GRID, MEADOW_OFFSET } from "../../../shared/sim/frontier/homeMap";
-import { useFrontier } from "../frontier/useFrontier";
+import { useFrontierEnabled } from "../frontier/useFrontier";
 import { useFrame, useThree } from '@react-three/fiber';
 import { MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, holdState, openMenuNear } from '../Components/3D/tapAssist';
 import { Mesh, MeshBasicMaterial, Plane, PlaneGeometry, Raycaster, ShaderMaterial, Vector2, Vector3, UniformsLib, UniformsUtils } from 'three';
@@ -140,11 +140,17 @@ const ClatterDodgeTint = () => {
 };
 
 /** The terrain exactly covers the server grid; its coastline never hides walkable tiles. */
-const GroundPlane = () => {
+const groundClick = { me: null as ReturnType<typeof useMyPlayer>, rows: [] as ReturnType<typeof useInventoryRows>, setTarget: ((_x: number, _z: number) => {}) as (x: number, z: number) => unknown, frontier: ((_c: any) => {}) as (c: any) => unknown };
+const GroundClickBindings = () => {
   const { setTarget, frontier } = useGameActions();
   const me = useMyPlayer();
-  const expansion = useFrontier();
   const rows = useInventoryRows();
+  groundClick.me = me; groundClick.rows = rows; groundClick.setTarget = setTarget; groundClick.frontier = frontier;
+  return null;
+};
+
+const GroundPlane = () => {
+  const expansionEnabled = useFrontierEnabled();
   const marker = useRef<any>(null);
   const clickedAt = useRef(-Infinity);
   const scene = useThree((s) => s.scene);
@@ -175,6 +181,7 @@ const GroundPlane = () => {
       if (openMenuNear(scene, camera, gl.domElement.getBoundingClientRect(), native.clientX, native.clientY, radius, native)) return;
     }
     useUserInputStore.getState().setClickedOtherObject(null);
+    const { me, rows, setTarget, frontier } = groundClick;
     const tile = worldToTile(e.point.x, e.point.z);
     // From the overworld the Spire floor reads as water (no far-flood setTarget calls).
     if (tile.x < 0 || tile.z < 0 || tile.x >= GRID_SIZE || tile.z >= GRID_SIZE || !isOpenGround(tile, inSpire(me))) return;
@@ -197,9 +204,10 @@ const GroundPlane = () => {
     }
   };
   return <>
+    <GroundClickBindings />
     <mesh name="land_mesh" onClick={onClick} geometry={terrainGeometry} material={terrainMaterial} />
     <IslandLandmarks onGroundClick={onClick} />
-    <Ocean connected={expansion.enabled} />
+    <Ocean connected={expansionEnabled} />
     <ClatterDodgeHover />
     <mesh ref={marker} visible={false} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.28, 0.36, 24]} /><meshBasicMaterial color="#fff2bd" transparent depthWrite={false} />

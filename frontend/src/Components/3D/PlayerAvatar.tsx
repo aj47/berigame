@@ -15,7 +15,7 @@ import { useAvatarLabels } from './AvatarOverlay';
 import AdventurerModel, { BASE_MODEL_URL, modelUrl } from './AdventurerModel';
 import { useAppearancePreview } from '../../appearance/store';
 import { useToastStore } from '../../spacetime/stores/toastStore';
-import { useWornCosmetics, useExpeditions, useMyPlayerSelector, useTickSelector } from '../../spacetime/hooks';
+import { useWornCosmetics, useCarryingExpedition, useMyPlayerSelector, useTickSelector } from '../../spacetime/hooks';
 import { useGameActions } from '../../spacetime/actions';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
 import { useProgressStore, XP_FLOAT_KIND } from '../../spacetime/stores/progressStore';
@@ -129,8 +129,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   const hex = identityHex(row.identity);
   const gathering = useResourceHarvest(hex);
   const hitTick = useBossStore((s) => spireHitTick(s, hex));
-  const expeditions=useExpeditions();
-  const carrying=expeditions.some(e=>e.stage==='hauling' && e.carrier?.toHexString()===hex);
+  const carrying=useCarryingExpedition(hex);
   const preview = useAppearancePreview((value) => isSelf ? value.draft : null);
   const chosen = isSelf && preview ? preview : saved;
   // Stable while the colours hold, so the memoized model skips row-only (movement) renders.

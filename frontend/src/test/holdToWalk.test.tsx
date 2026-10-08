@@ -14,7 +14,7 @@ const mock = vi.hoisted(() => ({
 }));
 vi.mock('@react-three/fiber', () => ({ useThree: (select: any) => select(mock.state) }));
 vi.mock('../spacetime/hooks', () => ({ useMyPlayer: () => mock.me }));
-vi.mock('../frontier/useFrontier', () => ({ useFrontier: () => ({ enabled: mock.enabled }) }));
+vi.mock('../frontier/useFrontier', () => ({ useFrontier: () => ({ enabled: mock.enabled }), useFrontierEnabled: () => mock.enabled }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ setTarget: mock.setTarget, frontier: mock.frontier }) }));
 
 let wrapper: HTMLDivElement, canvas: HTMLCanvasElement;
