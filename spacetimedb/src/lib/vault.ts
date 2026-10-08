@@ -4,6 +4,7 @@ import { FRONTIER } from '../../../shared/sim/frontier/catalog';
 import type { Container } from '../../../shared/sim/frontier/model';
 import { frontierRepository, publishOwnView } from './frontier';
 import { readSlots, writeSlots } from './inventory';
+import { activity, activityAction } from './activity';
 import type { Ctx, PlayerRow } from './types';
 
 /**
@@ -27,6 +28,8 @@ export function moveVaultItems(ctx: Ctx, p: PlayerRow, itemId: string, quantity:
   repo.put('container', next);
   publishOwnView(ctx, p.identity, 'container', id, next);
   if (p.weapon && !inHotbar(result.bag, p.weapon)) p.weapon = '';
+  if (direction === 'deposit') activity(ctx, p.identity, 'deposits');
+  else activityAction(ctx, p.identity, 'vault-withdraw');
   return result;
 }
 

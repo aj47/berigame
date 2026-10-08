@@ -687,6 +687,34 @@ export const pendingDeposit = table({ name: 'pending_deposit' }, {
 });
 
 /**
+ * Private per-character daily activity for the owner's admin panel
+ * (docs/ANALYTICS.md): one row per UTC day a character was online or acted,
+ * keyed "<day>:<identityHex>". Counters only: no positions, chat text, names
+ * or network data. `actions` is a JSON map of region action -> count.
+ * Flat primitive columns, so adding it is a pure "Creating table" migration.
+ */
+export const dailyActivity = table({ name: 'daily_activity' }, {
+  key: t.string().primaryKey(),
+  /** Days since the Unix epoch (UTC). */
+  day: t.u32().index('btree'),
+  identity: t.identity().index('btree'),
+  agent: t.bool(),
+  sessions: t.u32(),
+  /** Online time, sampled once a minute by the tick. */
+  playSeconds: t.u32(),
+  harvests: t.u32(),
+  /** Items received from finished harvests. */
+  gathered: t.u32(),
+  crafts: t.u32(),
+  kills: t.u32(),
+  deaths: t.u32(),
+  trades: t.u32(),
+  deposits: t.u32(),
+  chats: t.u32(),
+  actions: t.string(),
+});
+
+/**
  * Private idle-logout state (lib/idle.ts). `activeTick` is when the character
  * last connected or chose to return, so a fresh arrival is not judged by an
  * old `lastInputTick`. `loggedOut` holds until the player asks to return.

@@ -2,6 +2,7 @@ import { SenderError, t } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { ADVENTURE_CAMP, ADVENTURE_TICKS, BERRY_PATCH, BERRY_MARKET, GIANT_FEAST, EXPEDITION_ACTIONS, PlayerState, chebyshev, hasTechnique, giantFriendship, techniqueUnlocked, loadoutCount, Feat, rollDestination, worldBlockedSet, tileKey, inSafeRing, SWING_INTERVAL_TICKS } from '../../../shared/sim';
 import { requireAlivePlayer, currentTick, touchInput, savePlayer, clearInteractions, sameId } from '../lib/players';
+import { activityAction } from '../lib/activity';
 import { profile, saveProfile, progress, contribute, creditFor, carrying, spend, finishExpedition, syncShowcase, duelFor } from '../lib/adventure';
 import { giveItem } from '../lib/inventory';
 import { requireCapability } from '../lib/access';
@@ -21,6 +22,7 @@ export const expeditionAction = spacetimedb.reducer({ action: t.string(), expedi
   const { action, expeditionId, target, x, z, destination } = input;
   if (!(EXPEDITION_ACTIONS as readonly string[]).includes(action)) throw new SenderError('Unknown expedition action');
   const p = requireAlivePlayer(ctx), T = currentTick(ctx); touchInput(p, T);
+  activityAction(ctx, p.identity, `expedition-${action}`);
   refuseOnSpireFloor(p);
   if (p.hostile || duelFor(ctx, p.identity)) throw new SenderError('Finish combat before tending expedition cargo');
   const pp = profile(ctx, p.identity), previous = ctx.db.expeditionMember.identity.find(p.identity);
@@ -131,6 +133,7 @@ export const shareGarden = spacetimedb.reducer({ shared: t.bool() }, (ctx, { sha
 });
 export const duelAction = spacetimedb.reducer({ action: t.string(), target: t.identity() }, (ctx, { action, target }) => {
   const p = requireAlivePlayer(ctx), T = currentTick(ctx); touchInput(p, T);
+  activityAction(ctx, p.identity, 'duel');
   const other = ctx.db.player.identity.find(target);
   if (!other || sameId(target, p.identity)) throw new SenderError('Choose another player');
   const existing = [...ctx.db.friendlyDuel.iter()].find(d => d.stage !== 'complete' && (sameId(d.a, p.identity) && sameId(d.b, target) || sameId(d.b, p.identity) && sameId(d.a, target)));

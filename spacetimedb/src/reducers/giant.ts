@@ -8,6 +8,7 @@ import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
 import { ensureGiant } from '../lib/giant';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
+import { activityAction } from '../lib/activity';
 import { refuseOnSpireFloor } from '../lib/spireGuards';
 
 /**
@@ -31,6 +32,7 @@ export const attackGiant = spacetimedb.reducer(
       throw new SenderError(`The Giant is asleep. It wakes in ${formatCountdown(Number(raid.nextWakeAtMicros / 1000n), nowMs(ctx))}`);
     }
     touchInput(p, T);
+    activityAction(ctx, p.identity, 'giant');
     // Re-selecting the Giant you are already hitting keeps the swing rhythm.
     if (p.pending === Pending.Giant && p.pendingId === BigInt(giant.id) && !p.combatTarget) {
       savePlayer(ctx, p);

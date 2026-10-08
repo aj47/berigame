@@ -567,7 +567,16 @@ export async function createGameService(credential: Credential, options: Connect
       };
     } catch (error) { if (link) disconnect(link.conn); try { await suspend(player.identity); } catch { /* Bounded permit expires independently. */ } throw error; }
   };
-  return { verifyCredential: async (credential: Credential) => { const link = await connect(credential, false, options); disconnect(link.conn); }, attestRecovery: async (identity: string) => { await control.conn.reducers.attestRecovery({ identity: Identity.fromString(identity) }); }, ready, close: () => disconnect(control.conn), provision, renew, resume, revoke, suspend,
+  /** Owner panel data (docs/ANALYTICS.md): JSON from the module's gateway-only procedures, passed through unparsed. */
+  const admin = {
+    snapshot: async (days: number) => { if (!control.live()) throw unavailable(); return deadline(control.conn.procedures.adminSnapshot({ days }), 15_000); },
+    player: async (identity: string) => {
+      if (!control.live()) throw unavailable();
+      try { return await deadline(control.conn.procedures.adminPlayer({ identity: Identity.fromString(identity) }), 15_000); }
+      catch (error) { throw /no such character/.test(String(error)) ? new ApiError(404, 'not_found', 'No character has this identity.') : error; }
+    },
+  };
+  return { verifyCredential: async (credential: Credential) => { const link = await connect(credential, false, options); disconnect(link.conn); }, attestRecovery: async (identity: string) => { await control.conn.reducers.attestRecovery({ identity: Identity.fromString(identity) }); }, ready, close: () => disconnect(control.conn), provision, renew, resume, revoke, suspend, admin,
     async create(invite: Invite) { return resume(invite, await provision(invite)); },
   };
 }

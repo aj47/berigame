@@ -30,6 +30,7 @@ import { spendEnergyFor } from '../lib/energy';
 import { itemLabel, moveVaultItems } from '../lib/vault';
 import { seedMissingNodes } from '../lib/nodes';
 import { statsDeath, statsPosition } from '../lib/stats';
+import { activity, activityHeartbeat } from '../lib/activity';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
 import { clearInteractions, hex, sameId, savePlayer } from '../lib/players';
 import { canPlay } from '../lib/access';
@@ -323,6 +324,8 @@ function phaseHarvest(s: TickState): void {
       // Energy: double while rested, normal, or (tired) only every fourth harvest pays. The node regrows either way.
       const { payout } = spendEnergyFor(s.ctx, p.identity, energyCost(harvestTicksForPlayer(s.ctx, p.identity, tree) * TICK_MS));
       if (payout) giveItem(s.ctx, p.identity, tree.itemId, payout, p, s.T);
+      activity(s.ctx, p.identity, 'harvests');
+      if (payout) activity(s.ctx, p.identity, 'gathered', payout);
       else notify(s.ctx, p.identity, p.identity, SocialNotice.Info, 'You are tired: that harvest found nothing. Energy comes back with time, and a rest away from the game makes you rested.');
       tree.cooldownUntilTick = s.T + regrowTicksFor(tree.kind);
       tree.harvester = undefined;
@@ -385,9 +388,12 @@ function phaseSwings(s: TickState): void {
     // Reducers keep a wielded weapon in the hotbar; re-check so a stale row can only ever punch.
     if (a.weapon !== '' && !inHotbar(readSlots(s.ctx, a.identity).slots, a.weapon)) a.weapon = '';
     const damage = combatDamage(s, a);
+    const standing = d.hp > 0;
     d.hp = Math.max(0, d.hp - damage);
     a.nextSwingTick = s.T + SWING_INTERVAL_TICKS;
     interrupt(s, d);
+    // Only the blow that drops them counts, not a second hit landing in the same tick.
+    if (standing && d.hp === 0) activity(s.ctx, a.identity, 'kills');
 
     emitEvent(s.ctx, {
       tick: s.T,
@@ -595,6 +601,7 @@ function phaseDeath(s: TickState): void {
     }
     emitEvent(s.ctx, { tick: s.T, kind: EventKind.Death, attacker: p.identity, defender: p.identity, defenderHp: 0 });
     statsDeath(s.ctx, p.identity);
+    activity(s.ctx, p.identity, 'deaths');
   }
 }
 
@@ -791,5 +798,6 @@ export const tick = spacetimedb.reducer(
     tickDuels(ctx, T);
     tickFrontier(ctx);
     refreshLoads(ctx, T);
+    activityHeartbeat(ctx, T);
   }
 );

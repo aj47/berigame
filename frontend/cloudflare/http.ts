@@ -10,6 +10,11 @@ export function send(status: number, body?: unknown, retryAfter?: number) {
     ...(retryAfter ? { 'Retry-After': String(retryAfter) } : {}),
   } });
 }
+/** A JSON body that is already serialized (admin snapshots from the module), sent without re-encoding. */
+export function sendJsonText(status: number, text: string) {
+  const response = send(status, null);
+  return new Response(text, { status, headers: response.headers });
+}
 export function bearer(request: Request) {
   const value = request.headers.get('Authorization');
   if (!value || !/^Bearer bg[isharku]_[A-Za-z0-9_-]{43}$/.test(value)) throw unauthorized();

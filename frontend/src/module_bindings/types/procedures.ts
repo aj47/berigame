@@ -6,5 +6,11 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all procedure arg schemas
+import * as AdminPlayerProcedure from "../admin_player_procedure";
+import * as AdminSnapshotProcedure from "../admin_snapshot_procedure";
 
+export type AdminPlayerArgs = __Infer<typeof AdminPlayerProcedure.params>;
+export type AdminPlayerResult = __Infer<typeof AdminPlayerProcedure.returnType>;
+export type AdminSnapshotArgs = __Infer<typeof AdminSnapshotProcedure.params>;
+export type AdminSnapshotResult = __Infer<typeof AdminSnapshotProcedure.returnType>;
 

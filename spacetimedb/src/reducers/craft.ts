@@ -2,6 +2,7 @@ import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { statsCraft } from '../lib/stats';
+import { activity } from '../lib/activity';
 import { mentorMilestone } from '../lib/mentor';
 import { MentorMilestone, STONE_CLUB_ITEM_ID, Skill, craft as craftSlots, craftRejection, getItemDef, getRecipe, hasCosmetic } from '../../../shared/sim';
 import { dropOnGround, readSlots, writeSlots } from '../lib/inventory';
@@ -47,5 +48,6 @@ export const craft = spacetimedb.reducer(
     // Mentor rewards read firstCraftAt: check before this craft is recorded.
     if (def.output?.itemId === STONE_CLUB_ITEM_ID) mentorMilestone(ctx, p, MentorMilestone.Club);
     statsCraft(ctx, p.identity);
+    activity(ctx, p.identity, 'crafts');
   }
 );

@@ -5,6 +5,7 @@ import { progress } from './adventure';
 import { frontierRepository, projectFrontier } from './frontier';
 import { readSlots, writeSlots } from './inventory';
 import { notify, tradesOf } from './social';
+import { activity } from './activity';
 import type { Ctx, PlayerRow, TradeRow } from './types';
 
 /**
@@ -48,6 +49,8 @@ export function completeTrade(ctx: Ctx, row: TradeRow, a: PlayerRow, b: PlayerRo
   if (a.weapon && !inHotbar(result.a, a.weapon)) unwield(a);
   if (b.weapon && !inHotbar(result.b, b.weapon)) unwield(b);
   ctx.db.trade.id.delete(row.id);
+  activity(ctx, a.identity, 'trades');
+  activity(ctx, b.identity, 'trades');
   if (offerA.length && !offerB.length) progress(ctx, a.identity, 4, 8, Feat.Befriend);
   if (offerB.length && !offerA.length) progress(ctx, b.identity, 4, 8, Feat.Befriend);
   notify(ctx, a.identity, b.identity, SocialNotice.TradeDone, offerB.length ? `Received ${describeOffer(offerB)} from ${b.name}` : `Gift delivered to ${b.name}: ${describeOffer(offerA)}`);

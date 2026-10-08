@@ -26,7 +26,8 @@ One row per player identity in the **private** table `play_stats`
 | `last_step` | Furthest funnel step reached: `join` → `berry` → `stick` → `hedge` → `coast` → `craft`. For players who stopped returning this is their quit point. |
 
 Not stored: player names, chat, positions over time, IP addresses, user
-agents, or anything typed. The table is not `public`, so game clients cannot
+agents, or anything typed. (`daily_activity`, below, adds per-day counters
+under the same rules.) The table is not `public`, so game clients cannot
 subscribe to it or query it; only the database owner can read it.
 
 Recording is best-effort: every write is wrapped so an analytics failure can
@@ -63,8 +64,55 @@ Ad-hoc queries also work, for example:
 spacetime sql berigame "SELECT last_step, deaths FROM play_stats"
 ```
 
+## Daily activity and the admin panel
+
+`daily_activity` (private, `spacetimedb/src/lib/activity.ts`) holds one row per
+character per UTC day it was online or acted, keyed `<day>:<identity>`:
+
+| Column | Meaning |
+| --- | --- |
+| `day`, `identity`, `agent` | UTC day number, the character, and whether its permit was an agent permit. |
+| `sessions` | New sessions started that day (same rule as `play_stats`). |
+| `play_seconds` | Online time, sampled by the tick once a minute, so long sessions split across days. |
+| `harvests`, `gathered` | Finished Grove/Coast harvests and the items they paid. |
+| `crafts`, `trades`, `deposits`, `chats` | Successful crafts, completed trades (both sides), vault deposits, chat messages (count only). |
+| `kills`, `deaths` | Blows that dropped another player, and deaths. |
+| `actions` | JSON map of other actions: region actions by name (`gather`, `build`, `quest`, ...), `vault-withdraw`, `clatterhorn`, `giant`, `spire-run`, `garden-plant`, `garden-harvest`, `expedition-<action>`, `duel`. |
+
+Like `play_stats`, every write is best-effort and never fails a reducer. History
+starts when the table was published: earlier days in the panel show new players
+(from `play_stats.first_join_at`) and coins (from the coin ledger) only.
+
+The owner panel lives at `https://beta.berigame.com/admin`. It asks for the beta
+Worker's `ADMIN_TOKEN` and calls `POST /api/admin/stats` and
+`POST /api/admin/player`, which relay the module procedures `admin_snapshot` and
+`admin_player` over the gateway's control connection. Those procedures refuse
+every identity except the world owner and the configured gateway. The panel shows:
+
+- **Overview**: online now, DAU/WAU/MAU, new players, hours played, who is online.
+- **Players**: every character with join/last-seen, sessions, play time, coins,
+  vault and carried value, XP, kills and deaths; a drawer per character with
+  milestones, daily activity, bag, vault, claims, coin ledger and recent chat
+  (the public `chat_message` table keeps only the latest rows).
+- **Activity**: daily totals per counter, region actions, the funnel and D1/D3/D7
+  retention by join day.
+- **Economy**: coin supply over time and sources/sinks (rebuilt from the
+  `frontier_private` coin ledger), wallet distribution and Gini, a ledger-vs-wallet
+  balance check, items in bags, vaults, storage and on the ground, claims and energy.
+- **Gateway**: API sessions, joins and requests per day, invites and sign-in
+  accounts from the Worker's Durable Object.
+
+The owner CLI can read the table directly too:
+
+```sh
+# DAU for one UTC day (days since 1970-01-01; GROUP BY is not supported)
+spacetime sql --server http://127.0.0.1:3000 berigame-beta \
+  "SELECT COUNT(*) AS dau FROM daily_activity WHERE day = 20733"
+spacetime call --server http://127.0.0.1:3000 berigame-beta admin_snapshot 30
+```
+
 ## Retention and deletion
 
-Rows are kept for the life of the database. To remove a player's row on
+Rows are kept for the life of the database (`daily_activity` too). To remove a player's rows on
 request, delete it by identity from a reducer or with the owner CLI; to clear
 the whole funnel, republish with a migration that drops the table's rows.
