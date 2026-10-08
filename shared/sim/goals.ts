@@ -154,19 +154,20 @@ export function treeReadyTick(tree: GoalTree, players: readonly GoalPlayer[], ti
   return Math.max(tree.cooldownUntilTick, tick);
 }
 
-/** Estimated tick at which `me` could claim `tree`: max(ripening, arrival) + one cycle per waiter ahead. */
+/**
+ * Estimated tick at which `me` could claim `tree`: max(ripening, arrival) + one cycle per rival waiter. Claims are a draw
+ * among the waiters in the top tier (newcomers, then everyone), so with n rivals the expected wait is about n cycles
+ * (energy weights the odds, but rivals' meters are private).
+ */
 export function claimEstimate(me: GoalPlayer, tree: GoalTree, others: readonly GoalPlayer[], tick: number): number {
   const ready = treeReadyTick(tree, [me, ...others], tick);
   const walk = Math.ceil(Math.max(0, chebyshev(me, tree) - MELEE_RANGE) / MOVEMENT_STEPS_PER_TICK);
-  const meWaiting = me.pending === Pending.Harvest && sameNum(me.pendingId, tree.id);
   const meNew = isNewcomer(me, tick);
   let ahead = 0;
   for (const o of others) {
     if (o.online === false || o.state !== PlayerState.Alive) continue;
     if (o.pending !== Pending.Harvest || !sameNum(o.pendingId, tree.id)) continue;
-    const oNew = isNewcomer(o, tick);
-    if (oNew && !meNew) ahead++;
-    else if (oNew === meNew && (!meWaiting || o.lastInputTick <= me.lastInputTick)) ahead++;
+    if (isNewcomer(o, tick) || !meNew) ahead++;
   }
   return Math.max(ready, tick + walk) + ahead * (harvestTicksFor(tree.kind) + regrowTicksFor(tree.kind));
 }
@@ -220,7 +221,7 @@ function gatherGoal(id: GoalStepId, text: string, idleHint: string, input: GoalI
         const ripeIn = treeReadyTick(current, [me, ...others], tick) - tick;
         return {
           id, text,
-          hint: ripeIn > 0 ? `Waiting: ripe in ${seconds(ripeIn)} s` : 'Waiting for your turn…',
+          hint: ripeIn > 0 ? `Waiting: ripe in ${seconds(ripeIn)} s` : 'Waiting for the draw…',
           action: null,
           waiting: { treeId: current.id, ripeInTicks: Math.max(0, ripeIn) },
         };
