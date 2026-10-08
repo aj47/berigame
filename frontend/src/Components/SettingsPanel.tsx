@@ -4,6 +4,7 @@ import CharacterRecovery from './CharacterRecovery';
 import AccountSection from './AccountSection';
 import { accountsEnabled } from '../account/accountApi';
 import { useSettingsStore, type Settings } from "../spacetime/stores/settingsStore";
+import { useHudStore } from "./hudVisibility";
 
 interface Props {
   open: boolean;
@@ -135,6 +136,10 @@ const SettingsPanel = ({ open, onClose, recoveryEnabled = false }: Props) => {
           <input type="checkbox" checked={s.reduceMotion} onChange={(e) => s.set({ reduceMotion: e.target.checked })} />
           <span>Reduce motion</span>
         </label>
+        <button className="settings-reset" onClick={() => useHudStore.getState().toggle()}>
+          Hide interface <kbd>U</kbd>
+        </button>
+        <p className="settings-hint">For screen recordings. Press U to bring it back.</p>
       </fieldset>
       <fieldset className="settings-group">
         <legend>Camera</legend>
