@@ -10,3 +10,6 @@ export function hasWorldSpace(players: Iterable<{ online: boolean }>, alreadyOnl
   for (const player of players) if (player.online && ++online >= MAX_ONLINE_PLAYERS) return false;
   return true;
 }
+
+/** A character with no game input for this long is logged out until its player chooses to return. */
+export const IDLE_LOGOUT_MINUTES = 15;

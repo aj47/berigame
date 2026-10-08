@@ -3,7 +3,8 @@ import { SPACETIME_DB, SPACETIME_URI, TOKEN_KEY } from '../spacetime/connection'
 import AccountLogin from '../Components/AccountLogin';
 import { accountToken, completeReturningLogin, playAccountCharacter } from '../account/accountApi';
 import { useToastStore } from '../spacetime/stores/toastStore';
-import { admissionIssue, AdmissionIssue, canRenew, expiryKey, renewalDelay, renewKey, renewVisit, RENEW_TOKEN, RETRY_MS, savedExpiry as readExpiry } from '../spacetime/visitRenewal';
+import { admissionIssue, AdmissionIssue, canRenew, expiryKey, idleKey, onSignedOut, renewalDelay, renewKey, renewVisit, RENEW_TOKEN, RETRY_MS, savedExpiry as readExpiry } from '../spacetime/visitRenewal';
+import { IDLE_LOGOUT_MINUTES } from '../../../shared/sim/admission';
 
 const EXPIRY_KEY = expiryKey(TOKEN_KEY);
 const RENEW_KEY = renewKey(TOKEN_KEY);
@@ -25,6 +26,8 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
   const [paused, setPaused] = useState(false);
   const [retry, setRetry] = useState(0);
   const [resuming, setResuming] = useState(() => /^#(account|login=)/.test(window.location.hash));
+  /** Logged out for inactivity: nothing reconnects until the player chooses to return. */
+  const [idle, setIdle] = useState(false);
   const accountResumes = useRef<number[]>([]);
   useEffect(() => { if (!issue) return; const timer = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(timer); }, [issue]);
   const remaining = issue ? Math.max(0, Math.ceil((issue.retryAt - clock) / 1000)) : 0;
@@ -51,12 +54,22 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
       .finally(() => { if (live) setResuming(false); });
     return () => { live = false; };
   }, []);
+  // The world took the character offline on an open socket: drop the saved permit (every tab follows
+  // through the storage event) and let the renewal below ask the gateway why.
+  useEffect(() => {
+    if (!required) return;
+    return onSignedOut(() => {
+      try { localStorage.setItem(EXPIRY_KEY, '0'); } catch { /* the state below still closes the game */ }
+      setExpiry(0);
+    });
+  }, []);
   // Another tab renewed or joined: adopt its permit instead of renewing again.
   useEffect(() => {
     if (!required) return;
     const sync = (event: StorageEvent) => {
       if (event.key === null || event.key === EXPIRY_KEY || event.key === RENEW_KEY || event.key === TOKEN_KEY) {
         setExpiry(savedExpiry()); setReturning(renewable());
+        if (savedExpiry() > Date.now()) setIdle(false); // another tab returned from an idle logout
       }
     };
     window.addEventListener('storage', sync);
@@ -64,7 +77,7 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
   }, []);
   // Returning browsers keep their character: renew shortly before the permit ends (F1).
   useEffect(() => {
-    if (!required || paused) return;
+    if (!required || paused || idle) return;
     let cancelled = false;
     let timer = 0;
     const schedule = (delay: number) => { timer = window.setTimeout(run, delay); };
@@ -81,6 +94,7 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
         locks: (navigator as any).locks, onIssue: value => { failure = value; } });
       if (cancelled) return;
       if (outcome === 'renewed' || outcome === 'fresh') { setIssue(null); setExpiry(savedExpiry()); schedule(renewalDelay(savedExpiry(), Date.now())); return; }
+      if (outcome === 'idle') { setIssue(null); setExpiry(0); setIdle(true); return; }
       if (outcome === 'ended') {
         if (await resumeWithAccount() || cancelled) return;
         setReturning(false); setExpiry(savedExpiry());
@@ -94,7 +108,20 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
     };
     schedule(renewalDelay(expiry, Date.now()));
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [expiry, paused, retry]);
+  }, [expiry, paused, retry, idle]);
+  /** The player chose to return after an idle logout. */
+  const returnFromIdle = async () => {
+    if (pending) return;
+    setPending(true); setError('');
+    let failure: AdmissionIssue | undefined;
+    try {
+      const outcome = await renewVisit({ storage: localStorage, tokenKey: TOKEN_KEY, fetch: window.fetch.bind(window),
+        locks: (navigator as any).locks, onIssue: value => { failure = value; }, resume: true });
+      if (outcome === 'renewed' || outcome === 'fresh') { setIdle(false); setIssue(null); setExpiry(savedExpiry()); return; }
+      if (outcome === 'ended') { setIdle(false); setReturning(false); setError('Your island sign-in has ended. Enter again to return.'); return; }
+      if (outcome === 'unavailable') { setIssue(failure ?? { message: 'The island could not be reached. Check your connection and try again.', retryAt: Date.now() + RETRY_MS }); setClock(Date.now()); }
+    } finally { setPending(false); }
+  };
   const notice = issue && <section role="status" aria-label="Island connection" style={{ background: '#18271f', color: '#fff', padding: '16px', border: '1px solid #b4cf8b', borderRadius: 12, maxWidth: 480 }}>
     <strong>Waiting to connect</strong><p>{issue.message}</p>
     <p>Your saved character is kept in this browser.</p>
@@ -103,6 +130,19 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
     <button className="primary-button" onClick={() => setPaused(value => !value)}>{paused ? 'Resume automatic retry' : 'Pause automatic retry'}</button></>}
   </section>;
   if (!required) return <>{children}</>;
+  if (idle) {
+    return <main className="loading-screen beta-admission"><div className="loading-content">
+      <img className="loading-berry" src="/items/blueberry.png" alt="" />
+      <span className="eyebrow">The first island · {openBeta ? 'Open beta' : 'Private beta'}</span>
+      <h1 className="game-title">BeriGame</h1>
+      <p className="game-subtitle">You were logged out after {IDLE_LOGOUT_MINUTES} minutes without playing. Your character and bag are saved.</p>
+      {issue && <p role="status">{issue.message}{remaining > 0 ? ` Try again in ${remaining}s.` : ''}</p>}
+      {error && <p className="beta-invite-error" role="alert">{error}</p>}
+      <button className="primary-button" disabled={pending || remaining > 0} onClick={returnFromIdle}>
+        {pending ? 'Returning…' : 'Return to the island'}
+      </button>
+    </div></main>;
+  }
   if (expiry > Date.now()) return <>{children}{notice && <div style={{ position: 'fixed', top: 16, left: 16, zIndex: 10000 }}>{notice}</div>}</>;
   if (returning || resuming) {
     return <main className="loading-screen beta-admission"><div className="loading-content">
@@ -139,6 +179,7 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
       if (admission.renewToken) localStorage.setItem(RENEW_KEY, admission.renewToken);
       else localStorage.removeItem(RENEW_KEY);
       localStorage.setItem(EXPIRY_KEY, String(Date.parse(admission.expiresAt)));
+      localStorage.removeItem(idleKey(TOKEN_KEY));
       setIssue(null); setCode(''); setReturning(!!admission.renewToken); setExpiry(Date.parse(admission.expiresAt));
     } catch (cause) {
       setError(cause instanceof DOMException ? 'Enable browser storage to keep your island sign-in, then try again.'

@@ -11,7 +11,7 @@ import { playerSkill, playerCosmetic, socialPair } from './tables';
 import { giantRaid, mentee, mentorStat } from './tables';
 import { adventureProfile, expeditionCredit, expedition, expeditionMember, islandProject, gardenShowcase, friendlyDuel, gardenPlot } from './tables';
 import { bossConfig, clatterhorn, clatterhornCredit, spireRun, spireMember, spireFight, bossEvent, bossNotice } from './tables';
-import { pendingDeposit, dailyActivity } from './tables';
+import { pendingDeposit, dailyActivity, idleState } from './tables';
 
 export const spacetimedb = schema({
   frontierObject, frontierPrivate, frontierView,
@@ -48,5 +48,6 @@ export const spacetimedb = schema({
   bossConfig, clatterhorn, clatterhornCredit, spireRun, spireMember, spireFight, bossEvent, bossNotice,
   pendingDeposit,
   dailyActivity,
+  idleState,
 });
 export default spacetimedb;

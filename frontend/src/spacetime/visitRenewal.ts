@@ -35,8 +35,22 @@ export function admissionIssue(response: Response, body: any, now = Date.now(), 
     retryAt: now + Math.max(1000, Number.isFinite(delay) ? delay : response.status === 429 ? 60_000 : RETRY_MS) + Math.floor(random() * 5000) };
 }
 const retryKey = (key: string) => `${key}:renew-retry`;
+/** Set once the gateway reports an idle logout, so other tabs and reloads stop asking (each ask spends the character's renewal budget). */
+export const idleKey = (key: string) => `${key}:idle`;
 
-export type RenewalOutcome = 'renewed' | 'fresh' | 'ended' | 'unavailable';
+export type RenewalOutcome = 'renewed' | 'fresh' | 'ended' | 'idle' | 'unavailable';
+
+/**
+ * The world took this browser's character offline while its socket stayed
+ * open (an idle logout or an ended permit). BetaAdmission listens, drops the
+ * saved permit and asks the gateway what happened.
+ */
+const signedOutListeners = new Set<() => void>();
+export function onSignedOut(listener: () => void): () => void {
+  signedOutListeners.add(listener);
+  return () => { signedOutListeners.delete(listener); };
+}
+export function reportSignedOut(): void { for (const listener of [...signedOutListeners]) listener(); }
 type LockManager = { request<T>(name: string, fn: () => Promise<T>): Promise<T> };
 
 export function savedExpiry(storage: Storage, tokenKey: string): number {
@@ -60,12 +74,15 @@ export function renewalDelay(expiry: number, now: number): number {
  */
 export async function renewVisit(opts: {
   storage: Storage; tokenKey: string; fetch: typeof fetch; locks?: LockManager; now?: () => number; onIssue?: (issue: AdmissionIssue) => void;
+  /** The player chose to return after an idle logout. */
+  resume?: boolean;
 }): Promise<RenewalOutcome> {
   const { storage, tokenKey } = opts;
   const now = opts.now ?? Date.now;
   const attempt = async (): Promise<RenewalOutcome> => {
     if (savedExpiry(storage, tokenKey) - RENEW_MARGIN_MS > now()) return 'fresh';
     if (!canRenew(storage, tokenKey)) return 'ended';
+    if (!opts.resume && storage.getItem(idleKey(tokenKey))) return 'idle';
     const savedRetry = storage.getItem(retryKey(tokenKey));
     if (savedRetry) {
       try {
@@ -77,7 +94,7 @@ export async function renewVisit(opts: {
     let response: Response;
     let body: any;
     try {
-      response = await opts.fetch('/api/play/v1/renewals', { method: 'POST', cache: 'no-store', body: '{}',
+      response = await opts.fetch('/api/play/v1/renewals', { method: 'POST', cache: 'no-store', body: opts.resume ? '{"resume":true}' : '{}',
         headers: { Authorization: `Bearer ${presented}`, 'Content-Type': 'application/json' } });
       body = await response.json().catch(() => undefined);
     } catch { return 'unavailable'; }
@@ -85,10 +102,13 @@ export async function renewVisit(opts: {
       const expiresAt = Date.parse(body?.expiresAt);
       if (typeof body?.renewToken !== 'string' || !RENEW_TOKEN.test(body.renewToken) || !(expiresAt > now())) return 'unavailable';
       storage.removeItem(retryKey(tokenKey));
+      storage.removeItem(idleKey(tokenKey));
       storage.setItem(renewKey(tokenKey), body.renewToken);
       storage.setItem(expiryKey(tokenKey), String(expiresAt));
       return 'renewed';
     }
+    // Logged out for inactivity: the renewal token stays valid, but only the player can choose to return.
+    if (response.status === 409 && body?.error?.code === 'idle_logout') { storage.setItem(idleKey(tokenKey), '1'); return 'idle'; }
     if (response.status === 409) {
       // Another tab (or a browser without Web Locks) won the race; adopt its result.
       return storage.getItem(renewKey(tokenKey)) !== presented && savedExpiry(storage, tokenKey) > now() ? 'fresh' : 'unavailable';

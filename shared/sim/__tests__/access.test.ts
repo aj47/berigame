@@ -7,7 +7,8 @@ vi.mock('../../../spacetimedb/src/schema', () => ({ default: {
   reducer: (...args: unknown[]) => args.at(-1), init: (fn: unknown) => fn,
   clientConnected: (fn: unknown) => fn, clientDisconnected: (fn: unknown) => fn,
 } }));
-import { configureAccess, grantAgent, grantPlayer, renewGrant, revokePlayer, endVisit } from '../../../spacetimedb/src/reducers/access';
+import { configureAccess, grantAgent, grantPlayer, renewGrant, resumeGrant, revokePlayer, endVisit } from '../../../spacetimedb/src/reducers/access';
+import { IDLE_LOGOUT_TICKS, logOutIfIdle } from '../../../spacetimedb/src/lib/idle';
 import { onConnect, onDisconnect } from '../../../spacetimedb/src/reducers/lifecycle';
 import { requirePlayer } from '../../../spacetimedb/src/lib/players';
 import { sendChat } from '../../../spacetimedb/src/reducers/chat';
@@ -19,7 +20,7 @@ const owner = id('owner'), gateway = id('gateway'), guest = id('guest');
 type Fn = (ctx: any, args?: any) => void;
 const call = (fn: unknown, ctx: any, args?: any) => (fn as Fn)(ctx, args);
 function world() {
-  const grants = new Map<string, any>(), players = new Map<string, any>();
+  const grants = new Map<string, any>(), players = new Map<string, any>(), idle = new Map<string, any>();
   const policies = new Map([[0, { id: 0, owner, gateway, requireAdmission: true }]]);
   const keyed = (rows: Map<string, any>) => ({
     iter: () => rows.values(), count: () => BigInt(rows.size), insert: (row: any) => rows.set(row.identity.toHexString(), row),
@@ -27,10 +28,10 @@ function world() {
   });
   const ctx = { sender: guest, timestamp: { microsSinceUnixEpoch: 100_000_000n }, db: {
     accessPolicy: { id: { find: (key: number) => policies.get(key), update: (row: any) => policies.set(row.id, row) } },
-    playerGrant: keyed(grants), player: keyed(players), tree: { id: { find: () => undefined } },
+    playerGrant: keyed(grants), player: keyed(players), idleState: keyed(idle), tree: { id: { find: () => undefined } },
     world: { id: { find: () => ({ tick: 20 }) } }, chatMessage: { iter: () => [] }, trade: { a: { filter: () => [] }, b: { filter: () => [] } },
   } };
-  return { ctx, grants, players, policies };
+  return { ctx, grants, players, policies, idle };
 }
 
 describe('world admission and operator authority', () => {
@@ -183,4 +184,65 @@ it('ending a visit preserves renewal, while operator revocation remains final', 
   call(endVisit,w.ctx,{identity:guest});
   expect(()=>call(renewGrant,w.ctx,{identity:guest,lifetimeSeconds:3600})).toThrow('revoked');
   w.ctx.sender=guest; expect(()=>call(endVisit,w.ctx,{identity:guest})).toThrow('gateway');
+});
+
+describe('idle logout', () => {
+  const later = 20 + IDLE_LOGOUT_TICKS;
+  function admitted() {
+    const w = world(); w.ctx.sender = gateway;
+    call(grantAgent, w.ctx, { identity: guest, lifetimeSeconds: 3600, combat: true, chat: true });
+    w.ctx.sender = guest; call(onConnect, w.ctx); // connected at tick 20
+    return w;
+  }
+
+  it('ends the permit of a character with no input since connecting, and only an explicit return renews it', () => {
+    const w = admitted();
+    expect(logOutIfIdle(w.ctx as any, w.players.get('guest'), later - 1, gateway)).toBe(false);
+    expect(logOutIfIdle(w.ctx as any, w.players.get('guest'), later, gateway)).toBe(true);
+    expect(w.grants.get('guest').expiresAtMicros).toBe(w.ctx.timestamp.microsSinceUnixEpoch);
+    expect(w.idle.get('guest').loggedOut).toBe(true);
+    // A reloading page cannot bring it back: reconnects are refused and plain renewal is too.
+    w.players.set('guest', { ...w.players.get('guest'), online: false, connections: 0 });
+    expect(() => call(onConnect, w.ctx)).toThrow('access required');
+    w.ctx.sender = gateway;
+    expect(() => call(renewGrant, w.ctx, { identity: guest, lifetimeSeconds: 3600 })).toThrow('inactivity');
+    call(resumeGrant, w.ctx, { identity: guest, lifetimeSeconds: 3600 });
+    expect(w.idle.get('guest').loggedOut).toBe(false);
+    w.ctx.sender = guest; call(onConnect, w.ctx);
+    expect(w.players.get('guest').online).toBe(true);
+    w.ctx.sender = gateway;
+    call(renewGrant, w.ctx, { identity: guest, lifetimeSeconds: 3600 });
+  });
+
+  it('keeps players who acted or just connected, and leaves owner-granted players and revoked permits alone', () => {
+    const w = admitted();
+    w.players.set('guest', { ...w.players.get('guest'), lastInputTick: later - 5 });
+    expect(logOutIfIdle(w.ctx as any, w.players.get('guest'), later, gateway)).toBe(false);
+    // An old lastInputTick does not count against a fresh connection.
+    w.players.set('guest', { ...w.players.get('guest'), lastInputTick: 0 });
+    w.idle.set('guest', { ...w.idle.get('guest'), activeTick: later - 5 });
+    expect(logOutIfIdle(w.ctx as any, w.players.get('guest'), later, gateway)).toBe(false);
+    // Online since before idle logout existed: its clock starts now.
+    w.idle.clear();
+    expect(logOutIfIdle(w.ctx as any, w.players.get('guest'), later, gateway)).toBe(false);
+    expect(w.idle.get('guest').activeTick).toBe(later);
+    w.idle.set('guest', { identity: guest, activeTick: 0, loggedOut: false });
+    w.ctx.sender = owner;
+    call(grantPlayer, w.ctx, { identity: guest, lifetimeSeconds: 86400, combat: true, chat: true });
+    expect(logOutIfIdle(w.ctx as any, w.players.get('guest'), later, gateway)).toBe(false);
+    w.ctx.sender = gateway;
+    w.grants.set('guest', { ...w.grants.get('guest'), agent: true, issuer: gateway, expiresAtMicros: 0n });
+    expect(logOutIfIdle(w.ctx as any, w.players.get('guest'), later, gateway)).toBe(false);
+    expect(w.grants.get('guest').expiresAtMicros).toBe(0n);
+  });
+
+  it('returning brings back a character whose gateway connection stayed open', () => {
+    const w = admitted();
+    logOutIfIdle(w.ctx as any, w.players.get('guest'), later, gateway);
+    w.players.set('guest', { ...w.players.get('guest'), online: false }); // the tick's expiry check
+    w.ctx.sender = gateway;
+    call(resumeGrant, w.ctx, { identity: guest, lifetimeSeconds: 3600 });
+    expect(w.players.get('guest').online).toBe(true);
+    expect(w.grants.get('guest').expiresAtMicros).toBe(w.ctx.timestamp.microsSinceUnixEpoch + 3_600_000_000n);
+  });
 });

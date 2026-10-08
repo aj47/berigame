@@ -34,6 +34,7 @@ import { activity, activityHeartbeat } from '../lib/activity';
 import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
 import { clearInteractions, hex, sameId, savePlayer } from '../lib/players';
 import { canPlay } from '../lib/access';
+import { IDLE_SWEEP_TICKS, logOutIfIdle } from '../lib/idle';
 import { cancelTrade, notify } from '../lib/social';
 import { requestTradeInRange, tradePartnerProblem } from '../lib/trade';
 import { completeTrade, stopSwapOnHit } from '../lib/tradeSwap';
@@ -720,8 +721,11 @@ export const tick = spacetimedb.reducer(
     // phases stay O(active players) however many have ever joined.
     const players = new Map<string, PlayerRow>();
     const original = new Map<string, PlayerRow>();
+    const idleGateway = T % IDLE_SWEEP_TICKS === 0 ? ctx.db.accessPolicy.id.find(0)?.gateway : undefined;
     for (const row of ctx.db.player.iter()) {
       let player = row;
+      // Idle logout ends the permit; the expiry check below takes the character offline this tick.
+      if (idleGateway) logOutIfIdle(ctx, player, T, idleGateway);
       // Expiry/revocation stops queued movement, harvesting and combat even if a
       // client keeps its WebSocket open and sends no further requests.
       if (player.online && !canPlay(ctx, player.identity)) {

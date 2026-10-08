@@ -72,6 +72,7 @@ import RemoveFriendReducer from "./remove_friend_reducer";
 import RenewGrantReducer from "./renew_grant_reducer";
 import RequestTradeReducer from "./request_trade_reducer";
 import RespondTradeReducer from "./respond_trade_reducer";
+import ResumeGrantReducer from "./resume_grant_reducer";
 import RevokePlayerReducer from "./revoke_player_reducer";
 import SaveCharacterReducer from "./save_character_reducer";
 import SendChatReducer from "./send_chat_reducer";
@@ -621,6 +622,7 @@ const reducersSchema = __reducers(
   __reducerSchema("renew_grant", RenewGrantReducer),
   __reducerSchema("request_trade", RequestTradeReducer),
   __reducerSchema("respond_trade", RespondTradeReducer),
+  __reducerSchema("resume_grant", ResumeGrantReducer),
   __reducerSchema("revoke_player", RevokePlayerReducer),
   __reducerSchema("save_character", SaveCharacterReducer),
   __reducerSchema("send_chat", SendChatReducer),

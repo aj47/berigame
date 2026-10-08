@@ -56,3 +56,27 @@ test('returning players see capacity details and can pause retries', async () =>
   expect(screen.getByRole('button', { name: 'Resume automatic retry' })).toBeTruthy();
   expect(localStorage.getItem('open-beta-test')).toBe('saved-character');
 });
+
+test('an idle logout closes the game and waits for the player to return', async () => {
+  vi.stubEnv('VITE_INVITE_REQUIRED', 'true');
+  vi.stubEnv('VITE_OPEN_BETA', 'true');
+  vi.resetModules();
+  localStorage.setItem('open-beta-test', 'saved-character');
+  localStorage.setItem('open-beta-test:renew', `bgr_${'a'.repeat(43)}`);
+  localStorage.setItem('open-beta-test:permit-expires', String(Date.now() + 3600_000));
+  const { default: BetaAdmission } = await import('../agent/BetaAdmission');
+  const { reportSignedOut } = await import('../spacetime/visitRenewal');
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'idle_logout' } }), { status: 409 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ renewToken: `bgr_${'b'.repeat(43)}`, expiresAt: new Date(Date.now() + 3600_000).toISOString() }), { status: 200 }));
+  vi.stubGlobal('fetch', fetchMock);
+  render(<BetaAdmission><p>Island loaded</p></BetaAdmission>);
+  expect(screen.getByText('Island loaded')).toBeTruthy();
+  reportSignedOut();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Return to the island' })).toBeTruthy());
+  expect(screen.queryByText('Island loaded')).toBeNull();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Return to the island' }));
+  await waitFor(() => expect(screen.getByText('Island loaded')).toBeTruthy());
+  expect(fetchMock.mock.calls[1][1].body).toBe('{"resume":true}');
+});

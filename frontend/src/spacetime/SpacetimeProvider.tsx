@@ -9,6 +9,7 @@ import type { DbConnection } from '../module_bindings';
 import { buildConnection, currentConnection, markConnectionLost, setConnectionLifecycle } from './connection';
 import { ReconnectController, type BackoffOptions } from './reconnect';
 import { useLoadingStore } from '../store';
+import { reportSignedOut } from './visitRenewal';
 
 /** How long the world may look frozen on an open socket before we replace it. */
 const ZOMBIE_GRACE_MS = 4000;
@@ -86,6 +87,10 @@ const TableSync = () => {
   });
   // The Boulders' Giant: blows, slams, defeats, rewards and raid announcements (an event table).
   useRowListener('giantEvent', (row) => useGiantStore.getState().pushEvent(row, meRef.current));
+  // The server took your character offline on an open socket: an idle logout or an ended permit.
+  useRowListener('player', undefined, (prev, row) => {
+    if (prev.online && !row.online && meRef.current && identityHex(row.identity) === meRef.current) reportSignedOut();
+  });
   // Clatterhorn and the Sunken Spire: rows, notices and swing cues into useBossStore.
   return <BossSync />;
 };
