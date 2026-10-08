@@ -1,6 +1,6 @@
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { SPACETIME_DB, SPACETIME_URI, TOKEN_KEY } from '../spacetime/connection';
-import { expiryKey, renewKey, RENEW_TOKEN } from '../spacetime/visitRenewal';
+import { expiryKey, idleKey, renewKey, RENEW_TOKEN } from '../spacetime/visitRenewal';
 
 /**
  * Player accounts (Worker gateway only). An account token (`bgu_`) unlocks the
@@ -117,6 +117,7 @@ export async function playAccountCharacter(): Promise<'renew'> {
   localStorage.setItem(TOKEN_KEY, result.token);
   localStorage.setItem(renewKey(TOKEN_KEY), result.renewToken);
   localStorage.setItem(expiryKey(TOKEN_KEY), '0');
+  localStorage.removeItem(idleKey(TOKEN_KEY));
   if (same) return 'renew';
   window.location.reload();
   return new Promise<never>(() => {});
@@ -126,7 +127,7 @@ export async function playAccountCharacter(): Promise<'renew'> {
 export async function logOut(): Promise<void> {
   const token = accountToken();
   if (token) await call('/logout', { auth: token }).catch(() => undefined);
-  for (const key of [ACCOUNT_KEY, TOKEN_KEY, renewKey(TOKEN_KEY), expiryKey(TOKEN_KEY)]) localStorage.removeItem(key);
+  for (const key of [ACCOUNT_KEY, TOKEN_KEY, renewKey(TOKEN_KEY), expiryKey(TOKEN_KEY), idleKey(TOKEN_KEY)]) localStorage.removeItem(key);
   window.location.reload();
 }
 

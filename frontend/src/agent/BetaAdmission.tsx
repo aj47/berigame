@@ -3,7 +3,7 @@ import { SPACETIME_DB, SPACETIME_URI, TOKEN_KEY } from '../spacetime/connection'
 import AccountLogin from '../Components/AccountLogin';
 import { accountToken, completeReturningLogin, playAccountCharacter } from '../account/accountApi';
 import { useToastStore } from '../spacetime/stores/toastStore';
-import { admissionIssue, AdmissionIssue, canRenew, expiryKey, onSignedOut, renewalDelay, renewKey, renewVisit, RENEW_TOKEN, RETRY_MS, savedExpiry as readExpiry } from '../spacetime/visitRenewal';
+import { admissionIssue, AdmissionIssue, canRenew, expiryKey, idleKey, onSignedOut, renewalDelay, renewKey, renewVisit, RENEW_TOKEN, RETRY_MS, savedExpiry as readExpiry } from '../spacetime/visitRenewal';
 import { IDLE_LOGOUT_MINUTES } from '../../../shared/sim/admission';
 
 const EXPIRY_KEY = expiryKey(TOKEN_KEY);
@@ -69,6 +69,7 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
     const sync = (event: StorageEvent) => {
       if (event.key === null || event.key === EXPIRY_KEY || event.key === RENEW_KEY || event.key === TOKEN_KEY) {
         setExpiry(savedExpiry()); setReturning(renewable());
+        if (savedExpiry() > Date.now()) setIdle(false); // another tab returned from an idle logout
       }
     };
     window.addEventListener('storage', sync);
@@ -178,6 +179,7 @@ export default function BetaAdmission({ children }: { children: React.ReactNode 
       if (admission.renewToken) localStorage.setItem(RENEW_KEY, admission.renewToken);
       else localStorage.removeItem(RENEW_KEY);
       localStorage.setItem(EXPIRY_KEY, String(Date.parse(admission.expiresAt)));
+      localStorage.removeItem(idleKey(TOKEN_KEY));
       setIssue(null); setCode(''); setReturning(!!admission.renewToken); setExpiry(Date.parse(admission.expiresAt));
     } catch (cause) {
       setError(cause instanceof DOMException ? 'Enable browser storage to keep your island sign-in, then try again.'

@@ -53,9 +53,14 @@ describe('returning-browser visit renewal', () => {
     saved(NOW - 1);
     expect(await run(reply(409, { error: { code: 'idle_logout' } }))).toBe('idle');
     expect(storage.getItem(renewKey(KEY))).toBe(token('a'));
+    // Other tabs and reloads reuse the answer instead of spending the character's renewal budget.
+    const asked = reply(409, { error: { code: 'idle_logout' } });
+    expect(await run(asked)).toBe('idle');
+    expect(asked).not.toHaveBeenCalled();
     const fetch = reply(200, { renewToken: token('b'), expiresAt: new Date(NOW + 3600_000).toISOString() });
     expect(await renewVisit({ storage, tokenKey: KEY, fetch, now: () => NOW, resume: true })).toBe('renewed');
     expect((fetch.mock.calls[0] as any)[1].body).toBe('{"resume":true}');
+    expect(await run(reply(200, {}))).toBe('fresh');
   });
 
   it('adopts a racing tab result on 409', async () => {
