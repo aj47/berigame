@@ -1,0 +1,5 @@
+/* Hide HUD (U): keep only the world canvas and the elements that contain it. Panels, toasts,
+   portals, nameplates, damage numbers and drei <Html> labels are all siblings of the canvas or outside the world layer. */
+html[data-hud-hidden] body *:not(:has([data-world-layer]), [data-world-layer], [data-world-layer] canvas, [data-world-layer] :has(canvas)) {
+  display: none !important;
+}

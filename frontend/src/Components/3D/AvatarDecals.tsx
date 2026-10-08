@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CircleGeometry, Color, DynamicDrawUsage, Euler, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, RingGeometry, Vector3, type Object3D } from 'three';
 import { useBeforeRender } from './beforeRender';
+import { useHudStore } from '../hudVisibility';
 
 /** Ring styles: your own ring, your combat target's, and everyone else's (fainter). */
 export type DecalKind = 'self' | 'target' | 'other';
@@ -71,6 +72,9 @@ const AvatarDecals = () => {
   useEffect(() => () => {
     for (const mesh of [meshes.blob, meshes.faint, meshes.bright]) { mesh.geometry.dispose(); (mesh.material as MeshBasicMaterial).dispose(); mesh.dispose(); }
   }, [meshes]);
+  // Hide HUD keeps the blob shadows and drops the selection rings.
+  const hudHidden = useHudStore((s) => s.hidden);
+  useEffect(() => { meshes.faint.visible = meshes.bright.visible = !hudHidden; }, [meshes, hudHidden]);
   useBeforeRender(() => {
     const { blob, faint, bright, colors } = meshes;
     let shadows = 0, rings = 0, highlights = 0;
