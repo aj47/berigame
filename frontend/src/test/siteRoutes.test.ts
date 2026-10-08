@@ -7,6 +7,7 @@ describe('public site entry routes', () => {
     ['/play', { kind: 'game' }],
     ['/play/', { kind: 'game' }],
     ['/agent/', { kind: 'agent' }],
+    ['/admin', { kind: 'admin' }],
     ['/docs', { kind: 'wiki' }],
     ['/docs/', { kind: 'wiki' }],
     ['/docs/getting-started', { kind: 'wiki', slug: 'getting-started' }],
@@ -70,6 +71,8 @@ describe('production domain routes', () => {
     expect(resolveSiteRedirect('/', '?join=ABCDEFGH', '', 'wiki.berigame.com')).toBeNull();
     expect(resolveSiteRedirect('/', '?join=ABCDEFGH', '', 'beta.berigame.com')).toBeNull();
     expect(resolveSiteRedirect('/agent', '', '', 'beta.berigame.com')).toBeNull();
+    expect(resolveSiteRedirect('/admin', '', '', 'beta.berigame.com')).toBeNull();
+    expect(resolveSiteRedirect('/admin', '', '', 'berigame.com')).toBe('https://beta.berigame.com/admin');
   });
 
   it('keeps arbitrary preview domains and localhost self-contained', () => {

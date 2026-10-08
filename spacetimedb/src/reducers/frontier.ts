@@ -17,6 +17,7 @@ import {
   projectFrontier,
 } from "../lib/frontier";
 import { readSlots } from "../lib/inventory";
+import { activityAction } from "../lib/activity";
 import { SPIRE_LOBBY_TRAVEL, inSpireLobby, leavesBramblewild, refuseOnSpireFloor } from "../lib/spireGuards";
 export const frontierAction = spacetimedb.reducer(
   { command: t.string() },
@@ -98,6 +99,7 @@ export const frontierAction = spacetimedb.reducer(
       }
     }
     projectFrontier(ctx, w.repo);
+    activityAction(ctx, ctx.sender, validated.action);
   },
 );
 export const configureExpansion = spacetimedb.reducer(

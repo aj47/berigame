@@ -8,7 +8,7 @@ import { ACTIONS, openapi, validateAction, validateObject } from '../agent-api/c
 import { admissionError, ApiError, digest, secret, type Invite } from '../agent-api/portable';
 import { createGameService, deadline, type Credential, type GameSession } from '../agent-api/game';
 import { openCloudflareSocket } from './socket';
-import { bearer, errorBody, readJson, send, unauthorized } from './http';
+import { bearer, errorBody, readJson, send, sendJsonText, unauthorized } from './http';
 import { ACCOUNT_BASE, createAccountTables, forgetCharacter, handleAccount, isAccountPath, isOAuthCallback, reapAccounts, type AccountEnv } from './accounts';
 import { issueRenewal, lookupRenewal, MAX_RENEWALS, renewedElsewhere, rotateRenewal, visitEnded, type RenewalRow, type RenewalStore } from '../agent-api/renewal';
 
@@ -52,7 +52,7 @@ export default {
         throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       }
       if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/sessions`, `${PREFIX}/renewals`, `${PREFIX}/session`, `${PREFIX}/state`, `${PREFIX}/danger`,
-        '/api/play/v1/sessions', '/api/play/v1/renewals', '/api/play/v1/recovery', '/api/play/v1/recover', `${PREFIX}/recovery`, `${PREFIX}/recover`, '/api/admin/invites', '/api/admin/revoke'].includes(url.pathname)
+        '/api/play/v1/sessions', '/api/play/v1/renewals', '/api/play/v1/recovery', '/api/play/v1/recover', `${PREFIX}/recovery`, `${PREFIX}/recover`, '/api/admin/invites', '/api/admin/revoke', '/api/admin/stats', '/api/admin/player'].includes(url.pathname)
         && !account && !Object.keys(ACTIONS).some(name => url.pathname === `${PREFIX}/actions/${name}`)) {
         throw new ApiError(404, 'not_found', 'Unknown endpoint. See /api/agent/v1/openapi.json.');
       }
@@ -133,6 +133,25 @@ export class AgentGateway extends DurableObject<Env> {
     this.take(`renew:${identity}`, CHARACTER_RENEWAL_BUDGET.burst, CHARACTER_RENEWAL_BUDGET.perSecond, now);
   }
   private count(query: string, ...args: (string | number | null)[]) { return this.one<{ n: number }>(query, ...args)?.n ?? 0; }
+  /** Admission-side numbers for the admin panel: live API sessions, joins, invites and sign-in accounts. No IPs or tokens. */
+  private gatewayStats(now: number) {
+    const sql = this.ctx.storage.sql;
+    const day = 86400_000;
+    return {
+      sessions: sql.exec<{ kind: string; state: string; n: number; actions: number }>('SELECT kind, state, COUNT(*) AS n, SUM(actions_count) AS actions FROM sessions WHERE expires_at > ? GROUP BY kind, state', now).toArray(),
+      daily: sql.exec<{ day: string; joins: number; requests: number }>('SELECT * FROM daily ORDER BY day').toArray(),
+      invites: sql.exec<{ kind: string; n: number }>('SELECT kind, COUNT(*) AS n FROM invites WHERE expires_at > ? GROUP BY kind', now).toArray(),
+      renewals: this.count('SELECT COUNT(*) AS n FROM renewals WHERE expires_at > ?', now),
+      accounts: {
+        total: this.count('SELECT COUNT(*) AS n FROM accounts'),
+        withCharacter: this.count('SELECT COUNT(*) AS n FROM accounts WHERE identity IS NOT NULL'),
+        seen1d: this.count('SELECT COUNT(*) AS n FROM accounts WHERE seen_at > ?', now - day),
+        seen7d: this.count('SELECT COUNT(*) AS n FROM accounts WHERE seen_at > ?', now - 7 * day),
+        new7d: this.count('SELECT COUNT(*) AS n FROM accounts WHERE created_at > ?', now - 7 * day),
+        byProvider: sql.exec<{ provider: string; n: number }>('SELECT provider, COUNT(*) AS n FROM account_logins GROUP BY provider').toArray(),
+      },
+    };
+  }
   private take(key: string, capacity: number, perSecond: number, now: number) {
     const old = this.one<{ tokens: number; updated: number }>('SELECT tokens, updated FROM buckets WHERE key = ?', key);
     if (!old && this.count('SELECT COUNT(*) AS n FROM buckets') >= 10000) throw new ApiError(429, 'capacity', 'Request capacity reached.', 60);
@@ -242,6 +261,20 @@ export class AgentGateway extends DurableObject<Env> {
         if (!isAdmin(request, this.env)) throw unauthorized();
         if (request.method !== 'POST') throw new ApiError(405, 'method_not_allowed', 'Use POST.');
         const input = await readJson(request);
+        if (path === '/api/admin/stats') {
+          const value = validateObject(input, { days: { type: 'integer', minimum: 1, maximum: 120 } }, []);
+          const game = await (await this.game()).admin.snapshot(value.days ?? 30);
+          return sendJsonText(200, `{"game":${game},"gateway":${JSON.stringify(this.gatewayStats(now))}}`);
+        }
+        if (path === '/api/admin/player') {
+          const value = validateObject(input, { identity: { type: 'string', minLength: 64, maxLength: 64, pattern: '^[0-9a-f]{64}$' } }, ['identity']);
+          const game = await (await this.game()).admin.player(value.identity);
+          const account = this.one<{ created_at: number; seen_at: number }>('SELECT created_at, seen_at FROM accounts WHERE identity = ?', value.identity);
+          const logins = this.ctx.storage.sql.exec<{ provider: string }>('SELECT provider FROM account_logins l JOIN accounts a ON a.id = l.account_id WHERE a.identity = ?', value.identity).toArray().map(row => row.provider);
+          const sessions = this.ctx.storage.sql.exec<{ kind: string; state: string; actions_count: number; last_seen: number; expires_at: number }>(
+            'SELECT s.kind, s.state, s.actions_count, s.last_seen, s.expires_at FROM sessions s JOIN renewals r ON r.session_id = s.id WHERE r.identity = ?', value.identity).toArray();
+          return sendJsonText(200, `{"game":${game},"gateway":${JSON.stringify({ account: account ? { createdAt: account.created_at, seenAt: account.seen_at, logins } : null, sessions })}}`);
+        }
         if (path === '/api/admin/revoke') {
           const value = validateObject(input, { sessionId: { type: 'string', minLength: 36, maxLength: 36 } }, ['sessionId']);
           const row = this.one<SessionRow>('SELECT * FROM sessions WHERE id = ?', value.sessionId);

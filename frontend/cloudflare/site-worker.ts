@@ -73,7 +73,7 @@ export default {
     if (path === '/play' || (url.hostname === 'berigame.com' && path === '/' && url.searchParams.has('join'))) {
       return redirect(url, GAME_ORIGIN, '/', 302);
     }
-    if (path === '/agent' || path === '/agent.md') {
+    if (path === '/agent' || path === '/agent.md' || path === '/admin') {
       return redirect(url, GAME_ORIGIN, path, 302);
     }
     if (path === '/docs' || path.startsWith('/docs/')) {
