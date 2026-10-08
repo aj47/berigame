@@ -15,6 +15,18 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-08-the-journey', date: '2026-10-08', period: 'Oct 8, 2026',
+    title: 'The map and goal chip now lead all the way to the Sunken Spire',
+    changes: [
+      'After your Stone Club, the goal chip keeps going: gather 3 obsidian in the Boulders, defeat Clatterhorn for gleamshell, make a Spire Key and descend the Sunken Spire. It no longer sends you back to the camp in a loop once you hold obsidian.',
+      'The map shows the whole road as five chapters, Grove, Coast, Boulders, Clatterhorn’s Glade and the Sunken Spire, with your current one highlighted. Tap a chapter to walk there.',
+      'A gold ring on the small and large map marks where your current goal leads.',
+      'After a defeat, the goal chip offers to walk you back to your dropped bag when you can still reach it.',
+      'Agents get the same road in state.goal, now with a target tile and chapter.',
+    ],
+    commits: [],
+  },
+  {
     id: '2026-10-05-clatterhorn-and-the-sunken-spire', date: '2026-10-05', period: 'Oct 5, 2026',
     title: 'Clatterhorn scuttles in a new southern glade; the Sunken Spire opens under the inland sea',
     changes: [

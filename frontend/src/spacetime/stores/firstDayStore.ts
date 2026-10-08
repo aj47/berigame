@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { EventKind, STICK_ITEM_ID } from '@sim';
+import { EventKind, STICK_ITEM_ID, journeyChapterOf, type GoalStepId, type JourneyChapterId, type Tile } from '@sim';
 import type { CombatEvent } from '../../module_bindings/types';
 
 /**
@@ -15,7 +15,20 @@ interface Remembered {
   tipped?: string[];
 }
 
+/** The chip's current goal, for the map: where it leads and which journey chapter it belongs to. */
+export interface MapGoal {
+  id: GoalStepId;
+  text: string;
+  /** Where the goal sends you (null for an in-place step such as making or eating). */
+  target: Tile | null;
+}
+
 interface FirstDayState extends Remembered {
+  /** Session only: the chip's goal, mirrored for the map. */
+  goal: MapGoal | null;
+  /** The last journey chapter a goal belonged to, so detours keep the map's place. */
+  chapter: JourneyChapterId | null;
+  setGoal: (goal: MapGoal | null) => void;
   owner: string | null;
   /** performance.now() of this player's last stick find, for the banner and slot sparkle. */
   stickFoundAt: number | null;
@@ -65,9 +78,18 @@ export const useFirstDayStore = create<FirstDayState>((set, get) => ({
   activeTip: null,
   celebrating: false,
   stickFoundAt: null,
+  goal: null,
+  chapter: null,
+  setGoal: (goal) => {
+    const s = get();
+    const same = s.goal === goal || (!!s.goal && !!goal && s.goal.id === goal.id && s.goal.text === goal.text
+      && s.goal.target?.x === goal.target?.x && s.goal.target?.z === goal.target?.z);
+    if (same) return;
+    set({ goal, chapter: journeyChapterOf(goal?.id) ?? s.chapter });
+  },
   load: (owner) => {
     if (owner === get().owner) return;
-    set({ owner, ...(owner ? read(owner) : { done: [], seen: {}, tipped: [] }), stickFoundAt: null });
+    set({ owner, ...(owner ? read(owner) : { done: [], seen: {}, tipped: [] }), stickFoundAt: null, goal: null, chapter: null });
   },
   setDone: (done) => {
     const s = get();

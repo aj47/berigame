@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Celebration, OnboardingTip } from "./OnboardingTip";
+import { BOSS_TUTORIAL_STEPS, Celebration, OnboardingTip } from "./OnboardingTip";
 import {
   HOTBAR_SIZE,
   PlayerState,
@@ -10,13 +10,20 @@ import {
   firstDayGoal,
   getItemDef,
   type Goal,
+  goalBosses,
+  goalTarget,
+  levelForXp,
+  nearestBag,
   raidStatus,
 } from "@sim";
+import { useBossStore } from "../bosses/bossStore";
 import { useGameActions } from "../spacetime/actions";
 import {
   useGiantRaid,
   useGiants,
+  useGroundItems,
   useInventoryRows,
+  useMyCosmetics,
   useNow,
   useMyIdentityHex,
   useMyPlayer,
@@ -51,6 +58,12 @@ function goalIcon(goal: Goal, trees: ReturnType<typeof useTrees>): string {
   if (goal.id === "find-stick") return getItemDef(STICK_ITEM_ID)?.icon ?? "/items/stick.png";
   if (goal.id === "gather-coast") return getItemDef("flint")?.icon ?? "/items/flint.png";
   if (goal.id === "reach-boulders" || goal.id === "face-giant") return getItemDef(STONE_CLUB_ITEM_ID)?.icon ?? "/items/stone_club.png";
+  if (goal.id === "gather-obsidian") return getItemDef("obsidian")?.icon ?? "/items/obsidian.png";
+  if (goal.id === "reach-glade" || goal.id === "face-clatterhorn" || goal.id === "clatter-sealed" || goal.id === "clatter-resting")
+    return getItemDef("gleamshell")?.icon ?? "/items/gleamshell.png";
+  if (goal.id === "make-key" || goal.id === "reach-spire" || goal.id === "open-spire" || goal.id === "spire-sealed")
+    return getItemDef("spire_key")?.icon ?? "/items/spire_key.png";
+  if (goal.id === "make-circlet") return getItemDef("prism_shard")?.icon ?? "/items/prism_shard.png";
   return "/items/blueberry.png";
 }
 
@@ -86,7 +99,12 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
   const rows = useInventoryRows();
   const skills = useMySkills();
   const giants = useGiants();
+  const groundItems = useGroundItems();
+  const cosmetics = useMyCosmetics();
+  const bossConfig = useBossStore((s) => s.config);
+  const clatter = useBossStore((s) => s.clatter);
   const actions = useGameActions();
+  const setMapGoal = useFirstDayStore((s) => s.setGoal);
   const showToast = useToastStore((s) => s.show);
   const showGuidance = useSettingsStore(s => s.showGuidance);
   const { done, seen, stickFoundAt, load, setDone, dismissFind, owner, tipped, markTipped } = useFirstDayStore();
@@ -107,13 +125,22 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
     () => players.filter((p) => p !== me),
     [players, me],
   );
+  const bosses = useMemo(() => goalBosses(bossConfig, clatter), [bossConfig, clatter]);
+  const bag = useMemo(() => (me && meHex ? nearestBag(me, meHex, groundItems) : null), [groundItems, me, meHex]);
   const result = useMemo(
     () =>
       me
-        ? firstDayGoal({ me, slots, trees, others, tick, canFight: true, foragingXp: skills?.foragingXp ?? 0, done, seen, giant: giants[0] ?? null })
+        ? firstDayGoal({ me, slots, trees, others, tick, canFight: true, foragingXp: skills?.foragingXp ?? 0, done, seen, giant: giants[0] ?? null,
+          bosses, cosmetics: cosmetics?.unlocked ?? 0, craftingLevel: levelForXp(skills?.craftingXp ?? 0), bag })
         : null,
-    [me, slots, trees, others, tick, done, seen, giants, skills?.foragingXp],
+    [me, slots, trees, others, tick, done, seen, giants, skills?.foragingXp, skills?.craftingXp, bosses, cosmetics?.unlocked, bag],
   );
+
+  // The map marks where the goal leads and highlights its journey chapter.
+  useEffect(() => {
+    const goal = result?.goal;
+    setMapGoal(goal ? { id: goal.id, text: goal.text, target: goalTarget(goal, { trees, giant: giants[0] ?? null, clatter, bag }) } : null);
+  }, [result?.goal, trees, giants, clatter, bag, setMapGoal]);
 
   useEffect(() => {
     // Only after this identity's remembered set has loaded, or a stale first render would overwrite it.
@@ -140,7 +167,7 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
   const goalId = result?.goal?.id;
   const tipAllowed = showGuidance && worldShown && loaded && visible && !!me && me.state !== PlayerState.Dead && !me.hostile && !celebrating;
   useEffect(() => {
-    if (!tipAllowed || useFirstDayStore.getState().celebrating || !goalId || tipped?.includes(goalId)) return;
+    if (!tipAllowed || useFirstDayStore.getState().celebrating || !goalId || tipped?.includes(goalId) || BOSS_TUTORIAL_STEPS.has(goalId)) return;
     setActiveTip(goalId);
     markTipped(goalId);
   }, [tipAllowed, goalId, tipped, markTipped, setActiveTip]);
@@ -187,6 +214,9 @@ const GoalChip = ({ visible }: { visible: boolean }) => {
       else if (action.kind === "wield") await actions.wieldItem(action.slot);
       else if (action.kind === "move") await actions.setTarget(action.x, action.z);
       else if (action.kind === "giant") await actions.attackGiant(action.giantId);
+      else if (action.kind === "clatterhorn") await actions.attackClatterhorn();
+      else if (action.kind === "spire") useBossStore.getState().setLobbyOpen(true);
+      else if (action.kind === "pickup") await actions.pickupItem(BigInt(action.itemId));
       else if (action.kind === "craft") {
         if (await actions.craft(action.recipe))
           showToast(`You made a ${(getItemDef(action.recipe)?.name ?? "thing").toLowerCase()}!`);

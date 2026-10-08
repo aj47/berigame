@@ -402,8 +402,19 @@ per cut. All current IDs and positions are in `frontier.resources`.
   `move {x, z}`) or `null` while you walk, wait or harvest. After First Day it
   continues on the Coast: `gather-coast` ("Gather driftwood and 2 flint on the
   Coast (n/3)", action `harvest {treeId}` on the right node), `make-club`
-  (action `craft {recipe}`), then `wield-club`; after that it is `null`. If
-  you lose your stick, `find-stick` and `reach-coast` return first.
+  (action `craft {recipe}`), then `wield-club`. It then follows the journey to
+  the Sunken Spire: `reach-boulders`, `face-giant` (action `giant {giantId}`)
+  or `gather-obsidian` until you hold 3 obsidian; `reach-glade`,
+  `face-clatterhorn` (action `clatterhorn`, i.e. `attack_clatterhorn`) or
+  `clatter-resting` until you hold a gleamshell; `make-key`; `reach-spire`;
+  `open-spire` (action `spire`: open or join a party). `clatter-sealed` and
+  `spire-sealed` (action `null`) mean the owner has not opened that boss yet.
+  After a clear the road starts again, and `make-circlet` appears once you can
+  make the Shard Circlet. `recover-bag` (action `pickup {itemId}`) comes first
+  after a defeat when your dropped items are within reach of the keys you hold.
+  `target {x, z}` (or `null`) is where the step leads and `chapter` is one of
+  `grove`, `coast`, `boulders`, `glade`, `spire` (`null` for a detour). If you
+  lose your stick, `find-stick` and `reach-coast` return first.
 - **Wielding.** `POST /actions/wield {"slot": n}` wields the weapon in quick slot
   `n`. Slots outside 0..2 get `400`. A slot without a weapon gets `422`.
   `POST /actions/unwield {}` goes back to punching.
