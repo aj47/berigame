@@ -685,3 +685,14 @@ export const pendingDeposit = table({ name: 'pending_deposit' }, {
   quantity: t.u8(),
   doneTick: t.u32(),
 });
+
+/**
+ * Private idle-logout state (lib/idle.ts). `activeTick` is when the character
+ * last connected or chose to return, so a fresh arrival is not judged by an
+ * old `lastInputTick`. `loggedOut` holds until the player asks to return.
+ */
+export const idleState = table({ name: 'idle_state' }, {
+  identity: t.identity().primaryKey(),
+  activeTick: t.u32(),
+  loggedOut: t.bool(),
+});

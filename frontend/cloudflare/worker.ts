@@ -1,5 +1,5 @@
 import { requestLane, AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS, REQUEST_BUDGET, JOIN_BUDGET, NETWORK_JOIN_BUDGET, RENEWAL_BUDGET, CHARACTER_RENEWAL_BUDGET } from '../agent-api/admissionPolicy';
-import { MAX_ONLINE_PLAYERS, MAX_STORED_CHARACTERS } from '../../shared/sim/admission';
+import { IDLE_LOGOUT_MINUTES, MAX_ONLINE_PLAYERS, MAX_STORED_CHARACTERS } from '../../shared/sim/admission';
 import { sealRecovery, openRecovery } from '../agent-api/recovery';
 import './codecs';
 import { DurableObject } from 'cloudflare:workers';
@@ -10,7 +10,7 @@ import { createGameService, deadline, type Credential, type GameSession } from '
 import { openCloudflareSocket } from './socket';
 import { bearer, errorBody, readJson, send, unauthorized } from './http';
 import { ACCOUNT_BASE, createAccountTables, forgetCharacter, handleAccount, isAccountPath, isOAuthCallback, reapAccounts, type AccountEnv } from './accounts';
-import { issueRenewal, lookupRenewal, MAX_RENEWALS, renewedElsewhere, rotateRenewal, visitEnded, type RenewalRow, type RenewalStore } from '../agent-api/renewal';
+import { issueRenewal, lookupRenewal, MAX_RENEWALS, renewalRefusal, renewedElsewhere, rotateRenewal, visitEnded, type RenewalRow, type RenewalStore } from '../agent-api/renewal';
 
 interface Env extends AccountEnv {
   ASSETS: Fetcher;
@@ -30,9 +30,12 @@ type Receipt = { fingerprint: string; status: number; body: string };
 type Service = Awaited<ReturnType<typeof createGameService>>;
 const PREFIX = '/api/agent/v1';
 const IDLE_MS = 10 * 60_000;
+/** Renewal bodies: `resume: true` is the player choosing to return after an idle logout. */
+const RESUME_BODY = { resume: { type: 'boolean' } } as const;
 const unavailable = () => new ApiError(503, 'world_unavailable', 'The island is unavailable. Retry shortly.');
 function playerRejection(error: unknown): string {
   const message = String(error instanceof Error ? error.message : error).replace(/^SenderError:\s*/, '').slice(0, 300);
+  if (/access required or expired/.test(message)) return `This character is logged out: no game action for ${IDLE_LOGOUT_MINUTES} minutes, or its permit ended. POST ${PREFIX}/renewals with your renewToken and {"resume": true} to return.`;
   return /^(Needs |Walk |Put |Pick |The |This |That |You |Both |One |Finish |Change |Earn |Three |Visit |Four |Join |Choose |Catch |Pass |Ask |Equip |Fresh |No |They |Only |empty slot|still chewing|not a weapon|No fighting)/i.test(message) && !/token|credential|sql|stack|https?:/i.test(message)
     ? message : 'The game rejected this action. Inspect state before trying again.';
 }
@@ -358,7 +361,7 @@ export class AgentGateway extends DurableObject<Env> {
         return send(200,{recoveryToken,renewToken,playerId:row.identity,...saved.credential,expiresAt:new Date(now+180*86400_000).toISOString(),next:'Use the ordinary renewal endpoint to obtain a bounded play permit.'});
       }
       if (path === `${PREFIX}/renewals` && request.method === 'POST') {
-        validateObject(await readJson(request), {}, []);
+        const { resume = false } = validateObject(await readJson(request), RESUME_BODY, []);
         const store = this.renewals(), found = lookupRenewal(store, bearer(request), now);
         this.takeRenewal(found.identity, now);
         const config = JSON.parse(found.config) as Invite & { kind?: string; credential?: Credential };
@@ -372,11 +375,11 @@ export class AgentGateway extends DurableObject<Env> {
           const old = this.one<SessionRow>('SELECT * FROM sessions WHERE id = ?', found.session_id);
           if (old && this.busy.has(old.key)) throw new ApiError(409, 'action_in_progress', 'Wait for the current action before returning.');
           const renewPermit = async () => {
-            try { await service.renew(found.identity, config.lifetimeSeconds); }
+            try { await service.renew(found.identity, config.lifetimeSeconds, resume); }
             catch (error) {
               const message = error instanceof Error ? error.message : String(error);
               if (/revoked|no renewable permit/.test(message)) { store.removeIdentity(found.identity); throw visitEnded(); }
-              throw admissionError(error) ?? unavailable();
+              throw renewalRefusal(error) ?? admissionError(error) ?? unavailable();
             }
           };
           if (old?.state === 'active') {
@@ -418,7 +421,7 @@ export class AgentGateway extends DurableObject<Env> {
       }
       if (path === '/api/play/v1/renewals' && request.method === 'POST') {
         const token = bearer(request);
-        validateObject(await readJson(request), {}, []);
+        const { resume = false } = validateObject(await readJson(request), RESUME_BODY, []);
         const store = this.renewals();
         const found = lookupRenewal(store, token, now);
         this.takeRenewal(found.identity, now);
@@ -431,12 +434,12 @@ export class AgentGateway extends DurableObject<Env> {
         this.renewing.add(found.identity);
         try {
           const service = await this.game();
-          try { await service.renew(found.identity, invite.lifetimeSeconds); }
+          try { await service.renew(found.identity, invite.lifetimeSeconds, resume); }
           catch (error) {
             if (error instanceof ApiError) throw error;
             const message = error instanceof Error ? error.message : String(error);
             if (/revoked|no renewable permit/.test(message)) { store.removeIdentity(found.identity); throw visitEnded(); }
-            throw admissionError(error) ?? unavailable();
+            throw renewalRefusal(error) ?? admissionError(error) ?? unavailable();
           }
           // Synchronous from here: rotation and the visit slot commit together.
           const at = Date.now();

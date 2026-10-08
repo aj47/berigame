@@ -106,6 +106,7 @@ function harness() {
       ...adventureTables(),
       accessPolicy: { id: { find: () => ({ id: 0, owner: identity('owner'), gateway: identity('gw'), requireAdmission: false }) } },
       playerGrant: { identity: { find: () => undefined } },
+      idleState: byId(new Map()),
       world: { id: { find: () => ({ id: 0, tick: now }), update: (row: any) => { now = row.tick; } } },
       player: { iter: () => players.values(), count: () => BigInt(players.size), insert: (p: any) => players.set(p.identity.toHexString(), p), identity: {
         find: (id: any) => players.get(id.toHexString()),

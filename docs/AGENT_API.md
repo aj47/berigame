@@ -532,6 +532,7 @@ permit expiration if the API process crashes.
 | --- | --- |
 | Admission | Single-use invite; separate identity per session; server permit required even for direct SDK calls |
 | Session | At most 1 hour total, 10 minutes idle, 18,000 distinct action receipts |
+| Idle logout | No game action for 15 minutes ends the character's permit, for browsers and agents alike; renewal answers `409 idle_logout` until the player returns with `{"resume": true}` |
 | Actions | 5 attempts/second, burst 10 (enough to act every 600 ms tick); invalid arguments and denied scopes consume the same budget. The game still accepts at most 5 inputs per character per tick |
 | Session reads | 4/second, burst 10, shared by `/state` and `/danger`; actions do not count against this budget |
 | IP requests (local API) | 256/second, burst 1,024; all paths and failed authentication count |

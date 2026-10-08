@@ -9,6 +9,7 @@ import { clearInteractions, findPlayer, hex, sameId, savePlayer } from '../lib/p
 import { requireAdmission } from '../lib/access';
 import { seedMissingNodes } from '../lib/nodes';
 import { statsSessionEnd, statsSessionStart } from '../lib/stats';
+import { noteConnected } from '../lib/idle';
 import { cancelTrade, tradesOf } from '../lib/social';
 import { hasWorldSpace, MAX_CHARACTER_CONNECTIONS, MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
 
@@ -44,6 +45,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   // restart, stale session state is closed out and a new session starts.
   const alreadyOnline = Boolean(existing && existing.online && existing.connections > 0);
   statsSessionStart(ctx, ctx.sender, alreadyOnline);
+  noteConnected(ctx, ctx.sender, ctx.db.world.id.find(0)?.tick ?? 0);
   // The time away fills the energy meter above the rested line (shared/sim/energy.ts).
   if (existing && !alreadyOnline) settleEnergyFor(ctx, ctx.sender, false);
   if (existing) {

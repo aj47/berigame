@@ -145,10 +145,11 @@ export async function createGameService(credential: Credential, options: Connect
   const revoke = async (identity: string) => {
     await deadline(control.conn.reducers.revokePlayer({ identity: Identity.fromString(identity) }), 3000);
   };
-  /** Extends a gateway-issued permit that was not revoked (returning browsers, F1). */
-  const renew = async (identity: string, lifetimeSeconds: number) => {
+  /** Extends a gateway-issued permit that was not revoked (returning browsers, F1). `resume` also ends an idle logout. */
+  const renew = async (identity: string, lifetimeSeconds: number, resume = false) => {
     if (!ready()) throw unavailable();
-    await deadline(control.conn.reducers.renewGrant({ identity: Identity.fromString(identity), lifetimeSeconds }));
+    const args = { identity: Identity.fromString(identity), lifetimeSeconds };
+    await deadline(resume ? control.conn.reducers.resumeGrant(args) : control.conn.reducers.renewGrant(args));
   };
   const suspend = async (identity: string) => { await deadline(control.conn.reducers.endVisit({ identity: Identity.fromString(identity) }), 3000); };
   const provision = async (invite: Invite) => {

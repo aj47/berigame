@@ -360,6 +360,13 @@ export const GroundItem = __t.object("GroundItem", {
 });
 export type GroundItem = __Infer<typeof GroundItem>;
 
+export const IdleState = __t.object("IdleState", {
+  identity: __t.identity(),
+  activeTick: __t.u32(),
+  loggedOut: __t.bool(),
+});
+export type IdleState = __Infer<typeof IdleState>;
+
 export const InventorySlot = __t.object("InventorySlot", {
   id: __t.u64(),
   owner: __t.identity(),
