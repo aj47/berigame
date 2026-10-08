@@ -372,11 +372,18 @@ per cut. All current IDs and positions are in `frontier.resources`.
   "neck", "cosmetic": "<id>" | "none"}` changes what you wear. Purely visual; everyone
   sees it.
 - **Busy trees: wait and claim.** `harvest` on a regrowing or claimed tree is
-  not an error: you walk next to it and wait. On the tick it ripens, waiters
-  claim it in this order: newcomers (in first-spawn grace), then the earliest
-  last input (any new action resets yours), then server order. The receipt has
-  `waiting {treeId, ripeInTicks}` when the tree is not ready yet. Without
-  `treeId`, `harvest` picks the tree with the soonest claim for you.
+  not an error: you walk next to it and wait. Claims are never first come,
+  first served: on each tick a node is free, the server draws one winner at
+  random from everyone beside it with a `harvest` pending for it, including
+  players who arrived that tick. Newcomers (in first-spawn grace) are drawn
+  before everyone else. Odds follow your energy meter: your weight is
+  `1 + 3 × points / max` (empty 1, the rested line 3, full 4), so nonstop
+  gathering lowers your odds and time away raises them, and nobody's odds reach
+  zero. Reacting faster, calling `harvest` repeatedly or having waited longer
+  does not change your odds; losers keep waiting for the next draw. A harvest on a free node you stand beside starts on the next
+  tick. The receipt has `waiting {treeId, ripeInTicks}` when the tree is not
+  ready yet. Without `treeId`, `harvest` picks the tree with the soonest
+  expected claim for you.
 - **Safety.** No attack starts or lands while either player is inside the safe
   ring (`world.safeRing`, radius 3 around spawn). A player is also protected for
   10 ticks after respawning, for 3 ticks after stepping out of the safe ring,

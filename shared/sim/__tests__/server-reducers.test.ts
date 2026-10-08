@@ -863,29 +863,87 @@ describe('wait-and-claim at a busy tree', () => {
   it('picking the tree you are harvesting keeps the harvest instead of restarting it', () => {
     h.trees.get(1).cooldownUntilTick = 0;
     startHarvest(h.ctx, { treeId: 1 });
-    expect(h.me()).toMatchObject({ harvestTreeId: 1, harvestEndTick: 10 + HARVEST_TICKS });
+    run();
+    expect(h.me()).toMatchObject({ harvestTreeId: 1, harvestEndTick: 11 + HARVEST_TICKS });
     run(2);
     startHarvest(h.ctx, { treeId: 1 });
-    expect(h.me()).toMatchObject({ harvestTreeId: 1, harvestEndTick: 10 + HARVEST_TICKS, pending: Pending.None });
+    expect(h.me()).toMatchObject({ harvestTreeId: 1, harvestEndTick: 11 + HARVEST_TICKS, pending: Pending.None });
     expect(h.trees.get(1).harvester).toBe(A);
     run(HARVEST_TICKS - 2);
     expect(h.me().harvestTreeId).toBe(0);
     expect([...h.inventory.values()].find((row) => row.itemId === 'berry_blueberry')?.quantity).toBe(3);
   });
 
-  it('among veterans the earliest last input wins', () => {
+  it('among veterans the draw ignores who queued first', () => {
     h.tick(11); as(B, () => startHarvest(h.ctx, { treeId: 1 }));
     h.tick(12); startHarvest(h.ctx, { treeId: 1 });
+    h.ctx.random.mockReturnValue(0);
     run(3);
-    expect(claimant()).toBe('b');
+    expect(claimant()).toBe('a');
+    expect(h.ctx.random).toHaveBeenCalledTimes(1);
+    expect(h.other().pending).toBe(Pending.Harvest);
   });
 
-  it('then tick order breaks the tie', () => {
+  it('the roll picks among everyone in reach', () => {
     h.tick(11);
     as(C, () => startHarvest(h.ctx, { treeId: 1 }));
     as(B, () => startHarvest(h.ctx, { treeId: 1 }));
+    h.ctx.random.mockReturnValue(0.6);
     run(4);
+    expect(claimant()).toBe('c');
+  });
+
+  it('a free tree is never claimed by the reducer: calling first does not win', () => {
+    h.trees.get(1).cooldownUntilTick = 0;
+    startHarvest(h.ctx, { treeId: 1 });
+    as(B, () => startHarvest(h.ctx, { treeId: 1 }));
+    expect(h.trees.get(1).harvester).toBeUndefined();
+    h.ctx.random.mockReturnValue(0.99);
+    run();
     expect(claimant()).toBe('b');
+    expect(h.me()).toMatchObject({ pending: Pending.Harvest, harvestTreeId: 0 });
+  });
+
+  it('a player walking up on the ripening tick joins that draw', () => {
+    Object.assign(h.other(), { x: 35, z: 30 });
+    h.tick(13); startHarvest(h.ctx, { treeId: 1 });
+    as(B, () => startHarvest(h.ctx, { treeId: 1 }));
+    h.ctx.random.mockReturnValue(0.99);
+    run(1);
+    expect(h.other()).toMatchObject({ x: 33, pending: Pending.Harvest });
+    run(1);
+    expect(worldTick()).toBe(15);
+    expect(h.other().x).toBe(31);
+    expect(claimant()).toBe('b');
+    expect(h.ctx.random).toHaveBeenCalledTimes(1);
+  });
+
+  it('energy sets the odds: a drained grinder rarely beats a rested player', () => {
+    const now = Number(h.ctx.timestamp.microsSinceUnixEpoch / 1000n);
+    const meter = (id: string, points: number) => frontierRepository(h.ctx as any).put('energy', { id, points, at: now, born: now - ENERGY_SEASON_MS, tired: 0 } as EnergyState);
+    h.tick(11);
+    startHarvest(h.ctx, { treeId: 1 });
+    as(B, () => startHarvest(h.ctx, { treeId: 1 }));
+    // Same roll: equal meters (rested line, weight 3 each) give it to a ...
+    h.ctx.random.mockReturnValue(0.3);
+    run(4);
+    expect(claimant()).toBe('a');
+    // ... but a drained a (weight 1) against a full b (weight 4) loses it.
+    h.trees.set(1, { id: 1, x: 30, z: 30, itemId: 'berry_blueberry', cooldownUntilTick: 20 });
+    Object.assign(h.me(), { harvestTreeId: 0, harvestEndTick: 0 });
+    meter('a', 0); meter('b', ENERGY_MAX);
+    startHarvest(h.ctx, { treeId: 1 });
+    run(5);
+    expect(worldTick()).toBe(20);
+    expect(claimant()).toBe('b');
+  });
+
+  it('a lone claimant draws nothing', () => {
+    h.trees.get(1).cooldownUntilTick = 0;
+    startHarvest(h.ctx, { treeId: 1 });
+    run();
+    expect(claimant()).toBe('a');
+    expect(h.ctx.random).not.toHaveBeenCalled();
   });
 });
 
@@ -1014,6 +1072,7 @@ describe('M2: Coast nodes on the server', () => {
     h.tick(worldTick());
     h.ctx.random.mockReturnValue(0);
     startHarvest(h.ctx, { treeId: id });
+    run();
     const start = worldTick();
     expect(h.me().harvestEndTick).toBe(start + harvestTicks);
     run(harvestTicks - 1);
@@ -1493,16 +1552,20 @@ describe('F2: skills, level-gated recipes and cosmetics on the server', () => {
     Object.assign(h.me(), { x: 29, z: 25 });
     h.trees.set(4, { id: 4, x: 30, z: 25, itemId: 'berry_blueberry', cooldownUntilTick: 0, kind: 0 });
     startHarvest(h.ctx, { treeId: 4 });
+    run();
     expect(h.me().harvestEndTick - worldTick()).toBe(HARVEST_TICKS - 2);
     cancel(h.ctx);
     h.trees.set(3, { id: 3, x: 28, z: 25, itemId: 'berry_goldberry', cooldownUntilTick: 0, kind: 0 });
     h.tick(11);
     startHarvest(h.ctx, { treeId: 3 });
+    run();
     expect(h.me().harvestEndTick - worldTick()).toBe(HARVEST_TICKS);
     cancel(h.ctx);
-    h.trees.set(101, { id: 101, x: 30, z: 26, itemId: 'driftwood', cooldownUntilTick: 0, kind: NodeKind.Driftwood });
+    // An id outside NODE_SEEDS, so the tick does not move it back to the Coast.
+    h.trees.set(901, { id: 901, x: 30, z: 26, itemId: 'driftwood', cooldownUntilTick: 0, kind: NodeKind.Driftwood });
     h.tick(12);
-    startHarvest(h.ctx, { treeId: 101 });
+    startHarvest(h.ctx, { treeId: 901 });
+    run();
     expect(h.me().harvestEndTick - worldTick()).toBe(3); // 4 - 2 would be 2: clamped to 3
   });
 
