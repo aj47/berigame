@@ -1,4 +1,5 @@
 import { ApiError, digest, secret } from './portable';
+import { IDLE_LOGOUT_MINUTES } from '../../shared/sim/admission';
 
 /**
  * Persistent browser identity (roadmap F1).
@@ -30,6 +31,10 @@ export interface RenewalStore {
 }
 
 export const visitEnded = () => new ApiError(401, 'visit_ended', 'This island sign-in can no longer be renewed. Use a new invite to return.');
+/** The world logged this character out for inactivity (spacetimedb/src/lib/idle.ts); only an explicit return renews it. */
+export const idleLogout = () => new ApiError(409, 'idle_logout', `Logged out after ${IDLE_LOGOUT_MINUTES} minutes without a game action. Renew with {"resume": true} to return.`);
+/** Maps a module refusal to the gateway error a returning player should see, or undefined. */
+export const renewalRefusal = (error: unknown) => /inactivity/.test(error instanceof Error ? error.message : String(error)) ? idleLogout() : undefined;
 export const renewedElsewhere = () => new ApiError(409, 'renewed_elsewhere', 'Another tab already renewed this visit. Reload the saved sign-in and retry.', 1);
 
 /** Creates the first renewal token for a freshly admitted browser identity. */

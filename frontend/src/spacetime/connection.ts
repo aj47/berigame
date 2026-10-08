@@ -5,6 +5,7 @@ import { useLoadingStore } from '../store';
 
 import { abortPendingCalls } from './pendingCalls';
 import { readSessionToken, sessionTokenKey, visiblyInvalidToken } from './sessionToken';
+import { reportSignedOut } from './visitRenewal';
 
 const env = (import.meta as any).env ?? {};
 export const SPACETIME_URI: string = env.VITE_SPACETIME_URI ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3000`;
@@ -153,6 +154,8 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
     .onConnectError((ctx, error) => {
       console.error('Game server connection failed');
       markConnectionLost(ctx, seq < connectedSeq);
+      // The permit ended while this tab still held it (an idle logout, for one): ask the gateway, don't retry.
+      if (/access required or expired/.test(error instanceof Error ? error.message : String(error))) reportSignedOut();
       useLoadingStore.getState().setConnectionIssue(
         /world is full/.test(error instanceof Error ? error.message : String(error))
           ? 'This world is full. Your character is saved; we will retry when a place is available.'

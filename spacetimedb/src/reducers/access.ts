@@ -1,7 +1,11 @@
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { requireOwner } from '../lib/access';
-import { clearInteractions, sameId } from '../lib/players';
+import type { Identity } from 'spacetimedb';
+import type { Ctx } from '../lib/types';
+import { clearInteractions, sameId, savePlayer } from '../lib/players';
+import { clearIdleLogout, isIdleLoggedOut } from '../lib/idle';
+import { statsSessionStart } from '../lib/stats';
 import { hasWorldSpace, MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
 
 /** Only the publisher captured during init can configure admission. */
@@ -36,23 +40,41 @@ export const grantAgent = spacetimedb.reducer(
 /**
  * The gateway extends a permit it issued earlier, so a returning browser keeps
  * its character (F1). Only an existing, gateway-issued, unrevoked permit can be
- * renewed: revocation writes expiresAtMicros = 0, which is final here.
+ * renewed: revocation writes expiresAtMicros = 0, which is final here. A
+ * character logged out for inactivity (lib/idle.ts) is renewed only through
+ * resume_grant, which the gateway calls when its player explicitly returns.
  */
+function extendGrant(ctx: Ctx, identity: Identity, lifetimeSeconds: number, resume: boolean): void {
+  const policy = ctx.db.accessPolicy.id.find(0);
+  if (!policy?.requireAdmission || !sameId(policy.gateway, ctx.sender)) throw new SenderError('agent gateway required');
+  if (lifetimeSeconds < 60 || lifetimeSeconds > 3600) throw new SenderError('agent lifetime must be 60..3600 seconds');
+  const grant = ctx.db.playerGrant.identity.find(identity);
+  if (!grant || !grant.agent || !sameId(grant.issuer, ctx.sender)) throw new SenderError('no renewable permit for this identity');
+  if (grant.expiresAtMicros === 0n) throw new SenderError('this permit was revoked');
+  if (!resume && isIdleLoggedOut(ctx, identity)) throw new SenderError('logged out for inactivity');
+  const now = ctx.timestamp.microsSinceUnixEpoch;
+  // A player already online can always extend their permit at a full world.
+  const player = ctx.db.player.identity.find(identity);
+  if (!hasWorldSpace(ctx.db.player.iter(), !!player?.online)) throw new SenderError('world is full');
+  ctx.db.playerGrant.identity.update({ ...grant, expiresAtMicros: now + BigInt(lifetimeSeconds) * 1_000_000n });
+  if (!resume) return;
+  clearIdleLogout(ctx, identity, ctx.db.world.id.find(0)?.tick ?? 0);
+  // An agent's gateway connection stays open through an idle logout: bring that character back now.
+  if (player && !player.online && player.connections > 0) {
+    statsSessionStart(ctx, identity);
+    savePlayer(ctx, { ...player, online: true, lastSeenAt: ctx.timestamp });
+  }
+}
+
 export const renewGrant = spacetimedb.reducer(
   { identity: t.identity(), lifetimeSeconds: t.u32() },
-  (ctx, { identity, lifetimeSeconds }) => {
-    const policy = ctx.db.accessPolicy.id.find(0);
-    if (!policy?.requireAdmission || !sameId(policy.gateway, ctx.sender)) throw new SenderError('agent gateway required');
-    if (lifetimeSeconds < 60 || lifetimeSeconds > 3600) throw new SenderError('agent lifetime must be 60..3600 seconds');
-    const grant = ctx.db.playerGrant.identity.find(identity);
-    if (!grant || !grant.agent || !sameId(grant.issuer, ctx.sender)) throw new SenderError('no renewable permit for this identity');
-    if (grant.expiresAtMicros === 0n) throw new SenderError('this permit was revoked');
-    const now = ctx.timestamp.microsSinceUnixEpoch;
-    // A player already online can always extend their permit at a full world.
-    const player = ctx.db.player.identity.find(identity);
-    if (!hasWorldSpace(ctx.db.player.iter(), !!player?.online)) throw new SenderError('world is full');
-    ctx.db.playerGrant.identity.update({ ...grant, expiresAtMicros: now + BigInt(lifetimeSeconds) * 1_000_000n });
-  },
+  (ctx, { identity, lifetimeSeconds }) => extendGrant(ctx, identity, lifetimeSeconds, false),
+);
+
+/** The player chose to return after an idle logout. */
+export const resumeGrant = spacetimedb.reducer(
+  { identity: t.identity(), lifetimeSeconds: t.u32() },
+  (ctx, { identity, lifetimeSeconds }) => extendGrant(ctx, identity, lifetimeSeconds, true),
 );
 
 /** Human players in an admitted world are explicitly approved by its owner. */

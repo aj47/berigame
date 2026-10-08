@@ -2,6 +2,7 @@ import { validateCommand } from '../../shared/sim/frontier/engine';
 import { EXPEDITION_ACTIONS } from '../../shared/sim';
 import { ApiError } from './portable';
 import { AGENT_POLL_INTERVAL_MS } from './admissionPolicy';
+import { IDLE_LOGOUT_MINUTES } from '../../shared/sim/admission';
 import {
   CHAT_NEARBY_RADIUS, INVITE_PARAM, MAX_OFFER_LEN, MAX_TRADE_STACKS, TRADE_BREAK_RANGE, TRADE_RANGE, TRADE_SWAP_TICKS, DROP_BOX_DEPOSIT_TICKS, DROP_BOX_REACH,
   DUMMY_ID, DUMMY_MAX_HP, DUMMY_TILE, GIANT_ID, GIANT_REACH, GIANT_TILE, RAID_INTERVAL_MS, RAID_MIN_CONTRIBUTION, RAID_REWARD, RAID_WINDOW_MS, raidMaxHp, EMOTE_LIST, GRID_SIZE, HOTBAR_SIZE, INVENTORY_SIZE, MAX_CHAT_LEN, PUNCH_DAMAGE, RECIPES, STICK_DROP_CHANCE, STICK_ITEM_ID, STONE_CLUB_ITEM_ID, getItemDef, validAppearance, COSMETICS,
@@ -12,7 +13,7 @@ import {
   SPIRE_KEY_ITEM_ID, SPIRE_MAX_PARTY, SPIRE_MEALS, SPIRE_MIN_STARS, SPIRE_RANGE, SPIRE_STAR_DAMAGE, getRecipe,
 } from '../../shared/sim';
 
-type Field = { type: 'integer'; minimum: number; maximum: number } | { type: 'string'; minLength: number; maxLength: number; pattern?: string; enum?: string[] };
+type Field = { type: 'integer'; minimum: number; maximum: number } | { type: 'boolean' } | { type: 'string'; minLength: number; maxLength: number; pattern?: string; enum?: string[] };
 type Action = { description: string; properties: Record<string, Field>; required: string[]; scope?: 'combat' | 'chat' };
 const integer = (minimum: number, maximum: number): Field => ({ type: 'integer', minimum, maximum });
 const text = (minLength: number, maxLength: number, pattern?: string): Field => ({ type: 'string', minLength, maxLength, ...(pattern ? { pattern } : {}) });
@@ -84,6 +85,8 @@ export function validateObject(input: unknown, properties: Record<string, Field>
     const field = properties[key];
     if (field.type === 'integer') {
       if (!Number.isInteger(entry) || entry < field.minimum || entry > field.maximum) throw bad();
+    } else if (field.type === 'boolean') {
+      if (typeof entry !== 'boolean') throw bad();
     } else if (typeof entry !== 'string' || entry.length < field.minLength || entry.length > field.maxLength
       || (field.pattern && !new RegExp(field.pattern).test(entry)) || (field.enum && !field.enum.includes(entry))) throw bad();
   }
@@ -124,7 +127,7 @@ export const openapi = {
   components: { securitySchemes: { session: { type: 'http', scheme: 'bearer', description: 'Session token from POST /sessions. Invitations are accepted only at POST /sessions.' }, invite: { type: 'http', scheme: 'bearer', description: 'Single-use invite code provided by the world operator.' } } },
   paths: {
     '/sessions': { post: { operationId: 'join_game', summary: 'Redeem an invite for a player session', security: [{ invite: [] }], requestBody: { required: true, content: json(object({}, [])) }, responses: { '201': sessionResponse, '401': error, '429': error, '503': error } } },
-    '/renewals': { post: { operationId: 'return_to_character', 'x-hosted-only': true, summary: 'Hosted beta: return with your saved renewToken as the bearer token. Receives a new session token and rotated renewToken; save both. Keeps inventory, skills and garden.', security: [{ session: [] }], requestBody: { required: true, content: json(object({}, [])) }, responses: { '200': sessionResponse, '401': error, '429': error } } },
+    '/renewals': { post: { operationId: 'return_to_character', 'x-hosted-only': true, summary: `Hosted beta: return with your saved renewToken as the bearer token. Receives a new session token and rotated renewToken; save both. Keeps inventory, skills and garden. A character with no game action for ${IDLE_LOGOUT_MINUTES} minutes is logged out (409 idle_logout); send {"resume": true} to return.`, security: [{ session: [] }], requestBody: { required: true, content: json(object({ resume: { type: 'boolean', description: 'Return after an idle logout.' } }, [])) }, responses: { '200': sessionResponse, '401': error, '409': error, '429': error } } },
     '/recovery': { post: { operationId: 'export_character_recovery', 'x-hosted-only': true, summary: 'Export a replacement recovery key with a valid session or renewal bearer. Store it privately. Optional character-access recovery; game progress saves automatically. Expires in 180 days.', security: [{ session: [] }], requestBody: { required: true, content: json(object({}, [])) }, responses: { '200': { description: 'recoveryToken, playerId and expiresAt. A replacement invalidates the previous backup.' }, '401': error, '429': error } } },
     '/recover': { post: { operationId: 'restore_character', 'x-hosted-only': true, summary: 'Present recoveryToken as bearer. Consumes and rotates the key, returning the existing character credential and a new renewToken. Save the replacement recoveryToken, then use ordinary renewals to receive a bounded permit.', security: [{ session: [] }], requestBody: { required: true, content: json(object({}, [])) }, responses: { '200': { description: 'Rotated recoveryToken and renewToken plus token, identity, uri, database, playerId, expiresAt. Does not grant play access itself.' }, '401': error, '429': error } } },
     '/session': { delete: { operationId: 'leave_game', security: [{ session: [] }], responses: { '204': { description: 'Visit ended and player disconnected. A saved renewToken can return to the same character.' }, '401': error } } },

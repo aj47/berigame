@@ -63,7 +63,21 @@ describe('hosted LAN admission', () => {
     expect((await f.request('/api/play/v1/sessions')).status).toBe(429);
     const response = await f.request('/api/play/v1/renewals', player.renewToken);
     expect(response.status).toBe(200);
-    expect(f.service.renew).toHaveBeenCalledWith(player.playerId, 3600);
+    expect(f.service.renew).toHaveBeenCalledWith(player.playerId, 3600, false);
+  });
+
+  it('holds an idle-logged-out character until its player returns with resume', async () => {
+    const f = fixture(), player = await f.join();
+    const renew = (token: string, body: string) => worker.fetch(new Request('https://game.test/api/play/v1/renewals', { method: 'POST', body,
+      headers: { 'CF-Connecting-IP': '192.0.2.1', 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } }), f.env);
+    f.service.renew.mockRejectedValueOnce(new Error('SenderError: logged out for inactivity'));
+    const held = await renew(player.renewToken, '{}');
+    expect(held.status).toBe(409);
+    expect((await held.json() as any).error.code).toBe('idle_logout');
+    expect((await renew(player.renewToken, '{"resume":"yes"}')).status).toBe(400);
+    const back = await renew(player.renewToken, '{"resume":true}');
+    expect(back.status, await back.clone().text()).toBe(200);
+    expect(f.service.renew).toHaveBeenLastCalledWith(player.playerId, 3600, true);
   });
 
   it('limits renewal by character, leaving other people on the same LAN unaffected', async () => {

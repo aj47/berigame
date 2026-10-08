@@ -127,6 +127,7 @@ function harness() {
       playerCosmetic: { insert: (row: any) => cosmetics.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => cosmetics.get(id.toHexString()), update: (row: any) => cosmetics.set(row.identity.toHexString(), row) } },
       giantRaid: { insert: (row: any) => { raids.set(row.id, row); return row; }, id: { find: (id: number) => raids.get(id), update: vi.fn((row: any) => raids.set(row.id, row)) } },
       mentee: byId(mentees),
+      idleState: byId(new Map()),
       mentorStat: byId(mentorStats),
     },
   };
