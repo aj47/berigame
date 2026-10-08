@@ -1,6 +1,6 @@
 import { MATERIALS } from "../../../shared/sim/frontier/catalog";
 import { homePoint, isHomeRegion } from "../../../shared/sim/frontier/homeMap";
-import { drawBossMarkers, drawHomeMap, legacyMapProjection, type HomeMapView } from "../frontier/homeMapArt";
+import { drawBossMarkers, drawGoalMarker, drawHomeMap, legacyMapProjection, type HomeMapView } from "../frontier/homeMapArt";
 import {
   terrainField, trailDistance, isBridge, areaOf, LANDMARKS, SCENERY_BLOCKERS,
   GiantState,
@@ -40,6 +40,8 @@ export interface MinimapModel {
   clatter?: { x: number; z: number; state: number; label: string };
   /** The Spire Gate: parties fighting inside and parties queued. */
   spire?: { x: number; z: number; active: number; queued: number };
+  /** Where the goal chip leads (Bramblewild tiles), with a short label for the big map. */
+  target?: { x: number; z: number; label?: string } | null;
 }
 
 /** The Clatterhorn marker for a row at `tick`, or undefined while Closed or missing. */
@@ -91,6 +93,7 @@ export function minimapModel(input: {
   clatter?: { x: number; z: number; state: number; stateUntilTick: number } | null;
   /** Spire runs (boss store), for the gate's count. */
   spireRuns?: Iterable<{ stage: number }>;
+  target?: MinimapModel["target"];
 }): MinimapModel {
   const { meHex, tick } = input;
   let me: MinimapModel["me"] = null;
@@ -133,6 +136,7 @@ export function minimapModel(input: {
   return {
     home: input.home, me, others, nodes, resources, bags, giant, garden: { x: GARDEN_CENTER.x - 0.5, z: GARDEN_CENTER.z - 0.5, ripe: input.gardenRipe ?? 0 },
     clatter: clatterMarker(input.clatter, tick), spire: spireMarker(input.spireRuns),
+    target: input.target ?? null,
   };
 }
 
@@ -229,6 +233,7 @@ export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
     }
   }
   drawBossMarkers(ctx, m, px, s, size);
+  drawGoalMarker(ctx, m, px, s, size);
   // Your dropped bag: a red cross in a white ring.
   for (const b of m.bags) {
     const x = px(b.x), y = px(b.z), k = Math.max(3, s * 1.2);
@@ -279,4 +284,12 @@ export function mapAccessLabel(access: 'grove' | 'coast' | 'boulders', keys: { s
   const outsideGrove = ['coast', 'boulder-line', 'boulders', 'settlement'].includes(currentArea);
   if (access === 'coast') return keys.stick || outsideGrove ? 'Accessible · walk here' : 'Stick required';
   return (keys.stick || outsideGrove) && (keys.club || currentArea === 'boulders') ? 'Accessible · walk here' : !keys.stick && !outsideGrove ? 'Stick + stone club required' : 'Stone club required';
+}
+
+/** A short note on what a landmark holds on the journey (null for the rest). */
+export function landmarkJourneyNote(id: string, sealed: { glade: boolean; spire: boolean }): string | null {
+  if (id === 'giant') return 'Obsidian';
+  if (id === 'glade') return sealed.glade ? 'Clatterhorn · not open yet' : 'Clatterhorn · gleamshell';
+  if (id === 'spire') return sealed.spire ? 'Sealed for now' : 'Needs a Spire Key';
+  return null;
 }

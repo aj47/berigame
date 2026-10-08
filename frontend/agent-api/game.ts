@@ -19,6 +19,7 @@ import {
   COSMETICS, CosmeticSlot, SKILLS, SKILL_MAX_LEVEL, Skill, harvestTickBonus, hasCosmetic, levelForXp, levelProgress,
   RAID_INTERVAL_MS, RAID_MIN_CONTRIBUTION, RAID_REWARD, RAID_WINDOW_MS, raidMaxHp, MENTOR_RANGE, MENTOR_PIN_TIERS,
   bossNoPvpZone, inSafeRing, SPIRE_KEY_ITEM_ID, SPIRE_RULES_VERSION, type DangerFeed,
+  goalBosses, goalTarget, journeyChapterOf, nearestBag,
 } from '../../shared/sim';
 import { GARDEN_EXTRA_PLOT_LEVEL, GARDEN_PLOT_TILES, GARDEN_STAGE_NAMES, gardenPlotCountForXp, gardenRemainingMs, gardenStage, getGardenCrop, inGardenReach } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
@@ -239,9 +240,13 @@ export async function createGameService(credential: Credential, options: Connect
       };
       const others = (self: ReturnType<typeof me>) => [...conn.db.player.iter()].filter(p => p.online && (p.region || 'bramblewild') === (self.region || 'bramblewild') && p.identity.toHexString() !== player.identity);
       const goalFor = (self: ReturnType<typeof me>, tick: number) => {
+        const rows = bossRows();
+        const skill = conn.db.playerSkill.identity.find(id);
         const result = firstDayGoal({ me: self, slots: slotsOf(), trees: [...conn.db.tree.iter()], others: others(self), tick,
           canFight: invite.combat, done: goalDone, seen: { ate }, giant: conn.db.giant.id.find(GIANT_ID) ?? null,
-          foragingXp: conn.db.playerSkill.identity.find(id)?.foragingXp ?? 0 });
+          foragingXp: skill?.foragingXp ?? 0, craftingLevel: levelForXp(skill?.craftingXp ?? 0),
+          bosses: goalBosses(rows.config, rows.clatter), cosmetics: conn.db.playerCosmetic.identity.find(id)?.unlocked ?? 0,
+          bag: nearestBag(self, player.identity, conn.db.groundItem.iter()) });
         goalDone = result.done;
         return result.goal;
       };
@@ -304,7 +309,9 @@ export async function createGameService(credential: Credential, options: Connect
             me: { area: home ? areaOf(self) : self.region, safe: home && isSafe(self, tick), graceTicks: inGrace(self, tick) ? Math.max(0, self.respawnTick + RESPAWN_GRACE_TICKS - tick) : 0,
               noPvp: home && (bossNoPvpZone(self) !== null || inSafeRing(self)),
               hasBrambleKey: hasKey, hasBoulderKey },
-            goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action, ...(goal.waiting ? { waiting: goal.waiting } : {}) } : null,
+            goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action, ...(goal.waiting ? { waiting: goal.waiting } : {}),
+              target: goalTarget(goal, { trees: [...conn.db.tree.iter()], giant: g ?? null, clatter: rows.clatter ?? null, bag: nearestBag(self, player.identity, conn.db.groundItem.iter()) }),
+              chapter: journeyChapterOf(goal.id) } : null,
             objective: describeObjective(self.region || 'bramblewild', goal, frontier),
             world: {
               region: self.region || 'bramblewild',

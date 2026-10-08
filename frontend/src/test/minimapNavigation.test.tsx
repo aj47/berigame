@@ -6,13 +6,14 @@ import { homeMapProjection } from '../frontier/homeMapArt';
 import { homePoint } from '../../../shared/sim/frontier/homeMap';
 import { GRID_SIZE } from '@sim';
 import { useToastStore } from '../spacetime/stores/toastStore';
+import { useFirstDayStore } from '../spacetime/stores/firstDayStore';
 
 const mock = vi.hoisted(() => ({ region: 'bramblewild', enabled: true, online: true, state: 0, items: [] as { itemId: string }[], frontier: vi.fn(), target: vi.fn() }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ frontier: mock.frontier, setTarget: mock.target }) }));
 vi.mock('../spacetime/hooks', () => ({
   useMyIdentityHex: () => 'me', usePlayers: () => [{ identity: { toHexString: () => 'me' }, region: mock.region, online: mock.online, state: mock.state, x: 31, z: mock.region === 'settlement' ? 64 : 25, weapon: '', facing: 0 }],
   useInventoryRows: () => mock.items, useTrees: () => [], useGroundItems: () => [], useTick: () => 0,
-  useGiants: () => [], useGiantRaid: () => null, useGardenPlots: () => [],
+  useGiants: () => [], useGiantRaid: () => null, useGardenPlots: () => [], useMyCosmetics: () => null,
 }));
 vi.mock('../frontier/useFrontier', () => ({ useFrontier: () => ({
   enabled: mock.enabled, plots: [], resources: [
@@ -51,6 +52,25 @@ describe('expanded district map navigation', () => {
     expect(screen.getByRole('heading', { name: 'Connected island' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /7 Harbour Accessible/ }));
     expect(mock.frontier).toHaveBeenCalledWith({ action: 'walk', id: 'bramblewild', x: 46, z: 29 });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+});
+
+describe('the journey on the map', () => {
+  afterEach(() => useFirstDayStore.getState().setGoal(null));
+  it('lists the five chapters in order, highlights the goal chip\'s chapter and walks to it', async () => {
+    useFirstDayStore.getState().setGoal({ id: 'reach-glade', text: 'Hunt Clatterhorn for gleamshell', target: { x: 84, z: 101 } });
+    render(<Minimap />); open();
+    const journey = screen.getByRole('region', { name: 'Your journey' });
+    expect(journey.textContent).toContain('Now: Hunt Clatterhorn for gleamshell');
+    const steps = [...journey.querySelectorAll('li')];
+    expect(steps.map(li => li.getAttribute('data-status'))).toEqual(['done', 'done', 'done', 'current', 'ahead']);
+    const current = screen.getByRole('button', { current: 'step' });
+    expect(current.textContent).toContain("Clatterhorn's Glade");
+    // Both bosses read as closed without a boss_config row.
+    expect(current.textContent).toContain('not open yet');
+    fireEvent.click(current);
+    expect(mock.target).toHaveBeenCalledWith(84, 106);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });

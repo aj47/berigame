@@ -4,11 +4,12 @@ import { homePoint, isHomeRegion } from "../../../shared/sim/frontier/homeMap";
 import { HOME_MAP_VIEWS, homeMapProjection, mapDestinationAt, type HomeMapView } from "../frontier/homeMapArt";
 import { createPortal } from "react-dom";
 import React, { useEffect, useRef, useState } from "react";
-import { useGardenPlots, useGiantRaid, useGiants, useGroundItems, useInventoryRows, useMyIdentityHex, usePlayers, useTick, useTrees } from "../spacetime/hooks";
-import { areaOf, countRipe, getItemDef, LANDMARKS, ISLAND_NAME, GRID_SIZE, PlayerState } from "@sim";
+import { useGardenPlots, useGiantRaid, useGiants, useGroundItems, useInventoryRows, useMyCosmetics, useMyIdentityHex, usePlayers, useTick, useTrees } from "../spacetime/hooks";
+import { areaOf, bossConfigOr, countRipe, getItemDef, journeySteps, LANDMARKS, ISLAND_NAME, GRID_SIZE, PlayerState } from "@sim";
+import { useFirstDayStore } from "../spacetime/stores/firstDayStore";
 import { useGameActions } from "../spacetime/actions";
 import { useToastStore } from "../spacetime/stores/toastStore";
-import { drawMinimap, mapAccessLabel, minimapModel } from "./minimapModel";
+import { drawMinimap, landmarkJourneyNote, mapAccessLabel, minimapModel } from "./minimapModel";
 import { useBossStore } from "../bosses/bossStore";
 import "./minimap.css";
 
@@ -51,8 +52,15 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const busy = useRef(false), mapSession = useRef(0), pointerStart = useRef<{ x: number; y: number } | null>(null);
   const close = () => { mapSession.current++; setExpanded(false); };
-  const clatter = useBossStore(s => s.clatter), spireRuns = useBossStore(s => s.runs);
-  const model = () => minimapModel({ home, meHex, players, trees, groundItems, tick, giants, raid, gardenRipe, resources: settlements.resources, nowMs: Date.now(), clatter, spireRuns: spireRuns.values() });
+  const clatter = useBossStore(s => s.clatter), spireRuns = useBossStore(s => s.runs), bossConfig = useBossStore(s => s.config);
+  const goal = useFirstDayStore(s => s.goal), lastChapter = useFirstDayStore(s => s.chapter), cosmetics = useMyCosmetics();
+  const bosses = bossConfigOr(bossConfig);
+  const journey = journeySteps({ goalId: goal?.id, fallback: lastChapter, cosmetics: cosmetics?.unlocked ?? 0, bosses });
+  const chapter = journey.find(c => c.status === 'current');
+  // The marker follows the chip's goal; for an in-place step (make, eat, wield) it rests on the chapter's landmark.
+  const target = goal?.target ? { ...goal.target, label: chapter ? chapter.title : 'Next' } : chapter && goal ? { ...chapter.place, label: chapter.title } : null;
+  const sealed = { glade: !bosses.clatterhornOpen, spire: !bosses.spireOpen };
+  const model = () => minimapModel({ home, meHex, players, trees, groundItems, tick, giants, raid, gardenRipe, resources: settlements.resources, nowMs: Date.now(), clatter, spireRuns: spireRuns.values(), target });
   const latest = useRef(model);
   latest.current = model;
   const small = useMapCanvas(120, latest), big = useMapCanvas(expanded ? 480 : 0, latest, view);
@@ -142,14 +150,26 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
             <div className="map-key"><span><i className="map-key-you" />You</span><span><i className="map-key-player" />Players</span>{view !== 'bramblewild' && <span><i className="map-key-land" />Your land</span>}</div>
           </div>
           <div className="map-destinations">
+            {view !== 'settlement' && <section className="map-journey" aria-label="Your journey">
+              <h3>Your journey</h3>
+              {goal && <p className="map-journey-now"><strong>Now:</strong> {goal.text}</p>}
+              <ol>
+                {journey.map((c, i) => <li key={c.id} data-status={c.status}>
+                  <button title={c.task} aria-current={c.status === 'current' ? 'step' : undefined} onClick={() => walk('bramblewild', c.place.x, c.place.z)}>
+                    <span className="map-journey-mark" aria-hidden="true">{c.status === 'done' ? '✓' : i + 1}</span>
+                    <span>{c.title}<small>{c.status === 'current' ? c.task : c.status === 'done' ? (c.earned ? 'Done · keepsake earned' : 'Done') : `Needs ${c.needs.charAt(0).toLowerCase()}${c.needs.slice(1)}`}{c.sealed ? ' · not open yet' : ''}</small></span>
+                  </button>
+                </li>)}
+              </ol>
+            </section>}
             <h3>Walk to a place</h3>
             <div className="map-places" aria-label="Places to explore">
-              {view !== 'settlement' && LANDMARKS.map((place, i) => <button key={place.id} title={place.detail} onClick={() => walk('bramblewild', place.x, place.z)}><span className="map-place-number">{i + 1}</span><span>{place.short}<small>{mapAccessLabel(place.access, keys, currentArea)}</small></span></button>)}
+              {view !== 'settlement' && LANDMARKS.map((place, i) => <button key={place.id} title={place.detail} onClick={() => walk('bramblewild', place.x, place.z)}><span className="map-place-number">{i + 1}</span><span>{place.short}<small>{[landmarkJourneyNote(place.id, sealed), mapAccessLabel(place.access, keys, currentArea)].filter(Boolean).join(' · ')}</small></span></button>)}
               {home && view !== 'bramblewild' && <button onClick={() => walk('settlement', REGIONS.settlement.spawn.x, REGIONS.settlement.spawn.z)}><span className="map-place-number">⌂</span><span>Meadows town<small>{mapAccessLabel('coast', keys, currentArea)}</small></span></button>}
               {home && view !== 'bramblewild' && settlements.plots.filter(p => p.region === 'settlement' && p.claim?.owner === meHex).map(p => <button key={p.id} onClick={() => walk('settlement', p.marker.x, p.marker.z)}><span className="map-place-number">⚑</span><span>Your homestead<small>Plot {p.id.split('-').pop()}</small></span></button>)}
             </div>
             {home && view === 'settlement' && <section className="map-resources"><h3>Gather nearby</h3><div className="map-places">{resourceKinds.map(item => <button key={item} onClick={() => { const n = nearestResource(item); if (n) walk('settlement', n.x - 1, n.z); }}><span className="map-resource-swatch" style={{ background: MATERIALS[item]?.color ?? getItemDef(item)?.color }} aria-hidden="true">{item === 'timber' ? '♠' : ''}</span><span>{MATERIALS[item]?.name ?? getItemDef(item)?.name ?? item}<small>Walk to nearest {item === 'timber' ? 'tree' : 'spot'}</small></span></button>)}</div></section>}
-            <details className="map-more-key"><summary>More map symbols</summary><ul className="minimap-legend"><li><i className="lg-berry" />Berry trees</li><li><i className="lg-coast" />Gathering spots</li><li><i className="lg-boulders" />The Giant</li><li><i className="lg-bag" />Dropped bag</li><li><i className="lg-garden" />Garden · gold when ripe</li><li><i style={{ background: "#2e7d6f", borderRadius: "50%" }} />Clatterhorn</li><li><i style={{ background: "#3b2f55", borderRadius: "40% 40% 0 0" }} />Spire Gate · parties inside</li></ul></details>
+            <details className="map-more-key"><summary>More map symbols</summary><ul className="minimap-legend"><li><i className="lg-berry" />Berry trees</li><li><i className="lg-coast" />Gathering spots</li><li><i className="lg-boulders" />The Giant</li><li><i className="lg-bag" />Dropped bag</li><li><i className="lg-garden" />Garden · gold when ripe</li><li><i style={{ background: "#2e7d6f", borderRadius: "50%" }} />Clatterhorn</li><li><i style={{ background: "#3b2f55", borderRadius: "40% 40% 0 0" }} />Spire Gate · parties inside</li><li><i style={{ background: "transparent", border: "2px solid #e0b52f", borderRadius: "50%" }} />Your next goal</li></ul></details>
           </div>
         </div>
       </div>

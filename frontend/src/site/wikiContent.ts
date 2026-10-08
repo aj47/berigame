@@ -88,8 +88,17 @@ export const guideArticles: WikiArticle[] = [
         'Keep the stick in your bag to pass through the brambles. Drag it to quick slot 1, 2 or 3 and use that slot to wield it.',
         'On the Coast, gather one driftwood and two flint shards. Open Craft with C and make a Stone Club. This deals 8 damage and opens the Boulders route.',
       ] },
+      { id: 'journey', title: 'The journey: from the Grove to the Sunken Spire', paragraphs: [
+        'The goal chip at the top of the screen always shows your next step, and the map rings the place it leads to in gold. Open the map to see the whole road as five chapters, each unlocking the next:',
+      ], table: { headers: ['Chapter', 'What to do', 'What it opens'], rows: [
+        ['1 · The Grove', 'Pick berries until you find a sturdy Stick', 'The bramble hedge'],
+        ['2 · The Coast', 'Make a Stone Club from 1 driftwood and 2 flint', 'The boulder line'],
+        ['3 · The Boulders', 'Gather 3 obsidian at the outcrops, or help topple the Giant in a raid', 'Half a Spire Key'],
+        ['4 · Clatterhorn’s Glade', 'Defeat Clatterhorn in the far south-east wilds for gleamshell', 'The other half'],
+        ['5 · The Sunken Spire', 'Make a Spire Key and descend from the gate on the Boulders’ east cliff', 'Prism shards, keepsakes and the Shard Circlet'],
+      ] } },
       { id: 'choose-your-adventure', title: 'Choose your next adventure', paragraphs: [
-        'The gardener camp at (22, 18) offers a giant berry expedition whenever you want one. Deliver enormous fruit to market or take it to the feast clearing, with other players or with help from Moss. An expedition lasts up to six minutes; losing its cargo does not take your bag or your skills.',
+        'Side adventures fit in at any point. The gardener camp at (22, 18) offers a giant berry expedition whenever you want one. Deliver enormous fruit to market or take it to the feast clearing, with other players or with help from Moss. An expedition lasts up to six minutes; losing its cargo does not take your bag or your skills.',
         'For a slower rhythm, plant a berry in your personal garden north-west of spawn. It keeps growing while you are away. For a bigger challenge, bring a Stone Club and food to a scheduled Giant raid in the Boulders.',
         'When settlements are enabled in your world, follow the east harbour trail into Bramblewild Meadows. Meet the steward, chop Timber, make a Hammer and collect the first three quest rewards. Together they provide the 50 coins needed for a starter plot and its first week of upkeep.',
         'Your progress saves automatically on the server. You can buy land and keep playing without downloading a save file. An optional recovery key in Settings helps you return to the same character from another browser.',

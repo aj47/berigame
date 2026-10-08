@@ -19,6 +19,8 @@ vi.mock('../spacetime/hooks', () => ({
   useInventoryRows: () => mock.inventory,
   useTrees: () => [{ id: 1, kind: 0, x: 27, z: 25, itemId: 'berry_greenberry', cooldownUntilTick: 0 }],
   useMySkills: () => ({ foragingXp: 0 }),
+  useMyCosmetics: () => null,
+  useGroundItems: () => [],
   useTick: () => 100,
   useGiantRaid: () => null,
 }));

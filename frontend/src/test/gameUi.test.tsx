@@ -62,6 +62,7 @@ vi.mock("../spacetime/hooks", () => ({
   useTick: () => mock.tick,
   useTrees: () => mock.trees,
   useGiants: () => [],
+  useGroundItems: () => [],
   useGiantRaid: () => null,
   useNow: () => 0,
   useMenteeCounts: () => new Map(),

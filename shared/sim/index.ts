@@ -30,3 +30,4 @@ export * from './bossDanger';
 export * from './bossPresentation';
 export * from './energy';
 export * from './banking';
+export * from './journey';

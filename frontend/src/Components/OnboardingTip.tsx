@@ -12,6 +12,9 @@ export interface TipSpec {
   targets: string[];
 }
 
+/** Steps whose first-time help comes from the boss's own tutorial tips instead. */
+export const BOSS_TUTORIAL_STEPS: ReadonlySet<string> = new Set(["face-clatterhorn", "open-spire"]);
+
 /** What each goal step's first-time tip says and which HUD element it points at. */
 export function tipFor(goal: Goal): TipSpec {
   const slot = goal.action && "slot" in goal.action ? goal.action.slot : -1;
@@ -38,7 +41,15 @@ export function tipFor(goal: Goal): TipSpec {
     case "face-giant":
       return { text: "Hit the Giant together. When a red square appears under you, step out of it", targets: [".goal-chip"] };
     case "gather-obsidian":
-      return { text: "Obsidian outcrops are the dark squares at the Boulders' far ends", targets: [".minimap", ".goal-chip"] };
+      return { text: "Obsidian outcrops are the dark squares at the Boulders' far ends. Three make half a Spire Key", targets: [".minimap", ".goal-chip"] };
+    case "reach-glade":
+      return { text: "The gold ring on your map marks Clatterhorn's Glade, far in the south-east wilds", targets: [".minimap", ".goal-chip"] };
+    case "make-key":
+      return { text: "Obsidian and gleamshell make a Spire Key: tap to make it", targets: [".goal-chip"] };
+    case "reach-spire":
+      return { text: "The Spire Gate is the obsidian arch on the Boulders' east cliff, ringed in gold on your map", targets: [".minimap", ".goal-chip"] };
+    case "recover-bag":
+      return { text: "Your dropped items wait where you fell. Tap to walk back for them", targets: [".minimap", ".goal-chip"] };
     default:
       return { text: goal.hint, targets: [".goal-chip"] };
   }

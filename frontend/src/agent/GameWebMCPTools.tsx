@@ -19,6 +19,10 @@ import {
   BRAMBLE_MESSAGE,
   enterRule,
   firstDayGoal,
+  goalBosses,
+  goalTarget,
+  journeyChapterOf,
+  nearestBag,
   HEDGE_RING,
   holdsItem,
   isSafe,
@@ -58,6 +62,8 @@ import {
   useGiants,
   useInventoryRows,
   useMySkills,
+  useMyCosmetics,
+  useGroundItems,
   useMyPlayer,
   usePlayers,
   useTick,
@@ -118,6 +124,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
   const trees = useTrees();
   const inventory = useInventoryRows();
   const skills = useMySkills();
+  const cosmetics = useMyCosmetics();
+  const groundItems = useGroundItems();
   const tick = useTick();
   const giants = useGiants();
   const raid = useGiantRaid();
@@ -130,6 +138,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
   live.current = {
     trades, frontierObjects, frontierViews, me, profiles, expeditions, members, duels, projects, gardens,
     skills,
+    cosmetics,
+    groundItems,
     players,
     trees,
     inventory,
@@ -251,14 +261,17 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           const rows = bossRows();
           const inside = !!player && onSpireFloor(player);
           const visible: any[] = player ? visiblePlayers(player, state.players, rows) : state.players;
+          const bag = player ? nearestBag(player, identityHex(player.identity), state.groundItems ?? []) : null;
           const goal = player && home && !inside
-            ? firstDayGoal({ me: player, slots, trees: state.trees, others: visible.filter((row: any) => row !== player), tick: state.tick, canFight: true, foragingXp: state.skills?.foragingXp ?? 0, done: memory.done, seen: memory.seen, giant: state.giants?.[0] ?? null }).goal
+            ? firstDayGoal({ me: player, slots, trees: state.trees, others: visible.filter((row: any) => row !== player), tick: state.tick, canFight: true, foragingXp: state.skills?.foragingXp ?? 0, done: memory.done, seen: memory.seen, giant: state.giants?.[0] ?? null,
+              craftingLevel: levelForXp(state.skills?.craftingXp ?? 0), bosses: goalBosses(rows.config, rows.clatter), cosmetics: state.cosmetics?.unlocked ?? 0, bag }).goal
             : null;
           const keysHeld = slots.reduce((n: number, s: any) => n + (s?.itemId === SPIRE_KEY_ITEM_ID ? s.quantity : 0), 0);
           const bosses = player ? describeBosses(rows, player, state.tick, { players: state.players, keysHeld, contribution: clatterContribution(),
             blocked: stableBlocked(state.trees), maxSteps: moveStepsOf(identityHex(player.identity), state.expeditions) }) : { clatterhorn: null, spire: null };
           return JSON.stringify({
-            goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action } : null,
+            goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action,
+              target: goalTarget(goal, { trees: state.trees, giant: state.giants?.[0] ?? null, clatter: rows.clatter ?? null, bag }), chapter: journeyChapterOf(goal.id) } : null,
             objective: player ? describeObjective(region, goal, frontier) : null,
             frontier,
             economy: player ? describeEconomy({ self: player, slots, views: state.frontierViews, identity: identityHex(player.identity), now: Date.now() }) : null,
