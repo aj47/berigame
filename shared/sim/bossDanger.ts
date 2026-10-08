@@ -68,7 +68,7 @@ export interface DangerMove {
 }
 
 export interface DangerTelegraph {
-  attack: 'charge' | 'spin' | 'drum';
+  attack: 'charge' | 'spin' | 'slam' | 'drum';
   landsInTicks: number;
   damage: number;
   end: 'flip' | 'glance' | 'skid' | null;

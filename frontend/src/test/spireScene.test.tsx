@@ -4,7 +4,7 @@ import { tileToWorld, type Tile } from '@sim';
 vi.mock('../spacetime/hooks', () => ({ useTick: () => 0, useMyPlayer: () => null }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ setTarget: vi.fn() }) }));
 
-import { claimSpireAtmosphere, fireTicksOf, handleFloorClick, SHARDMOTHER_TINT } from '../bosses/spire/SpireScene';
+import { claimSpireAtmosphere, fireTicksOf, handleFloorClick, SHARDMOTHER_TINT, SPIRE_FOG_NEAR, spireFogBand } from '../bosses/spire/SpireScene';
 import { holdState } from '../Components/3D/tapAssist';
 import { triangleCount } from '../Components/3D/nodes/lowPoly';
 import { buildGateGeometry } from '../bosses/spire/SpireGate';
@@ -100,13 +100,22 @@ describe('the Spire atmosphere', () => {
       // Enter: AlphaIsland unmounts (mutation phase), then the Spire's effect claims the scene.
       detachBg(); detachFog();
       const release = claimSpireAtmosphere(scene);
-      expect(scene.fog.near).toBe(18);
+      expect(scene.fog.near).toBe(SPIRE_FOG_NEAR);
       // Leave: AlphaIsland remounts and attaches in the mutation phase, then the Spire's passive cleanup runs.
       island = { bg: { id: `C${visit + 1}` }, fog: { id: `F${visit + 1}` } };
       detachBg = attach(scene, 'background', island.bg); detachFog = attach(scene, 'fog', island.fog);
       release();
       expect(scene.background).toBe(island.bg);
       expect(scene.fog).toBe(island.fog);
+    }
+  });
+
+  it('keeps the whole floor out of the fog at every zoom (the band starts past the farthest floor tile)', () => {
+    // The farthest floor point is a corner ~10.6 tiles from the centre; along the view it is never deeper than that.
+    for (const d of [18, 24, 30, 34]) {  // SPIRE_CAMERA's min, landscape, portrait and max zoom
+      const [near, far] = spireFogBand(d);
+      expect(near).toBeGreaterThanOrEqual(d + Math.hypot(7.5, 7.5) - 1);
+      expect(far).toBeGreaterThan(near);
     }
   });
 

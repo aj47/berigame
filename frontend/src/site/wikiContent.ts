@@ -2,7 +2,7 @@ import {
   COSMETICS, GARDEN_CROPS, ITEM_DEFS, NODE_KINDS, PATHS, RECIPES,
   TECHNIQUES, TREE_SEEDS, NODE_SEEDS, harvestXp, getItemDef, xpForLevel,
   BOSS_CONFIG_DEFAULTS, CLATTER_CHAIN, CLATTER_CHALLENGER_CAP, CLATTER_CHARGE_WINDUP, CLATTER_DAMAGE, CLATTER_DRUM_EVERY,
-  CLATTER_DRUM_WINDUP, CLATTER_FLIP_TICKS, CLATTER_FRENZY_FLIP_TICKS, CLATTER_FRENZY_TICKS, CLATTER_GLADE, CLATTER_HOME,
+  CLATTER_DRUM_WINDUP, CLATTER_FLIP_TICKS, CLATTER_SLAM_PHASE, CLATTER_FRENZY_FLIP_TICKS, CLATTER_FRENZY_TICKS, CLATTER_GLADE, CLATTER_HOME,
   CLATTER_LONELY_TICKS, CLATTER_MIN_CONTRIBUTION, CLATTER_RECENT_TICKS, CLATTER_RESPAWN_TICKS, CLATTER_REWARD,
   CLATTER_REWARDS_PER_TICK, CLATTER_SPIN_WINDUP, CLATTER_SWARM_TICKS,
   SPIRE_AWAY_TICKS, SPIRE_DAMAGE, SPIRE_ENRAGE_BONUS, SPIRE_ENRAGE_TICKS, SPIRE_EXIT, SPIRE_GATE,
@@ -629,8 +629,9 @@ export const guideArticles: WikiArticle[] = [
         `If nobody stands in the glade for ${clock(CLATTER_LONELY_TICKS)}, it walks home and resets to full health. After a defeat it burrows for ${clock(CLATTER_RESPAWN_TICKS)} and then sleeps at home until the next visitor.`,
       ], table: { headers: ['Challengers', 'Health'], rows: [1, 2, 5, 10, 50, CLATTER_CHALLENGER_CAP].map(n => [String(n), (BOSS_CONFIG_DEFAULTS.clatterHpBase + BOSS_CONFIG_DEFAULTS.clatterHpPerChallenger * n).toLocaleString('en-US')]) } },
       { id: 'attacks', title: 'Attacks', table: { headers: ['Attack', 'Warning', 'Danger area', 'Damage'], rows: [
-        ['Charge', `${CLATTER_CHARGE_WINDUP[1]} ticks · ${seconds(CLATTER_CHARGE_WINDUP[1])} in phase 1, then ${CLATTER_CHARGE_WINDUP[2]} ticks · ${seconds(CLATTER_CHARGE_WINDUP[2])}`, 'A 3-wide lane from its body to where the charge stops, up to 14 steps long', `${CLATTER_DAMAGE.charge} HP`],
+        ['Charge', `${CLATTER_CHARGE_WINDUP[1]} ticks · ${seconds(CLATTER_CHARGE_WINDUP[1])}`, 'A 3-wide lane from its body to where the charge stops, up to 14 steps long', `${CLATTER_DAMAGE.charge} HP`],
         ['Shell Spin', `${CLATTER_SPIN_WINDUP} ticks · ${seconds(CLATTER_SPIN_WINDUP)}`, 'A ring exactly two tiles from its centre; the eye under it and anything three or more tiles away are safe', `${CLATTER_DAMAGE.spin} HP`],
+        ['Shell Slam (phase 2+)', `${CLATTER_SPIN_WINDUP} ticks · ${seconds(CLATTER_SPIN_WINDUP)}`, 'Its whole body: every tile within one of its centre. The ring two tiles out, and anything farther, is safe', `${CLATTER_DAMAGE.spin} HP`],
         ['Drum (beetling swarm)', `${CLATTER_DRUM_WINDUP} ticks of drumming, then runners reach the glade one tick later`, 'Two waves of runners crossing the glade; every third column stays free', `${CLATTER_DAMAGE.runner} HP per hit · ${2 * CLATTER_DAMAGE.runner} HP if you stand still in a runner’s column`],
       ] }, paragraphs: [
         'Every attack is marked on the ground before it lands, and it resolves on the tiles where players finish their move. Step off the marked tiles before the warning runs out. Being hit does not stop your swings, so you can dodge and keep attacking.',
@@ -642,13 +643,14 @@ export const guideArticles: WikiArticle[] = [
       ] },
       { id: 'spin-eye', title: 'The Shell Spin and its eye', paragraphs: [
         'The spin hits every tile exactly two tiles from the beetle’s centre. Hug it, standing on or right next to its centre tile, or step three tiles away. It spins on every third action while someone stands close, and whenever three or more players crowd it, but never twice in a row.',
+        `From phase ${CLATTER_SLAM_PHASE} about half of its spins become Shell Slams: it crashes down on its own body instead, so the eye is deadly and the ring two tiles out is safe. The ground shows which one is coming, red where it lands and green where it does not, so read it before you hug.`,
       ] },
       { id: 'swarm', title: 'The beetling swarm', paragraphs: [
-        `From phase 2 the beetle drums its wing cases: every ${CLATTER_DRUM_EVERY[2]}th action in phase 2 and every ${CLATTER_DRUM_EVERY[3]}th in phase 3. Runners pour in from one side of the glade at one tile per tick, in two waves two ticks apart. Every third column is never used, and the game paints those free columns green.`,
+        `The beetle drums its wing cases from the start: every ${CLATTER_DRUM_EVERY[1]}th action in phase 1, every ${CLATTER_DRUM_EVERY[2]}th in phase 2 and every ${CLATTER_DRUM_EVERY[3]}th in phase 3. Runners pour in from one side of the glade at one tile per tick, in two waves two ticks apart. Every third column is never used, and the game paints those free columns green.`,
         `Standing still in a runner’s column is the costly mistake: the runner hits you as it enters your tile and again as it leaves, ${2 * CLATTER_DAMAGE.runner} HP in total. Step sideways into a free column instead. The swarm lasts ${CLATTER_SWARM_TICKS} ticks and the beetle does not charge or spin while it runs.`,
       ] },
       { id: 'phases', title: 'Phases', table: { headers: ['Phase', 'Starts', 'Charge warning', 'Extra charges after a glance or skid', 'Flip length', 'Swarm'], rows: [
-        ['1', 'On waking', `${CLATTER_CHARGE_WINDUP[1]} ticks`, String(CLATTER_CHAIN[1]), `${CLATTER_FLIP_TICKS[1]} ticks`, 'Never'],
+        ['1', 'On waking', `${CLATTER_CHARGE_WINDUP[1]} ticks`, String(CLATTER_CHAIN[1]), `${CLATTER_FLIP_TICKS[1]} ticks`, `Every ${CLATTER_DRUM_EVERY[1]}th action`],
         ['2', 'At two thirds of its health', `${CLATTER_CHARGE_WINDUP[2]} ticks`, String(CLATTER_CHAIN[2]), `${CLATTER_FLIP_TICKS[2]} ticks`, `Every ${CLATTER_DRUM_EVERY[2]}th action`],
         ['3', `At one third of its health, or ${clock(CLATTER_FRENZY_TICKS)} after waking`, `${CLATTER_CHARGE_WINDUP[3]} ticks`, String(CLATTER_CHAIN[3]), `${CLATTER_FLIP_TICKS[3]} ticks (${CLATTER_FRENZY_FLIP_TICKS} after ${clock(CLATTER_FRENZY_TICKS)})`, `Every ${CLATTER_DRUM_EVERY[3]}th action`],
       ] }, paragraphs: ['Phases never go back, even when new challengers raise its health. Warnings never drop below three ticks.'] },

@@ -5,7 +5,7 @@ import { BULLET_STRIDE, mix32 } from '../bullets';
 import {
   CLATTER_CHAIN, CLATTER_CHARGE_WINDUP, CLATTER_DAMAGE, CLATTER_DIR8, CLATTER_DRUM_EVERY, CLATTER_FLIP_TICKS,
   CLATTER_FRENZY_FLIP_TICKS, CLATTER_LONELY_TICKS, CLATTER_MAX_LANE, CLATTER_RESPAWN_TICKS, CLATTER_SWARM_TICKS,
-  ClatterAttack, ClatterEndKind, ClatterState, clatterAttackable, clatterChooseLane, clatterFrenzy, clatterHitsMove,
+  ClatterAttack, ClatterEndKind, ClatterState, clatterAttackable, clatterChooseLane, clatterFrenzy, clatterHitsMove, clatterSlam, clatterSlamTiles,
   clatterLane, clatterMaxHp, clatterOctant, clatterPhase, clatterQualifies, clatterReturnHome, clatterRewardees,
   clatterSpinTiles, clatterSwarmBullets, clatterSwarmFreeLines, clatterSwarmHit, clatterTelegraph, clatterValidCentre,
   freshClatterhorn, identityKey32, stepClatterhorn, type ClatterCandidate, type ClatterRowLike,
@@ -42,15 +42,15 @@ describe('constants and small helpers', () => {
   it('inserts Closed by default and Dormant at home when open, with base HP', () => {
     expect(freshClatterhorn(BOSS_CONFIG_DEFAULTS).state).toBe(ClatterState.Closed);
     const r = freshClatterhorn(cfg);
-    expect(r).toMatchObject({ state: ClatterState.Dormant, x: CLATTER_HOME.x, z: CLATTER_HOME.z, hp: 200, maxHp: 200, phase: 1, fightCount: 0, challengers: 0 });
+    expect(r).toMatchObject({ state: ClatterState.Dormant, x: CLATTER_HOME.x, z: CLATTER_HOME.z, hp: 300, maxHp: 300, phase: 1, fightCount: 0, challengers: 0 });
   });
 
   it('grows HP per challenger up to the cap', () => {
-    expect(clatterMaxHp(cfg, 0)).toBe(200);
-    expect(clatterMaxHp(cfg, 1)).toBe(350);
-    expect(clatterMaxHp(cfg, 10)).toBe(1700);
-    expect(clatterMaxHp(cfg, 120)).toBe(18200);
-    expect(clatterMaxHp(cfg, 250)).toBe(18200);
+    expect(clatterMaxHp(cfg, 0)).toBe(300);
+    expect(clatterMaxHp(cfg, 1)).toBe(500);
+    expect(clatterMaxHp(cfg, 10)).toBe(2300);
+    expect(clatterMaxHp(cfg, 120)).toBe(24300);
+    expect(clatterMaxHp(cfg, 250)).toBe(24300);
     expect(clatterMaxHp({ ...cfg, clatterHpBase: 500, clatterHpPerChallenger: 50 }, 3)).toBe(650);
   });
 
@@ -201,7 +201,7 @@ describe('stepClatterhorn: states', () => {
     const s = stepClatterhorn(r, 500, far, cfg);
     expect(s.woke).toBe(true);
     expect(s.next).toMatchObject({
-      state: ClatterState.Idle, hp: 200, maxHp: 200, challengers: 0, phase: 1, engagedTick: 500, lastHitTick: 500,
+      state: ClatterState.Idle, hp: 300, maxHp: 300, challengers: 0, phase: 1, engagedTick: 500, lastHitTick: 500,
       fightCount: 8, defeats: 3, owedLeft: 2, stateUntilTick: 0, attackCount: 0,
     });
   });
@@ -216,13 +216,13 @@ describe('stepClatterhorn: states', () => {
     const reset = stepClatterhorn(l, 2100, [], cfg);
     expect(reset.reset).toBe(true);
     expect(reset.next).toMatchObject({
-      state: ClatterState.Dormant, x: CLATTER_HOME.x, z: CLATTER_HOME.z, hp: 200, maxHp: 200, challengers: 0, phase: 1,
+      state: ClatterState.Dormant, x: CLATTER_HOME.x, z: CLATTER_HOME.z, hp: 300, maxHp: 300, challengers: 0, phase: 1,
       attack: ClatterAttack.None, attackCount: 0, chain: 0, bait: 0, swarmTick: 0, stateUntilTick: 0,
       fightCount: 4, defeats: 2, owedLeft: 3,
     });
-    // A candidate returning before the reset resumes the fight (frenzy by now: phase 3, action 8 is a charge).
+    // A candidate returning before the reset resumes the fight (frenzy by now: phase 3, action 8 is a drum).
     const back = stepClatterhorn(l, 2050, far, cfg);
-    expect(back.next).toMatchObject({ state: ClatterState.ChargeWindup, phase: 3, attackCount: 8 });
+    expect(back.next).toMatchObject({ state: ClatterState.DrumWindup, phase: 3, attackCount: 8 });
   });
 
   it('returns from the burrow after 300 ticks, keeping fight, defeats and owed', () => {
@@ -231,7 +231,7 @@ describe('stepClatterhorn: states', () => {
     const s = stepClatterhorn(r, 3300, far, cfg);
     expect(s.returned).toBe(true);
     expect(s.next).toMatchObject({
-      state: ClatterState.Dormant, x: 84, z: 106, hp: 200, maxHp: 200, challengers: 0, phase: 1, attackCount: 0, chain: 0,
+      state: ClatterState.Dormant, x: 84, z: 106, hp: 300, maxHp: 300, challengers: 0, phase: 1, attackCount: 0, chain: 0,
       bait: 0, swarmTick: 0, fightCount: 4, defeats: 2, owedLeft: 3,
     });
   });
@@ -254,7 +254,7 @@ describe('stepClatterhorn: states', () => {
     expect(stepClatterhorn(s.next!, 1105, far, cfg)).toEqual({ next: null });
   });
 
-  it('flips on a stone for 8, 8, 6 ticks by phase and 5 in frenzy', () => {
+  it('flips on a stone for 7, 6, 5 ticks by phase and 4 in frenzy', () => {
     const lane = clatterLane(T(78, 99), 0);
     expect(lane.endKind).toBe(ClatterEndKind.Flip);
     const base = fight({ x: 78, z: 99, state: ClatterState.ChargeWindup, attack: ClatterAttack.Charge, dir: 0, endX: lane.end.x, endZ: lane.end.z, endKind: lane.endKind, stateUntilTick: 1100, chain: 2, hp: 1000, maxHp: 1000 });
@@ -267,15 +267,36 @@ describe('stepClatterhorn: states', () => {
       expect(s.flipped).toBe(true);
       expect(s.next).toMatchObject({ state: ClatterState.Flipped, stateUntilTick: t + ticks, chain: 0, x: 78, z: 101 });
     }
-    expect([CLATTER_FLIP_TICKS[1], CLATTER_FLIP_TICKS[2], CLATTER_FLIP_TICKS[3], CLATTER_FRENZY_FLIP_TICKS]).toEqual([8, 8, 6, 5]);
+    expect([CLATTER_FLIP_TICKS[1], CLATTER_FLIP_TICKS[2], CLATTER_FLIP_TICKS[3], CLATTER_FRENZY_FLIP_TICKS]).toEqual([7, 6, 5, 4]);
   });
 
   it('spins ring 2 and recovers', () => {
     const r = fight({ state: ClatterState.SpinWindup, attack: ClatterAttack.Spin, stateUntilTick: 1103 });
     expect(stepClatterhorn(r, 1102, far, cfg)).toEqual({ next: null });
     const s = stepClatterhorn(r, 1103, far, cfg);
-    expect(s.blow).toEqual({ attack: ClatterAttack.Spin, tiles: new Set(clatterSpinTiles(CLATTER_HOME)), damage: 7 });
+    expect(s.blow).toEqual({ attack: ClatterAttack.Spin, tiles: new Set(clatterSpinTiles(CLATTER_HOME)), damage: 10 });
     expect(s.next).toMatchObject({ state: ClatterState.Recover, stateUntilTick: 1105, x: 84, z: 106 });
+  });
+
+  it('slams (body hit, ring 2 safe) on a seeded share of spins from phase 2, consistently for telegraph, blow and hazard', () => {
+    let slams = 0;
+    for (let n = 0; n < 200; n++) {
+      const spin = { attack: ClatterAttack.Spin, fightCount: 3, attackCount: n };
+      expect(clatterSlam({ ...spin, phase: 1 })).toBe(false);
+      expect(clatterSlam({ ...spin, attack: ClatterAttack.Charge, phase: 3 })).toBe(false);
+      if (!clatterSlam({ ...spin, phase: 2 })) continue;
+      slams++;
+      const r = fight({ state: ClatterState.SpinWindup, ...spin, phase: 2, stateUntilTick: 1103 });
+      const body = clatterSlamTiles(CLATTER_HOME);
+      expect(body).toHaveLength(9);
+      expect(clatterTelegraph(r)).toMatchObject({ attack: 'slam', tiles: body, damage: CLATTER_DAMAGE.spin });
+      expect(stepClatterhorn(r, 1103, far, cfg).blow).toEqual({ attack: ClatterAttack.Spin, tiles: new Set(body), damage: CLATTER_DAMAGE.spin });
+      const eye = T(CLATTER_HOME.x + 1, CLATTER_HOME.z), ring = T(CLATTER_HOME.x + 2, CLATTER_HOME.z);
+      expect(clatterHitsMove(r, 1103, eye, eye, eye)).toBe(2);
+      expect(clatterHitsMove(r, 1103, ring, ring, ring)).toBe(0);
+    }
+    expect(slams).toBeGreaterThan(70);
+    expect(slams).toBeLessThan(130);
   });
 
   it('drums: fires the swarm at the landing tick, drums 20 ticks, then recovers', () => {
@@ -314,7 +335,7 @@ describe('stepClatterhorn: decisions', () => {
     }
   });
 
-  it('drums never in phase 1, every 6th action in phase 2 and every 5th in phase 3', () => {
+  it('drums every 7th action in phase 1, every 5th in phase 2 and every 4th in phase 3', () => {
     for (const phase of [1, 2, 3]) {
       const drums: number[] = [];
       for (let n = 0; n < 30; n++) {
@@ -323,27 +344,27 @@ describe('stepClatterhorn: decisions', () => {
         drums.push(n);
         expect(s).toMatchObject({ stateUntilTick: 1103, attack: ClatterAttack.Drum, swarmSide: mix32(9, n) & 3, swarmFree: mix32(9, n + 7919) % 3 });
       }
-      expect(drums, `phase ${phase}`).toEqual(phase === 1 ? [] : phase === 2 ? [5, 11, 17, 23, 29] : [4, 9, 14, 19, 24, 29]);
+      expect(drums, `phase ${phase}`).toEqual(phase === 1 ? [6, 13, 20, 27] : phase === 2 ? [4, 9, 14, 19, 24, 29] : [3, 7, 11, 15, 19, 23, 27]);
     }
   });
 
-  it('winds a charge 4 ticks in phase 1 and 3 later, with 0, 1, 2 chained charges', () => {
+  it('winds a charge 3 ticks in every phase, with 1, 2, 3 chained charges', () => {
     for (const phase of [1, 2, 3] as const) {
       const s = decideAt(phase, 0, [runner]);
       expect(s).toMatchObject({ state: ClatterState.ChargeWindup, stateUntilTick: 1100 + CLATTER_CHARGE_WINDUP[phase], chain: CLATTER_CHAIN[phase], dir: 0, bait: runner.key });
     }
-    expect([...CLATTER_CHARGE_WINDUP.slice(1)]).toEqual([4, 3, 3]);
-    expect([...CLATTER_CHAIN.slice(1)]).toEqual([0, 1, 2]);
+    expect([...CLATTER_CHARGE_WINDUP.slice(1)]).toEqual([3, 3, 3]);
+    expect([...CLATTER_CHAIN.slice(1)]).toEqual([1, 2, 3]);
   });
 
   it('chains charges from the landing centre without advancing the rotation', () => {
-    // Phase 3, two chained charges: land, re-telegraph, land, re-telegraph, land, recover.
+    // Phase 3, three chained charges: land and re-telegraph three times, then the last landing recovers.
     let r = decideAt(3, 0, [runner, cand(77, 99, 2)]);
-    expect(r.chain).toBe(2);
+    expect(r.chain).toBe(3);
     const count = r.attackCount;
     const landings: number[] = [];
     let t = r.stateUntilTick;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       const s = stepClatterhorn(r, t, [runner, cand(77, 99, 2)], cfg);
       expect(s.blow?.attack).toBe(ClatterAttack.Charge);
       landings.push(t);
@@ -353,7 +374,7 @@ describe('stepClatterhorn: decisions', () => {
       expect(r.stateUntilTick - t).toBe(3);
       t = r.stateUntilTick;
     }
-    expect(landings).toHaveLength(3);
+    expect(landings).toHaveLength(4);
     expect(r.state).toBe(ClatterState.Recover);
   });
 
@@ -506,13 +527,13 @@ describe('telegraph', () => {
   it('describes a charge, a spin and a drum', () => {
     const lane = clatterLane(T(83, 102), 7);
     const c = clatterTelegraph(fight({ x: 83, z: 102, state: ClatterState.ChargeWindup, dir: 7, endX: lane.end.x, endZ: lane.end.z, endKind: lane.endKind, stateUntilTick: 1200, bait: 77 }))!;
-    expect(c).toEqual({ attack: 'charge', tiles: lane.tiles, landsAtTick: 1200, damage: 10, endKind: ClatterEndKind.Flip, from: T(83, 102), to: T(88, 107), dir: 7, bait: 77 });
+    expect(c).toEqual({ attack: 'charge', tiles: lane.tiles, landsAtTick: 1200, damage: 14, endKind: ClatterEndKind.Flip, from: T(83, 102), to: T(88, 107), dir: 7, bait: 77 });
     const s = clatterTelegraph(fight({ state: ClatterState.SpinWindup, stateUntilTick: 1200 }))!;
-    expect(s).toMatchObject({ attack: 'spin', tiles: clatterSpinTiles(CLATTER_HOME), landsAtTick: 1200, damage: 7 });
+    expect(s).toMatchObject({ attack: 'spin', tiles: clatterSpinTiles(CLATTER_HOME), landsAtTick: 1200, damage: 10 });
     const d = clatterTelegraph(fight({ state: ClatterState.DrumWindup, stateUntilTick: 1200, swarmSide: 0, swarmFree: 2 }))!;
     expect(d.attack).toBe('drum');
     expect(d.landsAtTick).toBe(1201);
-    expect(d.damage).toBe(4);
+    expect(d.damage).toBe(5);
     // Wave A's entry row: columns i % 3 == 0 on the north edge.
     expect(d.tiles).toEqual([0, 3, 6, 9, 12, 15].map((i) => key(76 + i, 98)));
   });

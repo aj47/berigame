@@ -10,7 +10,7 @@ import { CLATTER_GLADE, CLATTER_STONES } from '../bossZones';
 import { movesWithin } from '../bullets';
 import {
   CLATTER_CHARGE_WINDUP, CLATTER_DIR8, CLATTER_DRUM_WINDUP, CLATTER_SPIN_WINDUP, ClatterEndKind, ClatterState,
-  clatterChooseLane, clatterHitsMove, clatterLane, clatterOctant, clatterSpinTiles, clatterSwarmFreeLines, clatterSwarmHit,
+  clatterChooseLane, clatterHitsMove, clatterLane, clatterOctant, clatterSlamTiles, clatterSpinTiles, clatterSwarmFreeLines, clatterSwarmHit,
   clatterValidCentre, freshClatterhorn, type ClatterRowLike,
 } from '../clatterhorn';
 import { GRID_SIZE } from '../constants';
@@ -84,9 +84,9 @@ describe('charge lanes', () => {
       .toEqual({ cases: 21056, worst: 2, over2: 0, median: 5, max: 14 });
   }, 60_000);
 
-  it('give at least 3 ticks of notice: 2,250 ms in phase 1 and 1,650 ms later for a 2-step escape at 150 ms RTT', () => {
+  it('give at least 3 ticks of notice: 1,650 ms in every phase for a 2-step escape at 150 ms RTT', () => {
     expect(Math.min(...CLATTER_CHARGE_WINDUP.slice(1))).toBeGreaterThanOrEqual(3);
-    expect(reactionMs(CLATTER_CHARGE_WINDUP[1], 2)).toBe(2250);
+    expect(reactionMs(CLATTER_CHARGE_WINDUP[1], 2)).toBe(1650);
     expect(reactionMs(CLATTER_CHARGE_WINDUP[2], 2)).toBe(1650);
     expect(reactionMs(CLATTER_CHARGE_WINDUP[3], 2)).toBe(1650);
   });
@@ -144,6 +144,24 @@ describe('shell spin', () => {
     expect(worst).toBe(1);
     expect(CLATTER_SPIN_WINDUP).toBe(3);
     expect(reactionMs(CLATTER_SPIN_WINDUP, 1)).toBe(1650);
+  });
+
+  it('a Shell Slam is escapable in 2 steps from every body tile of every centre, to a safe tile still in reach', () => {
+    let worst = 0, cases = 0;
+    for (const c of centres) {
+      const body = new Set(clatterSlamTiles(c));
+      for (const k of body) {
+        const t = unkey(k);
+        if (!stand(t)) continue;
+        cases++;
+        worst = Math.max(worst, escapeSteps(t, body));
+      }
+      // Ring 2 holds a standable tile, so a hugger can dodge and keep swinging.
+      expect(clatterSpinTiles(c).some((k) => stand(unkey(k)))).toBe(true);
+    }
+    expect(cases).toBeGreaterThan(1000);
+    expect(worst).toBe(2);
+    expect(reactionMs(CLATTER_SPIN_WINDUP, 2)).toBe(1650);
   });
 });
 

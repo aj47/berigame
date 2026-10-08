@@ -7,7 +7,7 @@ import { inGrace } from '../areas';
 import { Cosmetic } from '../skills';
 import {
   BOSS_CONFIG_DEFAULTS, BossEventKind, BossNoticeKind, CLATTERHORN_ID, CLATTER_DIR8, CLATTER_GLADE, CLATTER_HOME, CLATTER_STONES,
-  ClatterEndKind, ClatterState, HurtSource, SPIRE_SPAWNS, clatterChooseLane, clatterLane, clatterSpinTiles, clatterSwarmFreeLines,
+  ClatterEndKind, ClatterState, HurtSource, SPIRE_SPAWNS, clatterChooseLane, clatterLane, clatterSlam, clatterSlamTiles, clatterSpinTiles, clatterSwarmFreeLines, clatterTelegraph,
   clatterValidCentre, inBossRect,
 } from '../index';
 
@@ -111,14 +111,14 @@ describe('availability', () => {
     expect(() => h.attack(A)).toThrow('The glade is quiet: Clatterhorn is away');
   });
 
-  it('opens via configure_bosses (Dormant at home) and a player entering the glade wakes it with 200 HP', () => {
+  it('opens via configure_bosses (Dormant at home) and a player entering the glade wakes it with 300 HP', () => {
     h.configure();
-    expect(h.beetle()).toMatchObject({ state: ClatterState.Dormant, x: HOME.x, z: HOME.z, hp: 200, maxHp: 200, fightCount: 0 });
+    expect(h.beetle()).toMatchObject({ state: ClatterState.Dormant, x: HOME.x, z: HOME.z, hp: 300, maxHp: 300, fightCount: 0 });
     h.run(5);
     expect(h.beetle().state).toBe(ClatterState.Dormant);
     h.place(A, HOME.x, CLATTER_GLADE.z0 + 1);
     h.run(1);
-    expect(h.beetle()).toMatchObject({ state: ClatterState.Idle, hp: 200, maxHp: 200, challengers: 0, fightCount: 1, engagedTick: h.now() });
+    expect(h.beetle()).toMatchObject({ state: ClatterState.Idle, hp: 300, maxHp: 300, challengers: 0, fightCount: 1, engagedTick: h.now() });
     expect(h.events(BossEventKind.ClatterWake)).toHaveLength(1);
   });
 
@@ -147,7 +147,7 @@ describe('availability', () => {
     h.run(99);
     expect(update).not.toHaveBeenCalled();
     h.run(1);
-    expect(h.beetle()).toMatchObject({ state: ClatterState.Dormant, x: HOME.x, z: HOME.z, hp: 200, maxHp: 200, challengers: 0, fightCount: 1 });
+    expect(h.beetle()).toMatchObject({ state: ClatterState.Dormant, x: HOME.x, z: HOME.z, hp: 300, maxHp: 300, challengers: 0, fightCount: 1 });
     expect(h.events(BossEventKind.ClatterReset)).toHaveLength(1);
     expect([...h.db.clatterhornCredit.iter()].map((c: any) => c.identity.toHexString())).toEqual([B.toHexString()]);
   });
@@ -226,19 +226,19 @@ describe('attack_clatterhorn', () => {
 });
 
 describe('swings, crowd HP and grace', () => {
-  it('the first landed swing adds a challenger (+150) before its damage; a second challenger adds 150 more', () => {
+  it('the first landed swing adds a challenger (+200) before its damage; a second challenger adds 200 more', () => {
     h.fight();
     h.swinger(A, HOME.x, HOME.z - 2);
     h.run(1);
-    expect(h.beetle()).toMatchObject({ challengers: 1, maxHp: 350, hp: 344, lastHitTick: h.now() });
+    expect(h.beetle()).toMatchObject({ challengers: 1, maxHp: 500, hp: 494, lastHitTick: h.now() });
     expect(h.notices(BossNoticeKind.YouHit, A)).toEqual([expect.objectContaining({ amount: 6, total: 6, boss: 1 })]);
     // Recipient only: nobody else gets a row for A's swing.
     expect([...h.db.bossNotice.iter()].every((n: any) => n.player.toHexString() === A.toHexString())).toBe(true);
     h.swinger(B, HOME.x + 2, HOME.z, STONE_CLUB_ITEM_ID);
     h.run(1);
-    expect(h.beetle()).toMatchObject({ challengers: 2, maxHp: 500, hp: 344 + 150 - 8 });
+    expect(h.beetle()).toMatchObject({ challengers: 2, maxHp: 700, hp: 494 + 200 - 8 });
     h.run(3);
-    expect(h.beetle()).toMatchObject({ challengers: 2, maxHp: 500, hp: 344 + 150 - 8 - 6 });
+    expect(h.beetle()).toMatchObject({ challengers: 2, maxHp: 700, hp: 494 + 200 - 8 - 6 });
     expect(h.db.clatterhornCredit.identity.find(A)).toMatchObject({ fight: 1, damage: 12, owed: 0 });
     expect(h.p(A).hostile).toBe(false);
   });
@@ -263,16 +263,16 @@ describe('swings, crowd HP and grace', () => {
     expect(inGrace(h.p(A), h.now() + 1)).toBe(false);
     h.setBeetle({ state: ClatterState.SpinWindup, stateUntilTick: h.now() + 1 });
     h.run(1);
-    expect(h.p(A).hp).toBe(23);
+    expect(h.p(A).hp).toBe(20);
     expect(h.p(A).pending).toBe(Pending.Clatterhorn);
-    expect(h.notices(BossNoticeKind.Hurt, A)).toEqual([expect.objectContaining({ amount: 7, hp: 23, quantity: HurtSource.Spin })]);
+    expect(h.notices(BossNoticeKind.Hurt, A)).toEqual([expect.objectContaining({ amount: 10, hp: 20, quantity: HurtSource.Spin })]);
     // C stood on the ring in grace and never swung.
     expect(h.p(C).hp).toBe(30);
   });
 });
 
 describe('attacks', () => {
-  it('a charge lands on end tiles only: the player who stayed takes 10 and keeps swinging, one 2 tiles aside takes 0; grace is skipped', () => {
+  it('a charge lands on end tiles only: the player who stayed takes 14 and keeps swinging, one 2 tiles aside takes 0; grace is skipped', () => {
     h.fight();
     const lane = clatterLane(HOME, 6);  // east
     expect(lane.len).toBeGreaterThanOrEqual(3);
@@ -285,8 +285,8 @@ describe('attacks', () => {
     h.run(1);
     expect(h.beetle()).toMatchObject({ x: lane.end.x, z: lane.end.z });
     expect(lane.tiles).toContain(tileKey({ x: HOME.x + 1, z: HOME.z }));
-    expect(h.p(A)).toMatchObject({ hp: 20, pending: Pending.Clatterhorn });
-    expect(h.notices(BossNoticeKind.Hurt, A)).toEqual([expect.objectContaining({ amount: 10, hp: 20, quantity: HurtSource.Charge })]);
+    expect(h.p(A)).toMatchObject({ hp: 16, pending: Pending.Clatterhorn });
+    expect(h.notices(BossNoticeKind.Hurt, A)).toEqual([expect.objectContaining({ amount: 14, hp: 16, quantity: HurtSource.Charge })]);
     expect(h.p(B)).toMatchObject({ x: HOME.x + 2, z: HOME.z + 2, hp: 30 });
     expect(h.p(C).hp).toBe(30);
   });
@@ -331,7 +331,7 @@ describe('attacks', () => {
     expect(h.p(A)).toMatchObject({ pending: Pending.Clatterhorn, targetX: undefined, targetZ: undefined });
   });
 
-  it('aligned bait behind a stone flips it (Flipped 8 ticks in phase 1) and swings deal x2', () => {
+  it('aligned bait behind a stone flips it (Flipped 7 ticks in phase 1) and swings deal x2', () => {
     // Find a beetle centre, a stone and a target standing behind it on the charge line.
     let setup: { c: { x: number; z: number }; t: { x: number; z: number }; dir: number } | undefined;
     const stones = new Set(CLATTER_STONES.map(tileKey));
@@ -354,10 +354,10 @@ describe('attacks', () => {
     h.fight({ state: ClatterState.Idle, stateUntilTick: 0, x: c.x, z: c.z, attackCount: 0 });
     h.place(B, t.x, t.z);
     h.run(1);
-    expect(h.beetle()).toMatchObject({ state: ClatterState.ChargeWindup, dir, endKind: ClatterEndKind.Flip, stateUntilTick: h.now() + 4 });
-    h.run(4);
+    expect(h.beetle()).toMatchObject({ state: ClatterState.ChargeWindup, dir, endKind: ClatterEndKind.Flip, stateUntilTick: h.now() + 3 });
+    h.run(3);
     const landed = h.now();
-    expect(h.beetle()).toMatchObject({ state: ClatterState.Flipped, stateUntilTick: landed + 8 });
+    expect(h.beetle()).toMatchObject({ state: ClatterState.Flipped, stateUntilTick: landed + 7 });
     expect(h.p(B).hp).toBe(30);
     const end = h.beetle();
     h.swinger(A, end.x, end.z);
@@ -373,8 +373,40 @@ describe('attacks', () => {
     h.setBeetle({ state: ClatterState.SpinWindup, attack: 2, stateUntilTick: h.now() + 1 });
     expect(clatterSpinTiles(HOME)).toContain(tileKey({ x: HOME.x + 2, z: HOME.z - 1 }));
     h.run(1);
-    expect([h.p(A).hp, h.p(B).hp, h.p(C).hp]).toEqual([23, 30, 30]);
+    expect([h.p(A).hp, h.p(B).hp, h.p(C).hp]).toEqual([20, 30, 30]);
     expect(h.beetle()).toMatchObject({ state: ClatterState.Recover, stateUntilTick: h.now() + 2 });
+  });
+
+  it('from phase 2 a Shell Slam hits the body (the eye) and spares ring 2', () => {
+    let n = 0;
+    while (!clatterSlam({ attack: 2, phase: 2, fightCount: 1, attackCount: n })) n++;
+    h.fight({ phase: 2 });
+    h.place(A, HOME.x + 2, HOME.z - 1);   // ring 2: safe from a slam
+    h.place(B, HOME.x + 1, HOME.z + 1);   // the eye: hit
+    h.place(C, HOME.x, HOME.z);           // under its centre: hit
+    h.setBeetle({ state: ClatterState.SpinWindup, attack: 2, attackCount: n, stateUntilTick: h.now() + 1 });
+    expect(clatterTelegraph(h.beetle())).toMatchObject({ attack: 'slam', tiles: clatterSlamTiles(HOME) });
+    h.run(1);
+    expect([h.p(A).hp, h.p(B).hp, h.p(C).hp]).toEqual([30, 20, 20]);
+    expect(h.notices(BossNoticeKind.Hurt, B)).toEqual([expect.objectContaining({ amount: 10, quantity: HurtSource.Spin })]);
+  });
+
+  it('swings never land from outside the glade: a swinger standing there walks in first', () => {
+    const edge = { x: CLATTER_GLADE.x0 + 1, z: HOME.z };
+    h.fight({ x: edge.x, z: edge.z });
+    h.swinger(A, CLATTER_GLADE.x0 - 1, HOME.z);
+    // The walk goal is a glade tile within reach.
+    expect(h.p(A).targetX).toBeGreaterThanOrEqual(CLATTER_GLADE.x0);
+    // A stale swinger outside with no walk target is re-pathed by the tick instead of landing a free hit.
+    h.place(A, CLATTER_GLADE.x0 - 1, HOME.z, { targetX: undefined, targetZ: undefined, nextSwingTick: 0 });
+    const hp = h.beetle().hp;
+    h.run(1);
+    expect(h.notices(BossNoticeKind.YouHit, A)).toEqual([]);
+    expect(h.beetle().hp).toBe(hp);
+    expect(h.p(A).pending).toBe(Pending.Clatterhorn);
+    for (let i = 0; i < 6 && h.notices(BossNoticeKind.YouHit, A).length === 0; i++) h.run(1);
+    expect(h.notices(BossNoticeKind.YouHit, A)).toHaveLength(1);
+    expect(h.p(A).x).toBeGreaterThanOrEqual(CLATTER_GLADE.x0);
   });
 
   it('in phase 2 the swarm hits a stationary player in a used column, never one in a free column, and nothing else lands while it is live', () => {
@@ -390,11 +422,11 @@ describe('attacks', () => {
     expect(h.beetle()).toMatchObject({ state: ClatterState.Drumming, swarmTick: F, stateUntilTick: F + 20 });
     h.run(20);
     // No i-frames against runners: a stationary player is hit as its runner arrives and again as it leaves cardinally.
-    expect(h.p(A).hp).toBe(22);
-    expect(h.p(C).hp).toBe(22);
+    expect(h.p(A).hp).toBe(20);
+    expect(h.p(C).hp).toBe(20);
     expect(h.p(B).hp).toBe(30);
     const hurts = [...h.db.bossNotice.iter()].filter((n: any) => n.kind === BossNoticeKind.Hurt);
-    expect(hurts.every((n: any) => n.quantity === HurtSource.Runner && n.amount === 4)).toBe(true);
+    expect(hurts.every((n: any) => n.quantity === HurtSource.Runner && n.amount === 5)).toBe(true);
     expect(hurts).toHaveLength(4);
     // At most one runner hit per player per tick.
     expect(new Set(hurts.map((n: any) => `${n.tick}:${n.player.toHexString()}`)).size).toBe(4);
@@ -406,7 +438,7 @@ describe('attacks', () => {
     h.place(A, 77, 100, { hp: 2 });
     for (let i = 0; i < 12 && h.notices(BossNoticeKind.Hurt, A).length === 0; i++) h.run(1);
     const hurt = h.notices(BossNoticeKind.Hurt, A);
-    expect(hurt).toEqual([expect.objectContaining({ amount: 4, hp: 0, quantity: HurtSource.Runner })]);
+    expect(hurt).toEqual([expect.objectContaining({ amount: 5, hp: 0, quantity: HurtSource.Runner })]);
     expect(h.p(A).hp).toBe(0);
     expect(h.p(A).state).toBe(PlayerState.Dead);
   });
@@ -466,7 +498,7 @@ describe('defeat and rewards', () => {
     h.run(297);
     expect(h.beetle().state).toBe(ClatterState.Burrowed);
     h.run(1);
-    expect(h.beetle()).toMatchObject({ state: ClatterState.Dormant, hp: 200, fightCount: 1, defeats: 1 });
+    expect(h.beetle()).toMatchObject({ state: ClatterState.Dormant, hp: 300, fightCount: 1, defeats: 1 });
     expect(h.events(BossEventKind.ClatterRespawn)).toHaveLength(1);
   });
 
@@ -508,13 +540,13 @@ describe('owner effects (configure_bosses, boss_debug)', () => {
     h.db.clatterhornCredit.insert({ identity: B, fight: 4, damage: 40, lastHitTick: h.now(), owed: 1 });
     h.setBeetle({ owedLeft: 1 });
     h.configure();
-    expect(h.beetle()).toMatchObject({ state: ClatterState.Dormant, hp: 200, maxHp: 200, fightCount: 4, owedLeft: 1 });
+    expect(h.beetle()).toMatchObject({ state: ClatterState.Dormant, hp: 300, maxHp: 300, fightCount: 4, owedLeft: 1 });
     h.swinger(A, HOME.x, HOME.z - 2);
     h.run(1);
     expect(h.bag(B)).toContain('gleamshell:2');
     expect(h.beetle()).toMatchObject({ state: ClatterState.Idle, fightCount: 5, owedLeft: 0 });
     h.run(1);
-    expect(h.beetle()).toMatchObject({ challengers: 1, maxHp: 350 });
+    expect(h.beetle()).toMatchObject({ challengers: 1, maxHp: 500 });
     expect(h.db.clatterhornCredit.identity.find(A)).toMatchObject({ fight: 5, damage: 6 });
   });
 
@@ -536,15 +568,15 @@ describe('owner effects (configure_bosses, boss_debug)', () => {
 
     h.setBeetle({ state: ClatterState.Recover, stateUntilTick: h.now() + 1, attackCount: 2 });
     h.debug('clatter_drum');
-    expect(h.beetle()).toMatchObject({ phase: 2, attackCount: 5 });
+    expect(h.beetle()).toMatchObject({ phase: 2, attackCount: 4 });
     h.run(1);
-    expect(h.beetle()).toMatchObject({ state: ClatterState.DrumWindup, attackCount: 6 });
+    expect(h.beetle()).toMatchObject({ state: ClatterState.DrumWindup, attackCount: 5 });
 
     expect(() => h.debug('clatter_respawn')).toThrow('The beetle is not burrowed');
     h.setBeetle({ state: ClatterState.Burrowed, stateUntilTick: h.now() + 300, hp: 0 });
     expect(() => h.debug('clatter_hp', 50)).toThrow('The beetle is not fighting');
     h.debug('clatter_respawn');
-    expect(h.beetle()).toMatchObject({ state: ClatterState.Dormant, hp: 200, x: HOME.x, z: HOME.z, fightCount: 1 });
+    expect(h.beetle()).toMatchObject({ state: ClatterState.Dormant, hp: 300, x: HOME.x, z: HOME.z, fightCount: 1 });
     expect(h.events(BossEventKind.ClatterRespawn)).toHaveLength(1);
   });
 });

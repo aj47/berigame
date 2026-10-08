@@ -1,10 +1,10 @@
 import { SenderError } from 'spacetimedb/server';
 import type { Identity } from 'spacetimedb';
 import {
-  BossEventKind, BossId, BossNoticeKind, CLATTERHORN_ID, CLATTER_CHALLENGER_CAP, CLATTER_HOME, CLATTER_DRUM_EVERY, CLATTER_GLADE, CLATTER_REACH,
-  CLATTER_REWARD, CLATTER_REWARDS_PER_TICK, ClatterAttack, ClatterState, Feat, HurtSource, Pending, PlayerState, RESPAWN_GRACE_TICKS, SWING_INTERVAL_TICKS,
-  bfsPath, canonicalMiddle, chebyshev, clatterAttackable, clatterPhase, clatterQualifies, clatterReturnHome, clatterSwarmHit,
-  facingFromDelta, freshClatterhorn, goalAdjacentTo, identityKey32, inBossRect, inGrace, inHotbar, stepClatterhorn, tileKey,
+  BossEventKind, BossId, BossNoticeKind, CLATTERHORN_ID, CLATTER_CHALLENGER_CAP, CLATTER_DAMAGE, CLATTER_HOME, CLATTER_DRUM_EVERY, CLATTER_GLADE,
+  CLATTER_REACH, CLATTER_REWARD, CLATTER_REWARDS_PER_TICK, ClatterAttack, ClatterState, Feat, HurtSource, Pending, PlayerState, RESPAWN_GRACE_TICKS, SWING_INTERVAL_TICKS,
+  bfsPath, canonicalMiddle, chebyshev, clatterAttackable, clatterCanSwingFrom, clatterPhase, clatterQualifies, clatterReturnHome, clatterSwarmHit,
+  clatterSwingGoal, facingFromDelta, freshClatterhorn, identityKey32, inBossRect, inGrace, inHotbar, stepClatterhorn, tileKey,
   type BossConfigLike, type ClatterCandidate,
 } from '../../../shared/sim';
 import { progress } from './adventure';
@@ -145,11 +145,11 @@ export function phaseClatterhorn(t: BossTick): void {
   const graced = new Set<string>();
   for (const h of t.order) { const p = t.players.get(h)!; if (alive(p) && inGrace(p, T)) graced.add(h); }
 
-  // 3. Swings (phaseGiant's loop, reach 2, x2 while Flipped).
+  // 3. Swings (phaseGiant's loop, reach 2 from a glade tile, x2 while Flipped).
   const attackable = clatterAttackable(row);
   for (const h of t.order) {
     const a = t.players.get(h)!;
-    if (!alive(a) || !swingsAtBeetle(a) || chebyshev(a, row) > CLATTER_REACH) continue;
+    if (!alive(a) || !swingsAtBeetle(a) || !clatterCanSwingFrom(a, row)) continue;
     if (a.x !== row.x || a.z !== row.z) {
       const face = facingFromDelta(row.x - a.x, row.z - a.z);
       if (a.facing !== face) { a.facing = face; t.mark(a); }
@@ -221,30 +221,30 @@ export function phaseClatterhorn(t: BossTick): void {
       if (!inBossRect(p0, CLATTER_GLADE) && !inBossRect(p, CLATTER_GLADE)) continue;
       const p1 = canonicalMiddle(p0, p, t.blocked);
       const half = clatterSwarmHit(row, T, p0, p1, p);
-      if (half) damagePlayer(t, p, 4, HurtSource.Runner, half);
+      if (half) damagePlayer(t, p, CLATTER_DAMAGE.runner, HurtSource.Runner, half);
     }
   }
 
-  // 8. Re-chase: swingers left out of reach by a charge walk to the new centre (one BFS each per relocation).
-  if (step.moved) {
-    for (const h of t.order) {
-      const p = t.players.get(h)!;
-      if (!alive(p) || !swingsAtBeetle(p)) continue;
-      if (chebyshev(p, row) <= CLATTER_REACH) {
-        // Already in reach of the new centre: drop a walk target aimed at the old one.
-        if (p.targetX !== undefined) { p.targetX = undefined; p.targetZ = undefined; t.mark(p); }
-        continue;
-      }
-      const path = bfsPath(p, goalAdjacentTo(row, t.blocked, CLATTER_REACH), t.blocked, t.enterRule(p));
-      if (path && path.length > 0) {
-        const end = path[path.length - 1];
-        p.targetX = end.x; p.targetZ = end.z;
-      } else if (!path) {
-        p.pending = Pending.None; p.pendingId = 0n;
-        p.targetX = undefined; p.targetZ = undefined;
-      }
-      t.mark(p);
+  // 8. Re-chase: swingers left out of reach by a charge walk to the new centre (one BFS each per relocation),
+  // and a swinger standing idle in reach but outside the glade walks in (it cannot land swings from there).
+  for (const h of t.order) {
+    const p = t.players.get(h)!;
+    if (!alive(p) || !swingsAtBeetle(p)) continue;
+    if (!step.moved && (p.targetX !== undefined || chebyshev(p, row) > CLATTER_REACH)) continue;
+    if (clatterCanSwingFrom(p, row)) {
+      // Already in reach of the new centre: drop a walk target aimed at the old one.
+      if (p.targetX !== undefined) { p.targetX = undefined; p.targetZ = undefined; t.mark(p); }
+      continue;
     }
+    const path = bfsPath(p, clatterSwingGoal(row, t.blocked), t.blocked, t.enterRule(p));
+    if (path && path.length > 0) {
+      const end = path[path.length - 1];
+      p.targetX = end.x; p.targetZ = end.z;
+    } else if (!path) {
+      p.pending = Pending.None; p.pendingId = 0n;
+      p.targetX = undefined; p.targetZ = undefined;
+    }
+    t.mark(p);
   }
 
   // 9. World-visible moments.

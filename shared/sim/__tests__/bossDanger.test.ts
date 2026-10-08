@@ -432,7 +432,7 @@ describe('clatterhorn feed', () => {
             const feed = buildDangerFeed(clatterInput(tick, me, row));
             checkClatter(feed, row, tick, me);
             const tel = clatterTelegraph(row)!;
-            expect(feed.telegraph).toMatchObject({ attack: 'charge', landsInTicks: lead, damage: 10, bait: ME,
+            expect(feed.telegraph).toMatchObject({ attack: 'charge', landsInTicks: lead, damage: 14, bait: ME,
               end: ['skid', 'glance', 'flip'][lane.endKind - 1] });
             expect(feed.telegraph!.tiles).toEqual(tel.tiles.map((k) => [k % GRID_SIZE, Math.floor(k / GRID_SIZE)]));
             const inside = tel.tiles.includes(key(me));
@@ -464,7 +464,7 @@ describe('clatterhorn feed', () => {
     for (const me of [{ x: 86, z: 106 }, { x: 85, z: 107 }, { x: 87, z: 109 }]) {
       const feed = buildDangerFeed(clatterInput(tick, me, spin));
       checkClatter(feed, spin, tick, me);
-      expect(feed.telegraph).toMatchObject({ attack: 'spin', end: null, bait: null, landsInTicks: 2, damage: 7 });
+      expect(feed.telegraph).toMatchObject({ attack: 'spin', end: null, bait: null, landsInTicks: 2, damage: 10 });
     }
     for (const side of [0, 1, 2, 3]) for (const free of [0, 1, 2]) {
       const windup = crow({ state: ClatterState.DrumWindup, attack: ClatterAttack.Drum, swarmSide: side, swarmFree: free, stateUntilTick: tick + 2 });
@@ -472,7 +472,7 @@ describe('clatterhorn feed', () => {
       const me = side % 2 === 0 ? { x: lines[0] + 1, z: 106 } : { x: 84, z: lines[0] + 1 };
       const feed = buildDangerFeed(clatterInput(tick, me, windup));
       checkClatter(feed, windup, tick, me);
-      expect(feed.telegraph).toMatchObject({ attack: 'drum', landsInTicks: 3, damage: 4, youAreInside: true });
+      expect(feed.telegraph).toMatchObject({ attack: 'drum', landsInTicks: 3, damage: 5, youAreInside: true });
       for (const [x, z] of feed.telegraph!.escape) expect(lines).toContain(side % 2 === 0 ? x : z);
       for (const dt of [1, 3, 6]) {
         const drumming = { ...windup, state: ClatterState.Drumming, swarmTick: tick + 2, stateUntilTick: tick + 22 };

@@ -33,7 +33,7 @@ describe('describeClatterhorn', () => {
     const dormant = describeClatterhorn(freshClatterhorn(cfg), cfg, me, 1000, null, W)!;
     expect(dormant).toMatchObject({
       open: true, state: 'dormant', tile: { x: 84, z: 106 }, home: { x: 84, z: 106 }, body: 1, reach: 2,
-      glade: { x0: 76, z0: 98, x1: 92, z1: 114 }, health: 200, maxHealth: 200, challengers: 0, phase: 1, frenzy: false,
+      glade: { x0: 76, z0: 98, x1: 92, z1: 114 }, health: 300, maxHealth: 300, challengers: 0, phase: 1, frenzy: false,
       flipped: null, bait: null, telegraph: null, swarm: null, returnsInTicks: 0, resetInTicks: null,
       you: { contribution: 0, qualified: false, inGlade: true, inReach: false },
       reward: { items: [{ itemId: 'gleamshell', quantity: 2 }, { itemId: 'berry_goldberry', quantity: 2 }], fightingXp: 40, minDamage: 16,
@@ -61,7 +61,7 @@ describe('describeClatterhorn', () => {
     const d = describeClatterhorn(row, cfg, me, 1000, null, W)!;
     const tel = d.telegraph as Record<string, unknown>;
     expect(d.bait).toBe(ME);
-    expect(tel).toMatchObject({ attack: 'charge', landsInTicks: 3, damage: 10, dir: 'N', from: { x: 84, z: 106 }, to: { x: lane.end.x, z: lane.end.z },
+    expect(tel).toMatchObject({ attack: 'charge', landsInTicks: 3, damage: 14, dir: 'N', from: { x: 84, z: 106 }, to: { x: lane.end.x, z: lane.end.z },
       end: ['skid', 'glance', 'flip'][lane.endKind - 1], youAreInside: true });
     expect(tel.tiles).toEqual(clatterTelegraph(row)!.tiles.map((k) => [k % GRID_SIZE, Math.floor(k / GRID_SIZE)]));
     const escape = tel.escape as [number, number][];
@@ -74,7 +74,7 @@ describe('describeClatterhorn', () => {
   it('swarm block', () => {
     const windup = crow({ state: ClatterState.DrumWindup, attack: ClatterAttack.Drum, swarmSide: 1, swarmFree: 2, stateUntilTick: 1003 });
     expect(describeClatterhorn(windup, cfg, me, 1000, null, W)!.swarm).toEqual({
-      side: 'east', firesInTicks: 3, activeUntilTick: 1023, axis: 'z', freeLines: clatterSwarmFreeLines(windup), damage: 4, tilesPerTick: 1,
+      side: 'east', firesInTicks: 3, activeUntilTick: 1023, axis: 'z', freeLines: clatterSwarmFreeLines(windup), damage: 5, tilesPerTick: 1,
     });
     const drumming = { ...windup, state: ClatterState.Drumming, swarmTick: 1003, stateUntilTick: 1023 };
     const d = describeClatterhorn(drumming, cfg, me, 1010, null, W)!;

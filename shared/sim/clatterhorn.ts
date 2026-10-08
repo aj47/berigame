@@ -25,22 +25,24 @@ export type ClatterAttack = (typeof ClatterAttack)[keyof typeof ClatterAttack];
 export const ClatterEndKind = { None: 0, Skid: 1, Glance: 2, Flip: 3 } as const;
 export type ClatterEndKind = (typeof ClatterEndKind)[keyof typeof ClatterEndKind];
 
-/** Charge telegraph lead by phase (index 1..3). */
-export const CLATTER_CHARGE_WINDUP = [0, 4, 3, 3] as const;
+/** Charge telegraph lead by phase (index 1..3). Never below 3 ticks. */
+export const CLATTER_CHARGE_WINDUP = [0, 3, 3, 3] as const;
 export const CLATTER_SPIN_WINDUP = 3;
 export const CLATTER_DRUM_WINDUP = 3;
 /** After a Skid/Glance with no chain left, after a Spin, after Drumming, or a shuffle. */
 export const CLATTER_RECOVER_TICKS = 2;
 /** The x2 damage window by phase. */
-export const CLATTER_FLIP_TICKS = [0, 8, 8, 6] as const;
-export const CLATTER_FRENZY_FLIP_TICKS = 5;
+export const CLATTER_FLIP_TICKS = [0, 7, 6, 5] as const;
+export const CLATTER_FRENZY_FLIP_TICKS = 4;
 /** Extra charges after a Skid or Glance, by phase. */
-export const CLATTER_CHAIN = [0, 0, 1, 2] as const;
+export const CLATTER_CHAIN = [0, 1, 2, 3] as const;
 /** Every Nth action is a Drum, by phase (0 = never). */
-export const CLATTER_DRUM_EVERY = [0, 0, 6, 5] as const;
+export const CLATTER_DRUM_EVERY = [0, 7, 5, 4] as const;
+/** From this phase on, a seeded half of the spins are Shell Slams: the body (Chebyshev <= 1) is hit and ring 2 is safe. */
+export const CLATTER_SLAM_PHASE = 2;
 /** Drumming lasts from the fire tick F to F + 20. */
 export const CLATTER_SWARM_TICKS = 20;
-export const CLATTER_DAMAGE = { charge: 10, spin: 7, runner: 4 } as const;
+export const CLATTER_DAMAGE = { charge: 14, spin: 10, runner: 5 } as const;
 export const CLATTER_LONELY_TICKS = 100;
 export const CLATTER_RESPAWN_TICKS = 300;
 export const CLATTER_FRENZY_TICKS = 450;
@@ -201,6 +203,41 @@ export function clatterSpinTiles(centre: Tile): readonly number[] {
   return out.sort((a, b) => a - b);
 }
 
+/** The Shell Slam's tiles: the 3 x 3 body (Chebyshev <= 1), inside the glade, stones excluded, ascending. */
+export function clatterSlamTiles(centre: Tile): readonly number[] {
+  const out: number[] = [];
+  for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+    const x = centre.x + dx, z = centre.z + dz;
+    if (inGlade(x, z) && !isStone(x, z)) out.push(z * GRID_SIZE + x);
+  }
+  return out.sort((a, b) => a - b);
+}
+
+/**
+ * Whether the row's spin is a Shell Slam: from CLATTER_SLAM_PHASE on (stored
+ * phase, fixed for the windup), seeded by the fight and the action count, so
+ * the server, the browser and agents agree. Huggers can no longer park in the
+ * eye: they read the telegraph and step out to ring 2 (still within reach).
+ */
+export function clatterSlam(row: Pick<ClatterRowLike, 'attack' | 'phase' | 'fightCount' | 'attackCount'>): boolean {
+  return row.attack === ClatterAttack.Spin && row.phase >= CLATTER_SLAM_PHASE && (mix32(row.fightCount, row.attackCount + 104729) & 1) === 1;
+}
+
+/** The tiles a spin windup lands on: the slam's body, else ring 2. */
+export function clatterSpinBlowTiles(row: ClatterRowLike): readonly number[] {
+  return clatterSlam(row) ? clatterSlamTiles(row) : clatterSpinTiles(row);
+}
+
+/** A player may land swings only from a glade tile within reach (no free hits from outside the hazards). */
+export function clatterCanSwingFrom(p: Tile, row: Tile): boolean {
+  return inGlade(p.x, p.z) && near2(p, row) <= CLATTER_REACH;
+}
+
+/** BFS goal for walking into swing range: an unblocked glade tile within reach of the centre. */
+export function clatterSwingGoal(row: Tile, blocked: ReadonlySet<number>): (t: Tile) => boolean {
+  return (t) => clatterCanSwingFrom(t, row) && !blocked.has(t.z * GRID_SIZE + t.x);
+}
+
 // ---- The swarm (section 2.5.1) ---------------------------------------------------
 
 const GLADE_SPAN = G.x1 - G.x0 + 1; // 17 columns
@@ -274,7 +311,7 @@ export function clatterSwarmHit(row: ClatterRowLike, T: number, p0: Tile, p1: Ti
 // ---- Telegraph -------------------------------------------------------------------
 
 export interface ClatterTelegraph {
-  attack: 'charge' | 'spin' | 'drum';
+  attack: 'charge' | 'spin' | 'slam' | 'drum';
   tiles: readonly number[];
   landsAtTick: number;
   damage: number;
@@ -287,7 +324,7 @@ export interface ClatterTelegraph {
 
 /**
  * Exactly the tiles that resolve, or null when not winding up. Charge: the lane
- * tiles, landing at `stateUntilTick`. Spin: ring 2, landing at
+ * tiles, landing at `stateUntilTick`. Spin: ring 2 (a Slam: the body), landing at
  * `stateUntilTick`. Drum: the glade entry-row tiles of wave A, which runners
  * first reach in tick `stateUntilTick + 1` (later contact comes from
  * `clatterSwarmBullets`).
@@ -302,7 +339,7 @@ export function clatterTelegraph(row: ClatterRowLike): ClatterTelegraph | null {
   }
   if (row.state === ClatterState.SpinWindup) {
     return {
-      attack: 'spin', tiles: clatterSpinTiles(centre), landsAtTick: row.stateUntilTick, damage: CLATTER_DAMAGE.spin,
+      attack: clatterSlam(row) ? 'slam' : 'spin', tiles: clatterSpinBlowTiles(row), landsAtTick: row.stateUntilTick, damage: CLATTER_DAMAGE.spin,
       endKind: ClatterEndKind.None, from: centre, to: centre, dir: row.dir, bait: row.bait,
     };
   }
@@ -437,7 +474,7 @@ export function stepClatterhorn<R extends ClatterRowLike>(row: R, T: number, can
       if (T < row.stateUntilTick) return { next: null };
       return {
         next: { ...row, state: ClatterState.Recover, stateUntilTick: T + CLATTER_RECOVER_TICKS },
-        blow: { attack: ClatterAttack.Spin, tiles: new Set(clatterSpinTiles(row)), damage: CLATTER_DAMAGE.spin },
+        blow: { attack: ClatterAttack.Spin, tiles: new Set(clatterSpinBlowTiles(row)), damage: CLATTER_DAMAGE.spin },
       };
     case ClatterState.DrumWindup:
       if (T < row.stateUntilTick) return { next: null };
@@ -483,15 +520,16 @@ export function clatterHitsMove(row: ClatterRowLike, T: number, p0: Tile, p1: Ti
   return runner;
 }
 
-let blowState = -1, blowX = 0, blowZ = 0, blowDir = -1;
+let blowState = -1, blowX = 0, blowZ = 0, blowDir = -1, blowSlam = false;
 let blowCache: ReadonlySet<number> = new Set();
 
 /** The landing tiles of a charge or spin windup (one-entry cache: /danger asks 75 times per read). */
 function blowTiles(row: ClatterRowLike): ReadonlySet<number> {
   const dir = row.state === ClatterState.ChargeWindup ? row.dir & 7 : -1;
-  if (row.state !== blowState || row.x !== blowX || row.z !== blowZ || dir !== blowDir) {
-    blowCache = new Set(dir >= 0 ? clatterLane(row, dir).tiles : clatterSpinTiles(row));
-    blowState = row.state; blowX = row.x; blowZ = row.z; blowDir = dir;
+  const slam = dir < 0 && clatterSlam(row);
+  if (row.state !== blowState || row.x !== blowX || row.z !== blowZ || dir !== blowDir || slam !== blowSlam) {
+    blowCache = new Set(dir >= 0 ? clatterLane(row, dir).tiles : slam ? clatterSlamTiles(row) : clatterSpinTiles(row));
+    blowState = row.state; blowX = row.x; blowZ = row.z; blowDir = dir; blowSlam = slam;
   }
   return blowCache;
 }

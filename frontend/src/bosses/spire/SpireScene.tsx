@@ -106,7 +106,8 @@ const shardGeo = new OctahedronGeometry(0.2, 0).scale(0.7, 1.6, 0.7);
  */
 export function claimSpireAtmosphere(scene: { background: unknown; fog: unknown }): () => void {
   const prev = { bg: scene.background, fog: scene.fog };
-  const mine = { bg: new Color(BG), fog: new Fog(BG, 18, 40) };
+  const mine = { bg: new Color(BG), fog: new Fog(BG, SPIRE_FOG_NEAR, SPIRE_FOG_FAR) };
+  mine.fog.name = SPIRE_FOG_NAME;
   scene.background = mine.bg;
   scene.fog = mine.fog;
   return () => {
@@ -115,14 +116,35 @@ export function claimSpireAtmosphere(scene: { background: unknown; fog: unknown 
   };
 }
 
+/** Fog band beyond the arena centre: it starts this far past it and is solid this far past it. */
+export const SPIRE_FOG_NEAR = 34, SPIRE_FOG_FAR = 70;
+const SPIRE_FOG_NAME = 'spire-fog';
+const FOG_START = 10, FOG_SPAN = 36;
+
+/**
+ * Keeps the fog behind the arena at every zoom: the band starts FOG_START past the camera's distance to the
+ * centre, so the whole floor (at most ~11 tiles from it) stays clear and only the sea far below fades out.
+ */
+export function spireFogBand(cameraDistance: number): [number, number] {
+  return [cameraDistance + FOG_START, cameraDistance + FOG_START + FOG_SPAN];
+}
+
 /** Background and fog for the dungeon; the overworld's own come back when AlphaIsland remounts. */
 function SpireAtmosphere() {
   const scene = useThree((s) => s.scene);
   useEffect(() => claimSpireAtmosphere(scene as any), [scene]);
+  useFrame(({ camera }) => {
+    const fog = scene.fog;
+    // Only the Spire's own fog: on the way out the overworld's may already be attached.
+    if (!(fog instanceof Fog) || fog.name !== SPIRE_FOG_NAME) return;
+    const [near, far] = spireFogBand(Math.hypot(camera.position.x - CX, camera.position.y, camera.position.z - CZ));
+    fog.near = near; fog.far = far;
+  });
+  // Physical lighting (three r155+): intensities carry the same x PI as the overworld's.
   return <>
-    <hemisphereLight args={['#b9a8ff', '#1a1430', 0.75]} />
-    <directionalLight position={[CX + 6, 14, CZ + 9]} intensity={0.9} color="#e8dcff" />
-    <pointLight position={[CX, 3.2, CZ]} intensity={0.8} distance={14} color="#c6b5ff" />
+    <hemisphereLight args={['#b9a8ff', '#1a1430', 0.75 * Math.PI]} />
+    <directionalLight position={[CX + 6, 14, CZ + 9]} intensity={0.9 * Math.PI} color="#e8dcff" />
+    <pointLight position={[CX, 3.2, CZ]} intensity={10} distance={16} decay={2} color="#c6b5ff" />
   </>;
 }
 
@@ -188,7 +210,7 @@ function SpireFloor() {
     </mesh>
     {/* The inland sea far below the sealed floor. */}
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[CX, -2.2, CZ]} raycast={() => null}>
-      <circleGeometry args={[48, 24]} /><meshBasicMaterial color="#120f24" />
+      <circleGeometry args={[90, 32]} /><meshBasicMaterial color="#120f24" />
     </mesh>
     <mesh ref={marker} visible={false} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
       <ringGeometry args={[0.28, 0.36, 24]} /><meshBasicMaterial color="#e8dcff" transparent depthWrite={false} toneMapped={false} />
@@ -250,7 +272,7 @@ export function ShardmotherModel() {
   }), []);
   useEffect(() => () => { mats.core.dispose(); mats.crack.dispose(); mats.shard.dispose(); }, [mats]);
   const fx = useRef({ lastRt: -Infinity, pulseAt: -Infinity });
-  const tint = useMemo(() => new Color(), []);
+  const tints = useMemo(() => SHARDMOTHER_TINT.map((c) => new Color(c)), []);
   const dark = useMemo(() => new Color('#2a1d3f'), []);
 
   useFrame(({ clock }) => {
@@ -269,7 +291,7 @@ export function ShardmotherModel() {
         fx.current.lastRt = rt;
       }
     }
-    tint.set(SHARDMOTHER_TINT[phase]);
+    const tint = tints[phase];
     mats.core.color.copy(tint).lerp(dark, (1 - frac) * 0.45);
     mats.shard.color.copy(tint);
     mats.crack.opacity = (1 - frac) * 0.9;
@@ -330,11 +352,15 @@ function AzimuthProbe() {
 }
 
 const NO_BULLETS: BulletSource | null = null;
-/** Your run's bullets (prev and cur patterns) in the Spire's render box, read every frame. */
+let sourceFight: unknown = null, sourceCache: BulletSource | null = NO_BULLETS;
+/** Your run's bullets (prev and cur patterns) in the Spire's render box, read every frame (rebuilt per fight row). */
 function spireBulletSource(): BulletSource | null {
   const fight = useBossStore.getState().fight;
-  if (!fight || (fight.curKind === SPIRE_NONE && fight.prevKind === SPIRE_NONE)) return NO_BULLETS;
-  return { bullets: spireFightBullets(fight), boxX0: SPIRE_BOX.x0, boxZ0: SPIRE_BOX.z0, boxX1: SPIRE_BOX.x1, boxZ1: SPIRE_BOX.z1 };
+  if (fight === sourceFight) return sourceCache;
+  sourceFight = fight;
+  sourceCache = !fight || (fight.curKind === SPIRE_NONE && fight.prevKind === SPIRE_NONE) ? NO_BULLETS
+    : { bullets: spireFightBullets(fight), boxX0: SPIRE_BOX.x0, boxZ0: SPIRE_BOX.z0, boxX1: SPIRE_BOX.x1, boxZ1: SPIRE_BOX.z1 };
+  return sourceCache;
 }
 
 export default function SpireScene(_props: SpireSceneProps) {

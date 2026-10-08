@@ -9,7 +9,7 @@
  */
 import { create } from 'zustand';
 import {
-  BossEventKind, BossId, BossNoticeKind, CLATTER_DIR8, ClatterState, EventKind, HurtSource, getItemDef, tileToWorld,
+  BossEventKind, BossId, BossNoticeKind, CLATTER_DIR8, ClatterState, clatterSlam, EventKind, HurtSource, getItemDef, tileToWorld,
   type ClatterRowLike,
 } from '@sim';
 import { attackPresentation } from '../../animation/combatPresentation';
@@ -156,7 +156,7 @@ export function startClatterFx(): () => void {
           playAtWorld('crash', where, 1, period);
           useClatterFxStore.setState({ flipAt: performance.now() + period });
           break;
-        case 'spin': playAtWorld('whoosh', where, 1, period); break;
+        case 'spin': playAtWorld(clatterSlam(prev) ? 'thud' : 'whoosh', where, 1, period); break;
         case 'drum':
           playAtWorld('skitter', where, 0.9, period);
           playAtWorld('skitter', where, 0.7, period * 3);

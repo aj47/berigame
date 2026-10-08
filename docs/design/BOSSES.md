@@ -23,8 +23,8 @@ is 600 ms.
 
 - **Both bosses ship closed.** With no `boss_config` row, `bossConfigOr` returns
   the defaults: `clatterhornOpen`, `spireOpen` and `spirePracticeOpen` false,
-  `spireMaxRuns` 12, `spireHpBase` 1000, `spireHpPerMember` 700, `clatterHpBase`
-  200, `clatterHpPerChallenger` 150. The world owner opens them with
+  `spireMaxRuns` 12, `spireHpBase` 1000, `spireHpPerMember` 700, `clatterHpBase` 300,
+  `clatterHpPerChallenger` 200. The world owner opens them with
   `configure_bosses` (section 5).
 - **Cut from this release** (columns and enum values are kept, nothing reads or
   writes them beyond their defaults): practice runs (`mode` is always Normal,
@@ -39,8 +39,9 @@ is 600 ms.
 
 A cart-sized stag beetle in **Clatterhorn's Glade** on the Coast. It charges the
 farthest player along a telegraphed 3-wide lane. A charge that meets a standing
-stone head-on flips it on its back, and every swing lands twice. From phase 2 it
-drums up a swarm of runners with guaranteed free columns.
+stone head-on flips it on its back, and every swing lands twice. It drums up a
+swarm of runners with guaranteed free columns, and from phase 2 some of its spins
+are Shell Slams that punish hugging its eye.
 
 ### 2.1 Arena
 
@@ -52,7 +53,7 @@ drums up a swarm of runners with guaranteed free columns.
 | Landmark | index 16, `glade`, "Clatterhorn's Glade", access `coast` |
 | Body | 3 x 3 visual body over its centre tile. It never blocks tiles; players may stand under it. |
 | Valid centre | a tile whose 3 x 3 body is inside the glade and holds no stone: 153 tiles |
-| Reach | Chebyshev <= 2 from its centre (`CLATTER_REACH`) |
+| Reach | Chebyshev <= 2 from its centre (`CLATTER_REACH`), from a glade tile only (`clatterCanSwingFrom`) |
 | Gate | A Stick (the glade is Coast). No combat capability needed; attacking never sets `hostile`. |
 
 The 16 forest trunks inside the glade are removed by `outerForest()`.
@@ -79,11 +80,11 @@ Drumming 5, Recover 6, Flipped 7, Burrowed 8, Closed 9.
 
 ```
 maxHp = clatterHpBase + clatterHpPerChallenger * min(challengers, 120)
-      = 200 + 150 * min(challengers, 120)      // 350 with one challenger, 18,200 at the cap
+      = 300 + 200 * min(challengers, 120)      // 500 with one challenger, 24,300 at the cap
 ```
 
 A **challenger** is a player whose first swing of this fight landed. That swing
-adds 150 to both `maxHp` and `hp` before its own damage is subtracted, so a late
+adds 200 to both `maxHp` and `hp` before its own damage is subtracted, so a late
 crowd cannot melt the beetle.
 
 ### 2.4 Attacks
@@ -92,9 +93,10 @@ Blows land on end-of-movement tiles, during the tick the windup ends.
 
 | Attack | Lead | Tiles hit | Damage | Afterwards |
 |---|---|---|---|---|
-| Charge (trample lane) | 4 ticks in phase 1, 3 in phases 2 and 3 (`CLATTER_CHARGE_WINDUP`) | The 3 x 3 body swept from its centre to the lane end, clipped to the glade, stones excluded | 10 | The body moves to the end. Flip: Flipped. Skid or Glance: a chained charge if any are left, else Recover 2. |
-| Shell Spin | 3 (`CLATTER_SPIN_WINDUP`) | Tiles at Chebyshev exactly 2 from the centre, inside the glade (16 at home). The eye (<= 1) and 3+ are safe. | 7 | Recover 2 |
-| Drum (swarm) | 3-tick windup; the first runner reaches the glade one tick after it fires (lead 4) | Runners (section 2.5) | 4 per runner hit | Drumming 20 ticks, then Recover 2. No other attack is chosen while a swarm runs. |
+| Charge (trample lane) | 3 ticks in every phase (`CLATTER_CHARGE_WINDUP`) | The 3 x 3 body swept from its centre to the lane end, clipped to the glade, stones excluded | 14 | The body moves to the end. Flip: Flipped. Skid or Glance: a chained charge if any are left, else Recover 2. |
+| Shell Spin | 3 (`CLATTER_SPIN_WINDUP`) | Tiles at Chebyshev exactly 2 from the centre, inside the glade (16 at home). The eye (<= 1) and 3+ are safe. | 10 | Recover 2 |
+| Shell Slam (a spin from phase 2) | 3 | The 3 x 3 body (Chebyshev <= 1, `clatterSlamTiles`). Ring 2 and beyond are safe. | 10 | Recover 2 |
+| Drum (swarm) | 3-tick windup; the first runner reaches the glade one tick after it fires (lead 4) | Runners (section 2.5) | 5 per runner hit | Drumming 20 ticks, then Recover 2. No other attack is chosen while a swarm runs. |
 
 **Lanes** (`clatterLane`). The lane runs in one of 8 directions for the largest
 `L <= 14` (`CLATTER_MAX_LANE`) whose body positions are all valid centres. Its end
@@ -116,7 +118,13 @@ someone is near and its last attack was not a spin) or shuffles (Recover 2).
 A chained charge is published at the landing tick and does not advance
 `attackCount`, so the Drum rotation stays fixed.
 
-**Flips.** Flipped lasts 8 / 8 / 6 ticks by phase (`CLATTER_FLIP_TICKS`), 5 in
+**Slams.** A Spin windup is a Shell Slam when the stored phase is at least 2
+(`CLATTER_SLAM_PHASE`) and `mix32(fightCount, attackCount + 104729) & 1` is 1
+(`clatterSlam`): about half of them. The fields are fixed for the windup, so the
+server, the browser and agents agree. The telegraph's `attack` is `slam`; the
+browser paints the body red and ring 2 green. Hurt notices keep source Spin.
+
+**Flips.** Flipped lasts 7 / 6 / 5 ticks by phase (`CLATTER_FLIP_TICKS`), 4 in
 frenzy. Every swing deals double damage while it is flipped. The real-map test
 (`clatterhorn-dodge.test.ts`) measures: random charges flip 15.2% and glance 45.6%
 of the time; every charge that happens with the target standing 1-3 tiles behind
@@ -124,7 +132,7 @@ a stone on a line from the beetle flips (248 of 248).
 
 **Escapes** (same test, real blocked set): every charge tile escapes in at most 2
 steps over 21,056 cases (median lane length 5, longest 14); every spin tile in 1
-step; every glade tile survives every one of the 12 swarm variants.
+step; every slam tile in at most 2 steps, always to a ring-2 tile still in reach; every glade tile survives every one of the 12 swarm variants.
 
 ### 2.5 The swarm
 
@@ -147,7 +155,7 @@ step; every glade tile survives every one of the 12 swarm variants.
   of section 3.6 with the canonical middle tile. At most one runner hit per
   player per tick; there are no i-frames between runner hits.
 - **A player who stands still in a runner's column is hit twice by that runner**
-  (as it enters the tile and as it leaves straight on), so 8 HP per runner. Over
+  (as it enters the tile and as it leaves straight on), so 10 HP per runner. Over
   one swarm a stationary player on a glade tile takes 0 hits (a free column) or 2
   (`clatterSwarmHit`, all 12 variants).
 - During DrumWindup the runners are already known (`clatterSwarmBullets` uses
@@ -160,11 +168,11 @@ Frenzy starts 450 ticks (4:30) after the wake. Phases never go down.
 
 | | P1 (HP > 2/3) | P2 (<= 2/3) | P3 (<= 1/3) | Frenzy |
 |---|---|---|---|---|
-| Charge lead | 4 | 3 | 3 | 3 |
-| Chained charges after Skid/Glance (`CLATTER_CHAIN`) | 0 | 1 | 2 | 2 |
-| Flip length | 8 | 8 | 6 | 5 |
-| Spin | every 3rd action or 3+ huggers | same | same | same |
-| Drum (`CLATTER_DRUM_EVERY`) | never | every 6th action | every 5th action | every 5th action |
+| Charge lead | 3 | 3 | 3 | 3 |
+| Chained charges after Skid/Glance (`CLATTER_CHAIN`) | 1 | 2 | 3 | 3 |
+| Flip length | 7 | 6 | 5 | 4 |
+| Spin | every 3rd action or 3+ huggers | same, about half are Slams | same | same |
+| Drum (`CLATTER_DRUM_EVERY`) | every 7th action | every 5th action | every 4th action | every 4th action |
 
 Telegraph leads never drop below 3 ticks. There is no hard enrage.
 
@@ -176,8 +184,10 @@ Telegraph leads never drop below 3 ticks. There is no hard enrage.
   giant berry first; it needs both hands"), closed ("The glade is quiet:
   Clatterhorn is away"), burrowed ("The beetle has burrowed away. Clatterhorn
   returns in N s").
-- A swing lands every 4 ticks (`SWING_INTERVAL_TICKS`) within reach 2 in every
-  state except Dormant, Burrowed and Closed. Damage is `combatDamage` (weapon plus
+- A swing lands every 4 ticks (`SWING_INTERVAL_TICKS`) within reach 2, from a
+  glade tile only, in every state except Dormant, Burrowed and Closed. The walk
+  goal is a glade tile in reach; a swinger left standing in reach outside the
+  glade is walked in by the tick instead of landing hits from beyond the hazards. Damage is `combatDamage` (weapon plus
   Might, as for the Giant), doubled while Flipped. Each landed swing adds private
   credit (`clatterhorn_credit`) and sends the attacker a `YouHit` notice.
 - **A landed swing ends spawn grace** (unlike the Giant), so the attacker takes
@@ -212,7 +222,7 @@ Telegraph leads never drop below 3 ticks. There is no hard enrage.
 | Death | Ordinary overworld death: the bag drops in the glade, respawn at (25,25). No player can cause it (no PvP in the glade). |
 | Everyone leaves | The current attack still lands; then Recover, lonely Idle, reset after 100 ticks. |
 | One griefer in a corner | Never charged twice in a row while 2+ candidates stand in the glade. |
-| Players outside the glade | Never candidates, never hit: every hazard is clipped to the glade. |
+| Players outside the glade | Never candidates, never hit: every hazard is clipped to the glade. They cannot land swings either. |
 | Owner close mid-fight | Closed at home, every `pending == 6` dropped, non-owed credit deleted; owed rewards keep paying. Reopening returns it Dormant at home. |
 
 **Writes.** Closed, Dormant or Burrowed with nothing owed: none. A fight: at most
@@ -501,7 +511,7 @@ stars); the clear's world event lists every member's name.
 |---|---|---|---|
 | `spireHpBase`, `spireHpPerMember` | 1000, 700 | `boss_config` | `spireMaxHp = base + perMember * (members - 1)`: 1000 / 1700 / 2400 / 3100 for 1-4 |
 | `spireMaxRuns` | 12 (1..32) | `boss_config` | Concurrent Active runs; lobbies do not count |
-| `clatterHpBase`, `clatterHpPerChallenger` | 200, 150 | `boss_config` | Clatterhorn HP (range 50..20,000 for every HP knob) |
+| `clatterHpBase`, `clatterHpPerChallenger` | 300, 200 | `boss_config` | Clatterhorn HP (range 50..20,000 for every HP knob) |
 | Bullet damage, i-frames, enrage 420, limit 600, intro 5, court 4, stars (period 12, damage 15, count party + 2, min 3), meals 6, away 50, lobby TTL 150, lobby cap 48, patterns, durations, pools | constants | `shared/sim/spire.ts` | A publish; anything that moves a bullet also needs the full validator and a rules bump |
 
 Patterns do not scale with party size: everyone faces the full field and fans
@@ -618,8 +628,8 @@ The code is the source of truth; these differ from the spec text.
 - **CORE_SCOPE cuts** (section 1). `spire_open` takes only `{clientRules}`; there
   is no `spire_kick`. Quick join picks the **newest** open lobby. Any HP <= 0
   inside the Spire is an immediate knockout.
-- **Runner hits.** A stationary player takes 8 HP from one runner (two hits, no
-  runner i-frames), not 4.
+- **Runner hits.** A stationary player takes 10 HP from one runner (two hits, no
+  runner i-frames), not 5.
 - **Spire HP** is `base + perMember * (members - 1)`.
 - **Clatterhorn:** a shuffle clears `attack`; a due swing at a Dormant beetle ends
   grace; a defeat adds to `owedLeft` and clears every attack field; an older
