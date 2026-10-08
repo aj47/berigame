@@ -229,6 +229,7 @@ export function drawHomeMap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
   });
   // Boss markers stay on the small map (outside `detailed`).
   drawBossMarkers(ctx, m, x, scale, size, z);
+  drawGoalMarker(ctx, m, x, scale, size, z);
   for (const bag of m.bags) { dot(bag, '#425744', 3.4); dot(bag, '#ffe09a', 2.5); }
   for (const p of m.others) {
     dot(p, '#365344', detailed ? 2.7 : 1.8);
@@ -292,4 +293,41 @@ export function drawBossMarkers(ctx: CanvasRenderingContext2D, m: Pick<MinimapMo
     ctx.globalAlpha = 1;
     tag(m.clatter.label, x, Math.max(font + 1, y - k * 1.5), m.clatter.label === '!' ? '#ffcf7a' : '#e9e3ff');
   }
+}
+
+/**
+ * Where the goal chip leads: a gold ring with a slow pulse and a pennant, at
+ * every map size, so the small map always shows the way.
+ */
+export function drawGoalMarker(ctx: CanvasRenderingContext2D, m: Pick<MinimapModel, 'target'>, px: (v: number) => number, scale: number, size: number, pz: (v: number) => number = px, nowMs = Date.now()): void {
+  if (!m.target) return;
+  const x = px(m.target.x), y = pz(m.target.z), k = Math.max(4.5, scale * 2.2);
+  const phase = (nowMs % 1600) / 1600;
+  ctx.save();
+  ctx.globalAlpha = 0.7 * (1 - phase);
+  ctx.strokeStyle = '#ffd54a';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(x, y, k * (1 + phase * 1.2), 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.lineWidth = 3.2; ctx.strokeStyle = 'rgba(32,24,10,.85)';
+  ctx.beginPath(); ctx.arc(x, y, k, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 1.8; ctx.strokeStyle = '#ffd54a';
+  ctx.beginPath(); ctx.arc(x, y, k, 0, Math.PI * 2); ctx.stroke();
+  // Pennant above the ring.
+  const top = y - k - Math.max(6, k * 1.2);
+  ctx.strokeStyle = 'rgba(32,24,10,.9)'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(x, y - k); ctx.lineTo(x, top); ctx.stroke();
+  ctx.fillStyle = '#ffd54a';
+  ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x + Math.max(5, k), top + Math.max(2.5, k * 0.45)); ctx.lineTo(x, top + Math.max(5, k * 0.9)); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  if (m.target.label && size >= 200) {
+    const font = Math.min(12, Math.max(9, Math.round(size / 40)));
+    ctx.font = `700 ${font}px system-ui, sans-serif`;
+    ctx.textAlign = x > size * 0.75 ? 'right' : 'left';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(20,16,12,0.85)'; ctx.fillStyle = '#ffe48a';
+    const tx = x > size * 0.75 ? x - k - 4 : x + k + 4;
+    ctx.strokeText(m.target.label, tx, y); ctx.fillText(m.target.label, tx, y);
+  }
+  ctx.restore();
 }

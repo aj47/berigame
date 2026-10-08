@@ -25,6 +25,17 @@
 .minimap-district-card .map-more-key { margin-top: 16px; font-size: 12px; }
 .minimap-district-card .map-more-key summary { cursor: pointer; color: #506b4c; }
 .minimap-district-card .minimap-legend { grid-template-columns: 1fr; font-size: 11px; }
+.minimap-district-card .map-journey { margin-bottom: 18px; }
+.minimap-district-card .map-journey-now { margin: 0 0 8px; padding: 7px 9px; border-radius: 6px; background: #fff3c4; color: #4a3a12; font-size: 12px; line-height: 1.35; }
+.minimap-district-card .map-journey ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.minimap-district-card .map-journey button { width: 100%; display: flex; align-items: center; gap: 9px; padding: 6px 8px; min-height: 44px; text-align: left; font-size: 12px; }
+.minimap-district-card .map-journey button > span:last-child { display: flex; flex-direction: column; }
+.minimap-district-card .map-journey small { font-size: 10px; line-height: 1.3; opacity: .85; }
+.minimap-district-card .map-journey-mark { display: grid; place-items: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #536342; background: #f5e4b7; color: #364936; font-weight: 700; font-size: 11px; }
+.minimap-district-card .map-journey li[data-status=done] .map-journey-mark { background: #5b8a55; border-color: #3f6a3a; color: #fff; }
+.minimap-district-card .map-journey li[data-status=current] button { border-color: #d6a92a; box-shadow: 0 0 0 2px #ffd54a inset; }
+.minimap-district-card .map-journey li[data-status=current] .map-journey-mark { background: #ffd54a; border-color: #8a6a12; }
+.minimap-district-card .map-journey li[data-status=ahead] button { opacity: .72; }
 @media (max-width: 680px) {
   .minimap-card.minimap-district-card { padding: 12px; }
   .minimap-district-card .map-layout { grid-template-columns: 1fr; gap: 18px; }

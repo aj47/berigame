@@ -9,20 +9,28 @@
  * Coast" again: they respawned in the Grove and need a new key.
  */
 import { areaOf, BOULDERS_ENTRY, coastPastCrossing, HEDGE_CROSSINGS, holdsItem, isNewcomer } from './areas';
+import { bossConfigOr, type BossConfigLike } from './bossConfig';
+import { CLATTER_HOME, inClatterGlade, SPIRE_EXIT, SPIRE_GATE, SPIRE_GATE_RANGE } from './bossZones';
+import { ClatterState } from './clatterhorn';
 import { GIANT_ID, GiantState } from './giant';
 import { HARVEST_TICKS, HOTBAR_SIZE, MELEE_RANGE, MOVEMENT_STEPS_PER_TICK, TICK_MS, TREE_COOLDOWN_TICKS } from './constants';
 import { chebyshev } from './grid';
-import { DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, getItemDef, OBSIDIAN_ITEM_ID, STICK_ITEM_ID, STONE_CLUB_ITEM_ID } from './items';
+import { DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, getItemDef, GLEAMSHELL_ITEM_ID, OBSIDIAN_ITEM_ID, SPIRE_KEY_ITEM_ID, STICK_ITEM_ID, STONE_CLUB_ITEM_ID } from './items';
 import { countItem } from './inventory';
 import { canCraft, getRecipe, harvestTicksFor, isBerryNode, NodeKind, regrowTicksFor } from './nodes';
 import { Pending, PlayerState, type Slot, type Tile } from './types';
-import { harvestXp, xpForLevel } from './skills';
+import { Cosmetic, harvestXp, hasCosmetic, xpForLevel } from './skills';
 
 export type GoalStepId = 'pick-berry' | 'eat-berry' | 'find-stick' | 'wield-stick' | 'reach-coast'
   // M2, after First Day:
   | 'gather-coast' | 'make-club' | 'wield-club'
   // M3 / F3, after the club:
-  | 'reach-boulders' | 'camp-adventure' | 'face-giant' | 'gather-obsidian';
+  | 'reach-boulders' | 'face-giant' | 'gather-obsidian'
+  // F4 / F5, the road to the Sunken Spire:
+  | 'clatter-sealed' | 'reach-glade' | 'clatter-resting' | 'face-clatterhorn'
+  | 'make-key' | 'spire-sealed' | 'reach-spire' | 'open-spire' | 'make-circlet'
+  // Any time after a defeat:
+  | 'recover-bag';
 /** Done-set marker recorded once all First Day steps are complete. */
 export const FIRST_DAY_DONE = 'first-day';
 export type GoalDoneId = GoalStepId | typeof FIRST_DAY_DONE;
@@ -38,7 +46,11 @@ export type GoalAction =
   | { kind: 'wield'; slot: number }
   | { kind: 'move'; x: number; z: number }
   | { kind: 'craft'; recipe: string }
-  | { kind: 'giant'; giantId: number };
+  | { kind: 'giant'; giantId: number }
+  | { kind: 'clatterhorn' }
+  /** Open the Sunken Spire's party panel (you stand at the gate). */
+  | { kind: 'spire' }
+  | { kind: 'pickup'; itemId: number | bigint };
 
 export interface Goal {
   id: GoalStepId;
@@ -90,7 +102,26 @@ export interface GoalInput {
   giant?: { id: number; state: number } | null;
   /** Events seen by the client: a finished harvest or an eat by this player. */
   seen?: { harvested?: boolean; ate?: boolean };
+  /**
+   * The bosses' owner switches and Clatterhorn's row. Absent means unknown and
+   * reads as closed, like a missing `boss_config` row.
+   */
+  bosses?: GoalBosses | null;
+  /** `player_cosmetic.unlocked`: keepsakes mark a cleared Spire. */
+  cosmetics?: number;
+  /** Crafting level, for the level-gated Shard Circlet. */
+  craftingLevel?: number;
+  /** Items you dropped on defeat, nearest first (any one tile of the pile). */
+  bag?: GoalBag | null;
 }
+
+export interface GoalBosses {
+  clatterhornOpen: boolean;
+  spireOpen: boolean;
+  clatter?: { state: number; stateUntilTick: number } | null;
+}
+
+export interface GoalBag extends Tile { id: number | bigint }
 
 export interface GoalResult {
   goal: Goal | null;
@@ -240,6 +271,9 @@ export function firstDayGoal(input: GoalInput): GoalResult {
   const result = (goal: Goal | null): GoalResult => ({ goal, done: out });
 
   if (me.state !== PlayerState.Alive) return result(null);
+  // After a defeat, walking back for the bag beats starting the road again.
+  const bagged = bagGoal(input, hasStick);
+  if (bagged) return result(bagged);
   const step = GOAL_STEPS.find((s) => !done.has(s));
   switch (step) {
     case 'pick-berry':
@@ -284,6 +318,12 @@ export function firstDayGoal(input: GoalInput): GoalResult {
 }
 
 const CLUB_RECIPE = getRecipe(STONE_CLUB_ITEM_ID)!;
+const KEY_RECIPE = getRecipe(SPIRE_KEY_ITEM_ID)!;
+const CIRCLET_RECIPE = getRecipe('shard_circlet')!;
+/** Obsidian in one Spire Key. */
+export const KEY_OBSIDIAN = KEY_RECIPE.inputs.find((i) => i.itemId === OBSIDIAN_ITEM_ID)!.quantity;
+/** Where the chip walks a gleamshell hunter: just inside the glade's north edge, clear of the standing stones. */
+export const GLADE_ENTRY: Tile = { x: 84, z: 101 };
 
 /**
  * After First Day (M2): "Gather driftwood and 2 flint on the Coast" (n/3),
@@ -292,7 +332,7 @@ const CLUB_RECIPE = getRecipe(STONE_CLUB_ITEM_ID)!;
 function coastGoal(input: GoalInput, hasStick: boolean): Goal | null {
   const { me, slots, canFight } = input;
   if (holdsItem(slots, me.weapon, STONE_CLUB_ITEM_ID)) {
-    if (!canFight || me.weapon === STONE_CLUB_ITEM_ID) return bouldersGoal(input);
+    if (!canFight || me.weapon === STONE_CLUB_ITEM_ID) return spireRoadGoal(input);
     const slot = slots.findIndex((s, i) => i < HOTBAR_SIZE && s?.itemId === STONE_CLUB_ITEM_ID);
     return {
       id: 'wield-club',
@@ -313,33 +353,151 @@ function coastGoal(input: GoalInput, hasStick: boolean): Goal | null {
 }
 
 /**
- * M3 / F3, for a club holder: take it to the Boulders, then face the Giant (or,
- * while it rests, chip obsidian). Done once you hold obsidian.
+ * The road to the Sunken Spire, for a club holder: 3 obsidian in the Boulders,
+ * 1 gleamshell from Clatterhorn, make a Spire Key, then descend. A cleared
+ * Spire starts the road again (another key, more prism shards), and once you
+ * hold the shards the Shard Circlet is offered.
  */
-function bouldersGoal(input: GoalInput): Goal | null {
-  const { me, slots } = input;
-  if (countItem(slots, OBSIDIAN_ITEM_ID) > 0) return { id: 'camp-adventure', text: 'Visit the gardener: a giant berry adventure awaits', hint: 'Open Adventure at camp. Obsidian helps build the shared workshop.', action: { kind: 'move', x: 22, z: 18 } };
+function spireRoadGoal(input: GoalInput): Goal | null {
+  const { slots } = input;
+  if (countItem(slots, SPIRE_KEY_ITEM_ID) > 0) return spireGoal(input);
+  const circlet = circletGoal(input);
+  if (circlet) return circlet;
+  const obsidian = countItem(slots, OBSIDIAN_ITEM_ID);
+  const gleamshell = countItem(slots, GLEAMSHELL_ITEM_ID);
+  if (obsidian >= KEY_OBSIDIAN && gleamshell >= 1) {
+    return { id: 'make-key', text: 'Make a Spire Key', hint: `Tap to make it: ${KEY_OBSIDIAN} obsidian + 1 gleamshell`, action: { kind: 'craft', recipe: KEY_RECIPE.id } };
+  }
+  if (obsidian < KEY_OBSIDIAN) return obsidianGoal(input, obsidian, gleamshell);
+  return clatterGoal(input);
+}
+
+function cleared(input: GoalInput): boolean {
+  return hasCosmetic(input.cosmetics ?? 0, Cosmetic.PrismCrown);
+}
+
+function circletGoal(input: GoalInput): Goal | null {
+  if (hasCosmetic(input.cosmetics ?? 0, Cosmetic.ShardCirclet) || !canCraft(input.slots, CIRCLET_RECIPE)) return null;
+  if ((input.craftingLevel ?? 1) < CIRCLET_RECIPE.level) return null;
+  return { id: 'make-circlet', text: 'Make the Shard Circlet', hint: 'Tap to make it: 5 prism shards + 2 obsidian', action: { kind: 'craft', recipe: CIRCLET_RECIPE.id } };
+}
+
+/** M3 / F3: take the club to the Boulders, face the Giant while it is up, otherwise chip obsidian (n/3). */
+function obsidianGoal(input: GoalInput, obsidian: number, gleamshell: number): Goal {
+  const { me } = input;
+  const progress = `${obsidian}/${KEY_OBSIDIAN}`;
+  const why = gleamshell > 0 ? 'Spire Key' : cleared(input) ? 'another Spire Key' : 'a Spire Key';
   if (areaOf(me) !== 'boulders') {
     return {
       id: 'reach-boulders',
-      text: 'Take your club to the Boulders',
+      text: obsidian > 0 ? `Gather obsidian in the Boulders (${progress})` : 'Take your club to the Boulders',
       hint: 'Tap to climb over the boulders past the Coast\'s south-east corner',
       action: { kind: 'move', x: BOULDERS_ENTRY.x, z: BOULDERS_ENTRY.z },
     };
   }
-  if (input.giant && input.giant.state === GiantState.Defeated) {
-    return gatherGoal('gather-obsidian', 'The Giant rests: chip obsidian from an outcrop', 'No outcrop is ready yet', input, NodeKind.Obsidian);
-  }
-  if (input.giant && input.giant.state === GiantState.Asleep) {
-    return gatherGoal('gather-obsidian', 'The Giant sleeps: chip obsidian from an outcrop', 'No outcrop is ready yet', input, NodeKind.Obsidian);
+  const giant = input.giant;
+  if (!giant || giant.state === GiantState.Defeated || giant.state === GiantState.Asleep) {
+    const rest = !giant ? '' : giant.state === GiantState.Defeated ? 'The Giant rests: ' : 'The Giant sleeps: ';
+    return gatherGoal('gather-obsidian', `${rest}chip obsidian for ${why} (${progress})`, 'No outcrop is ready yet', input, NodeKind.Obsidian);
   }
   if (me.pending === Pending.Giant) {
     return { id: 'face-giant', text: 'Face the Giant', hint: 'Step out of the red mark before it lands', action: null };
   }
   return {
     id: 'face-giant',
-    text: 'Face the Giant (everyone who helps gets obsidian)',
+    text: `Face the Giant (everyone who helps gets obsidian) · ${progress}`,
     hint: 'Tap to fight. Step out of the red mark before it lands',
-    action: { kind: 'giant', giantId: input.giant?.id ?? GIANT_ID },
+    action: { kind: 'giant', giantId: giant.id ?? GIANT_ID },
   };
+}
+
+function clock(ticks: number): string {
+  const s = seconds(ticks);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** F4: gleamshell from Clatterhorn, in its glade in the far south-east wilds. */
+function clatterGoal(input: GoalInput): Goal {
+  const { me, tick } = input;
+  const bosses = input.bosses;
+  const walk: GoalAction = { kind: 'move', x: GLADE_ENTRY.x, z: GLADE_ENTRY.z };
+  if (!bosses?.clatterhornOpen) {
+    return { id: 'clatter-sealed', text: 'Clatterhorn still sleeps under its glade', hint: 'Gleamshell comes from Clatterhorn once the glade opens. Bank your obsidian in the vault meanwhile', action: null };
+  }
+  const here = inClatterGlade(me);
+  const row = bosses.clatter;
+  if (row && row.state === ClatterState.Burrowed) {
+    return { id: 'clatter-resting', text: `Clatterhorn has burrowed: back in ${clock(row.stateUntilTick - tick)}`, hint: here ? 'Wait in the glade; it surfaces at the centre' : 'Tap to walk to its glade in the far south-east wilds', action: here ? null : walk };
+  }
+  if (!here) {
+    return { id: 'reach-glade', text: 'Hunt Clatterhorn for gleamshell', hint: 'Tap to walk to its glade in the far south-east wilds. A defeat drops your bag: bank what you can spare first', action: walk };
+  }
+  if (me.pending === Pending.Clatterhorn) {
+    return { id: 'face-clatterhorn', text: 'Fight Clatterhorn', hint: 'Leave its charge lane; a charge into a standing stone flips it for double damage', action: null };
+  }
+  return { id: 'face-clatterhorn', text: 'Fight Clatterhorn (everyone who helps gets 2 gleamshell)', hint: 'Tap to fight. Leave the lane it marks before it charges', action: { kind: 'clatterhorn' } };
+}
+
+/** F5: take the key to the Spire Gate and open (or join) a party. */
+function spireGoal(input: GoalInput): Goal {
+  const { me } = input;
+  if (!input.bosses?.spireOpen) {
+    return { id: 'spire-sealed', text: 'The Sunken Spire is still sealed', hint: 'Keep your key safe in your vault; the gate opens soon', action: null };
+  }
+  if (chebyshev(me, SPIRE_GATE) > SPIRE_GATE_RANGE) {
+    return { id: 'reach-spire', text: 'Take your Spire Key to the Sunken Spire Gate', hint: 'Tap to walk to the obsidian arch on the Boulders\' east cliff', action: { kind: 'move', x: SPIRE_EXIT.x, z: SPIRE_EXIT.z } };
+  }
+  return { id: 'open-spire', text: cleared(input) ? 'Descend the Sunken Spire again' : 'Descend the Sunken Spire', hint: 'Tap to open the party panel. Parties of 1–4; each member spends a key', action: { kind: 'spire' } };
+}
+
+/** The dropped bag, when you can walk to it with the keys you hold. */
+function bagGoal(input: GoalInput, hasStick: boolean): Goal | null {
+  const { me, slots, bag } = input;
+  if (!bag) return null;
+  const from = areaOf(me), to = areaOf(bag);
+  const club = holdsItem(slots, me.weapon, STONE_CLUB_ITEM_ID);
+  const reachable = to === 'grove' || to === 'hedge' || to === 'spire' ? true
+    : to === 'boulders' || to === 'boulder-line' ? (club || from === 'boulders') && (hasStick || from !== 'grove')
+    : hasStick || from !== 'grove';
+  if (!reachable || to === 'spire' || to === 'sea') return null;
+  if (me.pending === Pending.Pickup) return { id: 'recover-bag', text: 'Recover your dropped bag', hint: 'Walking back to it…', action: null };
+  return { id: 'recover-bag', text: 'Recover your dropped bag', hint: 'Tap to walk back and pick it up before it crumbles. It is marked on your map', action: { kind: 'pickup', itemId: bag.id } };
+}
+
+/**
+ * Where a goal leads, for the map's marker and the agent API: the tile it walks
+ * to or the thing it acts on. Null for steps done where you stand (eat, wield, make).
+ */
+export function goalTarget(goal: Goal, world: { trees?: readonly (Tile & { id: number })[]; giant?: Tile | null; clatter?: Tile | null; bag?: Tile | null } = {}): Tile | null {
+  const a = goal.action;
+  const treeId = a?.kind === 'harvest' ? a.treeId : goal.waiting?.treeId;
+  if (treeId !== undefined) {
+    const tree = world.trees?.find((t) => t.id === treeId);
+    return tree ? { x: tree.x, z: tree.z } : null;
+  }
+  if (a?.kind === 'move') return { x: a.x, z: a.z };
+  if (a?.kind === 'pickup') return world.bag ? { x: world.bag.x, z: world.bag.z } : null;
+  switch (goal.id) {
+    case 'face-giant': return world.giant ? { x: world.giant.x, z: world.giant.z } : null;
+    case 'face-clatterhorn': return world.clatter ? { x: world.clatter.x, z: world.clatter.z } : { ...CLATTER_HOME };
+    case 'clatter-sealed': case 'clatter-resting': return { ...CLATTER_HOME };
+    case 'open-spire': case 'spire-sealed': return { ...SPIRE_GATE };
+    default: return null;
+  }
+}
+
+/** The goal input's boss facts from the `boss_config` and `clatterhorn` rows (a missing config row reads as closed). */
+export function goalBosses(config: BossConfigLike | null | undefined, clatter: { state: number; stateUntilTick: number } | null | undefined): GoalBosses {
+  const cfg = bossConfigOr(config);
+  return { clatterhornOpen: cfg.clatterhornOpen, spireOpen: cfg.spireOpen, clatter: clatter ? { state: clatter.state, stateUntilTick: clatter.stateUntilTick } : null };
+}
+
+/** Your nearest pile of defeat drops among `groundItems`, or null. */
+export function nearestBag(me: Tile, meHex: string, groundItems: Iterable<Tile & { id: number | bigint; droppedOnDeath: boolean; droppedBy: { toHexString(): string } }>): GoalBag | null {
+  let best: GoalBag | null = null;
+  for (const g of groundItems) {
+    if (!g.droppedOnDeath || g.droppedBy.toHexString() !== meHex) continue;
+    if (!best || chebyshev(me, g) < chebyshev(me, best)) best = { id: g.id, x: g.x, z: g.z };
+  }
+  return best;
 }

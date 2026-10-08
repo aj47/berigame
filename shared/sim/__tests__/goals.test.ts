@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { CLAIM_CYCLE_TICKS, firstDayGoal, type GoalInput, type GoalPlayer, type GoalTree } from '../goals';
+import { CLAIM_CYCLE_TICKS, firstDayGoal, GLADE_ENTRY, type GoalBosses, type GoalInput, type GoalPlayer, type GoalTree } from '../goals';
+import { enterRule } from '../areas';
+import { inClatterGlade, SPIRE_EXIT } from '../bossZones';
+import { ClatterState } from '../clatterhorn';
+import { GiantState } from '../giant';
+import { tileKey } from '../grid';
+import { JOURNEY, journeyChapterOf, journeySteps } from '../journey';
+import { bfsPath, goalIsTile } from '../pathfinding';
+import { Cosmetic, withCosmetic } from '../skills';
+import { worldBlockedSet } from '../social';
+import { LANDMARKS } from '../terrain';
 import { emptySlots } from '../inventory';
 import { TREE_SEEDS } from '../items';
 import { NODE_SEEDS } from '../nodes';
@@ -98,7 +108,7 @@ describe('First Day goal chip', () => {
     });
   });
 
-  it('M3/F3: in the Boulders, face the Giant; while it rests, chip obsidian; offers an adventure once you hold obsidian', () => {
+  it('M3/F3: in the Boulders, face the Giant; while it rests, chip obsidian until there is enough for a Spire Key', () => {
     const all = ['pick-berry', 'eat-berry', 'find-stick', 'wield-stick', 'reach-coast', 'first-day'];
     const nodes: GoalTree[] = [...trees(), ...NODE_SEEDS.map((n) => ({ ...n, cooldownUntilTick: 0 }))];
     const me = player({ weapon: 'stone_club', x: 52, z: 52 });
@@ -109,8 +119,10 @@ describe('First Day goal chip', () => {
     r = firstDayGoal(input({ done: all, trees: nodes, me, slots: bag('stick', 'stone_club'), giant: { id: 1, state: 3 } }));
     expect(r.goal).toMatchObject({ id: 'gather-obsidian', action: { kind: 'harvest' } });
     expect([109, 110]).toContain((r.goal!.action as any).treeId);
-    r = firstDayGoal(input({ done: all, trees: nodes, me, slots: bag('stick', 'stone_club', 'obsidian'), giant: { id: 1, state: 0 } }));
-    expect(r.goal).toMatchObject({ id: 'camp-adventure', action: { kind: 'move', x: 22, z: 18 } });
+    expect(r.goal!.text).toContain('(0/3)');
+    r = firstDayGoal(input({ done: all, trees: nodes, me, slots: bag('stick', 'stone_club', 'obsidian'), giant: { id: 1, state: 3 } }));
+    expect(r.goal).toMatchObject({ id: 'gather-obsidian' });
+    expect(r.goal!.text).toContain('(1/3)');
     // Without the combat grant the club never needs wielding; the Boulders are still the next step.
     r = firstDayGoal(input({ done: all, trees: nodes, canFight: false, me: player({ x: 5, z: 20 }), slots: bag('stick', 'stone_club') }));
     expect(r.goal).toMatchObject({ id: 'reach-boulders' });
@@ -190,5 +202,89 @@ describe('First Day goal chip', () => {
 
   it('is hidden while dead', () => {
     expect(firstDayGoal(input({ me: player({ state: PlayerState.Dead }) })).goal).toBeNull();
+  });
+
+  describe('the road to the Sunken Spire', () => {
+    const all = ['pick-berry', 'eat-berry', 'find-stick', 'wield-stick', 'reach-coast', 'first-day'];
+    const nodes: GoalTree[] = [...trees(), ...NODE_SEEDS.map((n) => ({ ...n, cooldownUntilTick: 0 }))];
+    const open: GoalBosses = { clatterhornOpen: true, spireOpen: true, clatter: { state: ClatterState.Dormant, stateUntilTick: 0 } };
+    const stacked = (...items: [string, number][]): Slot[] => {
+      const s = emptySlots();
+      items.forEach(([itemId, quantity], i) => { s[i] = { itemId, quantity }; });
+      return s;
+    };
+    const club = (x: number, z: number, over: Partial<GoalPlayer> = {}) => player({ weapon: 'stone_club', x, z, ...over });
+    const road = (over: Partial<GoalInput>) => firstDayGoal(input({ done: all, trees: nodes, giant: { id: 1, state: GiantState.Asleep }, bosses: open, ...over })).goal;
+
+    it('sends a holder of 3 obsidian to Clatterhorn for gleamshell, then to fight it', () => {
+      const slots = stacked(['stick', 1], ['stone_club', 1], ['obsidian', 3]);
+      expect(road({ me: club(54, 54), slots })).toMatchObject({ id: 'reach-glade', action: { kind: 'move', x: GLADE_ENTRY.x, z: GLADE_ENTRY.z } });
+      expect(road({ me: club(GLADE_ENTRY.x, GLADE_ENTRY.z), slots })).toMatchObject({ id: 'face-clatterhorn', action: { kind: 'clatterhorn' } });
+      expect(road({ me: club(GLADE_ENTRY.x, GLADE_ENTRY.z, { pending: Pending.Clatterhorn, pendingId: 1 }), slots })).toMatchObject({ id: 'face-clatterhorn', action: null });
+      const burrowed = road({ me: club(54, 54), slots, tick: 10, bosses: { ...open, clatter: { state: ClatterState.Burrowed, stateUntilTick: 110 } } });
+      expect(burrowed).toMatchObject({ id: 'clatter-resting', action: { kind: 'move' } });
+      expect(burrowed!.text).toContain('1:00');
+    });
+
+    it('says when Clatterhorn or the Spire is still closed instead of sending players to a dead end', () => {
+      const slots = stacked(['stick', 1], ['stone_club', 1], ['obsidian', 3]);
+      expect(road({ me: club(54, 54), slots, bosses: null })).toMatchObject({ id: 'clatter-sealed', action: null });
+      const keyed = stacked(['stick', 1], ['stone_club', 1], ['spire_key', 1]);
+      expect(road({ me: club(54, 54), slots: keyed, bosses: { ...open, spireOpen: false } })).toMatchObject({ id: 'spire-sealed', action: null });
+    });
+
+    it('makes the key, walks it to the gate and opens the party panel', () => {
+      const parts = stacked(['stick', 1], ['stone_club', 1], ['obsidian', 3], ['gleamshell', 2]);
+      expect(road({ me: club(84, 106), slots: parts })).toMatchObject({ id: 'make-key', action: { kind: 'craft', recipe: 'spire_key' } });
+      const keyed = stacked(['stick', 1], ['stone_club', 1], ['spire_key', 1]);
+      expect(road({ me: club(84, 106), slots: keyed })).toMatchObject({ id: 'reach-spire', action: { kind: 'move', x: SPIRE_EXIT.x, z: SPIRE_EXIT.z } });
+      expect(road({ me: club(SPIRE_EXIT.x, SPIRE_EXIT.z), slots: keyed })).toMatchObject({ id: 'open-spire', action: { kind: 'spire' } });
+    });
+
+    it('starts the road again after a clear, and offers the Shard Circlet once you can make it', () => {
+      const cosmetics = withCosmetic(0, Cosmetic.PrismCrown);
+      const after = road({ me: club(54, 54), slots: stacked(['stick', 1], ['stone_club', 1], ['prism_shard', 1]), cosmetics });
+      expect(after).toMatchObject({ id: 'gather-obsidian' });
+      expect(after!.text).toContain('another Spire Key');
+      const shards = stacked(['stick', 1], ['stone_club', 1], ['prism_shard', 5], ['obsidian', 2]);
+      expect(road({ me: club(54, 54), slots: shards, cosmetics, craftingLevel: 9 })).toMatchObject({ id: 'gather-obsidian' });
+      expect(road({ me: club(54, 54), slots: shards, cosmetics, craftingLevel: 10 })).toMatchObject({ id: 'make-circlet', action: { kind: 'craft', recipe: 'shard_circlet' } });
+    });
+
+    it('walks back for a dropped bag it can reach, and not for one past a barrier it cannot cross', () => {
+      const grove = road({ me: player({ x: 25, z: 25 }), slots: emptySlots(), bag: { id: 7n, x: 20, z: 20 } });
+      expect(grove).toMatchObject({ id: 'recover-bag', action: { kind: 'pickup', itemId: 7n } });
+      expect(road({ me: player({ x: 25, z: 25 }), slots: emptySlots(), bag: { id: 7n, x: 46, z: 29 } })?.id).not.toBe('recover-bag');
+      expect(road({ me: player({ x: 25, z: 25, weapon: 'stick' }), slots: bag('stick'), bag: { id: 7n, x: 46, z: 29 } })?.id).toBe('recover-bag');
+      expect(road({ me: player({ x: 25, z: 25, weapon: 'stick' }), slots: bag('stick'), bag: { id: 7n, x: 60, z: 40 } })?.id).not.toBe('recover-bag');
+      expect(road({ me: player({ x: 25, z: 25, pending: Pending.Pickup, pendingId: 7n }), slots: emptySlots(), bag: { id: 7n, x: 20, z: 20 } })).toMatchObject({ id: 'recover-bag', action: null });
+    });
+
+    it('the glade entry and the gate exit can be walked to from the Coast with a stick and a club', () => {
+      const blocked = worldBlockedSet([...NODE_SEEDS, ...TREE_SEEDS]);
+      expect(inClatterGlade(GLADE_ENTRY)).toBe(true);
+      for (const goal of [GLADE_ENTRY, SPIRE_EXIT]) {
+        expect(blocked.has(tileKey(goal))).toBe(false);
+        expect(bfsPath({ x: 46, z: 29 }, goalIsTile(goal), blocked, enterRule(true, true))).not.toBeNull();
+      }
+      // The glade is Coast: a stick is enough.
+      expect(bfsPath({ x: 46, z: 29 }, goalIsTile(GLADE_ENTRY), blocked, enterRule(true, false))).not.toBeNull();
+    });
+
+    it('every goal step belongs to the chapter the map highlights', () => {
+      expect(journeyChapterOf('find-stick')).toBe('grove');
+      expect(journeyChapterOf('make-club')).toBe('coast');
+      expect(journeyChapterOf('gather-obsidian')).toBe('boulders');
+      expect(journeyChapterOf('reach-glade')).toBe('glade');
+      expect(journeyChapterOf('open-spire')).toBe('spire');
+      expect(journeyChapterOf('recover-bag')).toBeNull();
+      const steps = journeySteps({ goalId: 'reach-glade', bosses: { clatterhornOpen: false, spireOpen: true } });
+      expect(steps.map((s) => s.status)).toEqual(['done', 'done', 'done', 'current', 'ahead']);
+      expect(steps.find((s) => s.id === 'glade')!.sealed).toBe(true);
+      expect(steps.find((s) => s.id === 'spire')!.sealed).toBe(false);
+      // No goal (a detour): the furthest keepsake decides.
+      expect(journeySteps({ cosmetics: withCosmetic(0, Cosmetic.ClatterhornHorn) }).find((s) => s.status === 'current')!.id).toBe('spire');
+      for (const c of JOURNEY) expect(LANDMARKS.some((l) => l.id === c.landmark)).toBe(true);
+    });
   });
 });
