@@ -9,6 +9,7 @@ export * from './appearance';
 export * from './areas';
 export * from './goals';
 export * from './nodes';
+export * from './contest';
 export * from './social';
 export * from './friends';
 export * from './trade';

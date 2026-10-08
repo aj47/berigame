@@ -11,7 +11,7 @@ import {
   DEATH_TICKS, EventKind, MELEE_RANGE, isBerryNode, Cosmetic, areaOf, harvestXp, skillForNode, regrowTicksFor, Pending, PlayerState, SPAWN_TILE,
   MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS, TICK_MS, energyCost,
   bfsPath, chebyshev, facingFromDelta, goalAdjacentTo,
-  goalIsTile, holdsItem, inGrace, inHotbar, inSafeRing, isNewcomer,
+  goalIsTile, holdsItem, inGrace, inHotbar, inSafeRing, drawClaimant, claimWeight, energyAt, energyMax,
   neighbors8, swingDamage, tileKey, DUMMY_TILE, dummyAfterHit, worldBlockedSet,
   TRADE_BREAK_RANGE, TRADE_REQUEST_TICKS, TRADE_RANGE, SocialNotice,
   GIANT_ID, GIANT_REACH, GIANT_TILE, GiantEventKind, GiantState, giantAfterHit, giantForgot,
@@ -26,7 +26,7 @@ import { mentorMilestone } from '../lib/mentor';
 import { ensureDummy } from '../lib/dummy';
 import { playerEnterRule } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
-import { spendEnergyFor } from '../lib/energy';
+import { loadEnergy, spendEnergyFor } from '../lib/energy';
 import { itemLabel, moveVaultItems } from '../lib/vault';
 import { seedMissingNodes } from '../lib/nodes';
 import { statsDeath, statsPosition } from '../lib/stats';
@@ -146,9 +146,8 @@ function resolvePending(s: TickState, p: PlayerRow): void {
       p.pending = Pending.None; p.pendingId = 0n; mark(s, p);
       return;
     }
-    if (chebyshev(p, tree) <= MELEE_RANGE) {
-      // A regrowing or claimed tree keeps you waiting beside it (wait-and-claim).
-      if (tryClaimTree(s, p, tree)) { p.pending = Pending.None; p.pendingId = 0n; }
+    // Stop beside it and stay pending; phaseClaims draws among everyone in reach once movement is done.
+    if (chebyshev(p, tree) <= MELEE_RANGE && p.targetX !== undefined) {
       p.targetX = undefined; p.targetZ = undefined;
       mark(s, p);
     }
@@ -194,26 +193,31 @@ function resolvePending(s: TickState, p: PlayerRow): void {
 }
 
 /**
- * Wait-and-claim: every free tree goes to one of the players waiting beside
- * it: newcomers (first-spawn grace) first, then the earliest last input, then
- * tick order.
+ * Wait-and-claim: every free tree goes to one of the players beside it who
+ * asked for it, drawn at random with odds by energy (newcomers first;
+ * shared/sim/contest.ts). Runs after movement, so players arriving this tick
+ * contend with those already waiting, and nobody wins by acting first.
  */
 function phaseClaims(s: TickState): void {
-  const rank = new Map(s.order.map((h, i) => [h, i]));
-  for (const tree of s.trees.values()) {
-    if (tree.harvester !== undefined || tree.cooldownUntilTick > s.T) continue;
-    let best: PlayerRow | undefined;
-    for (const h of s.order) {
-      const p = s.players.get(h)!;
-      if (!alive(p) || p.pending !== Pending.Harvest || Number(p.pendingId) !== tree.id) continue;
-      if (chebyshev(p, tree) > MELEE_RANGE || p.harvestTreeId !== 0) continue;
-      if (!best) { best = p; continue; }
-      const pn = isNewcomer(p, s.T), bn = isNewcomer(best, s.T);
-      if (pn !== bn) { if (pn) best = p; continue; }
-      if (p.lastInputTick !== best.lastInputTick) { if (p.lastInputTick < best.lastInputTick) best = p; continue; }
-      if (rank.get(h)! < rank.get(hex(best.identity))!) best = p;
-    }
-    if (best && tryClaimTree(s, best, tree)) {
+  const contenders = new Map<number, PlayerRow[]>();
+  for (const h of s.order) {
+    const p = s.players.get(h)!;
+    if (!alive(p) || p.pending !== Pending.Harvest || p.harvestTreeId !== 0) continue;
+    const tree = s.trees.get(Number(p.pendingId));
+    if (!tree || tree.harvester !== undefined || tree.cooldownUntilTick > s.T || chebyshev(p, tree) > MELEE_RANGE) continue;
+    const list = contenders.get(tree.id);
+    if (list) list.push(p); else contenders.set(tree.id, [p]);
+  }
+  // Energy is read only for a real contest; one repository serves every draw this tick.
+  let repo: ReturnType<typeof frontierRepository> | undefined;
+  const now = Number(s.ctx.timestamp.microsSinceUnixEpoch / 1000n);
+  const weight = (p: PlayerRow) => {
+    const e = energyAt(loadEnergy(s.ctx, p.identity, repo ??= frontierRepository(s.ctx)), now);
+    return claimWeight(e.points, energyMax(e.born, now));
+  };
+  for (const [treeId, list] of contenders) {
+    const best = drawClaimant(list, s.T, s.ctx.random, weight);
+    if (best && tryClaimTree(s, best, s.trees.get(treeId)!)) {
       best.pending = Pending.None; best.pendingId = 0n;
       best.targetX = undefined; best.targetZ = undefined;
       mark(s, best);
@@ -222,7 +226,6 @@ function phaseClaims(s: TickState): void {
 }
 
 function phaseMovement(s: TickState): void {
-  phaseClaims(s);
   for (const h of s.order) {
     const p = s.players.get(h)!;
     if (!alive(p)) continue;
@@ -298,6 +301,7 @@ function phaseMovement(s: TickState): void {
 
     if (p.pending !== Pending.None) resolvePending(s, p);
   }
+  phaseClaims(s);
 }
 
 /** Check arrival after everyone moves, so a moving partner cannot create an out-of-range request. */
