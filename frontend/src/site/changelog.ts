@@ -17,6 +17,7 @@ export const changelogEntries: ChangelogEntry[] = [
   {
     id: '2026-10-08-the-journey', date: '2026-10-08', period: 'Oct 8, 2026',
     title: 'The map and goal chip now lead all the way to the Sunken Spire',
+    note: 'Live beta update.',
     changes: [
       'After your Stone Club, the goal chip keeps going: gather 3 obsidian in the Boulders, defeat Clatterhorn for gleamshell, make a Spire Key and descend the Sunken Spire. It no longer sends you back to the camp in a loop once you hold obsidian.',
       'The map shows the whole road as five chapters, Grove, Coast, Boulders, Clatterhorn’s Glade and the Sunken Spire, with your current one highlighted. Tap a chapter to walk there.',
@@ -24,11 +25,12 @@ export const changelogEntries: ChangelogEntry[] = [
       'After a defeat, the goal chip offers to walk you back to your dropped bag when you can still reach it.',
       'Agents get the same road in state.goal, now with a target tile and chapter.',
     ],
-    commits: [],
+    commits: ['ee9a98d'],
   },
   {
     id: '2026-10-05-clatterhorn-and-the-sunken-spire', date: '2026-10-05', period: 'Oct 5, 2026',
     title: 'Clatterhorn scuttles in a new southern glade; the Sunken Spire opens under the inland sea',
+    note: 'Live beta update: both bosses open since Oct 8, 2026.',
     changes: [
       'Clatterhorn, a cart-sized stag beetle, wakes in Clatterhorn’s Glade at (84, 106) in the southern wilds when you step in. It charges whoever stands farthest away along a marked lane; lure it into one of the eight standing stones and it flips onto its back, taking double damage.',
       'Hug Clatterhorn to dodge its Shell Spin, and step into the green free columns when it drums up a swarm of runners. Its health grows with every challenger, and every helper with a recent swing earns gleamshell, goldberries, Fighting XP and the Clatterhorn Horn keepsake.',
