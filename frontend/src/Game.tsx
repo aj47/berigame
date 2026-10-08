@@ -5,11 +5,12 @@ import SpacetimeProvider from './spacetime/SpacetimeProvider';
 import GameWebMCPTools from './agent/GameWebMCPTools';
 import BetaAdmission from './agent/BetaAdmission';
 import SocialHud from './Components/SocialHud';
+import HudToggle from './Components/HudToggle';
 
 const ignoreWebMCPStatus = () => {};
 export default function Game() {
   return <BetaAdmission><SpacetimeProvider>
     <GameWebMCPTools onStatusChange={ignoreWebMCPStatus} />
-    <GameComponent /><SocialHud />
+    <GameComponent /><SocialHud /><HudToggle />
   </SpacetimeProvider></BetaAdmission>;
 }

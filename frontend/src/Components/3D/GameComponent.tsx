@@ -39,6 +39,7 @@ import ClatterGlade from '../../bosses/clatterhorn/ClatterGlade';
 import SpireGate from '../../bosses/spire/SpireGate';
 import { setWalkViewerOnFloor } from './walkTarget';
 import type { CameraFocus } from './CameraController';
+import { useHudStore } from '../hudVisibility';
 
 /** Only what you can see takes a click or a hover (FINAL_SPEC 7.4). */
 const canvasEvents = withVisibleFilter(pointerEvents);
@@ -131,6 +132,7 @@ const GameComponent = () => {
   const graphics = useSettingsStore((s) => s.graphics);
   const quality = QUALITY[useGraphicsTier()];
   const worldLoading = useLoadingStore((s) => s.isLoading);
+  const hudHidden = useHudStore((s) => s.hidden);
 
   return (
     <div style={{ width: '100%', height: '100dvh', position: 'relative', overflow: 'hidden' }}>
@@ -140,7 +142,7 @@ const GameComponent = () => {
       {!inFrontier && <CharacterSetup />}
       {homeScene && !draft && <WorldHoverTooltip />}
       {!draft && clickedOtherObject && <ClickDropdown region={region} />}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+      <div data-world-layer style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       {webgl === 'webgl2' && <WorldBoundary>
       {!homeScene ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" data-world-floor data-spire={inside || undefined} events={canvasEvents} dpr={quality.dpr} shadows="percentage" camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
         <WebGLContextWatch />
@@ -162,7 +164,7 @@ const GameComponent = () => {
           <PlayerController setPlayerRef={setPlayerRef} frontier={avatarFrontier} />
           <CameraController playerRef={playerRef} focus={inside ? SPIRE_CAMERA : undefined} />
           {!draft && <HoldToWalk />}
-          {!draft && <WorldHover />}
+          {!draft && !hudHidden && <WorldHover />}
           <DebugBridge />
           <FxLayer />
         </Suspense>
