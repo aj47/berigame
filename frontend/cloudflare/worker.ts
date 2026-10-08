@@ -10,7 +10,9 @@ import { createGameService, deadline, type Credential, type GameSession } from '
 import { openCloudflareSocket } from './socket';
 import { bearer, errorBody, readJson, send, sendJsonText, unauthorized } from './http';
 import { ACCOUNT_BASE, createAccountTables, forgetCharacter, handleAccount, isAccountPath, isOAuthCallback, reapAccounts, type AccountEnv } from './accounts';
-import { issueRenewal, lookupRenewal, MAX_RENEWALS, renewalRefusal, renewedElsewhere, rotateRenewal, visitEnded, type RenewalRow, type RenewalStore } from '../agent-api/renewal';
+import { issueRenewal, lookupRenewal, MAX_RENEWALS, RENEWAL_TTL_MS, renewalRefusal, renewedElsewhere, rotateRenewal, visitEnded, type RenewalRow, type RenewalStore } from '../agent-api/renewal';
+import { handleMcp, MCP_PATH, PLAYER_KEY_PREFIX, type PlayerTokens } from './mcp';
+import { MCP_APP_HTML, MCP_ICON_SVG } from './mcpApp';
 
 interface Env extends AccountEnv {
   ASSETS: Fetcher;
@@ -29,6 +31,10 @@ type SessionRow = { key: string; id: string; ip: string; kind: Kind; expires_at:
 type Receipt = { fingerprint: string; status: number; body: string };
 type Service = Awaited<ReturnType<typeof createGameService>>;
 const PREFIX = '/api/agent/v1';
+/** Browser origins allowed to call /mcp (server-to-server MCP clients send none). */
+const MCP_ORIGINS = ['https://chatgpt.com', 'https://chat.openai.com'];
+const mcpError = (status: number, message: string) => new Response(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32000, message } }),
+  { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const IDLE_MS = 10 * 60_000;
 /** Renewal bodies: `resume: true` is the player choosing to return after an idle logout. */
 const RESUME_BODY = { resume: { type: 'boolean' } } as const;
@@ -47,6 +53,13 @@ function isAdmin(request: Request, env: Env) {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === MCP_PATH) {
+      const origin = request.headers.get('Origin');
+      if (origin && origin !== env.PUBLIC_ORIGIN && !MCP_ORIGINS.includes(origin)) return mcpError(403, 'Cross-origin browser requests are not allowed.');
+      // No edge limit here: chat hosts share a few egress addresses. The coordinator budgets each address and character.
+      try { return await env.AGENT_GATEWAY.get(env.AGENT_GATEWAY.idFromName('beta-v1')).fetch(request); }
+      catch { return mcpError(503, 'The island is unavailable. Retry shortly.'); }
+    }
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
       const account = isAccountPath(url.pathname);
@@ -109,6 +122,9 @@ export class AgentGateway extends DurableObject<Env> {
     sql.exec('CREATE INDEX IF NOT EXISTS renewals_prev ON renewals(prev_key)');
     sql.exec('CREATE INDEX IF NOT EXISTS renewals_session ON renewals(session_id)');
     createAccountTables(sql);
+    // MCP player keys (bgm_): digest -> sealed session and renewal tokens, so a chat can return to its character.
+    sql.exec('CREATE TABLE IF NOT EXISTS mcp_players (key TEXT PRIMARY KEY, payload TEXT NOT NULL, player_id TEXT NOT NULL, expires_at INTEGER NOT NULL)');
+    sql.exec('CREATE INDEX IF NOT EXISTS mcp_players_expiry ON mcp_players(expires_at)');
   }
   private one<T extends Record<string, any>>(query: string, ...args: (string | number | null)[]): T | undefined {
     return this.ctx.storage.sql.exec<T>(query, ...args).toArray()[0];
@@ -228,6 +244,7 @@ export class AgentGateway extends DurableObject<Env> {
       this.ctx.storage.sql.exec('DELETE FROM invites WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM renewals WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM recoveries WHERE expires_at <= ?', now);
+      this.ctx.storage.sql.exec('DELETE FROM mcp_players WHERE expires_at <= ?', now);
       reapAccounts(this.ctx.storage.sql, now);
       this.ctx.storage.sql.exec('DELETE FROM buckets WHERE expires_at <= ?', now);
       this.ctx.storage.sql.exec('DELETE FROM daily WHERE day < ?', new Date(now - 7 * 86400_000).toISOString().slice(0, 10));
@@ -244,8 +261,47 @@ export class AgentGateway extends DurableObject<Env> {
   }
   async alarm() { await this.reap(true); await this.rest(); }
 
+  /** MCP tools call this gateway's own agent API, so every budget and rule applies as for any agent. */
+  private async mcp(request: Request): Promise<Response> {
+    const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
+    try { this.take(`mcp:${digest(ip)}`, 200, 50, Date.now()); }
+    catch { return mcpError(429, 'Slow down and retry shortly.'); }
+    const sealKey = this.env.RECOVERY_ENCRYPTION_KEY ?? this.env.GATEWAY_CREDENTIAL;
+    const sql = this.ctx.storage.sql;
+    return handleMcp(request, {
+      api: async call => {
+        const headers: Record<string, string> = { 'CF-Connecting-IP': ip, 'User-Agent': 'BeriGame-MCP/1.0' };
+        if (call.token) headers.Authorization = `Bearer ${call.token}`;
+        if (call.idempotencyKey) headers['Idempotency-Key'] = call.idempotencyKey;
+        if (call.body !== undefined) headers['Content-Type'] = 'application/json';
+        const response = await this.fetch(new Request(new URL(call.path, this.env.PUBLIC_ORIGIN), { method: call.method, headers,
+          body: call.body === undefined ? undefined : JSON.stringify(call.body) }));
+        const text = await response.text();
+        let body: unknown = null;
+        try { body = text ? JSON.parse(text) : null; } catch { /* A non-JSON reply reads as a failure below. */ }
+        return { status: response.status, body };
+      },
+      players: {
+        get: key => {
+          const row = this.one<{ payload: string; expires_at: number }>('SELECT payload, expires_at FROM mcp_players WHERE key = ?', digest(key));
+          if (!row || row.expires_at <= Date.now()) return undefined;
+          try { return openRecovery<PlayerTokens>(row.payload, sealKey); } catch { return undefined; }
+        },
+        put: (key, value) => { sql.exec('INSERT OR REPLACE INTO mcp_players VALUES (?, ?, ?, ?)', digest(key), sealRecovery(value, sealKey), value.playerId, Date.now() + RENEWAL_TTL_MS); },
+        remove: key => { sql.exec('DELETE FROM mcp_players WHERE key = ?', digest(key)); },
+      },
+      newKey: () => secret(PLAYER_KEY_PREFIX),
+      newIdempotencyKey: () => crypto.randomUUID(),
+      guide: async () => (await this.env.ASSETS.fetch(new Request(new URL('/agent.md', this.env.PUBLIC_ORIGIN)))).text(),
+      appHtml: MCP_APP_HTML,
+      iconSvg: MCP_ICON_SVG,
+      sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+    });
+  }
+
   async fetch(request: Request): Promise<Response> {
     const path = new URL(request.url).pathname;
+    if (path === MCP_PATH) return this.mcp(request);
     const lane = requestLane(path, request.method);
     this.inflight++;
     if (lane === 'join') this.joining++;
