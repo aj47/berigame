@@ -198,7 +198,7 @@ Release steps:
    1..32 and every HP value 50..20,000:
 
    ```sh
-   spacetime call --server http://127.0.0.1:3000 berigame-beta configure_bosses true true false 12 1000 700 200 150
+   spacetime call --server http://127.0.0.1:3000 berigame-beta configure_bosses true true false 12 1000 700 300 200
    spacetime sql --server http://127.0.0.1:3000 berigame-beta "SELECT * FROM boss_config"
    spacetime sql --server http://127.0.0.1:3000 berigame-beta "SELECT * FROM clatterhorn"
    ```
@@ -220,7 +220,7 @@ Release steps:
 **Rollback** is the kill switch, never a schema downgrade or `--delete-data`:
 
 ```sh
-spacetime call --server http://127.0.0.1:3000 berigame-beta configure_bosses false false false 12 1000 700 200 150
+spacetime call --server http://127.0.0.1:3000 berigame-beta configure_bosses false false false 12 1000 700 300 200
 ```
 
 Closing Clatterhorn returns it home as Closed, stops every swing and deletes

@@ -3,7 +3,7 @@ import { act, cleanup, render } from '@testing-library/react';
 import { Euler, Vector3 } from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  CLATTER_GLADE, ClatterEndKind, ClatterState, GRID_SIZE, bulletDangerKeys, clatterLane, clatterSpinTiles, clatterSwarmBullets,
+  CLATTER_GLADE, ClatterEndKind, ClatterState, GRID_SIZE, bulletDangerKeys, clatterLane, clatterSlam, clatterSlamTiles, clatterSpinTiles, clatterSwarmBullets,
   clatterValidCentre, identityKey32, type ClatterRowLike,
 } from '@sim';
 
@@ -77,22 +77,22 @@ describe('Clatterhorn charge telegraph', () => {
     const danger = lastTiles(TELEGRAPH_COLORS.danger);
     expect([...danger.tiles]).toEqual(lane.tiles);
     expect(danger.stripes).toBe(true);
-    // Phase 1 leads by 4 ticks: windup started at 99, we joined at 101, so half of it has passed.
+    // Phase 1 leads by 3 ticks: windup started at 100, we joined at 101, so a third of it has passed.
     h.frame(1000);
     expect(h.el('clatter-fill').visible).toBe(true);
-    expect(h.el('clatter-fill').scale.z).toBeCloseTo(0.5);
+    expect(h.el('clatter-fill').scale.z).toBeCloseTo(1 / 3);
     h.frame(1600);
-    expect(h.el('clatter-fill').scale.z).toBeCloseTo(0.75);
+    expect(h.el('clatter-fill').scale.z).toBeCloseTo(2 / 3);
   });
 
   it('keeps progress through unrelated row writes and restarts for a chained charge', () => {
     const row = chargeRow(ClatterEndKind.Skid);
     const h = setup(row);
     h.frame(1300);
-    expect(h.el('clatter-fill').scale.z).toBeCloseTo(0.625);
+    expect(h.el('clatter-fill').scale.z).toBeCloseTo(0.5);
     h.rerender({ ...row, hp: 300 });
     h.frame(1600);
-    expect(h.el('clatter-fill').scale.z).toBeCloseTo(0.75);
+    expect(h.el('clatter-fill').scale.z).toBeCloseTo(2 / 3);
     // A chained charge in phase 2 (lead 3) that began on tick 107; we see it at 108.
     mock.clock.tick = 108;
     h.rerender({ ...row, phase: 2, x: row.endX, z: row.endZ, stateUntilTick: 110 }, 108);
@@ -150,6 +150,15 @@ describe('Clatterhorn spin and swarm telegraphs', () => {
     h.frame(1000);
     expect(h.el('clatter-fill').scale.x).toBeCloseTo(2 / 3);
     expect(h.el('clatter-endcap-skid')).toBeNull();
+  });
+
+  it('paints a Shell Slam on the body in red and its safe ring 2 in green', () => {
+    let n = 0;
+    while (!clatterSlam({ attack: 2, phase: 2, fightCount: 1, attackCount: n })) n++;
+    const row = baseRow({ state: ClatterState.SpinWindup, attack: 2, phase: 2, attackCount: n, stateUntilTick: 102 });
+    setup(row);
+    expect([...lastTiles(TELEGRAPH_COLORS.danger).tiles]).toEqual(clatterSlamTiles(row));
+    expect([...lastTiles(TELEGRAPH_COLORS.safe).tiles]).toEqual(clatterSpinTiles(row));
   });
 
   it('shows the free lines and the runners\' next two ticks of danger while the swarm runs', () => {

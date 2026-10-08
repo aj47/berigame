@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { DoubleSide, MeshBasicMaterial, PlaneGeometry, RingGeometry, ConeGeometry, type Group } from 'three';
 import {
   CLATTER_CHARGE_WINDUP, CLATTER_DIR8, CLATTER_DRUM_WINDUP, CLATTER_GLADE, CLATTER_SPIN_WINDUP, ClatterEndKind, ClatterState, GRID_SIZE,
-  bulletDangerKeys, clatterSwarmBullets, clatterSwarmFreeLines, clatterTelegraph, tileToWorld,
+  bulletDangerKeys, clatterSpinTiles, clatterSwarmBullets, clatterSwarmFreeLines, clatterTelegraph, tileToWorld,
 } from '@sim';
 import { locateAvatar } from '../../animation/avatarRegistry';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
@@ -89,7 +89,7 @@ const END_CAP_NAME: Record<number, string> = {
  * Lane, spin ring and drum plumes from `clatterTelegraph(row)` through
  * DangerTiles, a fill back-dated to the windup's first tick (as the Giant's),
  * chevrons toward the lane's end, the end-cap (cracked stone = Flip, scuff =
- * Glance/Skid), the spin's safe eye in cool green, a pulsing reticle over the
+ * Glance/Skid), the spin's safe eye (a slam's safe ring 2) in cool green, a pulsing reticle over the
  * bait, and while a swarm is live its free lines and the runners' danger for
  * the next two ticks (FINAL_SPEC 7.2). World coordinates.
  */
@@ -131,7 +131,8 @@ export default function ClatterTelegraph({ row, tick }: ClatterTelegraphProps) {
     return later;
   }, [runners, runnerNext, tick]);
 
-  const eye = useMemo(() => (tele?.attack === 'spin' ? spinEyeTiles(tele.from) : null), [tele]);
+  // The safe tiles: the eye under a spin, ring 2 around a slam (both still in reach).
+  const eye = useMemo(() => (tele?.attack === 'spin' ? spinEyeTiles(tele.from) : tele?.attack === 'slam' ? [...clatterSpinTiles(tele.from)] : null), [tele]);
 
   useFrame(() => {
     const now = performance.now();
@@ -194,6 +195,7 @@ export default function ClatterTelegraph({ row, tick }: ClatterTelegraphProps) {
       <group ref={fill} name="clatter-fill" visible={false} position={[sx, 0.04, sz]} rotation={[0, yaw, 0]}>
         {tele?.attack === 'charge' && <mesh geometry={lanePlane} material={telegraphMaterials.fill} scale={[laneWidth, 1, laneLen]} raycast={noRaycast} />}
         {tele?.attack === 'spin' && <mesh geometry={ring} material={telegraphMaterials.fill} scale={[2.5, 1, 2.5]} raycast={noRaycast} />}
+        {tele?.attack === 'slam' && <mesh geometry={plane} material={telegraphMaterials.fill} rotation={[-Math.PI / 2, 0, 0]} scale={[3, 3, 1]} raycast={noRaycast} />}
         {tele?.attack === 'drum' && tele.tiles.map((key) => {
           const [px, , pz] = tileToWorld({ x: key % GRID_SIZE, z: Math.floor(key / GRID_SIZE) });
           return <mesh key={key} geometry={cone} material={telegraphMaterials.plume} position={[px - sx, 0.25, pz - sz]} scale={[1.2, 1.6, 1.2]} raycast={noRaycast} />;

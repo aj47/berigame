@@ -148,17 +148,17 @@ describe('Clatterhorn dodge-assist hover', () => {
         const hit = bruteHit(row, tick, me, tile, 3);
         expect(v!.kind).toBe(hit ? 'hit' : 'safe');
         expect(hit).toBe(laneKeys.has(tileKey(tile)));
-        if (hit) { expect(v!.damage).toBe(10); hits++; } else { expect(v!.damage).toBe(0); safe++; }
+        if (hit) { expect(v!.damage).toBe(14); hits++; } else { expect(v!.damage).toBe(0); safe++; }
       }
     }
     expect(hits).toBeGreaterThan(10);
     expect(safe).toBeGreaterThan(50);
   });
 
-  it('a spin: ring 2 is red for 7', () => {
+  it('a spin: ring 2 is red for 10', () => {
     const row = crow({ x: 84, z: 106, state: ClatterState.SpinWindup, attack: ClatterAttack.Spin, stateUntilTick: tick + 2 });
     const me = { x: 85, z: 107 };
-    expect(clatterHoverVerdict(row, tick, me, { x: 86, z: 108 }, BLOCKED)).toMatchObject({ kind: 'hit', damage: 7 });
+    expect(clatterHoverVerdict(row, tick, me, { x: 86, z: 108 }, BLOCKED)).toMatchObject({ kind: 'hit', damage: 10 });
     expect(clatterHoverVerdict(row, tick, me, { x: 85, z: 107 }, BLOCKED)).toMatchObject({ kind: 'safe', damage: 0 });
   });
 
@@ -170,8 +170,8 @@ describe('Clatterhorn dodge-assist hover', () => {
     expect(free).toMatchObject({ kind: 'safe', damage: 0 });
     const stay = clatterHoverVerdict(windup, tick, me, me, BLOCKED)!;
     expect(stay.kind).toBe('hit');
-    expect(stay.damage % 4).toBe(0);
-    expect(stay.damage).toBeGreaterThanOrEqual(8); // a runner hits as it enters and as it leaves
+    expect(stay.damage % 5).toBe(0);
+    expect(stay.damage).toBeGreaterThanOrEqual(10); // a runner hits as it enters and as it leaves
     expect(bruteHit(windup, tick, me, me, 30)).toBe(true);
     expect(bruteHit(windup, tick, me, { x: lines[1], z: 106 }, 30)).toBe(false);
     // Mid-swarm too.

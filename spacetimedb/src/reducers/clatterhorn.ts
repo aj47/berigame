@@ -1,6 +1,6 @@
 import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { CLATTERHORN_ID, CLATTER_REACH, ClatterState, Pending, chebyshev } from '../../../shared/sim';
+import { CLATTERHORN_ID, CLATTER_REACH, ClatterState, Pending, clatterCanSwingFrom, clatterSwingGoal } from '../../../shared/sim';
 import { carrying } from '../lib/adventure';
 import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
@@ -31,7 +31,7 @@ export const attackClatterhorn = spacetimedb.reducer((ctx) => {
   activityAction(ctx, p.identity, 'clatterhorn');
   // Re-selecting the beetle you are already swinging at in reach keeps the rhythm (and drops a stale walk
   // target left from before a charge moved it).
-  const inReach = chebyshev(p, row) <= CLATTER_REACH;
+  const inReach = clatterCanSwingFrom(p, row);
   if (p.pending === Pending.Clatterhorn && !p.combatTarget && inReach) {
     p.targetX = undefined; p.targetZ = undefined;
     savePlayer(ctx, p);
@@ -40,7 +40,8 @@ export const attackClatterhorn = spacetimedb.reducer((ctx) => {
   const readyAt = p.nextSwingTick;
   clearInteractions(ctx, p);
   if (!inReach) {
-    const dest = interactionTile(ctx, p, row, blockedTiles(ctx), CLATTER_REACH);
+    const blocked = blockedTiles(ctx);
+    const dest = interactionTile(ctx, p, row, blocked, CLATTER_REACH, clatterSwingGoal(row, blocked));
     p.targetX = dest.x;
     p.targetZ = dest.z;
   }

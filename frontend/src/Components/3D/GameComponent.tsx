@@ -30,7 +30,7 @@ import { useGroundItems, usePlayersByHex, useTick, useTrees } from '../../spacet
 import { identityHex } from '../../spacetime/identity';
 import { isWebGLError, WebGLContextWatch, webglAvailable, webglSupport } from './webgl';
 import AdaptiveQuality from './AdaptiveQuality';
-import { QUALITY, useGraphicsTier } from './renderQuality';
+import { QUALITY, spireDpr, useGraphicsTier } from './renderQuality';
 import { SPIRE_CENTRE, tileToWorld } from '@sim';
 import { isAwayDistrict, isHomeScene, useHasPlayer, useMeadowsMounted, useMyRegion, useOnSpireFloor } from './homePresence';
 import { withVisibleFilter } from '../../bosses/visibleEvents';
@@ -144,7 +144,7 @@ const GameComponent = () => {
       {!draft && clickedOtherObject && <ClickDropdown region={region} />}
       <div data-world-layer style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       {webgl === 'webgl2' && <WorldBoundary>
-      {!homeScene ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" data-world-floor data-spire={inside || undefined} events={canvasEvents} dpr={quality.dpr} shadows="percentage" camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
+      {!homeScene ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" data-world-floor data-spire={inside || undefined} events={canvasEvents} dpr={inside ? spireDpr(quality.dpr) : quality.dpr} shadows="percentage" camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
         <WebGLContextWatch />
         {graphics === 'auto' && !worldLoading && <AdaptiveQuality />}
         <Suspense fallback={null}>

@@ -24,8 +24,8 @@ export const BOSS_CONFIG_DEFAULTS: BossConfigLike = Object.freeze({
   spireMaxRuns: 12,
   spireHpBase: 1000,
   spireHpPerMember: 700,
-  clatterHpBase: 200,
-  clatterHpPerChallenger: 150,
+  clatterHpBase: 300,
+  clatterHpPerChallenger: 200,
 });
 
 /** Inclusive ranges accepted by `configure_bosses`. */

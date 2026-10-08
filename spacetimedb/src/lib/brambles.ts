@@ -38,9 +38,9 @@ export function playerEnterRule(ctx: Ctx, p: PlayerRow): EnterRule {
  * in the way: brambles when the player lacks a stick and a stick alone would
  * do, otherwise boulders.
  */
-export function interactionTile(ctx: Ctx, p: PlayerRow, target: Tile, blocked: Set<number>, range = 1): Tile {
+export function interactionTile(ctx: Ctx, p: PlayerRow, target: Tile, blocked: Set<number>, range = 1,
+  goal: (t: Tile) => boolean = goalAdjacentTo(target, blocked, range)): Tile {
   const k = heldKeys(ctx, p);
-  const goal = goalAdjacentTo(target, blocked, range);
   const path = bfsPath(p, goal, blocked, enterRule(k.stick, k.club));
   if (path) return path.length > 0 ? path[path.length - 1] : { x: p.x, z: p.z };
   if (!k.stick && bfsPath(p, goal, blocked, enterRule(true, k.club))) throw new SenderError(BRAMBLE_MESSAGE);

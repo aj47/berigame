@@ -20,6 +20,14 @@ export const QUALITY: Record<GraphicsTier, QualityProfile> = {
   high: { dpr: [1, 2], shadows: true, ambientLife: true },
 };
 
+/** Pixel-ratio ceiling inside the Spire: a bullet hell stacks transparent layers, so fill rate is its cost. */
+export const SPIRE_MAX_DPR = 1.5;
+
+/** The tier's pixel ratio capped at SPIRE_MAX_DPR. */
+export function spireDpr(dpr: QualityProfile['dpr']): QualityProfile['dpr'] {
+  return typeof dpr === 'number' ? Math.min(dpr, SPIRE_MAX_DPR) : [Math.min(dpr[0], SPIRE_MAX_DPR), Math.min(dpr[1], SPIRE_MAX_DPR)];
+}
+
 export interface DeviceInfo {
   /** WebGL renderer string (unmasked where the browser allows it). */
   gpu: string;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import { RingGeometry } from 'three';
+import { MeshBasicMaterial, RingGeometry, type Group } from 'three';
 import { TILE_ORIGIN, spireBulletDamage, spireEnraged, spireFightBullets, type Tile } from '@sim';
 import { useMyPlayer, useTick } from '../../spacetime/hooks';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
@@ -25,6 +25,44 @@ const EMPTY_KEYS: ReadonlySet<number> = new Set();
 const markerGeo = new RingGeometry(0.5, 0.6, 4, 1).rotateX(-Math.PI / 2).rotateY(Math.PI / 4);
 const hoverGeo = new RingGeometry(0.34, 0.46, 24).rotateX(-Math.PI / 2);
 const HOVER_COLOR = { safe: '#5ff2a0', risky: '#ffb547', hit: '#ff4d5e' } as const;
+const hoverMat = new MeshBasicMaterial({ color: HOVER_COLOR.safe, toneMapped: false, transparent: true, opacity: 0.95, depthWrite: false, fog: false });
+const markerMat = new MeshBasicMaterial({ color: '#5ff0ff', toneMapped: false, transparent: true, opacity: 0.9, depthWrite: false, fog: false });
+
+interface HoverInput { bullets: Int32Array; tick: number; me: Tile | null; safety: ReturnType<typeof fightSafety>; phase: number; startTick: number }
+
+/**
+ * The safe-move hover, polled from the floor's pointer state and recomputed when the tile or the tick changes.
+ * Its own component with one persistent ring, so a hovered-tile change neither re-renders the danger layers nor
+ * mounts a material; only the '-N' label of a hit mounts.
+ */
+function SpireHover({ input }: { input: HoverInput }) {
+  const [hit, setHit] = useState<{ tile: Tile; damage: number } | null>(null);
+  const live = useRef(input);
+  live.current = input;
+  const group = useRef<Group>(null);
+  const seen = useRef({ seq: -1, tick: -1, mx: NaN, mz: NaN, n: -1 });
+  useFrame(() => {
+    const c = live.current, h = spireView.hover, k = seen.current;
+    const mx = c.me ? c.me.x : NaN, mz = c.me ? c.me.z : NaN;
+    if (k.seq === spireView.hoverSeq && k.tick === c.tick && Object.is(k.mx, mx) && Object.is(k.mz, mz) && k.n === c.bullets.length) return;
+    k.seq = spireView.hoverSeq; k.tick = c.tick; k.mx = mx; k.mz = mz; k.n = c.bullets.length;
+    const damage = spireBulletDamage(c.phase, spireEnraged(c.startTick, c.tick + 1));
+    const v: HoverVerdict | null = h && c.me ? hoverVerdict(c.bullets, c.tick, c.me, h, c.safety, SPIRE_BLOCKED, damage) : null;
+    const g = group.current;
+    if (g) {
+      g.visible = !!v;
+      if (v) { g.position.set(v.tile.x - TILE_ORIGIN, 0.06, v.tile.z - TILE_ORIGIN); hoverMat.color.set(HOVER_COLOR[v.kind]); }
+    }
+    const next = v?.kind === 'hit' ? { tile: v.tile, damage: v.damage } : null;
+    setHit((old) => (old?.tile.x === next?.tile.x && old?.tile.z === next?.tile.z && old?.damage === next?.damage ? old : next));
+  });
+  return <group ref={group} visible={false}>
+    <mesh geometry={hoverGeo} material={hoverMat} raycast={() => null} renderOrder={5} />
+    {hit && <Html center position={[0, 0.5, 0]} zIndexRange={[3, 0]} style={{ pointerEvents: 'none' }}>
+      <div className="spire-hover-hit">-{hit.damage}</div>
+    </Html>}
+  </group>;
+}
 
 export default function SpireOverlay(_props: SpireOverlayProps) {
   const tick = useTick();
@@ -60,36 +98,13 @@ export default function SpireOverlay(_props: SpireOverlayProps) {
   }, [tele, tick]);
   useEffect(() => () => { spireView.pillarGlow = 0; }, []);
 
-  // Safe-move hover: polled from the floor's pointer state, recomputed when the tile or the tick changes.
-  const [hover, setHover] = useState<HoverVerdict | null>(null);
-  const live = useRef({ bullets, tick, me: meTile, safety, phase: fight?.phase ?? 1, startTick: run?.startTick ?? 0 });
-  live.current = { bullets, tick, me: meTile, safety, phase: fight?.phase ?? 1, startTick: run?.startTick ?? 0 };
-  const seen = useRef('');
-  useFrame(() => {
-    const c = live.current, h = spireView.hover;
-    const key = `${spireView.hoverSeq}:${c.tick}:${c.me?.x},${c.me?.z}:${c.bullets.length}`;
-    if (key === seen.current) return;
-    seen.current = key;
-    const damage = spireBulletDamage(c.phase, spireEnraged(c.startTick, c.tick + 1));
-    const v = h && c.me ? hoverVerdict(c.bullets, c.tick, c.me, h, c.safety, SPIRE_BLOCKED, damage) : null;
-    setHover((old) => (old?.kind === v?.kind && old?.tile.x === v?.tile.x && old?.tile.z === v?.tile.z ? old : v));
-  });
 
   return <>
     <DangerTiles tiles={danger.amber} color="#ffb547" opacity={0.18} />
     <DangerTiles tiles={danger.red} color="#ff4d5e" opacity={0.42} stripes y={0.034} />
     <DangerTiles tiles={tele.tiles} color="#c9a7ff" opacity={0.4} size={0.42} y={0.038} />
     {assist && <DangerTiles tiles={dots} color="#5ff2a0" opacity={0.9} size={0.2} y={0.044} />}
-    {meTile && <mesh geometry={markerGeo} position={[meTile.x - TILE_ORIGIN, 0.05, meTile.z - TILE_ORIGIN]} raycast={() => null} renderOrder={4}>
-      <meshBasicMaterial color="#5ff0ff" toneMapped={false} transparent opacity={0.9} depthWrite={false} />
-    </mesh>}
-    {hover && <group position={[hover.tile.x - TILE_ORIGIN, 0.06, hover.tile.z - TILE_ORIGIN]}>
-      <mesh geometry={hoverGeo} raycast={() => null} renderOrder={5}>
-        <meshBasicMaterial color={HOVER_COLOR[hover.kind]} toneMapped={false} transparent opacity={0.95} depthWrite={false} />
-      </mesh>
-      {hover.kind === 'hit' && <Html center position={[0, 0.5, 0]} zIndexRange={[3, 0]} style={{ pointerEvents: 'none' }}>
-        <div className="spire-hover-hit">-{hover.damage}</div>
-      </Html>}
-    </group>}
+    {meTile && <mesh geometry={markerGeo} material={markerMat} position={[meTile.x - TILE_ORIGIN, 0.05, meTile.z - TILE_ORIGIN]} raycast={() => null} renderOrder={4} />}
+    <SpireHover input={{ bullets, tick, me: meTile, safety, phase: fight?.phase ?? 1, startTick: run?.startTick ?? 0 }} />
   </>;
 }
