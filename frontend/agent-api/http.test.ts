@@ -27,7 +27,7 @@ async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: numbe
     async create() {
       const identity = String(++created).padStart(64, '0');
       await gate;
-      return { identity, state: () => ({ player: { id: identity }, inventory: [] }),
+      return { identity, state: (options?: { map?: boolean }) => ({ player: { id: identity }, inventory: [], world: { map: options?.map ? { rows: [] } : null } }),
         danger: () => {
           if (options.link?.stalled) throw new ApiError(503, 'world_unavailable', 'The live world is unavailable. Retry shortly.');
           return { v: 1, tick: ++dangerReads, where: null, moves: [], best: null, path: [] } as any;
@@ -95,7 +95,7 @@ test('wield and unwield reach the game with the documented quick-slot range', as
     assert.equal((await f.request('/actions/unwield', token, {}, { 'Idempotency-Key': randomUUID() })).status, 200);
     assert.deepEqual(f.calls, ['wield', 'unwield']);
     const spec = await (await f.request('/openapi.json')).json() as any;
-    assert.equal(spec.info.version, '1.7.0');
+    assert.equal(spec.info.version, '1.10.0');
     assert.equal(spec.paths['/actions/stance'], undefined);
     assert.deepEqual(spec.paths['/actions/wield'].post.requestBody.content['application/json'].schema.properties.slot, { type: 'integer', minimum: 0, maximum: 2 });
   } finally { await f.close(); }
@@ -290,11 +290,11 @@ test('boss actions validate their documented fields before reaching the game', a
   } finally { await f.close(); }
 });
 
-test('OpenAPI 1.7.0 documents /danger and the boss actions without a capability', async () => {
+test('OpenAPI 1.10.0 documents /danger and the boss actions without a capability', async () => {
   const f = await fixture();
   try {
     const spec = await (await f.request('/openapi.json')).json() as any;
-    assert.equal(spec.info.version, '1.7.0');
+    assert.equal(spec.info.version, '1.10.0');
     assert.equal(spec.paths['/danger'].get.operationId, 'inspect_danger');
     assert.equal(spec.paths['/danger/next/{afterTick}'], undefined);
     for (const name of ['attack_clatterhorn', 'spire', 'dodge']) {
@@ -305,5 +305,56 @@ test('OpenAPI 1.7.0 documents /danger and the boss actions without a capability'
     assert.deepEqual(spire.properties.op.enum, ['open', 'join', 'start', 'leave']);
     assert.deepEqual(Object.keys(spire.properties).sort(), ['op', 'runId']);
     assert.deepEqual(spec.paths['/actions/dodge'].post.requestBody.content['application/json'].schema.required, ['x', 'z']);
+  } finally { await f.close(); }
+});
+
+test('OpenAPI 1.10.0 documents deliver_commission and the tiered node kinds', async () => {
+  const f = await fixture();
+  try {
+    const spec = await (await f.request('/openapi.json')).json() as any;
+    const deliver = spec.paths['/actions/deliver_commission'].post;
+    assert.equal(deliver.operationId, 'deliver_commission');
+    assert.equal(deliver['x-required-capability'], undefined);
+    assert.equal(deliver.parameters[0].name, 'Idempotency-Key');
+    assert.deepEqual(deliver.requestBody.content['application/json'].schema.properties.slot, { type: 'integer', minimum: 0, maximum: 2 });
+    assert.deepEqual(deliver.requestBody.content['application/json'].schema.required, ['slot']);
+    const kinds = spec.paths['/actions/harvest'].post.requestBody.content['application/json'].schema.properties.kind.enum;
+    assert.deepEqual(kinds.slice(0, 4), ['berry', 'driftwood', 'tide_rock', 'obsidian']);
+    assert.ok(kinds.includes('honey_hive') && kinds.includes('fallen_star'));
+    assert.match(spec.paths['/actions/harvest'].post.summary, /honey_hive \(Foraging 15/);
+  } finally { await f.close(); }
+});
+
+test('GET /world serves the compact map without a session, and OpenAPI documents it', async () => {
+  const f = await fixture();
+  try {
+    const res = await f.request('/world');
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    assert.ok(text.length < 48 * 1024, `atlas is ${text.length} bytes`);
+    const atlas = JSON.parse(text);
+    const { GRID_SIZE, TERRAIN_MAP, TERRAIN_VERSION } = await import('../../shared/sim');
+    const { decodeRuns } = await import('./worldAtlas');
+    assert.equal(atlas.gridSize, GRID_SIZE);
+    assert.equal(atlas.version, TERRAIN_VERSION);
+    assert.equal(atlas.rows.length, GRID_SIZE);
+    assert.ok(atlas.rows.every((row: string, z: number) => decodeRuns(row) === TERRAIN_MAP.rows[z]));
+    assert.ok(atlas.biomeRows.every((row: string) => decodeRuns(row).length === GRID_SIZE));
+    assert.deepEqual(atlas.biomes.map((b: any) => b.id), ['isle', 'frostpine', 'hearthvale', 'glimmerfen', 'dunes', 'starfall']);
+    assert.deepEqual(atlas.routes.causeways.find((c: any) => c.id === 'kings-road').connects, ['isle', 'frostpine']);
+    assert.equal(atlas.waystones.length, 5);
+    const spec = await (await f.request('/openapi.json')).json() as any;
+    assert.equal(spec.paths['/world'].get.operationId, 'inspect_world_map');
+    assert.deepEqual(spec.paths['/world'].get.security, []);
+  } finally { await f.close(); }
+});
+
+test('GET /state?map=1 is the one accepted query: it adds world.map, which is otherwise null', async () => {
+  const f = await fixture();
+  try {
+    const { token } = await f.enter();
+    assert.equal(((await (await f.request('/state', token)).json()) as any).world.map, null);
+    assert.deepEqual(((await (await f.request('/state?map=1', token)).json()) as any).world.map, { rows: [] });
+    for (const path of ['/state?map=0', '/state?map=1&x=1', '/danger?map=1']) assert.equal((await f.request(path, token)).status, 404, path);
   } finally { await f.close(); }
 });

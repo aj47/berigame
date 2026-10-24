@@ -62,7 +62,7 @@ export function toolList(iconSvg: string) {
       inputSchema: { type: 'object', properties: { player_key: { ...playerKey, description: 'Return to this character instead of creating a new one.' }, name: { type: 'string', minLength: 2, maxLength: 16, pattern: '^[A-Za-z0-9_ ]+$', description: 'Optional character name for a new character.' } }, additionalProperties: false },
       annotations: { title: 'Join BeriGame', ...inWorld }, icons },
     { name: 'look', title: 'Look around',
-      description: 'Read your character: position, health, bag, next goal, nearby players, trees and items, bosses, trade and recent chat. detail "full" returns the complete game state (large: the island map and every rule).',
+      description: 'Read your character: position, health, bag, next goal, nearby players, trees and items, bosses, trade and recent chat. detail "full" returns the complete game state (large: every rule and nearby detail; the island map itself is GET /api/agent/v1/world).',
       inputSchema: { type: 'object', properties: { player_key: playerKey, detail: { type: 'string', enum: ['summary', 'full'] }, wait_seconds: waitSeconds }, required: ['player_key'], additionalProperties: false },
       annotations: { title: 'Look around', ...readOnly }, icons },
     { name: 'act', title: 'Take an action',

@@ -14,4 +14,7 @@ export default __t.row({
   tick: __t.u32(),
   player: __t.identity(),
   emote: __t.u8(),
+  x: __t.i32(),
+  z: __t.i32(),
+  cell: __t.u32(),
 });

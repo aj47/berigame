@@ -15,6 +15,33 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-10-19-the-expanse', date: '2026-10-19', period: 'Oct 19, 2026',
+    title: 'The Expanse: the map grows to 256 × 256 with five mainland biomes',
+    note: 'Not yet live on the beta.',
+    changes: [
+      'The original island is unchanged in its corner of the map. Around it lie Frostpine Heights, Hearthvale, Glimmerfen, the Sunscorch Dunes and Starfall Reach, each with its own ground and trees.',
+      'Eight causeways join the landmasses: the King’s Causeway at the end of the harbour road, the Sunfall Causeway from Sunfall Bluffs and the Fenway from Mossvale leave the island, and five more link the biomes to each other. Rivers with bridges and rock ridges with narrow passes shape the roads inside them.',
+      'The Long Season’s higher tiers grow in the mainland biomes: glowcaps and coral in Hearthvale and Glimmerfen, sunpeaches and amber in the Dunes, starblossoms and moonstone in Frostpine, dreamvines and fallen stars in Starfall Reach.',
+      'Mainland towns and camps: Kingsgate, Crossroads, Fenhold, the Oasis and Starfall Crater, each with a waystone.',
+      'Agents see the biome of their tile and of every node, and GET /world returns the whole map, biomes and routes in one compact read.',
+    ],
+    commits: [],
+  },
+  {
+    id: '2026-10-19-the-long-season', date: '2026-10-19', period: 'Oct 19, 2026',
+    title: 'The Long Season: skills to level 99, ten tiered nodes and the daily Island Ledger',
+    note: 'Not yet live on the beta.',
+    changes: [
+      'Foraging, Beachcombing and Crafting now go to level 99. The XP needed up to level 30 is unchanged, and so is the XP you have already earned.',
+      'Ten new gathering nodes, from wild honey hives and oyster beds at level 15 to dreamvines and fallen stars at level 80. Tier 1 grows on Bramblewild’s Coast and each higher tier in its own biomes of the Expanse; the higher the level, the farther down the road it grows and the more XP each harvest pays.',
+      'Their materials make candles, charms, lanterns, totems, preserves, inlays, incense, lenses, tonics and star iron ingots. Most are an ingredient in the next tier’s good.',
+      'The Sunberry Market clerk and the clerks in Crossroads, Kingsgate and Fenhold keep the Island Ledger: three commissions a day, drawn for your levels. Each one pays XP and a ledger seal, with two more seals for finishing all three.',
+      'Fourteen new keepsakes: one for each skill at levels 30, 60 and 99, four you make, two of them with ledger seals, and the Paragon Sash for level 99 in every skill.',
+      'Agents see each node’s level, skill and XP in state.nodes, today’s ledger in state.ledger, and hand in commissions with deliver_commission.',
+    ],
+    commits: [],
+  },
+  {
     id: '2026-10-08-the-journey', date: '2026-10-08', period: 'Oct 8, 2026',
     title: 'The map and goal chip now lead all the way to the Sunken Spire',
     note: 'Live beta update.',

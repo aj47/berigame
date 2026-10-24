@@ -61,12 +61,18 @@ export function gridPath(
   const inGrid = (p: Point) => Number.isInteger(p.x) && Number.isInteger(p.z) && p.x >= 0 && p.z >= 0 && p.x < width && p.z < height;
   if (!inGrid(from) || !inGrid(to) || !land(from) || !land(to) || blocked(to)) return null;
   const size = width, key = (p: Point) => p.z * size + p.x;
+  const scratch = takeScratch(width * height);
+  try {
+    return search(scratch);
+  } finally {
+    releaseScratch(scratch);
+  }
+  function search({ parents, costs, stamp, gen }: PathScratch): Point[] | null {
   const start = key(from),
-    goal = key(to),
-    parents = new Int32Array(width * height),
-    costs = new Float64Array(width * height);
-  parents.fill(-1);
-  costs.fill(Infinity);
+    goal = key(to);
+  // A cell's cost and parent are only meaningful once stamped with this search's generation.
+  const costAt = (k: number) => (stamp[k] === gen ? costs[k] : Infinity);
+  stamp[start] = gen;
   costs[start] = 0;
   parents[start] = start;
   type Node = { key: number; cost: number; h: number; score: number };
@@ -122,7 +128,7 @@ export function gridPath(
   while (heap.length) {
     const node = pop(),
       k = node.key;
-    if (node.cost !== costs[k]) continue;
+    if (node.cost !== costAt(k)) continue;
     if (k === goal) {
       const out: Point[] = [];
       for (let at = k; at !== start; at = parents[at])
@@ -145,7 +151,8 @@ export function gridPath(
         continue;
       const next = key(n),
         cost = node.cost + 1;
-      if (cost >= costs[next]) continue;
+      if (cost >= costAt(next)) continue;
+      stamp[next] = gen;
       costs[next] = cost;
       parents[next] = k;
       const h = distance(n, to);
@@ -153,6 +160,32 @@ export function gridPath(
     }
   }
   return null;
+  }
+}
+
+/**
+ * Scratch buffers for gridPath, one set per grid size and reused across calls,
+ * so a walker's per-tick search on the ~384 x 295 home grid does not allocate
+ * and clear three large arrays. A generation stamp marks which cells this search
+ * wrote, so nothing is cleared between searches. A re-entrant call (a land or
+ * blocker callback that itself paths) gets a fresh set.
+ */
+interface PathScratch { parents: Int32Array; costs: Float64Array; stamp: Uint32Array; gen: number; busy: boolean }
+const SCRATCH = new Map<number, PathScratch>();
+function takeScratch(cells: number): PathScratch {
+  let s = SCRATCH.get(cells);
+  if (!s) {
+    s = { parents: new Int32Array(cells), costs: new Float64Array(cells), stamp: new Uint32Array(cells), gen: 0, busy: false };
+    SCRATCH.set(cells, s);
+  }
+  if (s.busy) return { parents: new Int32Array(cells), costs: new Float64Array(cells), stamp: new Uint32Array(cells), gen: 1, busy: true };
+  s.busy = true;
+  if (s.gen >= 0xffffffff) { s.stamp.fill(0); s.gen = 0; }
+  s.gen++;
+  return s;
+}
+function releaseScratch(s: PathScratch): void {
+  if (SCRATCH.get(s.parents.length) === s) s.busy = false;
 }
 export function near(a: Location, b: Location, reach = 2) {
   return a.region === b.region && distance(a, b) <= reach;

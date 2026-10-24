@@ -18,4 +18,5 @@ export default __t.row({
   cooldownUntilTick: __t.u32().name("cooldown_until_tick"),
   harvester: __t.option(__t.identity()),
   kind: __t.u8(),
+  cell: __t.u32(),
 });

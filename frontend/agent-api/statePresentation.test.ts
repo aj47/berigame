@@ -13,8 +13,8 @@ const state = () => frontierSnapshot([config], [], identity, now);
 
 test('cross-district destinations decode into reusable region-local coordinates in both directions', () => {
   const outward = homeTarget(homePoint({ x: 31, z: 64 }, 'settlement'));
-  // The tagged internal coordinate (256 + joined-frame x) seen in playtests.
-  assert.equal(outward.x, 256 + MEADOW_OFFSET.x + 31);
+  // The tagged internal coordinate (1024 + joined-frame x; the tag sits above every home-frame x on the 256 map).
+  assert.equal(outward.x, 1024 + MEADOW_OFFSET.x + 31);
   assert.deepEqual(describeDestination({ region: 'bramblewild', targetX: outward.x, targetZ: outward.z }),
     { region: 'settlement', x: 31, z: 64 });
   const inward = homeTarget(homePoint({ x: 46, z: 25 }, 'bramblewild'));

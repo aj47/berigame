@@ -3,14 +3,15 @@ import { tickFrontier, frontierRepository, projectFrontier } from '../lib/fronti
 import { damage as frontierDamage } from '../../../shared/sim/frontier/engine';
 import { reconcileTerrain } from '../lib/terrain';
 import { carrying, profile, saveProfile, progress, tickExpeditions, tickDuels, duelFor } from '../lib/adventure';
-import { canFindStick, Feat, cargoMovementSteps } from '../../../shared/sim';
+import { canFindStick, Feat, cargoMovementSteps, isLandTile, nearestDryTile } from '../../../shared/sim';
+import { respawnPointFor } from '../../../shared/sim/expanse';
 import { SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
 import { tickSchedule } from '../tables';
 import {
-  DEATH_TICKS, EventKind, MELEE_RANGE, isBerryNode, Cosmetic, areaOf, harvestXp, skillForNode, regrowTicksFor, Pending, PlayerState, SPAWN_TILE,
+  DEATH_TICKS, EventKind, MELEE_RANGE, isBerryNode, nodeMinLevel, Cosmetic, areaOf, harvestXp, skillForNode, regrowTicksFor, Pending, PlayerState,
   MOVEMENT_STEPS_PER_TICK, STICK_ITEM_ID, SWING_INTERVAL_TICKS, TICK_MS, energyCost,
-  bfsPath, chebyshev, facingFromDelta, goalAdjacentTo,
+  bfsPath, chebyshev, facingFromDelta, goalAdjacentTo, routePath, blockedVersion, enterRule, type RouteCache,
   goalIsTile, holdsItem, inGrace, inHotbar, inSafeRing, drawClaimant, claimWeight, energyAt, energyMax,
   neighbors8, swingDamage, tileKey, DUMMY_TILE, dummyAfterHit, worldBlockedSet,
   TRADE_BREAK_RANGE, TRADE_REQUEST_TICKS, TRADE_RANGE, SocialNotice,
@@ -24,22 +25,27 @@ import { emitGiantEvent, ensureGiant } from '../lib/giant';
 import { clearContributions as clearAllContributions, countRaiders, ensureRaid, nowMs, sleepGiant, wakeGiant } from '../lib/raid';
 import { mentorMilestone } from '../lib/mentor';
 import { ensureDummy } from '../lib/dummy';
-import { playerEnterRule } from '../lib/brambles';
+import { heldKeys, playerEnterRule } from '../lib/brambles';
 import { emitEvent } from '../lib/events';
+import { eventCell, nodeCell, playerCell } from '../../../shared/sim/interest';
 import { loadEnergy, spendEnergyFor } from '../lib/energy';
 import { itemLabel, moveVaultItems } from '../lib/vault';
 import { seedMissingNodes } from '../lib/nodes';
+import { ROUTES } from '../lib/routes';
 import { statsDeath, statsPosition } from '../lib/stats';
 import { activity, activityHeartbeat } from '../lib/activity';
-import { dropOnGround, giveItem, readSlots, takeGroundItem } from '../lib/inventory';
+import { LOAD_DIRTY, cachedSlots, clearSlotCache, dropOnGround, giveItem, markLoad, readSlots, takeGroundItem } from '../lib/inventory';
 import { clearInteractions, hex, sameId, savePlayer } from '../lib/players';
 import { canPlay } from '../lib/access';
+import { activePlayers, instanceState, onlinePlayers } from '../lib/activePlayers';
+import { idKey, loadPlayer, posOf, posTable, positions, storePlayer } from '../lib/playerStore';
+import { TERRAIN_VERSION } from '../../../shared/sim/terrain';
 import { IDLE_SWEEP_TICKS, logOutIfIdle } from '../lib/idle';
 import { cancelTrade, notify } from '../lib/social';
 import { requestTradeInRange, tradePartnerProblem } from '../lib/trade';
 import { completeTrade, stopSwapOnHit } from '../lib/tradeSwap';
-import { grantXp, harvestTicksForPlayer, unlockCosmetic } from '../lib/progress';
-import type { Ctx, GiantRow, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
+import { grantXp, harvestTicksForPlayer, skillLevel, unlockCosmetic } from '../lib/progress';
+import type { Ctx, GiantRow, PlayerPosRow, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
 import { MentorMilestone, bossNoPvpZone } from '../../../shared/sim';
 import { onSpireFloor } from '../lib/spireGuards';
 import { phaseClatterhorn } from '../lib/clatterhorn';
@@ -55,6 +61,22 @@ interface TickState {
   trees: Map<number, TreeRow>;
   dirtyTrees: Set<number>;
   blocked: Set<number>;
+  /** blockedVersion(blocked): routes planned against other obstacles are searched again. */
+  blockedVersion: number;
+  /** Lazily: carriers(s). */
+  carriers?: Set<bigint | string>;
+}
+
+/** This tick's expedition carriers (lib/adventure.ts carrying, for every walker at once: one pass over the few expeditions). */
+function carriers(s: TickState): Set<bigint | string> {
+  if (s.carriers) return s.carriers;
+  s.carriers = new Set();
+  for (const e of s.ctx.db.expedition?.iter() ?? []) {
+    if (e.stage !== 'hauling' || !e.carrier) continue;
+    const m = s.ctx.db.expeditionMember.identity.find(e.carrier);
+    if (m && m.expeditionId === e.id) s.carriers.add(idKey(e.carrier));
+  }
+  return s.carriers;
 }
 
 function mark(s: TickState, p: PlayerRow): void {
@@ -98,14 +120,27 @@ function alive(p: PlayerRow): boolean {
   return p.online && p.state === PlayerState.Alive;
 }
 
+/**
+ * The respawn tile itself, or if a node or blocker ever sits on it, the nearest
+ * open dry tile (tests keep the waystones open, so this is a safety net).
+ */
+function respawnLanding(s: TickState, point: { x: number; z: number }): { x: number; z: number } {
+  if (isLandTile(point) && !s.blocked.has(tileKey(point))) return { x: point.x, z: point.z };
+  return nearestDryTile(point, s.blocked);
+}
+
 function phaseRespawn(s: TickState): void {
   for (const h of s.order) {
     const p = s.players.get(h)!;
     if (p.state !== PlayerState.Dead || p.respawnTick > s.T) continue;
     p.state = PlayerState.Alive;
     p.hp = p.maxHp;
-    p.x = SPAWN_TILE.x;
-    p.z = SPAWN_TILE.z;
+    // Back at the waystone (or the island spawn) nearest to where they fell; the bag
+    // stays where they fell (expanse.ts respawnPointFor explains the corpse run).
+    // respawnTick is unchanged, so the usual RESPAWN_GRACE_TICKS apply on arrival.
+    const at = respawnLanding(s, respawnPointFor(p));
+    p.x = at.x;
+    p.z = at.z;
     p.facing = 0;
     p.targetX = undefined;
     p.targetZ = undefined;
@@ -117,8 +152,15 @@ function phaseRespawn(s: TickState): void {
   }
 }
 
+/** A Long Season tier node is closed to anyone below its level in the node's skill (startHarvest rejects too). */
+function underLevel(s: TickState, p: PlayerRow, tree: TreeRow): boolean {
+  const min = nodeMinLevel(tree.kind);
+  return min > 1 && skillLevel(s.ctx, p.identity, skillForNode(tree.kind)) < min;
+}
+
 function tryClaimTree(s: TickState, p: PlayerRow, tree: TreeRow): boolean {
   if (tree.harvester !== undefined || tree.cooldownUntilTick > s.T) return false;
+  if (underLevel(s, p, tree)) return false;
   tree.harvester = p.identity;
   markTree(s, tree);
   p.harvestTreeId = tree.id;
@@ -205,6 +247,13 @@ function phaseClaims(s: TickState): void {
     if (!alive(p) || p.pending !== Pending.Harvest || p.harvestTreeId !== 0) continue;
     const tree = s.trees.get(Number(p.pendingId));
     if (!tree || tree.harvester !== undefined || tree.cooldownUntilTick > s.T || chebyshev(p, tree) > MELEE_RANGE) continue;
+    if (underLevel(s, p, tree)) {
+      // Never had the level (startHarvest refuses this): drop the request instead of waiting forever.
+      p.pending = Pending.None; p.pendingId = 0n;
+      p.targetX = undefined; p.targetZ = undefined;
+      mark(s, p);
+      continue;
+    }
     const list = contenders.get(tree.id);
     if (list) list.push(p); else contenders.set(tree.id, [p]);
   }
@@ -261,7 +310,8 @@ function phaseMovement(s: TickState): void {
       // overshoot the first tile satisfying a melee/follow goal.
       // One-way brambles and boulder line. Recomputed every tick, so dropping the
       // key mid-route makes the path fail and the player stops where they are.
-      const path = bfsPath(p, goal, s.blocked, playerEnterRule(s.ctx, p));
+      const keys = heldKeys(s.ctx, p, (ctx, q) => cachedSlots(ctx, q.identity));
+      const path = routePath(ROUTES, h, p, goal, s.blocked, enterRule(keys.stick, keys.club), `${+keys.stick}${+keys.club}`, s.blockedVersion);
       if (!path || path.length === 0) {
         if (p.pending === Pending.Trade) {
           stopTradeApproach(s, p, 'Cannot reach them to trade');
@@ -274,7 +324,7 @@ function phaseMovement(s: TickState): void {
         // Milestone cosmetic: the step from the hedge onto the Coast (rare; one PK lookup when it happens).
         const fromArea = areaOf(p);
         const wasSafe = inSafeRing(p);
-        for (const step of path.slice(0, cargoMovementSteps(carrying(s.ctx, p.identity)))) {
+        for (const step of path.slice(0, cargoMovementSteps(carriers(s).has(idKey(p.identity))))) {
           p.facing = facingFromDelta(step.x - p.x, step.z - p.z);
           p.x = step.x;
           p.z = step.z;
@@ -334,7 +384,7 @@ function phaseHarvest(s: TickState): void {
       tree.cooldownUntilTick = s.T + regrowTicksFor(tree.kind);
       tree.harvester = undefined;
       markTree(s, tree);
-      emitEvent(s.ctx, { tick: s.T, kind: EventKind.HarvestDone, attacker: p.identity, defender: p.identity, itemId: payout ? tree.itemId : '', damage: payout, defenderHp: p.hp });
+      emitEvent(s.ctx, { tick: s.T, kind: EventKind.HarvestDone, attacker: p.identity, defender: p.identity, itemId: payout ? tree.itemId : '', damage: payout, defenderHp: p.hp, x: p.x, z: p.z });
       // ctx.random is seeded from the tick timestamp and drawn in s.order, so replays agree.
       // Draw on every berry harvest; level 2 guarantees the first stick, then allows spares.
       // Only berry trees find sticks: Coast nodes never draw, and neither does a tired harvest that paid nothing.
@@ -347,7 +397,7 @@ function phaseHarvest(s: TickState): void {
         giveItem(s.ctx, p.identity, STICK_ITEM_ID, 1, p, s.T);
         // A find ends first-spawn grace: 10 more ticks to wield it and step back.
         if (p.respawnTick > s.T) p.respawnTick = s.T;
-        emitEvent(s.ctx, { tick: s.T, kind: EventKind.ItemFound, attacker: p.identity, defender: p.identity, itemId: STICK_ITEM_ID, defenderHp: p.hp });
+        emitEvent(s.ctx, { tick: s.T, kind: EventKind.ItemFound, attacker: p.identity, defender: p.identity, itemId: STICK_ITEM_ID, defenderHp: p.hp, x: p.x, z: p.z });
         unlockCosmetic(s.ctx, p.identity, Cosmetic.StrawHat);
       }
       // F2: one XP write per finished harvest (Foraging for berries, Beachcombing on the Coast).
@@ -407,6 +457,8 @@ function phaseSwings(s: TickState): void {
       damage,
       itemId: a.weapon,
       defenderHp: d.hp,
+      x: d.x,
+      z: d.z,
     });
     mark(s, a);
     mark(s, d);
@@ -440,7 +492,7 @@ function phaseDummySwings(s: TickState): void {
     dummy.lastHitTick = s.T;
     dirty = true;
     a.nextSwingTick = s.T + SWING_INTERVAL_TICKS;
-    s.ctx.db.dummyEvent.insert({ tick: s.T, dummyId: dummy.id, attacker: a.identity, damage, itemId: a.weapon, hp, reset });
+    s.ctx.db.dummyEvent.insert({ tick: s.T, dummyId: dummy.id, attacker: a.identity, damage, itemId: a.weapon, hp, reset, x: dummy.x, z: dummy.z, cell: eventCell('bramblewild', dummy.x, dummy.z) });
     mark(s, a);
   }
   if (dummy && dirty) s.ctx.db.trainingDummy.id.update(dummy);
@@ -569,6 +621,9 @@ function phaseGiant(s: TickState): void {
 }
 
 function phaseDeath(s: TickState): void {
+  // Who is targeting whom, built on the first death of the tick (most ticks have none), so a
+  // mass death costs one pass over the loaded players instead of one per body.
+  let targeting: Map<string, PlayerRow[]> | undefined;
   for (const h of s.order) {
     const p = s.players.get(h)!;
     // Safety net: nobody dies (or drops a bag) on the Spire floor; phaseSpire knocks out and ejects instead.
@@ -584,6 +639,7 @@ function phaseDeath(s: TickState): void {
       dropOnGround(s.ctx, p.identity, slot.itemId, slot.quantity, at, s.T, true);
     });
     for (const row of snap.rows.values()) s.ctx.db.inventorySlot.id.delete(row.id);
+    markLoad(p.identity);
 
     releaseTreeInTick(s, p);
     p.state = PlayerState.Dead;
@@ -595,15 +651,24 @@ function phaseDeath(s: TickState): void {
     p.weapon = '';
     mark(s, p);
 
-    for (const oh of s.order) {
-      const q = s.players.get(oh)!;
+    if (!targeting) {
+      targeting = new Map();
+      for (const oh of s.order) {
+        const q = s.players.get(oh)!;
+        if (!q.combatTarget) continue;
+        const k = hex(q.combatTarget), list = targeting.get(k);
+        if (list) list.push(q); else targeting.set(k, [q]);
+      }
+    }
+    // Nobody gains a target in this phase, so the map only ever over-reports: re-check each.
+    for (const q of targeting.get(h) ?? []) {
       if (q.combatTarget && sameId(q.combatTarget, p.identity)) {
         q.combatTarget = undefined;
         q.hostile = false;
         mark(s, q);
       }
     }
-    emitEvent(s.ctx, { tick: s.T, kind: EventKind.Death, attacker: p.identity, defender: p.identity, defenderHp: 0 });
+    emitEvent(s.ctx, { tick: s.T, kind: EventKind.Death, attacker: p.identity, defender: p.identity, defenderHp: 0, x: p.x, z: p.z });
     statsDeath(s.ctx, p.identity);
     activity(s.ctx, p.identity, 'deaths');
   }
@@ -640,18 +705,35 @@ function phaseDeposits(s: TickState): void {
   }
 }
 
+/** Ticks between full load sweeps (a minute): the safety net under LOAD_DIRTY. */
+const LOAD_SWEEP_TICKS = 100;
+/** Per module instance: each online character's state when its load was last computed. */
+const LOAD_SEEN = new WeakMap<object, Map<bigint | string, number>>();
+
 /**
  * The glow over anyone carrying a large unbanked load, in every region. Runs
  * every LOAD_REFRESH_TICKS after all other player writes (frontier included),
  * so it never races a working copy; writes only rows whose level changed.
+ * Reads the bag only of characters whose inventory was written since
+ * (lib/inventory.ts LOAD_DIRTY), whose state changed, or who are new to this
+ * module instance; everyone once a minute.
  */
 function refreshLoads(ctx: Ctx, T: number): void {
   if (T % LOAD_REFRESH_TICKS !== 0) return;
-  for (const row of ctx.db.player.iter()) {
-    if (!row.online) continue;
+  let seen = LOAD_SEEN.get(ctx.db);
+  const sweep = !seen || T % LOAD_SWEEP_TICKS === 0;
+  if (!seen) LOAD_SEEN.set(ctx.db, (seen = new Map()));
+  if (sweep) clearSlotCache();
+  const next = new Map<bigint | string, number>();
+  for (const row of onlinePlayers(ctx)) {
+    const k = idKey(row.identity);
+    next.set(k, row.state);
+    if (!sweep && !LOAD_DIRTY.has(k) && seen.get(k) === row.state) continue;
     const level = row.state === PlayerState.Alive ? loadLevel(carriedValue(readSlots(ctx, row.identity).slots)) : 0;
-    if ((row.load ?? 0) !== level) ctx.db.player.identity.update({ ...row, load: level });
+    if ((row.load ?? 0) !== level) storePlayer(ctx, { ...row, load: level });
   }
+  LOAD_SEEN.set(ctx.db, next);
+  LOAD_DIRTY.clear();
 }
 
 /** Field-by-field equality of a row and its working copy (identities by value). */
@@ -675,8 +757,8 @@ function phaseTrades(s: TickState): void {
   const table = s.ctx.db.trade;
   if (!table || table.count() === 0n) return;
   for (const row of [...table.iter()]) {
-    const a = s.players.get(hex(row.a)) ?? s.ctx.db.player.identity.find(row.a);
-    const b = s.players.get(hex(row.b)) ?? s.ctx.db.player.identity.find(row.b);
+    const a = s.players.get(hex(row.a)) ?? loadPlayer(s.ctx, row.a);
+    const b = s.players.get(hex(row.b)) ?? loadPlayer(s.ctx, row.b);
     let reason: string | null = null;
     if (!a || !b || !a.online || !b.online) reason = 'Trade cancelled: they left';
     else if (a.state !== PlayerState.Alive || b.state !== PlayerState.Alive) reason = 'Trade cancelled';
@@ -702,6 +784,8 @@ function phaseExpiry(s: TickState): void {
   if (s.T % 10 !== 0) return;
   for (const item of [...s.ctx.db.groundItem.iter()]) {
     if (item.expiresTick <= s.T) s.ctx.db.groundItem.id.delete(item.id);
+    // A pile from before the cell column (or moved by an owner edit): put it in its cell.
+    else if (item.cell !== nodeCell(item.x, item.z)) s.ctx.db.groundItem.id.update({ ...item, cell: nodeCell(item.x, item.z) });
   }
 }
 
@@ -715,39 +799,79 @@ export const tick = spacetimedb.reducer(
     if (!world) return;
     const T = world.tick + 1;
 
-    seedMissingNodes(ctx);
-    reconcileTerrain(ctx);
+    // Seeded nodes (Coast, the Long Season's tiers): insert any missing id and move rows whose seed moved.
+    // One table scan feeds both the seeding and this tick's tree map, so ~420 seeds cost map lookups, not finds.
+    const originalTrees = new Map<number, TreeRow>();
+    for (const t of ctx.db.tree.iter()) originalTrees.set(t.id, t);
+    seedMissingNodes(ctx, originalTrees);
+    // The deploy-time repair of saved positions (coastline or buildings moved) reads every player,
+    // ground item and expedition: once per module instance and terrain version, not every tick.
+    const inst = instanceState(ctx);
+    if (inst.terrain !== TERRAIN_VERSION) {
+      reconcileTerrain(ctx);
+      inst.terrain = TERRAIN_VERSION;
+    }
 
-    // One pass over the player table. The tick works on the players it can
-    // affect: online ones, the dead (respawn), and anyone still holding a
-    // combat target. Everyone else would be skipped by every phase (none is
-    // alive) and reads as absent, exactly like an offline target, so the
-    // phases stay O(active players) however many have ever joined.
+    // The tick works on the players it can affect: online ones, the dead
+    // (respawn), and anyone still holding a combat target (lib/activePlayers.ts
+    // reads them through the online/state indexes). Everyone else would be
+    // skipped by every phase (none is alive) and reads as absent, exactly like
+    // an offline target, so the tick is O(active players) however many
+    // characters are stored.
     const players = new Map<string, PlayerRow>();
     const original = new Map<string, PlayerRow>();
-    const idleGateway = T % IDLE_SWEEP_TICKS === 0 ? ctx.db.accessPolicy.id.find(0)?.gateway : undefined;
-    for (const row of ctx.db.player.iter()) {
+    // Positions live in player_pos while online (lib/playerStore.ts): one scan, then the rows below carry them.
+    const posTab = posTable(ctx);
+    const posMap = positions(ctx);
+    /** Each loaded player's player_pos row as stored now (undefined: none). */
+    const posBefore = new Map<string, PlayerPosRow | undefined>();
+    const policy = ctx.db.accessPolicy.id.find(0);
+    const idleGateway = T % IDLE_SWEEP_TICKS === 0 ? policy?.gateway : undefined;
+    let onlineCount = 0;
+    for (const row of activePlayers(ctx, posMap)) {
       let player = row;
+      let pos = posMap?.get(idKey(row.identity));
       // Idle logout ends the permit; the expiry check below takes the character offline this tick.
       if (idleGateway) logOutIfIdle(ctx, player, T, idleGateway);
       // Expiry/revocation stops queued movement, harvesting and combat even if a
       // client keeps its WebSocket open and sends no further requests.
-      if (player.online && !canPlay(ctx, player.identity)) {
+      if (player.online && !canPlay(ctx, player.identity, policy)) {
         const p = { ...player, online: false };
         clearInteractions(ctx, p);
-        ctx.db.player.identity.update(p);
+        storePlayer(ctx, p, { before: player, pos });
         player = p;
+        pos = undefined;
       }
+      // Migration: an online character from before player_pos (or after an owner edit) gets its row now,
+      // so clients' area queries on player_pos see it even while it stands still.
+      if (posTab && player.online && !pos) {
+        pos = posOf(player);
+        posTab.insert(pos);
+      } else if (posTab && pos && pos.cell !== playerCell(pos.region, pos.x, pos.z)) {
+        // Moved by an owner SQL edit (x, z without cell): back into the right cell's subscriptions.
+        pos = { ...pos, cell: playerCell(pos.region, pos.x, pos.z) };
+        posTab.identity.update(pos);
+      }
+      if (player.online) onlineCount++;
       if (player.region && player.region !== 'bramblewild') continue;
       if (!player.online && player.state !== PlayerState.Dead && player.combatTarget === undefined) continue;
       const h = hex(player.identity);
       original.set(h, player);
+      posBefore.set(h, pos);
       players.set(h, { ...player });
     }
     const trees = new Map<number, TreeRow>();
-    const originalTrees = new Map<number, TreeRow>();
-    for (const t of ctx.db.tree.iter()) { originalTrees.set(t.id, t); trees.set(t.id, { ...t }); }
-    // Coast nodes: seed any missing id (a database published before M2). Idempotent.
+    // Node positions only change when a seed moves, so the blocked set (thousands of static
+    // scenery tiles plus the nodes) is rebuilt only when this signature of them changes.
+    let sig = originalTrees.size;
+    for (const [id, t] of originalTrees) {
+      trees.set(id, { ...t });
+      sig = (Math.imul(sig, 31) + Math.imul(id, 2654435761) + Math.imul(t.x, 40503) + t.z) | 0;
+    }
+    if (inst.blocked?.sig !== sig) {
+      const set = worldBlockedSet(trees.values());
+      inst.blocked = { sig, set, version: blockedVersion(set), trees: originalTrees.size };
+    }
 
     // The Grove's training dummy (a database published before it existed gets it here). One index lookup.
     ensureDummy(ctx);
@@ -760,8 +884,10 @@ export const tick = spacetimedb.reducer(
       dirty: new Set(),
       trees,
       dirtyTrees: new Set(),
-      blocked: worldBlockedSet(trees.values()),
+      blocked: inst.blocked.set,
+      blockedVersion: inst.blocked.version,
     };
+    for (const id of ROUTES.keys()) if (!players.has(id)) ROUTES.delete(id);
 
     // The boss phases' view of this tick (lib/bossTick.ts).
     const api: BossTick = {
@@ -784,13 +910,15 @@ export const tick = spacetimedb.reducer(
     phaseTrades(s);
     phaseExpiry(s);
 
-    ctx.db.world.id.update({ ...world, tick: T, tickStartedAt: ctx.timestamp });
+    // `online`: counted from the rows loaded above (the tick writes this row anyway, so it costs nothing extra).
+    ctx.db.world.id.update({ ...world, tick: T, tickStartedAt: ctx.timestamp, online: onlineCount });
     // Write (and broadcast) only rows that actually changed this tick.
     for (const h of s.dirty) {
       const p = players.get(h)!;
       const before = original.get(h)!;
       if (!sameRow(before, p)) {
-        ctx.db.player.identity.update(p);
+        // A step rewrites only the narrow player_pos row; the player row only when something else changed.
+        storePlayer(ctx, p, { before, pos: posBefore.get(h) });
         if (before.x !== p.x || before.z !== p.z) statsPosition(ctx, p.identity, p);
       }
     }
@@ -798,7 +926,7 @@ export const tick = spacetimedb.reducer(
       const t = trees.get(id)!;
       if (!sameRow(originalTrees.get(id), t)) ctx.db.tree.id.update(t);
     }
-    tickExpeditions(ctx, T);
+    tickExpeditions(ctx, T, s.blocked);
     tickDuels(ctx, T);
     tickFrontier(ctx);
     refreshLoads(ctx, T);

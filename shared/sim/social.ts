@@ -25,12 +25,15 @@ export const DUMMY_IDLE_RESET_TICKS = 25;
 /** Every static blocker the client and server path around: the trees and nodes, the dummy, the Giant's footprint, the scenery (stones, gate) and the Spire's dais. */
 export function worldBlockedSet(nodes: Iterable<Tile>): Set<number> {
   const s = blockedSetFromTiles(nodes);
-  s.add(tileKey(DUMMY_TILE));
-  for (const t of [...GIANT_BLOCKED, ...SCENERY_BLOCKERS, ...SPIRE_DAIS]) s.add(tileKey(t));
+  for (const k of staticBlockedKeys()) s.add(k);
   return s;
 }
 
-const GIANT_BLOCKED = giantFootprint();
+let STATIC_KEYS: readonly number[] | undefined;
+/** The fixed blockers (the dummy, the Giant, forests, ridges, stones, the dais), keyed once: the tick rebuilds the set every tick. */
+function staticBlockedKeys(): readonly number[] {
+  return STATIC_KEYS ??= [DUMMY_TILE, ...giantFootprint(), ...SCENERY_BLOCKERS, ...SPIRE_DAIS].map(tileKey);
+}
 
 export interface DummyHpState { hp: number; maxHp: number; lastHitTick: number }
 

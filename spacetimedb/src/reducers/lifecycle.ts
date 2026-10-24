@@ -8,22 +8,25 @@ import {
 import { clearInteractions, findPlayer, hex, sameId, savePlayer } from '../lib/players';
 import { requireAdmission } from '../lib/access';
 import { seedMissingNodes } from '../lib/nodes';
+import { nodeCell } from '../../../shared/sim/interest';
 import { statsSessionEnd, statsSessionStart } from '../lib/stats';
 import { activity } from '../lib/activity';
 import { noteConnected } from '../lib/idle';
 import { cancelTrade, tradesOf } from '../lib/social';
-import { hasWorldSpace, MAX_CHARACTER_CONNECTIONS, MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
+import { MAX_CHARACTER_CONNECTIONS, MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
+import { playersTargeting, worldHasSpace } from '../lib/activePlayers';
+import { storePlayer, insertPlayer } from '../lib/playerStore';
 
 export const init = spacetimedb.init((ctx) => {
   if (!ctx.db.accessPolicy.id.find(0)) {
     ctx.db.accessPolicy.insert({ id: 0, owner: ctx.sender, gateway: undefined, requireAdmission: false });
   }
   if (!ctx.db.world.id.find(0)) {
-    ctx.db.world.insert({ id: 0, tick: 0, tickStartedAt: ctx.timestamp });
+    ctx.db.world.insert({ id: 0, tick: 0, tickStartedAt: ctx.timestamp, online: 0 });
   }
   for (const seed of TREE_SEEDS) {
     if (!ctx.db.tree.id.find(seed.id)) {
-      ctx.db.tree.insert({ id: seed.id, x: seed.x, z: seed.z, itemId: seed.itemId, cooldownUntilTick: 0, harvester: undefined, kind: NodeKind.Berry });
+      ctx.db.tree.insert({ id: seed.id, x: seed.x, z: seed.z, itemId: seed.itemId, cooldownUntilTick: 0, harvester: undefined, kind: NodeKind.Berry, cell: nodeCell(seed.x, seed.z) });
     }
   }
   seedMissingNodes(ctx);
@@ -39,7 +42,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   requireAdmission(ctx);
   const existing = findPlayer(ctx, ctx.sender);
   if (existing && existing.connections >= MAX_CHARACTER_CONNECTIONS) throw new SenderError('too many connections for this player');
-  if (!hasWorldSpace(ctx.db.player.iter(), !!existing?.online)) {
+  if (!worldHasSpace(ctx, !!existing?.online)) {
     throw new SenderError('world is full');
   }
   // Only a real live connection counts as "already online": after a module
@@ -60,7 +63,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     return;
   }
   if (ctx.db.player.count() >= BigInt(MAX_STORED_CHARACTERS)) throw new SenderError('world character capacity reached');
-  ctx.db.player.insert({
+  insertPlayer(ctx, {
     identity: ctx.sender,
     name: 'Player-' + hex(ctx.sender).slice(4, 8),
     online: true,
@@ -104,10 +107,8 @@ export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
     statsSessionEnd(ctx, p.identity);
     settleEnergyFor(ctx, p.identity, true);
     // Nobody can keep fighting or following someone who left.
-    for (const other of [...ctx.db.player.iter()]) {
-      if (other.combatTarget && other.combatTarget.toHexString() === hex(p.identity)) {
-        ctx.db.player.identity.update({ ...other, combatTarget: undefined, hostile: false });
-      }
+    for (const other of playersTargeting(ctx, p.identity)) {
+      storePlayer(ctx, { ...other, combatTarget: undefined, hostile: false });
     }
     for (const row of tradesOf(ctx, p.identity)) cancelTrade(ctx, row, `Trade cancelled: ${p.name} left`);
   }

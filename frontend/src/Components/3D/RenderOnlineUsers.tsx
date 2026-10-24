@@ -10,7 +10,9 @@ import { useChatPrefsStore } from '../../spacetime/stores/chatPrefsStore';
 import { useAppearanceRows, useChatMessages, useMyIdentityHex, useMyPlayer, usePlayers, useTick, useTrainingDummies, useGiants } from '../../spacetime/hooks';
 import { CHAT_BUBBLE_TICKS, DUMMY_IDLE_RESET_TICKS, GIANT_REGEN_IDLE_TICKS, GiantState, bubbleText, type Appearance } from '@sim';
 import { identityHex } from '../../spacetime/identity';
-import { useStackedAvatars } from './avatarStacks';
+import { crowdSplit, useStackedAvatars } from './avatarStacks';
+import CrowdFigures from './CrowdFigures';
+import { QUALITY, useGraphicsTier } from './renderQuality';
 import Clatterhorn from '../../bosses/clatterhorn/Clatterhorn';
 import { useBossStore } from '../../bosses/bossStore';
 import { inSpire, isPlayerVisible } from '../../bosses/selectors';
@@ -78,6 +80,14 @@ const RenderOnlineUsers = ({ frontierBlocked, frontier }: { frontierBlocked?: Se
   const visible = useMemo(() => players.filter(p => p.online && (!p.region || p.region === 'bramblewild' || p.region === 'settlement')
     && isPlayerVisible(p, meRow, runHexes)), [players, meRow, runHexes]);
   const shown = useStackedAvatars(visible, me, target, tick);
+  // A crowd past the budget: the nearest (plus your target and anyone fighting you) stay full avatars, the rest are figures.
+  const budget = QUALITY[useGraphicsTier()].fullAvatars;
+  const { full, figures } = useMemo(() => crowdSplit(visible.flatMap((p) => {
+    const hex = identityHex(p.identity);
+    if (!shown.has(hex)) return [];
+    const fightingMe = !!me && !!p.combatTarget && identityHex(p.combatTarget) === me;
+    return [{ hex, x: p.x, z: p.z, priority: hex === target || fightingMe }];
+  }), meRow, budget), [visible, shown, me, target, meRow, budget]);
 
   return (
     <>
@@ -88,11 +98,12 @@ const RenderOnlineUsers = ({ frontierBlocked, frontier }: { frontierBlocked?: Se
       {visible.map((p) => {
         const hex = identityHex(p.identity);
         const stacked = shown.get(hex);
-        if (!stacked) return null;
+        if (!stacked || !full.has(hex)) return null;
         return (
           <PlayerAvatar frontier={frontier} frontierBlocked={frontierBlocked} key={hex} row={p} isSelf={false} saved={appearances.get(hex)} targeted={hex === target} chatText={chat.get(hex)?.text} stacked={stacked.join(',')} />
         );
       })}
+      {figures.length > 0 && <CrowdFigures figures={figures} appearances={appearances} />}
       {SHARED_LAYERS}
     </>
   );

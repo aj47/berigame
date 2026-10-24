@@ -2,6 +2,7 @@ import {
   EAT_COOLDOWN_TICKS, EAT_SWING_DELAY_TICKS, GARDEN_CROPS, ITEM_DEFS,
   NODE_KINDS, NODE_SEEDS, RAID_MIN_CONTRIBUTION, RAID_REWARD, RECIPES,
   SWING_INTERVAL_TICKS, TICK_MS, TREE_SEEDS, harvestXp,
+  LEDGER_CLERKS, LEDGER_SEAL_ITEM_ID, LEDGER_TEMPLATES, SEASON_ITEMS, SKILLS, TIER_NODES, skillForNode, tierBiomeNames,
 } from '@sim';
 import type { ItemDef, Recipe } from '@sim';
 import { DISCIPLINES, FRONTIER, FRONTIER_RECIPES, MATERIALS, PIECES, REGIONS, RESOURCE_PATCHES } from '../../../shared/sim/frontier/catalog';
@@ -201,6 +202,63 @@ const notes: Record<string, ItemNotes> = {
   },
 };
 
+/** Hand-written one-liners for the Long Season items (shared/sim/season.ts); the rest of each page is generated. */
+const seasonSummaries: Record<string, string> = {
+  honeycomb: 'The first Foraging tier: smoked from wild hives, melted into candles and sweetened preserves.',
+  pearl: 'The first Beachcombing tier: pried from oyster beds, knotted into charms and strung into the Pearl Strand.',
+  glowcap: 'A glowing mushroom from the second Foraging tier that fills lanterns.',
+  coral: 'Second-tier Beachcombing material, carved around a pearl charm into totems.',
+  sunpeach: 'Third-tier fruit: a small snack, better bottled with honey as preserves.',
+  amber: 'Third-tier resin for inlays and the Amber Amulet.',
+  starpetal: 'Fourth-tier petal, pressed with a lantern into incense.',
+  moonstone: 'Fourth-tier stone, ground around an amber inlay into lenses.',
+  dreamplum: 'The top Foraging tier: rare fruit steeped into dream tonic.',
+  star_iron: 'The top Beachcombing tier: metal from fallen stars, smelted into ingots for the Star Iron Helm.',
+  beeswax_candle: 'The first crafted good of the Foraging line, and the light inside every glowcap lantern.',
+  pearl_charm: 'The first crafted good of the Beachcombing line, set into coral totems and the Amber Amulet.',
+  glow_lantern: 'A tier-two good that the Starpetal Incense recipe needs.',
+  coral_totem: 'A tier-two good that the Amber Inlay recipe needs.',
+  sunpeach_preserves: 'A tier-three good the Island Ledger asks for.',
+  amber_inlay: 'A tier-three good that the Moonstone Lens recipe needs.',
+  starpetal_incense: 'A tier-four good that the Dream Tonic recipe needs.',
+  moonstone_lens: 'A tier-four good that the Star Iron Ingot recipe needs.',
+  dream_tonic: 'The last good of the Foraging line, needed for the Tidewright’s Medallion.',
+  star_iron_ingot: 'The last good of the Beachcombing line, needed for both seal keepsakes.',
+  ledger_seal: 'The Island Ledger’s token, earned only by finishing daily commissions.',
+};
+
+function seasonNotes(itemId: string): ItemNotes | undefined {
+  const def = SEASON_ITEMS.find(item => item.id === itemId);
+  if (!def) return undefined;
+  const node = TIER_NODES.find(entry => entry.itemId === itemId);
+  const made = RECIPES.find(recipe => recipe.output?.itemId === itemId);
+  const commissions = LEDGER_TEMPLATES.filter(template => template.itemId === itemId);
+  const sections: WikiSection[] = [];
+  if (node) {
+    const where = node.tier === 1 ? 'on Bramblewild’s Coast' : `in ${tierBiomeNames(node.tier).join(' and ')}`;
+    sections.push({ id: 'tier-node', title: `The ${node.name.toLowerCase()}`, paragraphs: [
+      `The ${node.name.toLowerCase()} is a tier ${node.tier} Long Season node and needs ${SKILLS[node.skill].name} level ${node.minLevel}. Every one grows ${where}, ${node.skill === 1 ? 'on the shore' : 'inland'}. Each harvest takes ${seconds(node.harvestTicks)}, gives one ${def.name.toLowerCase()} and ${node.xp} ${SKILLS[node.skill].name} XP; the node regrows in ${seconds(node.regrowTicks)}. Below the level, the harvest is refused.`,
+    ] });
+  }
+  if (itemId === LEDGER_SEAL_ITEM_ID) {
+    sections.push({ id: 'earning-seals', title: 'Earning seals', paragraphs: [
+      `Hand in daily commissions to any ledger clerk: ${LEDGER_CLERKS.map(c => `the ${c.name} at (${c.x}, ${c.z})`).join(', ').replace(/, (?=[^,]*$)/, ' or ')}. Each one pays a seal, and finishing all three in a UTC day pays bonus seals. No node, boss or recipe gives seals.`,
+    ] });
+  }
+  if (commissions.length) {
+    sections.push({ id: 'ledger', title: 'In the Island Ledger', table: { headers: ['Commission', 'Skill', 'Offered from level', 'XP'],
+      rows: commissions.map(template => [`${template.quantity} × ${def.name}`, SKILLS[template.skill].name, String(template.level), template.xp.toLocaleString('en-US')]) } });
+  }
+  return {
+    summary: seasonSummaries[itemId] ?? def.description,
+    lead: `${def.description}${def.healthRestore ? ` It restores ${def.healthRestore} HP.` : ''}`,
+    source: node ? `${node.name} · ${SKILLS[node.skill].name} ${node.minLevel}` : made ? `Crafting · level ${made.level}` : 'Island Ledger commissions',
+    sections,
+    related: ['the-long-season', ...(node ? ['gathering', 'the-expanse'] : ['crafting']), 'skills-progression'],
+    sourceFiles: ['shared/sim/season.ts', ...(commissions.length || itemId === LEDGER_SEAL_ITEM_ID ? ['shared/sim/ledger.ts'] : [])],
+  };
+}
+
 const frontierUses: Record<string, string> = {
   timber: `Chop a settlement tree for ${FRONTIER.gatherDuration / 1000} seconds to receive Timber, then wait ${FRONTIER.timberRegrow / 1000} seconds for the stump to regrow. Carrying an Axe increases the yield from one to two. Timber makes tools, Planks and building pieces.`,
   axe: 'Keep an Axe in your bag to receive two Timber when a settlement tree-chopping action completes.',
@@ -275,7 +333,7 @@ function gatheringSection(item: ItemDef): WikiSection | undefined {
       rows: locations.map(node => [
         NODE_KINDS[node.kind].name, `(${node.x}, ${node.z})`,
         seconds(NODE_KINDS[node.kind].harvestTicks), seconds(NODE_KINDS[node.kind].regrowTicks),
-        `${harvestXp(node.kind)} ${node.kind === 0 ? 'Foraging' : 'Beachcombing'}`,
+        `${harvestXp(node.kind)} ${SKILLS[skillForNode(node.kind)].name}`,
       ]),
     },
   };
@@ -321,7 +379,7 @@ function useSection(item: ItemDef): WikiSection | undefined {
 /** Facts and reference tables follow the current shared game definitions.
  * Server-only behaviours are documented above with their reducer sources. */
 export const itemArticles: WikiArticle[] = Object.values(ITEM_DEFS).map(item => {
-  const detail = notes[item.id] ?? frontierNotes(item);
+  const detail = notes[item.id] ?? seasonNotes(item.id) ?? frontierNotes(item);
   const gathering = gatheringSection(item);
   const garden = gardenSection(item);
   const recipe = recipeSection(item);

@@ -18,6 +18,7 @@ import { emitBossEvent, emitBossNotice, readBossConfig, sameRowShallow } from '.
 import { cancelTrade, notify, tradesOf } from './social';
 import { onSpireFloor } from './spireGuards';
 import type { Ctx, PlayerRow, SpireFightRow, SpireMemberRow, SpireRunRow } from './types';
+import { loadPlayer, storePlayer } from './playerStore';
 
 /**
  * The Sunken Spire on the server (FINAL_SPEC 3.3, 3.10, 5.4; CORE_SCOPE: no
@@ -46,8 +47,8 @@ interface PlayerIo {
 /** Reducers: copies of the stored rows, written straight back. */
 function directIo(ctx: Ctx): PlayerIo {
   return {
-    get: (id) => { const row = ctx.db.player.identity.find(id); return row ? { ...row } : undefined; },
-    save: (p) => ctx.db.player.identity.update(p),
+    get: (id) => { const row = loadPlayer(ctx, id); return row ? { ...row } : undefined; },
+    save: (p) => storePlayer(ctx, p),
   };
 }
 
@@ -57,12 +58,12 @@ function tickIo(t: BossTick): PlayerIo {
     get: (id) => {
       const loaded = t.players.get(hex(id));
       if (loaded) return loaded;
-      const row = t.ctx.db.player.identity.find(id);
+      const row = loadPlayer(t.ctx, id);
       return row ? { ...row } : undefined;
     },
     save: (p) => {
       if (t.players.get(hex(p.identity)) === p) t.mark(p);
-      else t.ctx.db.player.identity.update(p);
+      else storePlayer(t.ctx, p);
     },
   };
 }

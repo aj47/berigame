@@ -13,6 +13,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { DbConnection, tables } from '../src/module_bindings';
+// Live positions: player_pos merged into player rows (the server moves only player_pos for a step).
+import { playerView } from '../src/spacetime/playerView';
 import { NodeKind, EventKind, HOTBAR_SIZE, RESPAWN_GRACE_TICKS, STICK_ITEM_ID, TICK_MS, chebyshev } from '../../shared/sim';
 import { STICK_SWING_MS } from '../src/animation/stickSwing';
 
@@ -41,12 +43,12 @@ function connect(): Promise<any> {
         conn.db.combatEvent.onInsert((_ctx, e) => events.push(e));
         conn.subscriptionBuilder().onApplied(() => resolve({ conn, identity, hex: identity.toHexString(), events }))
           .onError((_ctx, e) => reject(e))
-          .subscribe([tables.world, tables.player, tables.tree, tables.combatEvent, tables.inventorySlot, tables.groundItem]);
+          .subscribe([tables.world, tables.player, tables.playerPos, tables.tree, tables.combatEvent, tables.inventorySlot, tables.groundItem]);
       }).build();
     connections.push(c);
   });
 }
-const row = (c: any) => c.conn.db.player.identity.find(c.identity);
+const row = (c: any) => playerView(c.conn).identity.find(c.identity);
 const tick = (c: any) => c.conn.db.world.id.find(0)?.tick ?? 0;
 const sticks = (c: any) => [...c.conn.db.inventorySlot.iter()].filter((r: any) => r.owner.toHexString() === c.hex && r.itemId === STICK_ITEM_ID);
 

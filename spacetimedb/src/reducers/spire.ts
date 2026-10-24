@@ -6,6 +6,7 @@ import {
   SPIRE_RULES_VERSION, SpireMemberState, SpireMode, SpireOutcome, SpireStage, chebyshev, countItem,
 } from '../../../shared/sim';
 import { carrying, duelFor } from '../lib/adventure';
+import { activePlayers } from '../lib/activePlayers';
 import { readSlots } from '../lib/inventory';
 import { currentTick, hex, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { activityAction } from '../lib/activity';
@@ -14,6 +15,7 @@ import {
   spireForfeit, spireLeaveLobby, spireLiveMembership, spireMembers, spireMembershipProblem, spireStartRun,
 } from '../lib/spire';
 import type { Ctx, PlayerRow, SpireRunRow } from '../lib/types';
+import { loadPlayer } from '../lib/playerStore';
 
 /**
  * The Sunken Spire's party reducers (FINAL_SPEC 5.1 with the CORE_SCOPE cuts:
@@ -152,7 +154,7 @@ export const spireStart = spacetimedb.reducer(
     if (!cfg.spireOpen || run.mode !== SpireMode.Normal) throw new SenderError(SEALED);
     const members = spireMembers(ctx, run.id);
     for (const m of members) {
-      const q = sameId(m.identity, p.identity) ? p : ctx.db.player.identity.find(m.identity);
+      const q = sameId(m.identity, p.identity) ? p : loadPlayer(ctx, m.identity);
       const waiting = (why: string) => new SenderError(`This party is waiting for ${q?.name ?? 'a member'}: ${why}`);
       if (!q || !q.online || q.state !== PlayerState.Alive) throw waiting('they are away');
       // Region before distance: a member in the settlement or at sea has regional x/z that can land near the gate.
@@ -172,11 +174,11 @@ export const spireStart = spacetimedb.reducer(
       player: (h) => {
         if (h === me) return p;
         const row = members.find((m) => hex(m.identity) === h);
-        const q = row && ctx.db.player.identity.find(row.identity);
+        const q = row && loadPlayer(ctx, row.identity);
         return q ? { ...q } : undefined;
       },
       save: (q) => savePlayer(ctx, q),
-      others: () => [...ctx.db.player.iter()],
+      others: () => activePlayers(ctx),
     });
     for (const m of members) activityAction(ctx, m.identity, 'spire-run');
   }

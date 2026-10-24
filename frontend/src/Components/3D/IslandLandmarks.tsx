@@ -1,8 +1,10 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { BoxGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, MeshStandardMaterial, Object3D, TorusGeometry } from 'three';
-import { BRIDGES, DROP_BOXES, FOREST_TREES, GROVE_VAULT_TILE, SAFE_RADIUS, tileToWorld } from '@sim';
-import { merged, part, withWind } from './envArt';
+import { BoxGeometry, ConeGeometry, CylinderGeometry, IcosahedronGeometry, MeshStandardMaterial, TorusGeometry } from 'three';
+import { BRIDGES, DROP_BOXES, GROVE_VAULT_TILE, SAFE_RADIUS, tileToWorld } from '@sim';
+import { merged, part } from './envArt';
+import { forestGeo, forestMat } from './world/treeArt';
+import { ExpanseProps, SceneryChunks } from './world/SceneryChunks';
 const noRaycast = () => null;
 const mat = new MeshStandardMaterial({ vertexColors:true, roughness:1, flatShading:true });
 const box=(color:number,p:[number,number,number],s:[number,number,number],r:[number,number,number]=[0,0,0])=>part(new BoxGeometry(1,1,1),color,p,s,r,.08,Math.round(p[0]*31+p[1]*99));
@@ -34,11 +36,6 @@ const beaconGeo=merged([
   ...[-.45,.45].flatMap(x=>[-.45,.45].map(z=>box(wood,[x,3.2,z],[.07,.9,.07]))),
   part(new ConeGeometry(.9,.65,8),roof,[0,3.9,0]),
 ]);
-const forestGeo=merged([
-  part(new CylinderGeometry(.12,.25,2.1,5),wood,[0,1,0]),
-  ...[0,1,2].map(i=>part(new ConeGeometry(1.45-i*.29,2.25-i*.25,7),[0x355e40,0x477e4e,0x669656][i],[0,2+i*.72,0],[1,1,1],[0,i*.7,0],.13,i+1)),
-]);
-const forestMat=withWind(mat.clone(),.013,1.6);
 export { forestGeo as islandForestGeometry, forestMat as islandForestMaterial };
 const archGeo=merged([
   ...[-2,2].flatMap(x=>[0,1,2,3,4].map(i=>box(i%2?0x899482:stone,[x,.25+i*.5,0],[.8,.46,.85],[0,(i%2)*.04,0]))),
@@ -70,12 +67,13 @@ const vaultGeo=merged([
 const signGeo=merged([box(wood,[0,.52,0],[.1,1.05,.1]),box(paleWood,[0,.88,0],[.7,.28,.1]),box(wood,[0,.82,.06],[.32,.035,.012])]);
 
 export default function IslandLandmarks({onGroundClick}:{onGroundClick?:(e:any)=>void}){
-  const forest=useRef<any>(null),wheel=useRef<any>(null),boat=useRef<any>(null);
-  useLayoutEffect(()=>{const o=new Object3D();FOREST_TREES.forEach((t,i)=>{o.position.set(...tileToWorld(t));o.rotation.set(0,i*2.4,0);o.scale.setScalar(.8+(i%5)*.095);o.updateMatrix();forest.current.setMatrixAt(i,o.matrix);});forest.current.instanceMatrix.needsUpdate=true;forest.current.computeBoundingSphere?.();},[]);
+  const wheel=useRef<any>(null),boat=useRef<any>(null);
   useFrame(({clock},dt)=>{if(wheel.current)wheel.current.rotation.z+=Math.min(dt,.1)*.3;if(boat.current){boat.current.position.y=-.18+Math.sin(clock.elapsedTime*.9)*.035;boat.current.rotation.z=Math.sin(clock.elapsedTime*.8)*.035;}});
   return <group name="bramblewild_landmarks">
     {BRIDGES.map(b=><mesh key={b.id} name="land_mesh" userData={{ landmark: b.name }} position={tileToWorld(b)} geometry={bridgeGeo} material={mat} onClick={onGroundClick}/>)}
-    <instancedMesh ref={forest} args={[forestGeo,forestMat,FOREST_TREES.length]} raycast={noRaycast}/>
+    {/* Forest trunks and ridge walls per chunk, near you only; the mainland's bridges, waystones, clerks and towns. */}
+    <SceneryChunks/>
+    <ExpanseProps onGroundClick={onGroundClick} bridgeGeo={bridgeGeo} bridgeMat={mat}/>
     <group name="Old Brook Mill" position={[-4,0,-11]} raycast={noRaycast}>
       <mesh geometry={millGeo} material={mat}/>
       <group position={[-1.7,.85,0]} rotation={[0,Math.PI/2,0]}><mesh ref={wheel} geometry={wheelGeo} material={mat}/></group>

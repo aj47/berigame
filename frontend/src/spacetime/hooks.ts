@@ -4,13 +4,20 @@ import { tables, type DbConnection } from '../module_bindings';
 import type { Player } from '../module_bindings/types';
 import { worldBlockedSet } from '@sim';
 import { identityHex } from './identity';
+import { playerView } from './playerView';
 
 /*
- * Shared table snapshots. The connection already subscribes to every table
- * (connection.ts), so a hook only needs the client cache. The SDK's useTable
+ * Shared table snapshots. The connection already subscribes to what the client
+ * needs (connection.ts), so a hook only needs the client cache. Note that the
+ * player, tree and ground_item tables hold only the interest block around you
+ * plus your own row, target, friends, crew and party
+ * (interestSubscription.ts): a row by identity can be missing. The SDK's useTable
  * would open one more SQL subscription and copy the whole table once per
  * calling component on every transaction; here each table has one set of
  * cache callbacks and one snapshot per transaction, shared by every caller.
+ *
+ * `player` rows come merged with their live `player_pos` position
+ * (playerView.ts): the server rewrites only that narrow row for a step.
  */
 const EMPTY: readonly any[] = Object.freeze([]);
 
@@ -34,8 +41,14 @@ function tableStore(connection: any, accessor: string): TableStore {
   return store;
 }
 
+/** The table a hook reads: the merged player view for `player`, else the SDK's table. */
+function source(connection: any, accessor: string): any {
+  if (!connection?.db?.[accessor]) return undefined;
+  return accessor === 'player' ? playerView(connection) : connection.db[accessor];
+}
+
 function attach(connection: any, accessor: string, store: TableStore): void {
-  const table = connection?.db?.[accessor];
+  const table = source(connection, accessor);
   if (!table || store.detach) return;
   let lastEvent: unknown;
   // One notification per transaction; the snapshot is rebuilt lazily on read.
@@ -61,7 +74,7 @@ function attach(connection: any, accessor: string, store: TableStore): void {
 }
 
 function readRows(connection: any, accessor: string, store: TableStore): readonly any[] {
-  const table = connection?.db?.[accessor];
+  const table = source(connection, accessor);
   if (!table) return EMPTY;
   // Listen from the first read, so a cached snapshot is never stale.
   attach(connection, accessor, store);
@@ -127,6 +140,9 @@ export function useTickSelector<T>(select: (tick: number) => T): T {
   return useTableSelector(tables.world, fromWorld);
 }
 
+export { usePlayerNames } from './playerNames';
+
+/** Player rows in the client cache, live positions included: those near you (your interest block), you, and the ones you follow by identity. */
 export function usePlayers(): readonly Player[] {
   return useRows<Player>(tables.player);
 }
@@ -296,7 +312,7 @@ const buildMentees = (rows: readonly any[]) => {
   return m;
 };
 
-/** Mentee counts by identity hex (public mentor_stat rows). */
+/** Mentee counts by identity hex: yours and your friends' (the only mentor_stat rows subscribed). */
 export function useMenteeCounts(): Map<string, number> {
   const rows = useRows<any>(tables.mentorStat);
   return derived(menteeCache, rows, buildMentees);
@@ -369,5 +385,26 @@ export function useMyVaultSlots(): readonly import('@sim').Slot[] {
   return useMemo(() => {
     if (!data) return EMPTY;
     try { return (JSON.parse(data).slots ?? EMPTY) as readonly import('@sim').Slot[]; } catch { return EMPTY; }
+  }, [data]);
+}
+
+/**
+ * Your Island Ledger progress (shared/sim/ledger.ts), published to you alone
+ * through frontier_view as `{ id, day, done }`. Undefined before your first
+ * hand-in, which counts as nothing done; a row from an earlier day also counts
+ * as nothing done (ledgerDoneBits).
+ */
+export function useLedger(): import('@sim').LedgerState | undefined {
+  const me = useMyIdentityHex();
+  const data = useTableSelector(tables.frontierView, (rows: readonly import('../module_bindings/types').FrontierView[]) => {
+    const row = me ? rows.find((r) => r.kind === 'ledger' && r.source === `ledger:${me}`) : undefined;
+    return row ? row.data : undefined;
+  });
+  return useMemo(() => {
+    if (!data) return undefined;
+    try {
+      const parsed = JSON.parse(data) as { day?: unknown; done?: unknown };
+      return typeof parsed.day === 'number' && typeof parsed.done === 'number' ? { day: parsed.day, done: parsed.done } : undefined;
+    } catch { return undefined; }
   }, [data]);
 }

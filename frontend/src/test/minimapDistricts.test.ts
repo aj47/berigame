@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { homeMapLandmarkPositions, homeMapProjection } from '../frontier/homeMapArt';
+import { HOME_MAP_VIEWS, homeMapLandmarkPositions, homeMapProjection } from '../frontier/homeMapArt';
 import { drawMinimap, mapAccessLabel, minimapModel } from '../Components/minimapModel';
-import { homePoint } from '../../../shared/sim/frontier/homeMap';
+import { HOME_GRID, homePoint } from '../../../shared/sim/frontier/homeMap';
 import { GRID_SIZE } from '@sim';
 
 const empty = { meHex: null, players: [], trees: [], groundItems: [], tick: 0 };
@@ -12,7 +12,9 @@ describe('district maps', () => {
     expect(island.x(0)).toBeGreaterThanOrEqual(0);
     expect(island.x(GRID_SIZE)).toBeLessThanOrEqual(480);
     expect(a).toBeGreaterThan(420);
-    expect(a / b).toBeGreaterThan(1.8);
+    // The overview also holds the Meadows east of the Expanse, so Bramblewild alone is drawn larger by that share.
+    expect(a / b).toBeCloseTo(HOME_MAP_VIEWS.overview.span / HOME_MAP_VIEWS.bramblewild.span);
+    expect(a / b).toBeGreaterThan(HOME_GRID.width / GRID_SIZE - .1);
     const meadows = homeMapProjection(480, 'settlement');
     for (const point of [homePoint({ x: 0, z: 0 }, 'settlement'), homePoint({ x: 127, z: 127 }, 'settlement')]) {
       expect(meadows.x(point.x)).toBeGreaterThanOrEqual(0);

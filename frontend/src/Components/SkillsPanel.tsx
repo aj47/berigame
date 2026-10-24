@@ -1,5 +1,5 @@
 import React, { memo, useState } from "react";
-import { COSMETICS, RECIPES, SKILLS, Skill, levelProgress, harvestTickBonus, SKILL_MAX_LEVEL, hasCosmetic } from "@sim";
+import { COSMETICS, RECIPES, SKILLS, Skill, levelProgress, harvestTickBonus, SKILL_MAX_LEVEL, hasCosmetic, TIER_NODES } from "@sim";
 import { ADVENTURE_CAMP, PATHS, PATH_FIELDS, TECHNIQUES, techniqueUnlocked, hasTechnique, loadoutCount, chebyshev } from "@sim";
 import { useGameActions } from "../spacetime/actions";
 import { useAdventureProfiles, useMyPlayer, useMyCosmetics, useMySkills } from "../spacetime/hooks";
@@ -29,13 +29,31 @@ const FEATS: Record<number, string> = {
 /** One line of what a skill's levels bring. */
 function perks(skill: Skill, level: number): string {
   if (skill === Skill.Crafting) {
-    const next = RECIPES.find((r) => r.level > level);
+    const next = RECIPES.filter((r) => r.level > level).sort((a, b) => a.level - b.level)[0];
     return next ? `Next recipe: ${next.name} at level ${next.level}` : "Every recipe unlocked";
   }
   if (skill === Skill.Foraging && level < 2) return "Level 2: guaranteed first stick, then 25% chance of spare sticks.";
   const bonus = harvestTickBonus(level);
   const faster = bonus ? `Harvests ${bonus} tick${bonus > 1 ? "s" : ""} faster (not the gold tree). ` : "";
   return `${faster}${bonus < 2 ? `Faster harvests at level ${bonus === 0 ? 10 : 20}.` : ""}`.trim();
+}
+
+/**
+ * What the next level that brings anything brings in `skill`: the tier node it
+ * opens (season.ts TIER_NODES), the recipe (Crafting) and the keepsake. Null
+ * once nothing is left.
+ */
+export function nextUnlock(skill: Skill, level: number): string | null {
+  const found: { level: number; label: string }[] = [
+    ...TIER_NODES.filter((n) => n.skill === skill && n.minLevel > level).map((n) => ({ level: n.minLevel, label: `work ${n.name}` })),
+    ...(skill === Skill.Crafting ? RECIPES.filter((r) => r.level > level).map((r) => ({ level: r.level, label: `make ${r.name}` })) : []),
+    ...COSMETICS.filter((c) => c.skill?.skill === skill && c.skill.level > level).map((c) => ({ level: c.skill!.level, label: `${c.name} keepsake` })),
+  ];
+  if (!found.length) return null;
+  const at = Math.min(...found.map((f) => f.level));
+  const labels = found.filter((f) => f.level === at).map((f) => f.label);
+  const text = labels.join(", ");
+  return `Next unlock at level ${at}: ${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
 /** F2 skills: levels, progress bars and what the next level brings. */
@@ -129,6 +147,7 @@ const SkillsPanel = memo(({ open, onClose, onStyle }: Props) => {
                 <span className="fine-print">
                   {p.max ? "Max level" : `${p.toNext} XP to level ${p.level + 1}`}
                 </span>
+                <span className="fine-print skill-next-unlock" data-testid={`next-unlock-${def.key}`}>{nextUnlock(def.id, p.level) ?? "Everything unlocked"}</span>
                 <details className="skill-perks"><summary>Unlocks & tips</summary>
                   <p>{def.verb}.</p><p className="skill-perk">{perks(def.id, p.level)}</p>
                 </details>

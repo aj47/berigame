@@ -4,6 +4,7 @@ import { MAX_INPUTS_PER_TICK, Pending, PlayerState } from '../../../shared/sim';
 import type { Ctx, PlayerRow } from './types';
 import { requireAdmission } from './access';
 import { maxHealth } from '../../../shared/sim/frontier/engine';
+import { loadPlayer, storePlayer } from './playerStore';
 
 export function hex(id: Identity): string {
   return id.toHexString();
@@ -18,8 +19,9 @@ export function currentTick(ctx: Ctx): number {
   return ctx.db.world.id.find(0)?.tick ?? 0;
 }
 
+/** A character with its live position (lib/playerStore.ts). */
 export function findPlayer(ctx: Ctx, id: Identity): PlayerRow | undefined {
-  return ctx.db.player.identity.find(id) ?? undefined;
+  return loadPlayer(ctx, id);
 }
 
 export function requirePlayer(ctx: Ctx): PlayerRow {
@@ -55,7 +57,7 @@ export function savePlayer(ctx: Ctx, p: PlayerRow): void {
     p.maxHp = maxHealth(JSON.parse(profile.data), { bag });
     p.hp = Math.min(p.hp, p.maxHp);
   }
-  ctx.db.player.identity.update(p);
+  storePlayer(ctx, p);
 }
 
 /** Give a claimed tree back if `p` is harvesting it. Mutates `p`. */

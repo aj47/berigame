@@ -1,11 +1,12 @@
 import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { MELEE_RANGE, Pending, chebyshev } from '../../../shared/sim';
+import { MELEE_RANGE, Pending, chebyshev, nodeLevelRejection, skillForNode } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
 import { clearInteractions, currentTick, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { refuseOnSpireFloor } from '../lib/spireGuards';
+import { skillLevel } from '../lib/progress';
 
 /**
  * Walk next to a berry tree (or a Coast node: driftwood pile, tide rock) and pick from it. A regrowing or claimed tree is
@@ -21,6 +22,9 @@ export const startHarvest = spacetimedb.reducer(
     const p = requireAlivePlayer(ctx);
     refuseOnSpireFloor(p);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
+    // Long Season tier nodes open at a level in their skill (the tick checks again before any claim).
+    const tooLow = nodeLevelRejection(tree.kind, skillLevel(ctx, p.identity, skillForNode(tree.kind)));
+    if (tooLow) throw new SenderError(tooLow);
     touchInput(p, T);
     // Picking the tree you are already harvesting keeps the harvest going. Releasing
     // it first (below) would requeue you and restart the harvest from zero.

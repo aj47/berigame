@@ -85,6 +85,8 @@ export function useGameActions() {
     /** A cosmetic emote (shared/sim Emote), seen by everyone nearby. */
     emote: (emote: number) => run('emote', (c) => c.reducers.emote({ emote })),
     craft: (recipe: string) => run('craft', (c) => c.reducers.craft({ recipe })),
+    /** Hand in today's Island Ledger commission `slot` (0..2) at the Sunberry Market clerk (shared/sim/ledger.ts). */
+    deliverCommission: (slot: number) => run('deliverCommission', (c) => (c.reducers as any).deliverCommission({ slot })),
     // Social: invite links, friends, trades (shared/sim friends.ts, trade.ts).
     createInvite: () => run('createInvite', (c) => c.reducers.createInvite({})),
     redeemInvite: (code: string) => run('redeemInvite', (c) => c.reducers.redeemInvite({ code })),

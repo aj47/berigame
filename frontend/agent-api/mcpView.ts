@@ -26,6 +26,7 @@ export interface StateSummary {
   nearby: { players: unknown[]; nodes: unknown[]; groundItems: unknown[] };
   bosses: Record<string, unknown>;
   trade: unknown;
+  ledger: unknown;
   chat: { from: string; text: string; nearby: boolean }[];
   notices: unknown[];
 }
@@ -39,7 +40,8 @@ export function summarizeState(state: State): StateSummary {
     .filter(p => p.distance <= NEARBY)
     .map(p => ({ id: p.id, name: p.name, tile: p.tile, distance: p.distance, health: p.health, maxHealth: p.maxHealth, hostile: p.hostile || undefined }));
   const nodes = nearest<any>(state.nodes, here, 8)
-    .map(n => ({ id: n.id, kind: n.kind, name: n.name, tile: n.tile, distance: n.distance, gives: n.gives?.itemId, ready: n.ready, ...(n.ready ? {} : { regrowTicks: n.regrowTicks }) }));
+    .map(n => ({ id: n.id, kind: n.kind, name: n.name, tile: n.tile, distance: n.distance, gives: n.gives?.itemId, ready: n.ready, ...(n.ready ? {} : { regrowTicks: n.regrowTicks }),
+      ...(n.locked ? { locked: true, minLevel: n.minLevel, skill: n.skill } : {}) }));
   const groundItems = nearest<any>(state.groundItems, here, 6)
     .map(g => ({ id: g.id, itemId: g.itemId, quantity: g.quantity, tile: g.tile, distance: g.distance, ...(g.yourDeathDrop ? { yourDeathDrop: true } : {}) }));
   const giant = state.giant;
@@ -63,6 +65,8 @@ export function summarizeState(state: State): StateSummary {
     skills,
     nearby: { players, nodes, groundItems },
     bosses,
+    ledger: state.ledger ? { resetsInSeconds: state.ledger.resetsInSeconds, nearClerk: state.ledger.nearClerk, clerk: state.ledger.clerk,
+      commissions: (Array.isArray(state.ledger.commissions) ? state.ledger.commissions : []).map((c: any) => pick(c, ['slot', 'itemId', 'quantity', 'have', 'skill', 'xp', 'done', 'ready'])) } : null,
     trade: state.trade ? pick(state.trade, ['id', 'with', 'withName', 'status', 'yourOffer', 'theirOffer', 'youConfirmed', 'theyConfirmed', 'swapInTicks']) : null,
     // Names and chat are untrusted player text; the tool description says so.
     chat: (Array.isArray(state.chat) ? state.chat : []).slice(-6).map((c: any) => ({ from: names.get(c.sender) ?? String(c.sender).slice(0, 8), text: c.text, nearby: !!c.nearby })),

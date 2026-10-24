@@ -1,4 +1,4 @@
-import { BOULDER_LINE, BOULDERS_MIN, HEDGE_RING, RESPAWN_GRACE_TICKS, SAFE_RADIUS, SPAWN_TILE } from './constants';
+import { BOULDER_LINE, BOULDERS_MIN, GRID_SIZE, HEDGE_RING, RESPAWN_GRACE_TICKS, SAFE_RADIUS, SPAWN_TILE } from './constants';
 import { groveBoundary, inGiantHeadland, insideGrove } from './terrain';
 import { chebyshev, isLandTile } from './grid';
 import { inClatterGlade, inSpireFloor, inSpireGateZone } from './bossZones';
@@ -47,10 +47,41 @@ export function areaOf(t: Tile): Area {
  * Boulders. Stepping off either is always allowed; the sea is never enterable.
  */
 export function canEnter(from: Tile, to: Tile, hasStick: boolean, hasClub = false): boolean {
+  const masks = barrierMasks();
+  const k = maskKey(to), f = maskKey(from);
+  if (k >= 0 && f >= 0) {
+    const m = masks[k];
+    if (!(m & LAND)) return false;
+    if (m & BRAMBLE) return hasStick || !(masks[f] & GROVE);
+    if (m & BOULDER_LINE_TILE) return hasClub || !!(masks[f] & BOULDERS);
+    return true;
+  }
   if (!isLandTile(to)) return false;
   if (isBramble(to)) return hasStick || !insideGrove(from);
   if (isBoulderLine(to)) return hasClub || inBoulders(from);
   return true;
+}
+
+/*
+ * canEnter's per-tile facts, computed once for the whole map: pathfinding asks
+ * them for every neighbour of every tile it searches (the server's busiest
+ * loop), and the shapes behind them (terrain field, grove curve) are fixed.
+ */
+const LAND = 1, BRAMBLE = 2, GROVE = 4, BOULDER_LINE_TILE = 8, BOULDERS = 16;
+let masks: Uint8Array | undefined;
+function barrierMasks(): Uint8Array {
+  if (masks) return masks;
+  const m = new Uint8Array(GRID_SIZE * GRID_SIZE);
+  for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) {
+    const t = { x, z };
+    m[z * GRID_SIZE + x] = (isLandTile(t) ? LAND : 0) | (isBramble(t) ? BRAMBLE : 0) | (insideGrove(t) ? GROVE : 0)
+      | (isBoulderLine(t) ? BOULDER_LINE_TILE : 0) | (inBoulders(t) ? BOULDERS : 0);
+  }
+  return (masks = m);
+}
+/** The mask index of a whole in-map tile, else -1 (the shapes are then asked directly). */
+function maskKey(t: Tile): number {
+  return Number.isInteger(t.x) && Number.isInteger(t.z) && t.x >= 0 && t.z >= 0 && t.x < GRID_SIZE && t.z < GRID_SIZE ? t.z * GRID_SIZE + t.x : -1;
 }
 
 /** The movement predicate for one player, for bfsPath / nearestReachableTile. */

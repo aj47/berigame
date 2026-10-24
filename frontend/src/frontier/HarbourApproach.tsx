@@ -6,7 +6,10 @@ import { linear } from '../Components/3D/nodes/lowPoly';
 import { AdventureAssetView } from '../Components/3D/AdventureModels';
 import { MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
 
-/** The approach was laid out for a seam at x = 64; it follows the Meadows east. */
+/**
+ * The approach is laid out in local tiles with the seam at x = 64 (world = tile - 25),
+ * then shifted so it sits on the King's Road where it crosses into the Meadows.
+ */
 const SEAM_SHIFT = MEADOW_OFFSET.x - 64;
 
 const noRaycast = () => null;
@@ -34,9 +37,10 @@ const approach = (() => {
     solid.push(part(new IcosahedronGeometry(1, 0), i % 3 ? 0xb3aa8c : 0x959482,
       [x - 25, .022, z - 25], [.32 + (i % 3) * .06, .045, .25], [0, i * .7, 0], .12, i + 1));
   }
-  // Coastal clusters bridge the old island's vegetation and the meadow groves.
+  // Grass clusters lead the road into the meadow groves; west of the seam is Frostpine snow, so they start there.
   for (let i = 0; i < 36; i++) {
     const x = 50 + (i % 18) * 1.25 + Math.sin(i * 2.8) * .4;
+    if (x < 62) continue;
     const z = (i < 18 ? 21.65 : 28.35) + Math.cos(i * 2.1) * .55;
     const size = .11 + (i % 4) * .045;
     if (i % 3 === 0) solid.push(part(new IcosahedronGeometry(1, 0), 0xb3aa8c,

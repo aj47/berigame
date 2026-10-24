@@ -18,4 +18,7 @@ export default __t.row({
   damage: __t.u8(),
   itemId: __t.string().name("item_id"),
   defenderHp: __t.u8().name("defender_hp"),
+  x: __t.i32(),
+  z: __t.i32(),
+  cell: __t.u32(),
 });

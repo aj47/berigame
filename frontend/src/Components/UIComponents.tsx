@@ -20,13 +20,14 @@ import TradeWindow from "./TradeWindow";
 import AdventurePanel, { AdventureHud, DuelHud } from "./AdventurePanel";
 import { ADVENTURE_EVENT, ADVENTURE_VIEWS, type AdventureView } from "./adventureNavigation";
 import SkillsPanel from "./SkillsPanel";
+import LedgerPanel from "./LedgerPanel";
 import MilestoneBanner from "./MilestoneBanner";
 import "./skills.css";
 import "./responsiveHud.css";
 import "./inventory.css";
-import { useMyPlayer, usePlayers } from "../spacetime/hooks";
+import { useMyPlayer, useWorld, usePlayers } from "../spacetime/hooks";
 import { useSettingsStore } from "../spacetime/stores/settingsStore";
-import { SpireMemberState, SpireStage } from "@sim";
+import { PLAYER_VIEW_TILES, SpireMemberState, SpireStage } from "@sim";
 import { useBossStore } from "../bosses/bossStore";
 import { useFrontier, useFrontierCoins } from "../frontier/useFrontier";
 import { isAwayDistrict, isHomeScene, useMyRegion, useOnSpireFloor } from "./3D/homePresence";
@@ -39,7 +40,7 @@ import { BossAreaTip } from "./OnboardingTip";
 import FrontierPanel, { type BuildDraft } from "../frontier/FrontierPanel";
 import { FRONTIER_EVENT, type FrontierRequest } from "../frontier/navigation";
 
-type Panel = "bug" | "settlement" | "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | "vault" | null;
+type Panel = "bug" | "settlement" | "inventory" | "chat" | "help" | "appearance" | "settings" | "friends" | "skills" | "adventure" | "crafting" | "menu" | "vault" | "ledger" | null;
 /**
  * The Spire's DOM layer (FINAL_SPEC 7.6): inside the floor the HUD and step
  * controls; outside, the lobby panel (gate clicked, or a lobby membership) and
@@ -64,10 +65,25 @@ export const SpireLayer = memo(({ inside }: { inside: boolean }) => {
   );
 });
 
-/** Name and online count: the only part of the HUD shell that follows player rows. */
+/**
+ * Players online near you. The client holds only the interest block around you
+ * (spacetime/interestSubscription.ts) plus a few rows by identity (friends,
+ * crew), so a world-wide count is not known here: count the players within
+ * the distance your player block always covers (shared/sim/interest.ts).
+ */
+export function nearbyOnline(players: readonly { online: boolean; region?: string; x: number; z: number }[], me: { region?: string; x: number; z: number } | null): number {
+  if (!me) return 0;
+  const region = me.region || "bramblewild";
+  return players.filter((p) => p.online && (p.region || "bramblewild") === region
+    && Math.max(Math.abs(p.x - me.x), Math.abs(p.z - me.z)) <= PLAYER_VIEW_TILES).length;
+}
+
+/** Name and nearby count: the only part of the HUD shell that follows player rows. */
 const WorldHeader = memo(({ coins }: { coins?: number }) => {
   const me = useMyPlayer();
   const players = usePlayers();
+  // The server counts everyone online (world.online); the client only sees players near it.
+  const online = useWorld()?.online ?? 0;
   return (
       <div className="world-header">
         <img src="/items/blueberry.png" alt="" />
@@ -75,7 +91,7 @@ const WorldHeader = memo(({ coins }: { coins?: number }) => {
           <strong>BeriGame</strong>
           <span>
             {me?.name ?? "The first island"}{me?.region === "settlement" ? " · Meadows" : ""} ·{" "}
-            {players.filter((player) => player.online).length} online
+            {nearbyOnline(players, me)} nearby{online > 0 ? ` · ${online} online` : ""}
           </span>
           {coins !== undefined && <span>{coins} coins · {me?.hp} HP</span>}
         </div>
@@ -133,7 +149,7 @@ const UIComponents = memo(({ frontierEnabled = false, draft = null, onDraft = ()
     const previous = panel === "friends" ? "chat" : panel === "settlement" ? "adventure" : panel;
     setPanel(null);
     // Secondary controls disappear with the compact menu; return to its trigger.
-    const secondary = ["menu", "skills", "appearance", "crafting", "help", "settings", "bug"].includes(previous ?? "");
+    const secondary = ["menu", "skills", "appearance", "crafting", "ledger", "help", "settings", "bug"].includes(previous ?? "");
     const target = secondary && menuButton.current?.getClientRects().length
       ? menuButton.current
       : toolbar.current?.querySelector<HTMLButtonElement>(`[data-panel="${previous}"]`);
@@ -230,7 +246,7 @@ const UIComponents = memo(({ frontierEnabled = false, draft = null, onDraft = ()
           ref={menuButton}
           aria-expanded={panel === "menu"}
           aria-controls="game-menu"
-          data-active={["menu", "skills", "appearance", "crafting", "help", "settings", "bug"].includes(panel ?? "")}
+          data-active={["menu", "skills", "appearance", "crafting", "ledger", "help", "settings", "bug"].includes(panel ?? "")}
           onClick={() => toggle("menu")}
         >
           <span aria-hidden="true">☰</span> Menu
@@ -238,6 +254,7 @@ const UIComponents = memo(({ frontierEnabled = false, draft = null, onDraft = ()
         <div id="game-menu" className={`toolbar-secondary ${panel === "menu" ? "is-open" : ""}`} hidden={panel !== 'menu'} role="group" aria-label="More game panels">
           {frontierEnabled && <button onClick={() => openFrontier()}>Settlements</button>}
           <button data-panel="crafting" onClick={() => toggle('crafting')}>Craft <kbd>C</kbd></button>
+          {!inFrontier && <button data-panel="ledger" aria-expanded={panel === "ledger"} onClick={() => toggle("ledger")}>Ledger</button>}
           <button
             data-panel="skills"
             aria-expanded={panel === "appearance" || panel === "skills"}
@@ -281,6 +298,7 @@ const UIComponents = memo(({ frontierEnabled = false, draft = null, onDraft = ()
       <Inventory open={panel === "inventory"} onClose={close} onCraft={() => setPanel('crafting')} onStorage={inFrontier ? (frontierEnabled ? () => openFrontier({ tab: 'Storage' }) : undefined) : () => setPanel('vault')} frontier={frontier} initialQuickSlot={quickSlotTarget} />
       <VaultPanel open={panel === "vault"} onClose={close} />
       <CraftingPanel open={panel === 'crafting'} onClose={close} frontier={frontierEnabled ? frontier : undefined} />
+      {panel === "ledger" && <LedgerPanel open onClose={close} />}
       {/* Friends and invites live behind Chat (no new toolbar button). */}
       <ChatBox open={panel === "chat"} onClose={close} onOpenFriends={openFriends} />
       <FriendsPanel key={`friends-${friendsRequest.id}`} open={panel === "friends"} initialAdding={friendsRequest.adding} initialSearch={friendsRequest.search} initialPlayerHex={friendsRequest.playerHex} onClose={close} onOpenChat={() => setPanel("chat")} />

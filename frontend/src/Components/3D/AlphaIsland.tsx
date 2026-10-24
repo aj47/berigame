@@ -9,6 +9,7 @@ import GroundPlane from '../../Objects/GroundPlane';
 import { envTime } from './envArt';
 import SunShadow from './SunShadow';
 import { QUALITY, useGraphicsTier } from './renderQuality';
+import { PlayerViewCell } from './world/viewCell';
 
 /** Horizon tone shared by the sky, fog and clear colour so the ocean melts into the sky. */
 const HORIZON = '#cdeef0';
@@ -54,8 +55,11 @@ const AlphaIsland = () => {
       {quality.shadows && <SunShadow light={sun} />}
       <hemisphereLight args={['#cfe8ff', '#8c7a52', 0.55 * Math.PI]} />
       <Clock />
-      <GroundPlane />
-      <IslandDetails />
+      {/* Terrain, trees, props and ground cover are chunked and mounted near you (world/chunks.ts). */}
+      <PlayerViewCell>
+        <GroundPlane />
+        <IslandDetails />
+      </PlayerViewCell>
       {quality.ambientLife && <AmbientLife />}
       <BrambleHedge />
       <BouldersArea />

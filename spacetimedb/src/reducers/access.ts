@@ -6,7 +6,9 @@ import type { Ctx } from '../lib/types';
 import { clearInteractions, sameId, savePlayer } from '../lib/players';
 import { clearIdleLogout, isIdleLoggedOut } from '../lib/idle';
 import { statsSessionStart } from '../lib/stats';
-import { hasWorldSpace, MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
+import { MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
+import { playersTargeting, worldHasSpace } from '../lib/activePlayers';
+import { loadPlayer, storePlayer } from '../lib/playerStore';
 
 /** Only the publisher captured during init can configure admission. */
 export const configureAccess = spacetimedb.reducer(
@@ -26,12 +28,12 @@ export const grantAgent = spacetimedb.reducer(
     if (!policy?.requireAdmission || !sameId(policy.gateway, ctx.sender)) throw new SenderError('agent gateway required');
     if (lifetimeSeconds < 60 || lifetimeSeconds > 3600) throw new SenderError('agent lifetime must be 60..3600 seconds');
     if (sameId(identity, policy.owner) || sameId(identity, policy.gateway)
-      || ctx.db.playerGrant.identity.find(identity) || ctx.db.player.identity.find(identity)) {
+      || ctx.db.playerGrant.identity.find(identity) || loadPlayer(ctx, identity)) {
       throw new SenderError('a fresh agent identity is required');
     }
     const now = ctx.timestamp.microsSinceUnixEpoch;
     if (ctx.db.playerGrant.count() >= BigInt(MAX_STORED_CHARACTERS)) throw new SenderError('world character capacity reached');
-    if (!hasWorldSpace(ctx.db.player.iter())) throw new SenderError('world is full');
+    if (!worldHasSpace(ctx)) throw new SenderError('world is full');
     ctx.db.playerGrant.insert({ identity, issuer: ctx.sender, agent: true,
       expiresAtMicros: now + BigInt(lifetimeSeconds) * 1_000_000n, combat, chat });
   },
@@ -54,8 +56,8 @@ function extendGrant(ctx: Ctx, identity: Identity, lifetimeSeconds: number, resu
   if (!resume && isIdleLoggedOut(ctx, identity)) throw new SenderError('logged out for inactivity');
   const now = ctx.timestamp.microsSinceUnixEpoch;
   // A player already online can always extend their permit at a full world.
-  const player = ctx.db.player.identity.find(identity);
-  if (!hasWorldSpace(ctx.db.player.iter(), !!player?.online)) throw new SenderError('world is full');
+  const player = loadPlayer(ctx, identity);
+  if (!worldHasSpace(ctx, !!player?.online)) throw new SenderError('world is full');
   ctx.db.playerGrant.identity.update({ ...grant, expiresAtMicros: now + BigInt(lifetimeSeconds) * 1_000_000n });
   if (!resume) return;
   clearIdleLogout(ctx, identity, ctx.db.world.id.find(0)?.tick ?? 0);
@@ -99,18 +101,16 @@ export const revokePlayer = spacetimedb.reducer({ identity: t.identity() }, (ctx
   }
   if (!grant) return;
   ctx.db.playerGrant.identity.update({ ...grant, expiresAtMicros: 0n });
-  const player = ctx.db.player.identity.find(identity);
+  const player = loadPlayer(ctx, identity);
   if (player) {
     const p = { ...player, online: false };
     clearInteractions(ctx, p);
-    ctx.db.player.identity.update(p);
+    storePlayer(ctx, p);
   }
-  for (const other of ctx.db.player.iter()) {
-    if (sameId(other.combatTarget, identity)) {
-      const p = { ...other };
-      clearInteractions(ctx, p);
-      ctx.db.player.identity.update(p);
-    }
+  for (const other of playersTargeting(ctx, identity)) {
+    const p = { ...other };
+    clearInteractions(ctx, p);
+    storePlayer(ctx, p);
   }
 });
 
@@ -119,6 +119,6 @@ export const endVisit = spacetimedb.reducer({ identity: t.identity() }, (ctx, { 
   const policy = ctx.db.accessPolicy.id.find(0), grant = ctx.db.playerGrant.identity.find(identity);
   if (!grant?.agent || !sameId(policy?.gateway, ctx.sender) || !sameId(grant.issuer, ctx.sender)) throw new SenderError('issuing gateway required');
   if (grant.expiresAtMicros !== 0n) ctx.db.playerGrant.identity.update({ ...grant, expiresAtMicros: ctx.timestamp.microsSinceUnixEpoch });
-  const row = ctx.db.player.identity.find(identity);
-  if (row) { const p = { ...row, online: false }; clearInteractions(ctx, p); ctx.db.player.identity.update(p); }
+  const row = loadPlayer(ctx, identity);
+  if (row) { const p = { ...row, online: false }; clearInteractions(ctx, p); storePlayer(ctx, p); }
 });

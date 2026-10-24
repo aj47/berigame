@@ -7,6 +7,7 @@ import { profile, saveProfile, progress, contribute, creditFor, carrying, spend,
 import { giveItem } from '../lib/inventory';
 import { requireCapability } from '../lib/access';
 import { onSpireFloor, refuseOnSpireFloor } from '../lib/spireGuards';
+import { loadPlayer } from '../lib/playerStore';
 
 export const equipTechnique = spacetimedb.reducer({ technique: t.u8() }, (ctx, { technique }) => {
   const p = requireAlivePlayer(ctx); touchInput(p, currentTick(ctx));
@@ -65,7 +66,7 @@ export const expeditionAction = spacetimedb.reducer({ action: t.string(), expedi
     savePlayer(ctx, p); return;
   }
   if (e.stage !== 'hauling') throw new SenderError(e.stage === 'growing' ? 'The berry is still growing. It will ripen shortly.' : 'This expedition has ended');
-  const carrier = e.carrier && ctx.db.player.identity.find(e.carrier);
+  const carrier = e.carrier && loadPlayer(ctx, e.carrier);
   if (carrier) { e.x = carrier.x; e.z = carrier.z; }
   const mine = sameId(e.carrier, p.identity);
   if (m.cooldown > T) throw new SenderError(`Catch your breath: ${Math.ceil((m.cooldown - T) * .6)} seconds`);
@@ -78,7 +79,7 @@ export const expeditionAction = spacetimedb.reducer({ action: t.string(), expedi
     case 'put_down': if (!mine) throw new SenderError('You are not carrying the berry'); e.carrier = undefined; e.message = `${p.name} put the berry down.`; break;
     case 'pass': {
       if (!mine) throw new SenderError('Pick up the berry before passing it');
-      const to = target && ctx.db.player.identity.find(target), tm = target && ctx.db.expeditionMember.identity.find(target);
+      const to = target && loadPlayer(ctx, target), tm = target && ctx.db.expeditionMember.identity.find(target);
       if (!to?.online || to.state !== PlayerState.Alive || sameId(to.identity, p.identity) || !tm || tm.expeditionId !== e.id || chebyshev(p, to) > 2 || to.hostile || duelFor(ctx, to.identity)) throw new SenderError('Pass to a nearby, free teammate in this expedition');
       const next = { ...to }; clearInteractions(ctx, next); next.weapon = ''; savePlayer(ctx, next);
       e.carrier = next.identity; e.x = next.x; e.z = next.z; contribute(ctx, p.identity, 4, Feat.Befriend); contribute(ctx, next.identity, 2, Feat.Explore); e.message = `${p.name} passed the berry to ${next.name}.`; break;
@@ -134,7 +135,7 @@ export const shareGarden = spacetimedb.reducer({ shared: t.bool() }, (ctx, { sha
 export const duelAction = spacetimedb.reducer({ action: t.string(), target: t.identity() }, (ctx, { action, target }) => {
   const p = requireAlivePlayer(ctx), T = currentTick(ctx); touchInput(p, T);
   activityAction(ctx, p.identity, 'duel');
-  const other = ctx.db.player.identity.find(target);
+  const other = loadPlayer(ctx, target);
   if (!other || sameId(target, p.identity)) throw new SenderError('Choose another player');
   const existing = [...ctx.db.friendlyDuel.iter()].find(d => d.stage !== 'complete' && (sameId(d.a, p.identity) && sameId(d.b, target) || sameId(d.b, p.identity) && sameId(d.a, target)));
   if (action === 'surrender' || action === 'decline') { if (existing) ctx.db.friendlyDuel.id.update({ ...existing, stage: 'complete', expiresTick: T + 50, result: `${p.name} ${action === 'surrender' ? 'surrendered' : 'declined'}. No items lost.` }); savePlayer(ctx, p); return; }

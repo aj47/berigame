@@ -52,6 +52,6 @@ export interface BossEventInput {
 export function emitBossEvent(ctx: Ctx, e: BossEventInput): void {
   ctx.db.bossEvent.insert({
     tick: e.tick, boss: e.boss, kind: e.kind, runId: e.runId ?? 0n, player: e.player ?? ctx.identity,
-    x: e.x ?? 0, z: e.z ?? 0, quantity: u32(e.quantity ?? 0), value: u32(e.value ?? 0), text: e.text ?? '',
+    x: e.x ?? -1, z: e.z ?? -1, quantity: u32(e.quantity ?? 0), value: u32(e.value ?? 0), text: e.text ?? '',
   });
 }

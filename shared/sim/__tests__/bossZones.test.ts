@@ -143,7 +143,7 @@ describe('registries and shared rules', () => {
   it('appends the glade and the gate as landmarks 16 and 17', () => {
     expect(LANDMARKS[16]).toMatchObject({ id: 'glade', x: 84, z: 106, access: 'coast' });
     expect(LANDMARKS[17]).toMatchObject({ id: 'spire', x: 62, z: 45, access: 'boulders' });
-    expect(TERRAIN_MAP.version).toBe('bramblewild-expanse-v2');
+    expect(TERRAIN_MAP.version).toBe('bramblewild-expanse-v3');
   });
 
   it('names the no-PvP boss zones', () => {

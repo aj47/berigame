@@ -1,8 +1,8 @@
-import { subscribeFrontier } from '../src/spacetime/frontierSubscription';
 import { frontierSnapshot, type FrontierSnapshot } from '../../shared/sim/frontier/snapshot';
 import { describeAction, describeDestination, describeEconomy, describeGathering, describeObjective } from './statePresentation';
 import { bossError, ClatterContribution, crossesSpireFloor, describeBossEvent, describeBossNotice, describeBosses, dangerFeed, dodgeCheck, moveStepsOf, onSpireFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows } from './statePresentation';
 import { subscribeSpire } from '../src/bosses/spireSubscription';
+import { playerView } from '../src/spacetime/playerView';
 import { validateCommand } from '../../shared/sim/frontier/engine';
 import { ADVENTURE_CAMP, BERRY_MARKET, GIANT_FEAST, BERRY_PATCH, TECHNIQUES, PATHS, PATH_FIELDS, techniqueUnlocked, hasTechnique } from '../../shared/sim';
 import { Identity } from 'spacetimedb';
@@ -18,19 +18,29 @@ import {
   GIANT_REACH, GiantAttack, GiantState, attackDamage, attackRadius, giantHpAt, isLandTile,
   COSMETICS, CosmeticSlot, SKILLS, SKILL_MAX_LEVEL, Skill, harvestTickBonus, hasCosmetic, levelForXp, levelProgress,
   RAID_INTERVAL_MS, RAID_MIN_CONTRIBUTION, RAID_REWARD, RAID_WINDOW_MS, raidMaxHp, MENTOR_RANGE, MENTOR_PIN_TIERS,
-  bossNoPvpZone, inSafeRing, SPIRE_KEY_ITEM_ID, SPIRE_RULES_VERSION, type DangerFeed,
+  bossNoPvpZone, inSafeRing, nearestLedgerClerk, SPIRE_KEY_ITEM_ID, SPIRE_RULES_VERSION, type DangerFeed,
   goalBosses, goalTarget, journeyChapterOf, nearestBag,
 } from '../../shared/sim';
 import { GARDEN_EXTRA_PLOT_LEVEL, GARDEN_PLOT_TILES, GARDEN_STAGE_NAMES, gardenPlotCountForXp, gardenRemainingMs, gardenStage, getGardenCrop, inGardenReach } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
 import { admissionError, ApiError, type Invite } from './portable';
-import { MAX_ONLINE_PLAYERS } from '../../shared/sim/admission';
+import { deliveryProblem, describeLedger, describeNodeKinds, levelError, NODE_KIND_NAMES, nodeKindOf, nodeLevelInfo, nodeLockReason } from './seasonPresentation';
+import { biomeAt } from './worldAtlas';
+/** Chebyshev radius of the nodes /state lists around the caller. */
+const NODES_WITHIN = 48;
+/** Chebyshev radius of the other players /state lists (you are always first), and at most this many, nearest first. */
+export const PLAYERS_WITHIN = 48;
+export const MAX_LISTED_PLAYERS = 64;
+/** Ground items /state lists: those within NODES_WITHIN, nearest first, plus your own death drops anywhere. */
+const MAX_LISTED_GROUND_ITEMS = 128;
 
 /** Extra fields merged into an accepted action's receipt (e.g. blockedBy, waiting). */
 export type ActionResult = Record<string, unknown> | void;
+/** `map`: include the full TERRAIN_MAP as world.map (GET /state?map=1, kept for one release; GET /world is the atlas). */
+export type StateOptions = { map?: boolean };
 export interface GameSession {
   identity: string;
-  state(): Record<string, any>;
+  state(options?: StateOptions): Record<string, any>;
   action(name: string, input: Record<string, any>): Promise<ActionResult>;
   /** GET /danger: the compact boss feed. Throws 503 world_unavailable while the cache is stale (never revokes). */
   danger(): DangerFeed;
@@ -46,16 +56,14 @@ export interface GameSession {
 export interface GameService { ready(): boolean; create(invite: Invite): Promise<GameSession>; }
 export type Backend = { uri: string; database: string };
 export type Credential = Backend & { identity: string; token: string };
-/** Agent-facing names of shared/sim NodeKind, indexed by kind. */
-const NODE_KIND_NAMES = ['berry', 'driftwood', 'tide_rock', 'obsidian'];
 const GIANT_STATE_NAMES = ['idle', 'winding_up', 'recovering', 'defeated', 'asleep'];
 const RAID_OUTCOME_NAMES = ['none', 'defeated', 'slept'];
 const iso = (micros: bigint) => new Date(Number(micros / 1000n)).toISOString();
 const disconnect = (conn: DbConnection) => { try { conn.disconnect(); } catch { /* already closed */ } };
 const unavailable = () => new ApiError(503, 'world_unavailable', 'The live world is unavailable. Retry shortly.');
-/** Maps a reducer refusal to its boss error code (FINAL_SPEC 8.5); anything else passes through. */
+/** Maps a reducer refusal to its boss error code (FINAL_SPEC 8.5) or level_required; anything else passes through. */
 const bossErrors = (e: unknown): never => {
-  const mapped = e instanceof ApiError ? null : bossError(e);
+  const mapped = e instanceof ApiError ? null : bossError(e) ?? levelError(e);
   throw mapped ? new ApiError(mapped.status, mapped.code, mapped.message) : e;
 };
 /**
@@ -88,7 +96,45 @@ export async function deadline<T>(promise: Promise<T>, ms = 8000): Promise<T> {
 
 export type ConnectionOptions = { webSocketFactory?: Parameters<ReturnType<typeof DbConnection.builder>['withWSFn']>[0] };
 
-export function connect(credential: Credential, control = false, options: ConnectionOptions = {}) {
+/**
+ * What a connection subscribes to.
+ * - `control`: the access policy and the world clock (CLI tools).
+ * - `world`: the gateway's one shared observer per process or Durable Object: every public world row (online
+ *   players, nodes, ground items, chat, bosses, expeditions, frontier objects). One cache for all sessions.
+ * - `player`: a session's own socket, only for its reducer calls and its private rows (inventory, friends, trades,
+ *   invite, notices, garden, frontier views, skills, cosmetics, profile, Spire membership and fight). Holding no
+ *   world rows keeps a session at a few kilobytes and stops every session decoding every player's move each tick.
+ */
+export type ConnectionScope = 'control' | 'world' | 'player';
+
+function subscriptionFor(scope: ConnectionScope, identity: Identity) {
+  if (scope === 'control') return [tables.world, tables.accessPolicy];
+  if (scope === 'world') return [
+    // player_pos holds online characters only: their live positions (the server moves only this row for a step).
+    tables.world, tables.accessPolicy, tables.player.where(row => row.online.eq(true)), tables.playerPos, tables.tree, tables.groundItem,
+    tables.chatMessage, tables.trainingDummy, tables.giant, tables.giantRaid, tables.mentorStat,
+    tables.expedition, tables.expeditionMember, tables.islandProject, tables.gardenShowcase, tables.friendlyDuel,
+    // Frontier objects of every region: one shared copy (each session's view keeps only its region's geometry).
+    tables.frontierObject,
+    // Bosses: config, the beetle, every run and member, and the public boss news.
+    tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossEvent,
+  ];
+  return [
+    // Row-level security narrows these to your own rows.
+    tables.inventorySlot, tables.friend, tables.trade, tables.inviteCode, tables.socialEvent, tables.gardenPlot, tables.frontierView,
+    tables.appearance.where(row => row.identity.eq(identity)),
+    tables.playerSkill.where(row => row.identity.eq(identity)),
+    tables.playerCosmetic.where(row => row.identity.eq(identity)),
+    tables.adventureProfile.where(row => row.identity.eq(identity)),
+    // Your membership drives subscribeSpire (your run's spire_fight) and answers spire actions consistently.
+    tables.spireMember.where(row => row.identity.eq(identity)),
+    // boss_notice has no RLS (views.ts), so the query narrows it to your rows.
+    tables.bossNotice.where(row => row.player.eq(identity)),
+  ];
+}
+
+export function connect(credential: Credential, scope: ConnectionScope | boolean = 'player', options: ConnectionOptions = {}) {
+  const mode: ConnectionScope = scope === true ? 'control' : scope === false ? 'player' : scope;
   return new Promise<{ conn: DbConnection; live(): boolean; connected(): boolean }>((resolve, reject) => {
     let active = false;
     let lastTick = Date.now();
@@ -105,36 +151,59 @@ export function connect(credential: Credential, control = false, options: Connec
         .onConnect((connection, identity) => {
           if (identity.toHexString() !== credential.identity) { fail(); return; }
           active = true;
-          if (!control) { subscribeFrontier(connection, identity.toHexString(), fail); subscribeSpire(connection, identity.toHexString(), fail); }
-          connection.db.world.onUpdate(() => { lastTick = Date.now(); });
+          if (mode === 'player') subscribeSpire(connection, identity.toHexString(), fail);
+          // A player socket holds no world clock: its liveness is the socket, the world's is the observer's.
+          const clocked = mode !== 'player';
+          if (clocked) connection.db.world.onUpdate(() => { lastTick = Date.now(); });
           connection.subscriptionBuilder().onError(fail).onApplied(() => {
             if (settled) return;
             settled = true; clearTimeout(timer); lastTick = Date.now();
-            resolve({ conn: connection, live: () => active && Date.now() - lastTick < TICK_MS * 8, connected: () => active });
-          }).subscribe(control ? [tables.world, tables.accessPolicy] : [
-            tables.frontierView, tables.world, tables.accessPolicy, tables.player.where(row => row.online.eq(true)), tables.tree,
-            tables.groundItem, tables.inventorySlot, tables.chatMessage, tables.trainingDummy,
-            tables.appearance.where(row => row.identity.eq(identity)),
-            tables.appearance.where(row => row.identity.eq(identity)), tables.giant,
-            // Row-level security narrows these to your own rows.
-            tables.friend, tables.trade, tables.inviteCode, tables.socialEvent,
-            tables.playerSkill.where(row => row.identity.eq(identity)),
-            tables.playerCosmetic.where(row => row.identity.eq(identity)),
-            tables.giantRaid,
-            tables.mentorStat,
-            tables.gardenPlot, tables.adventureProfile, tables.expedition, tables.expeditionMember, tables.islandProject, tables.gardenShowcase, tables.friendlyDuel,
-            // Bosses: config, the beetle, every run and member (small). boss_notice has no RLS (views.ts), so the
-            // subscription query narrows it to your rows: otherwise every agent socket in the Durable Object would
-            // receive and decode every fighter's notices. Your run's spire_fight comes from subscribeSpire.
-            tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossNotice.where(row => row.player.eq(identity)), tables.bossEvent,
-          ]);
+            resolve({ conn: connection, live: () => active && (!clocked || Date.now() - lastTick < TICK_MS * 8), connected: () => active });
+          }).subscribe(subscriptionFor(mode, identity));
         }).build();
     } catch (error) { settled = true; clearTimeout(timer); reject(error); }
   });
 }
 
-export async function createGameService(credential: Credential, options: ConnectionOptions = {}) {
-  const control = await connect(credential, true, options);
+/** Frontier object kinds a client keeps for every region; the rest only for the region it stands in (subscribeFrontier). */
+const FRONTIER_GLOBAL_KINDS = new Set(['config', 'claim', 'boat', 'creature']);
+const FRONTIER_REGIONAL_KINDS = new Set(['building', 'crop', 'drop', 'resource']);
+/** The frontier rows one player's view would hold: Bramblewild and the Meadows share a scene. */
+function frontierRowsFor<R extends { kind: string; region: string }>(rows: Iterable<R>, region: string | undefined): R[] {
+  const actual = region || 'bramblewild';
+  const scene = actual === 'bramblewild' ? 'settlement' : actual;
+  const out: R[] = [];
+  for (const row of rows) if (FRONTIER_GLOBAL_KINDS.has(row.kind) || (FRONTIER_REGIONAL_KINDS.has(row.kind) && row.region === scene)) out.push(row);
+  return out;
+}
+
+/** `world: false` makes an admission-only service (no world cache; resume is refused), e.g. a sharded coordinator. */
+export type ServiceOptions = ConnectionOptions & { world?: boolean };
+
+export async function createGameService(credential: Credential, options: ServiceOptions = {}) {
+  const world = options.world !== false;
+  // The gateway's own socket: admission reducers plus the one shared world cache every session reads.
+  const control = await connect(credential, world ? 'world' : 'control', options);
+  const db = control.conn.db;
+  /** Characters with their live positions (src/spacetime/playerView.ts merges player_pos into player rows). */
+  const players = playerView(control.conn);
+  // When the current world tick reached this gateway, and the last 10 world boss moments (shared by every session).
+  let tickAt = Date.now();
+  db.world.onUpdate(() => { tickAt = Date.now(); });
+  /** Resolves once the shared cache lists `id` online (or after `ms`; the caller's own check then decides). */
+  const onlineInWorld = (id: Identity, ms = 5000) => new Promise<void>(resolve => {
+    const online = () => !!players.identity.find(id)?.online;
+    if (online()) { resolve(); return; }
+    const check = () => { if (online()) done(); };
+    const done = () => { clearTimeout(timer); players.removeOnInsert(check); players.removeOnUpdate(check); resolve(); };
+    const timer = setTimeout(done, ms);
+    players.onInsert(check); players.onUpdate(check);
+  });
+  const bossNews: ReturnType<typeof describeBossEvent>[] = [];
+  db.bossEvent.onInsert((_ctx, row) => {
+    bossNews.push(describeBossEvent(row));
+    if (bossNews.length > 10) bossNews.shift();
+  });
   const ready = () => {
     const policy = control.conn.db.accessPolicy.id.find(0);
     return control.live() && !!policy?.requireAdmission && policy.gateway?.toHexString() === credential.identity;
@@ -165,7 +234,7 @@ export async function createGameService(credential: Credential, options: Connect
     }
   };
   const resume = async (invite: Invite, player: Credential): Promise<GameSession> => {
-    if (!ready()) throw unavailable();
+    if (!ready() || !world) throw unavailable();
     const id = Identity.fromString(player.identity);
     let link: Awaited<ReturnType<typeof connect>> | undefined;
     const close = async () => {
@@ -173,14 +242,17 @@ export async function createGameService(credential: Credential, options: Connect
       try { await deadline(control.conn.reducers.revokePlayer({ identity: id }), 3000); } catch { /* DB permit still expires independently. */ }
     };
     try {
-      link = await connect(player, false, options);
+      link = await connect(player, 'player', options);
+      // `conn` is this player's own socket (reducers and private rows); `db` is the shared world cache.
       const conn = link.conn;
       const me = () => {
         if (!ready() || !link!.live()) throw unavailable();
-        const self = conn.db.player.identity.find(id);
+        const self = players.identity.find(id);
         if (!self?.online) throw new ApiError(401, 'session_revoked', 'This player session is no longer active.');
         return self;
       };
+      // The world cache hears of this connection's player row on its own socket: wait for it before the first read.
+      await onlineInWorld(id);
       me();
       // Notices addressed to you (trade requests and results, invite results): the last 10.
       const notices: { tick: number; kind: number; from: string; text: string }[] = [];
@@ -189,34 +261,33 @@ export async function createGameService(credential: Credential, options: Connect
         notices.push({ tick: row.tick, kind: row.kind, from: row.from.toHexString(), text: row.text });
         if (notices.length > 10) notices.shift();
       });
-      // Boss feedback (FINAL_SPEC 8.1): your last 16 boss notices (subscription-filtered), the last 10 world boss moments, and
-      // your Clatterhorn damage this fight. tickAt is when the current world tick reached this gateway.
+      // Boss feedback (FINAL_SPEC 8.1): your last 16 boss notices (subscription-filtered), the last 10 world boss moments
+      // (shared bossNews), and your Clatterhorn damage this fight.
       const bossNotices: ReturnType<typeof describeBossNotice>[] = [];
-      const bossNews: ReturnType<typeof describeBossEvent>[] = [];
       const contribution = new ClatterContribution();
-      let tickAt = Date.now();
-      conn.db.world.onUpdate(() => { tickAt = Date.now(); });
       conn.db.bossNotice.onInsert((_ctx, row) => {
         if (row.player.toHexString() !== player.identity) return;
         contribution.record(row);
         bossNotices.push(describeBossNotice(row));
         if (bossNotices.length > 16) bossNotices.shift();
       });
-      conn.db.bossEvent.onInsert((_ctx, row) => {
-        bossNews.push(describeBossEvent(row));
-        if (bossNews.length > 10) bossNews.shift();
-      });
       const bossRows = (): BossRows => ({
-        config: [...conn.db.bossConfig.iter()][0] ?? null, clatter: [...conn.db.clatterhorn.iter()][0] ?? null,
-        runs: [...conn.db.spireRun.iter()], members: [...conn.db.spireMember.iter()], fights: [...conn.db.spireFight.iter()],
+        config: [...db.bossConfig.iter()][0] ?? null, clatter: [...db.clatterhorn.iter()][0] ?? null,
+        runs: [...db.spireRun.iter()], members: [...db.spireMember.iter()], fights: [...conn.db.spireFight.iter()],
       });
       /** Your tiles per tick: 1 while you carry the giant berry (the server's cargoMovementSteps). */
-      const moveSteps = () => moveStepsOf(player.identity, conn.db.expedition.iter());
+      const moveSteps = () => moveStepsOf(player.identity, db.expedition.iter());
       const keysHeld = () => slotsOf().reduce((n, s) => n + (s?.itemId === SPIRE_KEY_ITEM_ID ? s.quantity : 0), 0);
       const currentTrade = () => {
         const rows = [...conn.db.trade.iter()];
         return rows.find(t => t.accepted) ?? rows.sort((a, b) => b.createdTick - a.createdTick)[0];
       };
+      /** Skill levels in skill-id order [foraging, beachcombing, crafting]. */
+      const levels = () => {
+        const row = conn.db.playerSkill.identity.find(id);
+        return [levelForXp(row?.foragingXp ?? 0), levelForXp(row?.beachcombingXp ?? 0), levelForXp(row?.craftingXp ?? 0)];
+      };
+      const ledgerOf = (self: ReturnType<typeof me>) => describeLedger({ identity: player.identity, levels: levels(), views: conn.db.frontierView.iter(), slots: slotsOf(), self, now: Date.now() });
       const describePlayer = (p: ReturnType<typeof me>, frontier: FrontierSnapshot, now: number) => {
         const gathering = describeGathering(frontier, p.identity.toHexString(), now);
         return { id: p.identity.toHexString(), name: p.name,
@@ -227,7 +298,7 @@ export async function createGameService(credential: Credential, options: Connect
         region: p.region || 'bramblewild', area: p.region && p.region !== 'bramblewild' ? p.region : areaOf(p),
         load: p.load ?? 0,
         gathering,
-        action: describeAction(p, gathering, conn.db.tree.id.find(Number(p.pendingId))),
+        action: describeAction(p, gathering, db.tree.id.find(Number(p.pendingId))),
         };
       };
       // The First Day chip's memory for this session (see shared/sim/goals.ts).
@@ -238,15 +309,15 @@ export async function createGameService(credential: Credential, options: Connect
         for (const row of conn.db.inventorySlot.iter()) if (row.owner.toHexString() === player.identity && row.slot < INVENTORY_SIZE) slots[row.slot] = { itemId: row.itemId, quantity: row.quantity };
         return slots;
       };
-      const others = (self: ReturnType<typeof me>) => [...conn.db.player.iter()].filter(p => p.online && (p.region || 'bramblewild') === (self.region || 'bramblewild') && p.identity.toHexString() !== player.identity);
+      const others = (self: ReturnType<typeof me>) => [...players.iter()].filter(p => p.online && (p.region || 'bramblewild') === (self.region || 'bramblewild') && p.identity.toHexString() !== player.identity);
       const goalFor = (self: ReturnType<typeof me>, tick: number) => {
         const rows = bossRows();
         const skill = conn.db.playerSkill.identity.find(id);
-        const result = firstDayGoal({ me: self, slots: slotsOf(), trees: [...conn.db.tree.iter()], others: others(self), tick,
-          canFight: invite.combat, done: goalDone, seen: { ate }, giant: conn.db.giant.id.find(GIANT_ID) ?? null,
+        const result = firstDayGoal({ me: self, slots: slotsOf(), trees: [...db.tree.iter()], others: others(self), tick,
+          canFight: invite.combat, done: goalDone, seen: { ate }, giant: db.giant.id.find(GIANT_ID) ?? null,
           foragingXp: skill?.foragingXp ?? 0, craftingLevel: levelForXp(skill?.craftingXp ?? 0),
           bosses: goalBosses(rows.config, rows.clatter), cosmetics: conn.db.playerCosmetic.identity.find(id)?.unlocked ?? 0,
-          bag: nearestBag(self, player.identity, conn.db.groundItem.iter()) });
+          bag: nearestBag(self, player.identity, db.groundItem.iter()) });
         goalDone = result.done;
         return result.goal;
       };
@@ -257,11 +328,11 @@ export async function createGameService(credential: Credential, options: Connect
         alive: () => control.connected() && link!.connected(),
         danger() {
           const self = me();
-          const tick = conn.db.world.id.find(0)?.tick ?? 0;
-          return dangerFeed(bossRows(), self, tick, { players: conn.db.player.iter(), blocked: stableBlocked(conn.db.tree.iter()),
+          const tick = db.world.id.find(0)?.tick ?? 0;
+          return dangerFeed(bossRows(), self, tick, { players: players.iter(), blocked: stableBlocked(db.tree.iter()),
             ageMs: Date.now() - tickAt, tickMs: TICK_MS, maxSteps: moveSteps() });
         },
-        state() {
+        state(options: StateOptions = {}) {
           const self = me();
           const skillLevels = () => {
             const row = conn.db.playerSkill.identity.find(id);
@@ -285,43 +356,48 @@ export async function createGameService(credential: Credential, options: Connect
               rule: 'Purely visual. Earned by milestones and skill levels; wear one per slot with the wear action.',
             };
           };
-          const tick = conn.db.world.id.find(0)?.tick ?? 0;
+          const tick = db.world.id.find(0)?.tick ?? 0;
+          const myLevels = levels();
           const inventory = [...conn.db.inventorySlot.iter()].filter(row => row.owner.toHexString() === player.identity).sort((a, b) => a.slot - b.slot);
           const home = !self.region || self.region === 'bramblewild';
           // Slim /state on the Spire floor (FINAL_SPEC 8.2): no map, nodes, ground items, gardens, expeditions or goal.
           const inside = onSpireFloor(self);
           const outside = home && !inside;
           const rows = bossRows();
-          const bosses = describeBosses(rows, self, tick, { players: conn.db.player.iter(), keysHeld: keysHeld(), contribution: contribution.read(rows.clatter),
-            blocked: stableBlocked(conn.db.tree.iter()), maxSteps: moveSteps() });
+          const bosses = describeBosses(rows, self, tick, { players: players.iter(), keysHeld: keysHeld(), contribution: contribution.read(rows.clatter),
+            blocked: stableBlocked(db.tree.iter()), maxSteps: moveSteps() });
           const goal = outside ? goalFor(self, tick) : null;
           const now = Date.now();
-          const frontier = frontierSnapshot(conn.db.frontierObject.iter(), conn.db.frontierView.iter(), player.identity, now);
+          const frontier = frontierSnapshot(frontierRowsFor(db.frontierObject.iter(), self.region), conn.db.frontierView.iter(), player.identity, now);
+          const near = (t: { x: number; z: number }, within: number) => chebyshev(self, t) <= within;
+          const nearTrees = outside ? [...db.tree.iter()].filter(tree => near(tree, NODES_WITHIN)) : [];
           const hasKey = holdsItem(slotsOf(), self.weapon, BRAMBLE_KEY_ITEM);
           const hasBoulderKey = holdsItem(slotsOf(), self.weapon, BOULDER_KEY_ITEM);
-          const g = conn.db.giant.id.find(GIANT_ID);
-          const raid = conn.db.giantRaid.id.find(GIANT_ID);
-          const mentees = (hex: string) => [...conn.db.mentorStat.iter()].find(r => r.identity.toHexString() === hex)?.mentees ?? 0;
+          const g = db.giant.id.find(GIANT_ID);
+          const raid = db.giantRaid.id.find(GIANT_ID);
+          const mentees = (hex: string) => [...db.mentorStat.iter()].find(r => r.identity.toHexString() === hex)?.mentees ?? 0;
           return {
             tick, tickMs: TICK_MS, gridSize: self.region && self.region !== 'bramblewild' ? 128 : GRID_SIZE, player: describePlayer(self, frontier, now),
             frontier,
             economy: describeEconomy({ self, slots: slotsOf(), views: conn.db.frontierView.iter(), identity: player.identity, now }),
-            me: { area: home ? areaOf(self) : self.region, safe: home && isSafe(self, tick), graceTicks: inGrace(self, tick) ? Math.max(0, self.respawnTick + RESPAWN_GRACE_TICKS - tick) : 0,
+            me: { area: home ? areaOf(self) : self.region, biome: home ? biomeAt(self) : null, safe: home && isSafe(self, tick), graceTicks: inGrace(self, tick) ? Math.max(0, self.respawnTick + RESPAWN_GRACE_TICKS - tick) : 0,
               noPvp: home && (bossNoPvpZone(self) !== null || inSafeRing(self)),
               hasBrambleKey: hasKey, hasBoulderKey },
             goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action, ...(goal.waiting ? { waiting: goal.waiting } : {}),
-              target: goalTarget(goal, { trees: [...conn.db.tree.iter()], giant: g ?? null, clatter: rows.clatter ?? null, bag: nearestBag(self, player.identity, conn.db.groundItem.iter()) }),
+              target: goalTarget(goal, { trees: [...db.tree.iter()], giant: g ?? null, clatter: rows.clatter ?? null, bag: nearestBag(self, player.identity, db.groundItem.iter()) }),
               chapter: journeyChapterOf(goal.id) } : null,
             objective: describeObjective(self.region || 'bramblewild', goal, frontier),
             world: {
               region: self.region || 'bramblewild',
-              map: outside ? TERRAIN_MAP : null,
+              // About 80 KB: only on request (GET /state?map=1, kept for one release). GET /world is the same map, smaller.
+              map: outside && options.map ? TERRAIN_MAP : null,
+              atlas: { url: '/api/agent/v1/world', version: TERRAIN_MAP.version, rule: 'GET /world once per version: the terrain run-length encoded, plus biomes, routes (causeways, bridges, ridge passes) and waystones. world.map is null unless you ask GET /state?map=1 (kept for one release only).' },
               brambles: { center: { ...SPAWN_TILE }, ring: HEDGE_RING, tiles: brambleTiles(), key: BRAMBLE_KEY_ITEM,
                 rule: 'The rounded woodland boundary is thorny brambles; see tiles for its exact shape. Step onto one only while holding a stick (bag or wielded), or from the Coast. Stepping off is always allowed, so you can always walk home.' },
               safeRing: { center: { ...SPAWN_TILE }, radius: SAFE_RADIUS, rule: 'No attack starts or lands while either player is within this Chebyshev radius.' },
               stickChance: STICK_DROP_CHANCE, stickUnlockLevel: 2, firstStickGuaranteed: true,
               boulders: { line: BOULDER_LINE, min: BOULDERS_MIN, entry: { ...BOULDERS_ENTRY }, key: BOULDER_KEY_ITEM,
-                rule: `The Boulders are walkable land on the Giant's headland (30 <= x < 66, 32 <= z < 66) with max(x, z) > ${BOULDER_LINE}. The boulder line is walkable land on that headland with max(x, z) = ${BOULDER_LINE}; enter it only while holding a stone club (bag or wielded), or from the Boulders. Stepping off is always allowed, so you can always walk home. Check world.map.rows for the coastline, river and crossings.` },
+                rule: `The Boulders are walkable land on the Giant's headland (30 <= x < 66, 32 <= z < 66) with max(x, z) > ${BOULDER_LINE}. The boulder line is walkable land on that headland with max(x, z) = ${BOULDER_LINE}; enter it only while holding a stone club (bag or wielded), or from the Boulders. Stepping off is always allowed, so you can always walk home. Check the rows of GET /world for the coastline, river and crossings.` },
             },
             giant: home && g ? {
               id: g.id, tile: { x: g.x, z: g.z }, footprint: 1, reach: GIANT_REACH, aggroRange: GIANT_AGGRO_RANGE,
@@ -353,26 +429,32 @@ export async function createGameService(credential: Credential, options: Connect
             inventory: inventory.map(row => ({ slot: row.slot, itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity,
               healthRestored: getItemDef(row.itemId)?.healthRestore, weaponDamage: getItemDef(row.itemId)?.weaponDamage ?? 0,
               hotbar: row.slot < HOTBAR_SIZE, wielded: !!self.weapon && row.slot < HOTBAR_SIZE && row.itemId === self.weapon })),
+            // Nearby only (you first, then nearest): friends and your trade partner are in friends and trade wherever they are.
             // Floor players are invisible from outside, and inside you see only your own run (spireSeesPlayer).
-            players: visiblePlayers(self, [...conn.db.player.iter()].filter(p => p.online && (p.region || 'bramblewild') === (self.region || 'bramblewild')), rows)
-              .slice(0, MAX_ONLINE_PLAYERS).map(p => describePlayer(p, frontier, now)),
+            playersWithin: PLAYERS_WITHIN,
+            players: visiblePlayers(self, [...players.iter()].filter(p => p.online && (p.region || 'bramblewild') === (self.region || 'bramblewild') && near(p, PLAYERS_WITHIN)), rows)
+              .sort((a, b) => chebyshev(self, a) - chebyshev(self, b)).slice(0, MAX_LISTED_PLAYERS).map(p => describePlayer(p, frontier, now)),
             clatterhorn: bosses.clatterhorn,
             spire: bosses.spire,
             bossNews: bossNews.slice(),
-            nodes: (outside ? [...conn.db.tree.iter()] : []).map(tree => ({ id: tree.id, kind: NODE_KIND_NAMES[tree.kind] ?? 'berry', name: nodeKindDef(tree.kind).name,
-              tile: { x: tree.x, z: tree.z }, gives: { itemId: tree.itemId, name: getItemDef(tree.itemId)?.name },
+            // Nearby only: the Expanse holds over 1000 nodes. Walk toward a biome (GET /world) to see its nodes.
+            nodesWithin: NODES_WITHIN,
+            nodes: nearTrees.map(tree => ({ id: tree.id, kind: NODE_KIND_NAMES[tree.kind] ?? 'berry', name: nodeKindDef(tree.kind).name,
+              tile: { x: tree.x, z: tree.z }, biome: biomeAt(tree), gives: { itemId: tree.itemId, name: getItemDef(tree.itemId)?.name }, ...nodeLevelInfo(tree.kind, myLevels),
               ready: tree.cooldownUntilTick <= tick && !tree.harvester, regrowTicks: Math.max(0, tree.cooldownUntilTick - tick), harvesting: !!tree.harvester })),
-            /** @deprecated alias of the berry trees in nodes; kept for one release. */
-            trees: (outside ? [...conn.db.tree.iter()] : []).filter(tree => tree.kind === NodeKind.Berry).map(tree => ({ id: tree.id, tile: { x: tree.x, z: tree.z }, berry: getItemDef(tree.itemId)?.name,
+            nodeKinds: describeNodeKinds(myLevels),
+            ledger: home ? ledgerOf(self) : null,
+            /** @deprecated alias of the berry trees in nodes (also nearby only); kept for one release. */
+            trees: nearTrees.filter(tree => tree.kind === NodeKind.Berry).map(tree => ({ id: tree.id, tile: { x: tree.x, z: tree.z }, berry: getItemDef(tree.itemId)?.name,
               ready: tree.cooldownUntilTick <= tick && !tree.harvester, regrowTicks: Math.max(0, tree.cooldownUntilTick - tick), harvesting: !!tree.harvester })),
             recipes: recipeStatus(slotsOf(), skillLevels().crafting).map(r => ({ id: r.id, name: r.name, inputs: r.inputs, output: r.output, cosmetic: r.cosmetic === null ? null : COSMETICS[r.cosmetic]?.key ?? null,
               level: r.level, locked: r.locked, xp: r.xp, canCraft: r.canCraft, missing: r.missing })),
             skills: describeSkills(),
             adventure: {
               camp: ADVENTURE_CAMP, patch: BERRY_PATCH, market: BERRY_MARKET, feast: GIANT_FEAST,
-              expeditions: (inside ? [] : [...conn.db.expedition.iter()]).map(e => ({ ...e, id: e.id.toString(), leader: e.leader.toHexString(), carrier: e.carrier?.toHexString() ?? null, porter: e.porter?.toHexString() ?? null })),
-              members: (inside ? [] : [...conn.db.expeditionMember.iter()]).map(m => ({ ...m, identity: m.identity.toHexString(), expeditionId: m.expeditionId.toString() })),
-              project: conn.db.islandProject.id.find(0) ?? { wood: 0, obsidian: 0, meals: 0 },
+              expeditions: (inside ? [] : [...db.expedition.iter()]).map(e => ({ ...e, id: e.id.toString(), leader: e.leader.toHexString(), carrier: e.carrier?.toHexString() ?? null, porter: e.porter?.toHexString() ?? null })),
+              members: (inside ? [] : [...db.expeditionMember.iter()]).map(m => ({ ...m, identity: m.identity.toHexString(), expeditionId: m.expeditionId.toString() })),
+              project: db.islandProject.id.find(0) ?? { wood: 0, obsidian: 0, meals: 0 },
               projectGoal: '20 driftwood + 10 obsidian builds a permanent camp workshop: all future expedition berries gain one reward. Meals count successful expeditions.',
               rule: 'Start at camp (22,18), then walk to the berry patch (34,17). Join others or bring Moss. Cargo needs both hands and slows movement. Pip steals unattended bites; bribe with a greenberry. Bait distracts the pursuing Giant. Deliver at market or feed at the western clearing. Only cargo is at risk. Act through expedition; inspect message and stage after every action.',
             },
@@ -382,8 +464,8 @@ export async function createGameService(credential: Credential, options: Connect
               return { paths: PATHS.map((name, i) => ({ name, xp: p[PATH_FIELDS[i]], level: levelForXp(p[PATH_FIELDS[i]]) })), completions: p.completions, giantTrust: p.giantTrust,
                 techniques: TECHNIQUES.map(t => ({ ...t, unlocked: techniqueUnlocked(p, t.id), equipped: hasTechnique(p, t.id) })), rule: 'Equip up to three techniques at camp, freely. Grow, build, explore, practice on the dummy, and befriend NPCs or give gifts to earn XP and milestones.' };
             })(),
-            sharedGardens: (inside ? [] : [...conn.db.gardenShowcase.iter()]).map(g => ({ playerId: g.identity.toHexString(), plants: JSON.parse(g.plants) })),
-            duels: [...conn.db.friendlyDuel.iter()].filter(d => d.a.toHexString() === player.identity || d.b.toHexString() === player.identity).map(d => ({ ...d, id: d.id.toString(), a: d.a.toHexString(), b: d.b.toHexString() })),
+            sharedGardens: (inside ? [] : [...db.gardenShowcase.iter()]).map(g => ({ playerId: g.identity.toHexString(), plants: JSON.parse(g.plants) })),
+            duels: [...db.friendlyDuel.iter()].filter(d => d.a.toHexString() === player.identity || d.b.toHexString() === player.identity).map(d => ({ ...d, id: d.id.toString(), a: d.a.toHexString(), b: d.b.toHexString() })),
             cosmetics: describeCosmetics(),
             garden: (() => {
               const now = Date.now();
@@ -403,16 +485,19 @@ export async function createGameService(credential: Credential, options: Connect
                 rule: `Your own berry patch (use garden_share to show it to others). plant a berry, it grows in real time even while you are offline, then harvest_garden when ripe for more berries and Foraging XP. Ripe plants wait forever. A 4th plot opens at Foraging level ${GARDEN_EXTRA_PLOT_LEVEL}.`,
               };
             })(),
-            groundItems: (outside ? [...conn.db.groundItem.iter()] : []).slice(0, 128).map(row => ({ id: row.id.toString(), itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity, tile: { x: row.x, z: row.z },
+            // Nearby piles nearest first, plus your own death drops wherever they lie.
+            groundItemsWithin: NODES_WITHIN,
+            groundItems: (outside ? [...db.groundItem.iter()] : []).filter(row => near(row, NODES_WITHIN) || (row.droppedOnDeath && row.droppedBy.toHexString() === player.identity))
+              .sort((a, b) => chebyshev(self, a) - chebyshev(self, b)).slice(0, MAX_LISTED_GROUND_ITEMS).map(row => ({ id: row.id.toString(), itemId: row.itemId, name: getItemDef(row.itemId)?.name, quantity: row.quantity, tile: { x: row.x, z: row.z },
               ...(row.droppedOnDeath && row.droppedBy.toHexString() === player.identity ? { yourDeathDrop: true, expiresInTicks: Math.max(0, row.expiresTick - tick) } : {}) })),
-            dummies: (outside ? [...conn.db.trainingDummy.iter()] : []).map(d => ({ id: d.id, tile: { x: d.x, z: d.z }, health: dummyHpAt(d, tick), maxHealth: d.maxHp,
+            dummies: (outside ? [...db.trainingDummy.iter()] : []).map(d => ({ id: d.id, tile: { x: d.x, z: d.z }, health: dummyHpAt(d, tick), maxHealth: d.maxHp,
               rule: 'Attack with attack_dummy. Harmless practice: open to everyone, never dies, springs back to full HP.' })),
             groundItemTtlTicks: GROUND_ITEM_TTL_TICKS,
-            chat: [...conn.db.chatMessage.iter()].sort((a, b) => a.tick - b.tick).slice(-20).map(row => ({ sender: row.sender.toHexString(), text: row.text, tick: row.tick,
+            chat: [...db.chatMessage.iter()].sort((a, b) => a.tick - b.tick).slice(-20).map(row => ({ sender: row.sender.toHexString(), text: row.text, tick: row.tick,
               nearby: chatVisible('nearby', self, row) })),
             chatRules: { nearbyRadius: CHAT_NEARBY_RADIUS, rule: `nearby is true when the message was said within ${CHAT_NEARBY_RADIUS} tiles (Chebyshev) of where you stand now.` },
             friends: [...conn.db.friend.iter()].map(f => {
-              const p = conn.db.player.identity.find(f.friend);
+              const p = players.identity.find(f.friend);
               return { id: f.friend.toHexString(), name: p?.name ?? null, online: !!p?.online, area: p?.online ? areaOf(p) : null,
                 tile: p?.online ? { x: p.x, z: p.z } : null, mentees: mentees(f.friend.toHexString()) };
             }),
@@ -427,7 +512,7 @@ export async function createGameService(credential: Credential, options: Connect
               if (!t) return null;
               const iAmA = t.a.toHexString() === player.identity;
               const other = iAmA ? t.b : t.a;
-              return { id: t.id.toString(), with: other.toHexString(), withName: conn.db.player.identity.find(other)?.name ?? null,
+              return { id: t.id.toString(), with: other.toHexString(), withName: players.identity.find(other)?.name ?? null,
                 status: t.accepted ? 'open' : iAmA ? 'requested_by_you' : 'requested_by_them',
                 yourCoins: iAmA ? t.aCoins : t.bCoins, theirCoins: iAmA ? t.bCoins : t.aCoins,
                 yourOffer: parseOffer(iAmA ? t.aOffer : t.bOffer) ?? [], theirOffer: parseOffer(iAmA ? t.bOffer : t.aOffer) ?? [],
@@ -446,7 +531,7 @@ export async function createGameService(credential: Credential, options: Connect
         async action(name, input): Promise<ActionResult> {
           const self = me();
           const r = conn.reducers;
-          const tick = conn.db.world.id.find(0)?.tick ?? 0;
+          const tick = db.world.id.find(0)?.tick ?? 0;
           const brambles = (e: unknown) => {
             if (String((e as Error)?.message ?? e).includes('brambles')) throw new ApiError(422, 'brambles', BRAMBLE_MESSAGE);
             if (String((e as Error)?.message ?? e).includes('boulders')) throw new ApiError(422, 'boulders', BOULDER_MESSAGE);
@@ -458,7 +543,7 @@ export async function createGameService(credential: Credential, options: Connect
               await r.setTarget({ x: input.x, z: input.z });
               // The floor is sealed sea from outside and an island from inside: the server stops at its edge.
               if (crossesSpireFloor(self, input as { x: number; z: number })) return { blockedBy: 'spire', message: SPIRE_FLOOR_MOVE };
-              const blocked = worldBlockedSet(conn.db.tree.iter());
+              const blocked = worldBlockedSet(db.tree.iter());
               const hasStick = holdsItem(slotsOf(), self.weapon, STICK_ITEM_ID);
               const hasClub = holdsItem(slotsOf(), self.weapon, BOULDER_KEY_ITEM);
               const destination = nearestReachableTile(self, { x: input.x, z: input.z }, blocked, enterRule(hasStick, hasClub));
@@ -477,13 +562,16 @@ export async function createGameService(credential: Credential, options: Connect
             case 'stop': await r.cancel({}); break;
             case 'harvest': {
               // Default: the tree with the soonest claim (ripening, walk and queue), as state.goal suggests.
-              const trees = [...conn.db.tree.iter()];
-              const kind = input.kind === undefined ? NodeKind.Berry : NODE_KIND_NAMES.indexOf(input.kind);
+              const trees = [...db.tree.iter()];
+              const kind = input.kind === undefined ? NodeKind.Berry : nodeKindOf(input.kind);
               const treeId: number | undefined = input.nodeId ?? input.treeId ?? bestTree(self, trees, others(self), tick, kind)?.tree.id;
               if (treeId === undefined) throw new ApiError(422, 'no_tree', 'There is no node of that kind to harvest.');
+              // Below the node's level the server refuses; say so with its words before the round trip.
+              const locked = nodeLockReason(db.tree.id.find(treeId)?.kind, levels());
+              if (locked) throw new ApiError(422, 'level_required', locked);
               await r.startHarvest({ treeId }).catch(brambles);
-              const tree = conn.db.tree.id.find(treeId);
-              const ripeInTicks = tree ? treeReadyTick(tree, [...conn.db.player.iter()], tick) - tick : 0;
+              const tree = db.tree.id.find(treeId);
+              const ripeInTicks = tree ? treeReadyTick(tree, [...players.iter()], tick) - tick : 0;
               return ripeInTicks > 0 && tree ? { waiting: { treeId, ripeInTicks } } : undefined;
             }
             case 'eat': await r.eatBerry({ slot: input.slot }); ate = true; break;
@@ -551,6 +639,26 @@ export async function createGameService(credential: Credential, options: Connect
               else await r.harvestGarden({ plot: input.plot });
               break;
             }
+            case 'deliver_commission': {
+              const ledger = ledgerOf(self);
+              if (!ledger.nearClerk) {
+                const clerk = nearestLedgerClerk(self);
+                const tile = nearestReachableTile(self, clerk, worldBlockedSet(db.tree.iter()));
+                await r.setTarget({ x: tile.x, z: tile.z });
+                return { walking: { tile, clerk: clerk.id }, message: `Walking to the ${clerk.name}; send deliver_commission again when you arrive.` };
+              }
+              const problem = deliveryProblem(ledger, input.slot);
+              if (problem) throw new ApiError(problem.status, problem.code, problem.message);
+              // The reducer is newer than some generated bindings; call it by name.
+              const deliver = (r as unknown as { deliverCommission?: (args: { slot: number }) => Promise<void> }).deliverCommission;
+              if (!deliver) throw new ApiError(409, 'ledger_unavailable', 'This world does not run the Island Ledger yet.');
+              await deliver.call(r, { slot: input.slot }).catch((e: unknown) => {
+                if (levelError(e)) throw e;
+                throw new ApiError(422, 'commission_rejected', String((e as Error)?.message ?? e).replace(/^SenderError:\s*/, '').slice(0, 300));
+              });
+              const after = ledgerOf(me()).commissions.find(c => c.slot === input.slot);
+              return { commission: after ? { slot: after.slot, itemId: after.itemId, quantity: after.quantity, xp: after.xp, skill: after.skill, done: after.done } : null };
+            }
             case 'attack_clatterhorn': await r.attackClatterhorn({}).catch(brambles); break;
             case 'spire': {
               const clientRules = SPIRE_RULES_VERSION;
@@ -563,7 +671,7 @@ export async function createGameService(credential: Credential, options: Connect
             }
             case 'dodge': {
               // No reachability floods (move runs three): one tick's move (2 tiles, 1 carrying), on the floor or at the glade only.
-              const check = dodgeCheck(bossRows(), self, { x: input.x, z: input.z }, tick, stableBlocked(conn.db.tree.iter()), moveSteps());
+              const check = dodgeCheck(bossRows(), self, { x: input.x, z: input.z }, tick, stableBlocked(db.tree.iter()), moveSteps());
               if ('problem' in check) throw new ApiError(check.problem.status, check.problem.code, check.problem.message);
               await r.setTarget({ x: input.x, z: input.z });
               return check;
@@ -583,7 +691,7 @@ export async function createGameService(credential: Credential, options: Connect
       catch (error) { throw /no such character/.test(String(error)) ? new ApiError(404, 'not_found', 'No character has this identity.') : error; }
     },
   };
-  return { verifyCredential: async (credential: Credential) => { const link = await connect(credential, false, options); disconnect(link.conn); }, attestRecovery: async (identity: string) => { await control.conn.reducers.attestRecovery({ identity: Identity.fromString(identity) }); }, ready, close: () => disconnect(control.conn), provision, renew, resume, revoke, suspend, admin,
+  return { world, verifyCredential: async (credential: Credential) => { const link = await connect(credential, 'control', options); disconnect(link.conn); }, attestRecovery: async (identity: string) => { await control.conn.reducers.attestRecovery({ identity: Identity.fromString(identity) }); }, ready, close: () => disconnect(control.conn), provision, renew, resume, revoke, suspend, admin,
     async create(invite: Invite) { return resume(invite, await provision(invite)); },
   };
 }

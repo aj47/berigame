@@ -21,4 +21,5 @@ export default __t.row({
   hp: __t.u32(),
   x: __t.i32(),
   z: __t.i32(),
+  cell: __t.u32(),
 });

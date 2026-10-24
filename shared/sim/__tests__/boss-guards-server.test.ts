@@ -1,4 +1,4 @@
-import { adventureTables, testTable } from './adventureHarness';
+import { adventureTables, mergedPlayer, playerTables, testTable } from './adventureHarness';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EAT_COOLDOWN_TICKS } from '../constants';
 import { PlayerState } from '../types';
@@ -76,7 +76,7 @@ const KEYS: Record<string, [string, boolean]> = {
 };
 
 function harness() {
-  const base: Record<string, any> = { ...adventureTables() };
+  const base: Record<string, any> = { ...adventureTables(), ...playerTables() };
   const db = new Proxy(base, {
     get(obj, name: string) {
       if (!(name in obj)) { const [pk, auto] = KEYS[name] ?? ['id', true]; obj[name] = testTable(pk, auto); }
@@ -94,7 +94,7 @@ function harness() {
       pending: 0, pendingId: 0n, lastInputTick: 0, inputsThisTick: 0, eatCooldownUntilTick: 0, weapon: '',
     });
   }
-  const p = (who: Identity) => db.player.identity.find(who);
+  const p = (who: Identity) => mergedPlayer(db, who);
   const place = (who: Identity, x: number, z: number, extra: object = {}) => db.player.identity.update({ ...p(who), x, z, ...extra });
   const give = (who: Identity, slot: number, itemId: string, quantity: number) =>
     db.inventorySlot.insert({ id: 0n, owner: who, slot, itemId, quantity });

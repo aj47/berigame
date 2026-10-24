@@ -21,3 +21,4 @@ export type ClatterhornCreditRow = NonNullable<ReturnType<Ctx['db']['clatterhorn
 export type SpireRunRow = NonNullable<ReturnType<Ctx['db']['spireRun']['id']['find']>>;
 export type SpireMemberRow = NonNullable<ReturnType<Ctx['db']['spireMember']['identity']['find']>>;
 export type SpireFightRow = NonNullable<ReturnType<Ctx['db']['spireFight']['runId']['find']>>;
+export type PlayerPosRow = NonNullable<ReturnType<Ctx['db']['playerPos']['identity']['find']>>;

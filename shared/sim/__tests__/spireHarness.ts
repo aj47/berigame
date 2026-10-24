@@ -1,4 +1,4 @@
-import { adventureTables, testTable } from './adventureHarness';
+import { adventureTables, mergedPlayer, playerTables, testTable } from './adventureHarness';
 import { PlayerState } from '../types';
 import { BOSS_CONFIG_DEFAULTS, SPIRE_EXIT, SPIRE_NONE, SPIRE_RULES_VERSION, type BossConfigLike, type Tile } from '../index';
 
@@ -46,7 +46,7 @@ export const BOSS_TABLES = ['bossConfig', 'clatterhorn', 'clatterhornCredit', 's
 
 export function spireHarness(tick: Reducer, names = ['Ann', 'Bo', 'Cy', 'Di', 'Ed']) {
   const log: WriteLog = { insert: {}, update: {}, delete: {} };
-  const base: Record<string, any> = { ...adventureTables() };
+  const base: Record<string, any> = { ...adventureTables(), ...playerTables() };
   for (const t of BOSS_TABLES) base[t] = spied(t, base[t], log);
   const db = new Proxy(base, {
     get(obj, name: string) {
@@ -64,7 +64,7 @@ export function spireHarness(tick: Reducer, names = ['Ann', 'Bo', 'Cy', 'Di', 'E
     stance: 0, fightState: 0, combatTarget: undefined, hostile: false, nextSwingTick: 0, harvestTreeId: 0, harvestEndTick: 0,
     pending: 0, pendingId: 0n, lastInputTick: 0, inputsThisTick: 0, eatCooldownUntilTick: 0, weapon: '',
   }));
-  const p = (who: Identity) => db.player.identity.find(who);
+  const p = (who: Identity) => mergedPlayer(db, who);
   const set = (who: Identity, extra: object) => db.player.identity.update({ ...p(who), ...extra });
   const place = (who: Identity, t: Tile, extra: object = {}) => set(who, { x: t.x, z: t.z, targetX: undefined, targetZ: undefined, ...extra });
   const give = (who: Identity, itemId: string, quantity: number) => {

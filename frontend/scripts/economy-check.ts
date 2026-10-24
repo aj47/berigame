@@ -7,6 +7,8 @@
  * Run: npx tsx scripts/economy-check.ts   (SPACETIME_URI, SPACETIME_DB as for smoke.ts)
  */
 import { DbConnection, tables } from '../src/module_bindings';
+// Live positions: player_pos merged into player rows (the server moves only player_pos for a step).
+import { playerView } from '../src/spacetime/playerView';
 import type { Player } from '../src/module_bindings/types';
 import {
   ENERGY_REGEN_MS, ENERGY_START_MAX, NodeKind, TICK_MS, TRADE_SWAP_TICKS, chebyshev, energyRestedLine, vaultId,
@@ -26,7 +28,7 @@ function connect(name: string, token?: string): Promise<Client> {
         c.subscriptionBuilder()
           .onApplied(() => { clearTimeout(timer); resolve({ name, conn: c, identity: identity.toHexString(), token: tok }); })
           .onError((_ctx, err) => { clearTimeout(timer); reject(err); })
-          .subscribe([tables.world, tables.player, tables.tree, tables.inventorySlot, tables.frontierView, tables.trade]);
+          .subscribe([tables.world, tables.player, tables.playerPos, tables.tree, tables.inventorySlot, tables.frontierView, tables.trade]);
       })
       .build();
   });
@@ -43,7 +45,7 @@ function check(label: string, ok: boolean, detail = ''): void {
   console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? ` (${detail})` : ''}`);
   if (!ok) failures++;
 }
-const me = (c: Client): Player => [...c.conn.db.player.iter()].find((p) => p.identity.toHexString() === c.identity)!;
+const me = (c: Client): Player => [...playerView(c.conn).iter()].find((p) => p.identity.toHexString() === c.identity)!;
 const count = (c: Client, itemId: string) => [...c.conn.db.inventorySlot.iter()]
   .filter((r) => r.owner.toHexString() === c.identity && r.itemId === itemId).reduce((n, r) => n + r.quantity, 0);
 const energy = (c: Client) => {

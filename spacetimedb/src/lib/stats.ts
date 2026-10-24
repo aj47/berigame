@@ -1,6 +1,7 @@
 import type { Identity } from 'spacetimedb';
 import { areaOf, STICK_ITEM_ID, type Tile } from '../../../shared/sim';
 import type { Ctx } from './types';
+import { idKey } from './playerStore';
 
 /**
  * Anonymous funnel counters (docs/ANALYTICS.md). Every helper is best-effort:
@@ -76,12 +77,25 @@ export function statsItem(ctx: Ctx, id: Identity, itemId: string): void {
   });
 }
 
+/**
+ * Per module instance: the furthest position milestone each player's stats row
+ * already holds, so a walker's every step past it costs no read. Only a
+ * speed-up (a new instance reads again).
+ */
+const REACHED = new WeakMap<object, Map<bigint | string, 'hedge' | 'coast'>>();
+
 /** Called for players whose row changed in a tick; only looks up stats outside the Grove. */
 export function statsPosition(ctx: Ctx, id: Identity, at: Tile): void {
   const area = areaOf(at);
   // The Spire floor has no milestone: skip the PK read on every dodge step.
   if (area === 'grove' || area === 'spire') return;
+  let reached = REACHED.get(ctx.db);
+  if (!reached) REACHED.set(ctx.db, (reached = new Map()));
+  const k = idKey(id), known = reached.get(k);
+  if (known === 'coast' || (known === 'hedge' && area === 'hedge')) return;
   edit(ctx, id, (row) => {
+    if (row.reachedCoastAt) reached.set(k, 'coast');
+    else if (row.reachedHedgeAt) reached.set(k, 'hedge');
     if (area === 'hedge' && !row.reachedHedgeAt) return { ...row, reachedHedgeAt: ctx.timestamp, lastStep: furthest(row.lastStep, 'hedge') };
     // Past the boulder line counts as having reached the Coast (no separate Boulders column yet).
     if ((area === 'coast' || area === 'boulder-line' || area === 'boulders') && !row.reachedCoastAt) {

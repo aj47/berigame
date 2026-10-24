@@ -11,6 +11,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { DbConnection, tables } from '../src/module_bindings';
+// Live positions: player_pos merged into player rows (the server moves only player_pos for a step).
+import { playerView } from '../src/spacetime/playerView';
 
 const { chromium } = createRequire(path.join(__dirname, 'ambient-hit-capture.ts'))(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const URL = process.env.GAME_URL ?? 'http://127.0.0.1:5173/play';
@@ -29,14 +31,14 @@ function connect(): Promise<any> {
       .onConnectError((_c, e) => reject(e))
       .onConnect((conn, identity) => {
         conn.subscriptionBuilder().onApplied(() => resolve({ conn, identity, hex: identity.toHexString() }))
-          .subscribe([tables.player]);
+          .subscribe([tables.player, tables.playerPos]);
       }).build();
   });
 }
 
 async function main() {
   const actor = await connect();
-  const row = () => actor.conn.db.player.identity.find(actor.identity);
+  const row = () => playerView(actor.conn).identity.find(actor.identity);
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', headless: true, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const context = await browser.newContext({ viewport: { width: 960, height: 640 }, recordVideo: process.env.VIDEO ? { dir: OUT, size: { width: 960, height: 640 } } : undefined });
   const page = await context.newPage();

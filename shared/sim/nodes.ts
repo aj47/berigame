@@ -8,11 +8,24 @@
  */
 import { HARVEST_TICKS, TREE_COOLDOWN_TICKS } from './constants';
 import { addItem, countItem, removeFromSlot } from './inventory';
-import { BERRY_MASH_ITEM_ID, DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, FLINT_KNIFE_ITEM_ID, OBSIDIAN_ITEM_ID, STONE_CLUB_ITEM_ID, getItemDef } from './items';
+import { BERRY_MASH_ITEM_ID, DRIFTWOOD_ITEM_ID, FLINT_ITEM_ID, FLINT_KNIFE_ITEM_ID, OBSIDIAN_ITEM_ID, STONE_CLUB_ITEM_ID, TREE_SEEDS, getItemDef } from './items';
+import { TIER_NODES, placeTierNodes, tierNode } from './season';
+import { DROP_BOXES } from './banking';
+import { WAYSTONES } from './expanse';
+import { worldBlockedSet } from './social';
+import { reachableTiles } from './pathfinding';
+import { enterRule } from './areas';
+import { inSpireFloor } from './bossZones';
+import { GRID_SIZE, SPAWN_TILE } from './constants';
+import { isLandTile, tileKey } from './grid';
 import type { Slot, Tile } from './types';
 
 /** `tree.kind` on the wire (u8). */
-export const NodeKind = { Berry: 0, Driftwood: 1, TideRock: 2, /** M3: the Boulders' rare resource. */ Obsidian: 3 } as const;
+export const NodeKind = {
+  Berry: 0, Driftwood: 1, TideRock: 2, /** M3: the Boulders' rare resource. */ Obsidian: 3,
+  // The Long Season's tiered nodes (season.ts TIER_NODES), each gated by a skill level.
+  HoneyHive: 4, OysterBed: 5, GlowcapRing: 6, CoralShelf: 7, SunpeachTree: 8, AmberSeam: 9, Starblossom: 10, MoonstoneVein: 11, Dreamvine: 12, FallenStar: 13,
+} as const;
 export type NodeKind = (typeof NodeKind)[keyof typeof NodeKind];
 
 export interface NodeKindDef {
@@ -27,7 +40,8 @@ export const NODE_KINDS: Record<NodeKind, NodeKindDef> = {
   [NodeKind.TideRock]: { name: 'Tide rock', harvestTicks: 6, regrowTicks: 40 },
   // Rare: two outcrops, 8 ticks to chip, 150 to reform (about 1.3 a minute world-wide).
   [NodeKind.Obsidian]: { name: 'Obsidian outcrop', harvestTicks: 8, regrowTicks: 150 },
-};
+  ...Object.fromEntries(TIER_NODES.map((d) => [d.kind, { name: d.name, harvestTicks: d.harvestTicks, regrowTicks: d.regrowTicks }])),
+} as Record<NodeKind, NodeKindDef>;
 
 /** Unknown kinds (a newer server) harvest like berry trees. */
 export function nodeKindDef(kind: number | undefined): NodeKindDef {
@@ -40,6 +54,18 @@ export function harvestTicksFor(kind: number | undefined): number {
 
 export function regrowTicksFor(kind: number | undefined): number {
   return nodeKindDef(kind).regrowTicks;
+}
+
+/** The skill level needed to work a node (1 for the original kinds). */
+export function nodeMinLevel(kind: number | undefined): number {
+  return tierNode(kind)?.minLevel ?? 1;
+}
+
+/** Why a harvester at `level` in the node's skill cannot work it, or null. */
+export function nodeLevelRejection(kind: number | undefined, level: number): string | null {
+  const def = tierNode(kind);
+  if (!def || level >= def.minLevel) return null;
+  return `Needs ${def.skill === 0 ? 'Foraging' : 'Beachcombing'} level ${def.minLevel}`;
 }
 
 export function isBerryNode(node: { kind?: number }): boolean {
@@ -56,7 +82,7 @@ export interface NodeSeed extends Tile {
 export const FIRST_NODE_ID = 101;
 
 const OUTER_BERRIES = ['berry_greenberry', 'berry_strawberry', 'berry_blueberry', 'berry_greenberry', 'berry_strawberry', 'berry_goldberry'] as const;
-const NODE_ITEM: Record<NodeKind, string> = {
+const NODE_ITEM: Record<number, string> = {
   [NodeKind.Berry]: 'berry_greenberry', [NodeKind.Driftwood]: DRIFTWOOD_ITEM_ID, [NodeKind.TideRock]: FLINT_ITEM_ID, [NodeKind.Obsidian]: OBSIDIAN_ITEM_ID,
 };
 /** Consecutive stable ids from `first`; never reorder a published list, only append. */
@@ -68,7 +94,7 @@ function outerSeeds(first: number, seeds: readonly (Tile & { kind: NodeKind; ite
  * Driftwood straight past each path crossing (N, E, S, W), tide rocks in the
  * four coves along the natural shoreline.
  */
-export const NODE_SEEDS: readonly NodeSeed[] = [
+const BASE_NODE_SEEDS: readonly NodeSeed[] = [
   { id: 101, x: 25, z: 3, kind: NodeKind.Driftwood, itemId: DRIFTWOOD_ITEM_ID },
   { id: 102, x: 46, z: 25, kind: NodeKind.Driftwood, itemId: DRIFTWOOD_ITEM_ID },
   { id: 103, x: 25, z: 46, kind: NodeKind.Driftwood, itemId: DRIFTWOOD_ITEM_ID },
@@ -87,6 +113,39 @@ export const NODE_SEEDS: readonly NodeSeed[] = [
   // outer lands are dotted with them. Goldberries stay one in six.
   ...outerSeeds(137, [[114, 110], [93, 17], [81, 20], [52, 99], [24, 104], [42, 88], [66, 101], [98, 82], [28, 80], [116, 21], [111, 101], [101, 39], [74, 89], [102, 20], [25, 95], [109, 91], [84, 96], [74, 112], [19, 115], [61, 91], [30, 7], [37, 40], [15, 96], [77, 30], [90, 28], [114, 30], [100, 98], [108, 82], [21, 42], [75, 98], [22, 7], [28, 118], [8, 22], [46, 42], [14, 41], [37, 97], [29, 43], [42, 21], [87, 8], [51, 90], [19, 84]].map(([x, z], i) => ({ x, z, kind: NodeKind.Berry, itemId: OUTER_BERRIES[i % OUTER_BERRIES.length] }))),
 ];
+
+/**
+ * Every node: the hand-placed ones above, then the Long Season's tiered nodes
+ * (ids from 1000), placed deterministically around them.
+ */
+export const NODE_SEEDS: readonly NodeSeed[] = [
+  ...BASE_NODE_SEEDS,
+  ...keepLandConnected(placeTierNodes([...TREE_SEEDS, ...BASE_NODE_SEEDS], [...DROP_BOXES, ...WAYSTONES]).map((s) => ({ ...s, kind: s.kind as NodeKind }))),
+];
+
+/**
+ * Drop any tier node that walls off walkable land (with a stick and a club,
+ * as the terrain tests walk it). The gaps placement keeps make this rare; the
+ * flood fill makes it certain. The survivors keep their ids.
+ */
+function keepLandConnected(tier: NodeSeed[]): NodeSeed[] {
+  let kept = tier;
+  for (let pass = 0; pass < 8; pass++) {
+    const blocked = worldBlockedSet([...TREE_SEEDS, ...BASE_NODE_SEEDS, ...kept]);
+    const seen = reachableTiles(SPAWN_TILE, blocked, enterRule(true, true));
+    const stranded: { x: number; z: number }[] = [];
+    for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) {
+      const t = { x, z }, k = tileKey(t);
+      if (isLandTile(t) && !blocked.has(k) && !inSpireFloor(t) && !seen.has(k)) stranded.push(t);
+    }
+    if (!stranded.length) break;
+    kept = kept.filter((n) => !stranded.some((t) => Math.max(Math.abs(t.x - n.x), Math.abs(t.z - n.z)) <= 1));
+  }
+  return kept;
+}
+
+/** The Long Season's tiered nodes. */
+export const TIER_NODE_SEEDS: readonly NodeSeed[] = NODE_SEEDS.filter((s) => tierNode(s.kind));
 
 /** The Coast's driftwood and tide rocks, including the outer lands' shores. */
 export const COAST_NODE_SEEDS: readonly NodeSeed[] = NODE_SEEDS.filter((s) => s.kind === NodeKind.Driftwood || s.kind === NodeKind.TideRock);
@@ -113,6 +172,32 @@ export interface Recipe {
   /** Crafting XP per make. */
   xp: number;
 }
+
+/**
+ * The Long Season's recipes (season.ts goods). Crafting XP is half the
+ * gathering XP of the raw materials a make consumes, so Crafting keeps pace
+ * with the average of the two gathering skills. Nothing here heals or hits.
+ * Cosmetic ids are literals (skills.ts Cosmetic) to avoid an import cycle.
+ */
+const r = (id: string, name: string, level: number, xp: number, inputs: [string, number][], out?: string, cosmetic?: number): Recipe => ({
+  id, name, level, xp, inputs: inputs.map(([itemId, quantity]) => ({ itemId, quantity })), ...(out ? { output: { itemId: out, quantity: 1 } } : {}), ...(cosmetic !== undefined ? { cosmetic } : {}),
+});
+export const SEASON_RECIPES: readonly Recipe[] = [
+  r('beeswax_candle', 'Beeswax Candle', 12, 17, [['honeycomb', 2], [DRIFTWOOD_ITEM_ID, 1]], 'beeswax_candle'),
+  r('pearl_charm', 'Pearl Charm', 15, 19, [['pearl', 2], [FLINT_ITEM_ID, 1]], 'pearl_charm'),
+  r('pearl_strand', 'Pearl Strand', 20, 45, [['pearl', 6], [DRIFTWOOD_ITEM_ID, 1]], undefined, 25),
+  r('glow_lantern', 'Glowcap Lantern', 28, 24, [['glowcap', 2], ['beeswax_candle', 1], [DRIFTWOOD_ITEM_ID, 1]], 'glow_lantern'),
+  r('coral_totem', 'Coral Totem', 32, 32, [['coral', 3], ['pearl_charm', 1]], 'coral_totem'),
+  r('sunpeach_preserves', 'Sunpeach Preserves', 42, 50, [['sunpeach', 3], ['honeycomb', 1]], 'sunpeach_preserves'),
+  r('amber_inlay', 'Amber Inlay', 46, 44, [['amber', 3], ['coral_totem', 1]], 'amber_inlay'),
+  r('amber_amulet', 'Amber Amulet', 50, 58, [['amber', 4], ['pearl_charm', 2]], undefined, 26),
+  r('starpetal_incense', 'Starpetal Incense', 58, 60, [['starpetal', 3], ['glow_lantern', 1]], 'starpetal_incense'),
+  r('moonstone_lens', 'Moonstone Lens', 62, 60, [['moonstone', 3], ['amber_inlay', 1]], 'moonstone_lens'),
+  r('dream_tonic', 'Dream Tonic', 78, 81, [['dreamplum', 3], ['starpetal_incense', 1]], 'dream_tonic'),
+  r('star_iron_ingot', 'Star Iron Ingot', 82, 81, [['star_iron', 3], ['moonstone_lens', 1]], 'star_iron_ingot'),
+  r('star_iron_helm', 'Star Iron Helm', 85, 120, [['star_iron_ingot', 3], ['ledger_seal', 20]], undefined, 27),
+  r('tidewrights_medallion', "Tidewright's Medallion", 95, 250, [['star_iron_ingot', 2], ['dream_tonic', 2], ['pearl', 10], ['ledger_seal', 40]], undefined, 28),
+];
 
 /**
  * Recipe balance (ROADMAP §1.4, §8): anything that adds combat power (the
@@ -172,6 +257,7 @@ export const RECIPES: readonly Recipe[] = [
     level: 10,
     xp: 60,
   },
+  ...SEASON_RECIPES,
 ];
 
 export function getRecipe(id: string): Recipe | undefined {

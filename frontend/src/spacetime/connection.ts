@@ -2,6 +2,8 @@ import { subscribeFrontier } from './frontierSubscription';
 import { subscribeSpire } from '../bosses/spireSubscription';
 import { DbConnection, tables } from '../module_bindings';
 import { useLoadingStore } from '../store';
+import { startInterest, type InterestConn, type InterestManager } from './interestSubscription';
+import { worldQueries, WORLD_TABLES } from './worldSubscription';
 
 import { abortPendingCalls } from './pendingCalls';
 import { readSessionToken, sessionTokenKey, visiblyInvalidToken } from './sessionToken';
@@ -44,6 +46,13 @@ export function setConnectionLifecycle(listener: Listener | null): void {
   lifecycle = listener;
 }
 const lostConnections = new WeakSet<object>();
+const interests = new WeakMap<object, InterestManager>();
+
+/** Ask the live connection for players' names it has not seen (one-shot lookups; see playerNames.ts). */
+export function wantPlayerNames(hexes: Iterable<string>): void {
+  const conn = current && typeof current === 'object' ? interests.get(current) : undefined;
+  conn?.wantNames(hexes);
+}
 let current: unknown = null;
 /** The live connection, if any (for dropping a zombie socket). */
 export function currentConnection(): unknown {
@@ -58,6 +67,7 @@ export function currentConnection(): unknown {
 export function markConnectionLost(conn: unknown, stale = false): void {
   const key = (conn && typeof conn === 'object') ? conn : null;
   if (key && key === current) current = null;
+  if (key) { interests.get(key)?.dispose(); interests.delete(key); }
   if (key) {
     if (lostConnections.has(key)) return;
     lostConnections.add(key);
@@ -114,42 +124,19 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
       subscribeFrontier(conn, identity.toHexString(), () => useLoadingStore.getState().setGameDataLoaded(false));
       // Your Spire run's fight row only (a per-run SQL subscription that follows your spire_member row).
       subscribeSpire(conn, identity.toHexString(), () => console.error('Spire fight subscription failed'));
+      // Nearby players, nodes and ground items, plus your target, friends, crew and party (interestSubscription.ts).
+      const interest = startInterest(conn as unknown as InterestConn, identity.toHexString(), () => console.error('Nearby world subscription failed'));
+      interests.set(conn, interest);
       conn
         .subscriptionBuilder()
-        .onApplied(() => useLoadingStore.getState().setGameDataLoaded(true))
+        // The loading screen lifts once the block around you has arrived too, so the world does not pop in.
+        .onApplied(() => interest.whenReady(() => useLoadingStore.getState().setGameDataLoaded(true)))
         .onError((_ctx, err) => {
           console.error('World subscription failed');
           useLoadingStore.getState().setGameDataLoaded(false);
           useLoadingStore.getState().setLoadingMessage('The world could not be loaded. Rejoin to try again.');
         })
-        .subscribe([
-          tables.world, tables.frontierView,
-          tables.player,
-          tables.appearance,
-          tables.tree,
-          tables.groundItem,
-          tables.chatMessage,
-          tables.inventorySlot,
-          tables.combatEvent,
-          tables.trainingDummy,
-          tables.dummyEvent,
-          tables.emoteEvent,
-          tables.inviteCode,
-          tables.friend,
-          tables.trade,
-          tables.socialEvent,
-          tables.giant,
-          tables.giantEvent,
-          tables.playerSkill,
-          tables.playerCosmetic,
-          tables.giantRaid,
-          tables.mentorStat,
-          tables.gardenPlot, tables.adventureProfile, tables.expedition, tables.expeditionMember, tables.islandProject, tables.gardenShowcase, tables.friendlyDuel,
-          // Bosses: lifecycle rows whole-table; notices narrowed to your own by the query (boss_notice has no RLS);
-          // spire_fight per run (bosses/spireSubscription.ts).
-          tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossEvent,
-          tables.bossNotice.where((row) => row.player.eq(identity)),
-        ]);
+        .subscribe([...WORLD_TABLES.map((name) => (tables as any)[name]), ...worldQueries(), tables.bossNotice.where((row) => row.player.eq(identity))]);
     })
     .onConnectError((ctx, error) => {
       console.error('Game server connection failed');

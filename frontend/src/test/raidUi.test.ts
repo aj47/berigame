@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ClatterState, GiantEventKind, GiantState, PlayerState, RaidOutcome, SpireStage } from "@sim";
+import { ClatterState, GiantEventKind, GiantState, GRID_SIZE, PlayerState, RaidOutcome, SpireStage } from "@sim";
 import { minimapModel } from "../Components/minimapModel";
 import { mapDestinationAt } from "../frontier/homeMapArt";
 import { raidLineText } from "../spacetime/stores/giantStore";
@@ -48,8 +48,8 @@ describe("scheduled Giant raids on the client", () => {
     const m = minimapModel({ meHex: "me", players: [p("me", 61, 45), p("walker", 60, 45), p("diver", 72, 68)], trees: [], groundItems: [], tick: 0 });
     expect(m.others).toEqual([{ x: 60, z: 45, hostile: false }]);
     expect(m.me).toMatchObject({ x: 61, z: 45 });
-    // The legacy (single-district) map: the floor's cell centre is not walkable land.
-    expect(mapDestinationAt(72.5, 68.5, 128, "bramblewild", false)).toBeNull();
-    expect(mapDestinationAt(61.5, 45.5, 128, "bramblewild", false)).toEqual({ region: "bramblewild", x: 61, z: 45 });
+    // The legacy (single-district) map at one pixel per tile: the floor's cell centre is not walkable land.
+    expect(mapDestinationAt(72.5, 68.5, GRID_SIZE, "bramblewild", false)).toBeNull();
+    expect(mapDestinationAt(61.5, 45.5, GRID_SIZE, "bramblewild", false)).toEqual({ region: "bramblewild", x: 61, z: 45 });
   });
 });

@@ -1,19 +1,21 @@
 /** End-to-end progression, cargo, reconnect and consent checks on an isolated local world. */
 import assert from 'node:assert/strict';
 import { DbConnection, tables } from '../src/module_bindings';
+// Live positions: player_pos merged into player rows (the server moves only player_pos for a step).
+import { playerView } from '../src/spacetime/playerView';
 import { levelForXp, chebyshev } from '../../shared/sim';
 const uri=process.env.SPACETIME_URI??'ws://127.0.0.1:3101', database=process.env.SPACETIME_DB??'adventure-validation-v2';
 function connect(token?:string):Promise<{conn:DbConnection;identity:any;token:string}> {return new Promise((resolve,reject)=>{
   const timer=setTimeout(()=>reject(new Error('connect timeout')),10000);
   DbConnection.builder().withUri(uri).withDatabaseName(database).withToken(token).onConnectError((_c,e)=>{clearTimeout(timer);reject(e)}).onConnect((conn,identity,token)=>{
-    conn.subscriptionBuilder().onApplied(()=>{clearTimeout(timer);resolve({conn,identity,token})}).onError((_c,e)=>reject(e)).subscribe([tables.world,tables.player,tables.inventorySlot,tables.tree,tables.playerSkill,tables.adventureProfile,tables.expedition,tables.expeditionMember,tables.islandProject,tables.friendlyDuel,tables.gardenPlot,tables.gardenShowcase]);
+    conn.subscriptionBuilder().onApplied(()=>{clearTimeout(timer);resolve({conn,identity,token})}).onError((_c,e)=>reject(e)).subscribe([tables.world,tables.player, tables.playerPos,tables.inventorySlot,tables.tree,tables.playerSkill,tables.adventureProfile,tables.expedition,tables.expeditionMember,tables.islandProject,tables.friendlyDuel,tables.gardenPlot,tables.gardenShowcase]);
   }).build();
 });}
 const delay=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 async function wait(label:string,pred:()=>boolean,ms=18000){const end=Date.now()+ms;while(Date.now()<end){if(pred())return;await delay(120)}throw new Error(`timeout: ${label}`)}
 async function main(){
 const a=await connect(),b=await connect();
-const me=(c:typeof a)=>c.conn.db.player.identity.find(c.identity)!;
+const me=(c:typeof a)=>playerView(c.conn).identity.find(c.identity)!;
 const move=async(c:typeof a,x:number,z:number)=>{await c.conn.reducers.setTarget({x,z});await wait('move',()=>chebyshev(me(c),{x,z})<=1)};
 try{
  await a.conn.reducers.setName({name:'TEST A '+a.identity.toHexString().slice(-4)});await b.conn.reducers.setName({name:'TEST B '+b.identity.toHexString().slice(-4)});

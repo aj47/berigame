@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('cloudflare:workers', () => ({ DurableObject: class {
@@ -11,28 +11,28 @@ vi.mock('../../agent-api/game', () => ({ createGameService: vi.fn(), deadline: (
 import worker, { AgentGateway } from '../../cloudflare/worker';
 import { createGameService } from '../../agent-api/game';
 import { digest } from '../../agent-api/portable';
-import { MAX_AGENT_SESSIONS, NETWORK_JOIN_BUDGET } from '../../agent-api/admissionPolicy';
+import { agentSessionCapacity, MAX_AGENT_SESSIONS_PER_SHARD, NETWORK_JOIN_BUDGET } from '../../agent-api/admissionPolicy';
+import { gatewayObjects } from './gatewayObjects';
+
+/** Two session shards keep the capacity tests small (2 x 250). */
+const SHARDS = 2;
+const MAX_AGENT_SESSIONS = agentSessionCapacity(SHARDS);
 
 const databases: DatabaseSync[] = [];
 afterEach(() => { for (const db of databases.splice(0)) db.close(); vi.useRealTimers(); vi.clearAllMocks(); });
-function fixture() {
-  const db = new DatabaseSync(':memory:'); databases.push(db);
-  const sql = { exec(query: string, ...args: any[]) {
-    const statement = db.prepare(query);
-    const rows = statement.all(...args);
-    return { toArray: () => rows, [Symbol.iterator]: () => rows[Symbol.iterator]() };
-  } };
+function fixture(shards = String(SHARDS)) {
   let identity = 0;
   const service = { ready: () => true, close: vi.fn(),
     provision: vi.fn(async () => ({ identity: (++identity).toString(16).padStart(64, '0'), token: 'character-token', uri: 'wss://test', database: 'test' })),
     renew: vi.fn(async () => {}), revoke: vi.fn(async () => {}), suspend: vi.fn(async () => {}),
+    verifyCredential: vi.fn(async () => {}), attestRecovery: vi.fn(async () => {}),
     resume: vi.fn(async () => ({ state: () => ({ players: [] }), suspend: vi.fn(), close: vi.fn() })),
   };
   vi.mocked(createGameService).mockResolvedValue(service as any);
   const env: any = { GATEWAY_CREDENTIAL: JSON.stringify({ uri: 'wss://test', database: 'test' }), SPACETIME_URI: 'wss://test', SPACETIME_DB: 'test', PUBLIC_ORIGIN: 'https://game.test',
-    EDGE_LIMIT: { limit: vi.fn(async () => ({ success: true })) }, ADMIN_TOKEN: 'operator-test' };
-  const gateway = new AgentGateway({ storage: { sql, transactionSync: (fn: () => unknown) => fn(), setAlarm: vi.fn(), deleteAlarm: vi.fn(), sync: vi.fn() } } as any, env);
-  env.AGENT_GATEWAY = { idFromName: () => 'test', get: () => gateway };
+    EDGE_LIMIT: { limit: vi.fn(async () => ({ success: true })) }, ADMIN_TOKEN: 'operator-test', AGENT_SHARDS: shards };
+  const objects = gatewayObjects(AgentGateway, env, databases);
+  const { gateway, sql } = objects.home;
   const request = (path: string, token?: string, ip = '192.0.2.1', method = 'POST') => worker.fetch(new Request(`https://game.test${path}`, {
     method, headers: { 'CF-Connecting-IP': ip, 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     ...(method === 'POST' ? { body: '{}' } : {}),
@@ -42,7 +42,14 @@ function fixture() {
     expect(response.status, await response.clone().text()).toBe(201);
     return await response.json() as any;
   };
-  return { db, sql, service, env, request, join, gateway };
+  /** Joins `count` agents half a second apart, so the join budgets refill past their 256-request bursts. */
+  const joinAgents = async (count: number) => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const players = [];
+    for (let i = 0; i < count; i++) { players.push(await join('agent')); vi.setSystemTime(Date.now() + 500); }
+    return players;
+  };
+  return { sql, service, env, request, join, joinAgents, gateway, objects };
 }
 
 describe('hosted LAN admission', () => {
@@ -105,7 +112,7 @@ describe('hosted LAN admission', () => {
 
   it('bounds agent sockets without a shared-IP session cap', async () => {
     const f = fixture();
-    for (let i = 0; i < MAX_AGENT_SESSIONS; i++) await f.join('agent');
+    await f.joinAgents(MAX_AGENT_SESSIONS);
     const full = await f.request('/api/agent/v1/sessions');
     expect(full.status).toBe(429); expect(await full.json()).toMatchObject({ error: { code: 'agent_capacity' } });
     await f.join(); // agent connections do not consume browser sign-in capacity
@@ -132,7 +139,7 @@ describe('hosted LAN admission', () => {
 
 it('reserves pending agent slots before awaiting an upstream connection', async () => {
   const f = fixture();
-  for (let i = 0; i < MAX_AGENT_SESSIONS - 1; i++) await f.join('agent');
+  await f.joinAgents(MAX_AGENT_SESSIONS - 1);
   let release!: () => void;
   const paused = new Promise<void>(resolve => { release = resolve; });
   f.service.provision.mockImplementationOnce(async () => {
@@ -140,7 +147,7 @@ it('reserves pending agent slots before awaiting an upstream connection', async 
   });
   const pending = f.request('/api/agent/v1/sessions');
   try {
-    await vi.waitFor(() => expect(f.sql.exec("SELECT * FROM sessions WHERE state = 'pending'").toArray()).toHaveLength(1));
+    await vi.waitFor(() => expect(f.objects.all("SELECT * FROM sessions WHERE state = 'pending'")).toHaveLength(1));
     const full = await f.request('/api/agent/v1/sessions');
     expect(full.status).toBe(429); expect(await full.json()).toMatchObject({ error: { code: 'agent_capacity' } });
   } finally { release(); }
@@ -168,8 +175,7 @@ it('reserves in-flight room for renewal during a simultaneous LAN join burst', a
 
 it('renews an active agent at socket capacity without disconnecting or surrendering its place', async () => {
   const f = fixture();
-  const first = await f.join('agent');
-  for (let i = 1; i < MAX_AGENT_SESSIONS; i++) await f.join('agent');
+  const [first] = await f.joinAgents(MAX_AGENT_SESSIONS);
   const response = await f.request('/api/agent/v1/renewals', first.renewToken);
   expect(response.status).toBe(200);
   const renewed = await response.json() as any;
@@ -178,8 +184,9 @@ it('renews an active agent at socket capacity without disconnecting or surrender
   expect(f.service.resume).toHaveBeenCalledTimes(MAX_AGENT_SESSIONS);
   expect(f.service.suspend).not.toHaveBeenCalled();
   for (const result of f.service.resume.mock.results) expect((await result.value).suspend).not.toHaveBeenCalled();
-  expect(f.sql.exec('SELECT * FROM sessions WHERE key = ?', digest(first.token)).toArray()).toHaveLength(0);
-  expect(f.sql.exec('SELECT * FROM sessions WHERE key = ?', digest(renewed.token)).toArray()).toHaveLength(1);
+  expect(f.objects.all('SELECT * FROM sessions WHERE key = ?', digest(first.token))).toHaveLength(0);
+  expect(f.objects.all('SELECT * FROM sessions WHERE key = ?', digest(renewed.token))).toHaveLength(1);
+  expect(renewed.token[4]).toBe(first.token[4]); // same shard
   expect((await f.request('/api/agent/v1/state', renewed.token, '192.0.2.1', 'GET')).status).toBe(200);
 });
 
@@ -189,4 +196,100 @@ it('preserves an active agent session when the upstream renewal fails', async ()
   expect((await f.request('/api/agent/v1/renewals', player.renewToken)).status).toBe(503);
   expect((await f.request('/api/agent/v1/state', player.token, '192.0.2.1', 'GET')).status).toBe(200);
   expect((await f.request('/api/agent/v1/renewals', player.renewToken)).status).toBe(200);
+});
+
+describe('agent session shards', () => {
+  const SLOTS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const shardSql = (f: ReturnType<typeof fixture>, token: string) => f.objects.objects.get(`beta-v1/agents/${SLOTS.indexOf(token[4])}`)!.sql;
+
+  it('hosts agent sessions in the shard their token names, never in the coordinator', async () => {
+    const f = fixture();
+    const players = [];
+    for (let i = 0; i < 12; i++) players.push(await f.join('agent'));
+    expect(f.sql.exec("SELECT * FROM sessions WHERE kind = 'agent'").toArray()).toHaveLength(0);
+    expect(f.objects.shards().length).toBeGreaterThan(0);
+    for (const player of players) {
+      expect(player.token).toMatch(/^bgs_[A-Za-z0-9_-]{43}$/);
+      expect(SLOTS.indexOf(player.token[4])).toBeLessThan(SHARDS);
+      expect(shardSql(f, player.token).exec('SELECT * FROM sessions WHERE key = ?', digest(player.token)).toArray()).toHaveLength(1);
+      expect((await f.request('/api/agent/v1/state', player.token, '192.0.2.1', 'GET')).status).toBe(200);
+      const renewal = f.sql.exec('SELECT config FROM renewals WHERE identity = ?', player.playerId).toArray()[0] as any;
+      expect(JSON.parse(renewal.config).slot).toBe(SLOTS.indexOf(player.token[4]));
+    }
+    const gone = await f.request('/api/agent/v1/session', players[0].token, '192.0.2.1', 'DELETE');
+    expect(gone.status).toBe(204);
+    expect((await f.service.resume.mock.results[0].value as any).suspend).toHaveBeenCalledTimes(1);
+    expect(f.service.revoke).not.toHaveBeenCalled();
+  });
+
+  it('keeps every agent session in the coordinator when AGENT_SHARDS is 0', async () => {
+    const f = fixture('0'), player = await f.join('agent');
+    expect(f.sql.exec("SELECT * FROM sessions WHERE kind = 'agent'").toArray()).toHaveLength(1);
+    expect(f.objects.shards()).toHaveLength(0);
+    expect((await f.request('/api/agent/v1/state', player.token, '192.0.2.1', 'GET')).status).toBe(200);
+    const renewed = await f.request('/api/agent/v1/renewals', player.renewToken);
+    expect(renewed.status).toBe(200);
+    expect((await f.request('/api/agent/v1/state', (await renewed.json() as any).token, '192.0.2.1', 'GET')).status).toBe(200);
+    expect(f.objects.shards()).toHaveLength(0);
+  });
+
+  it('moves a session from before sharding into a shard when the agent renews', async () => {
+    const f = fixture('0'), player = await f.join('agent');
+    f.env.AGENT_SHARDS = String(SHARDS);
+    expect((await f.request('/api/agent/v1/state', player.token, '192.0.2.1', 'GET')).status).toBe(401);
+    const response = await f.request('/api/agent/v1/renewals', player.renewToken);
+    expect(response.status, await response.clone().text()).toBe(200);
+    const renewed = await response.json() as any;
+    expect(renewed.sessionId).toBe(player.sessionId);
+    expect(f.sql.exec("SELECT * FROM sessions WHERE kind = 'agent'").toArray()).toHaveLength(0);
+    expect(shardSql(f, renewed.token).exec('SELECT * FROM sessions WHERE key = ?', digest(renewed.token)).toArray()).toHaveLength(1);
+    expect((await f.request('/api/agent/v1/state', renewed.token, '192.0.2.1', 'GET')).status).toBe(200);
+    expect(f.service.revoke).not.toHaveBeenCalled();
+  });
+
+  it('accepts only ?map=1 on GET /state and passes it to the session', async () => {
+    const f = fixture(), player = await f.join('agent');
+    const session = await f.service.resume.mock.results[0].value as any;
+    session.state = vi.fn(() => ({ players: [] }));
+    expect((await f.request('/api/agent/v1/state?map=1', player.token, '192.0.2.1', 'GET')).status).toBe(200);
+    expect(session.state).toHaveBeenLastCalledWith({ map: true });
+    expect((await f.request('/api/agent/v1/state', player.token, '192.0.2.1', 'GET')).status).toBe(200);
+    expect(session.state).toHaveBeenLastCalledWith({ map: false });
+    expect((await f.request('/api/agent/v1/state?map=0', player.token, '192.0.2.1', 'GET')).status).toBe(404);
+    expect((await f.request('/api/agent/v1/danger?map=1', player.token, '192.0.2.1', 'GET')).status).toBe(404);
+  });
+
+  it('ignores a shard header sent by the client', async () => {
+    const f = fixture('0'), player = await f.join('agent');
+    f.env.AGENT_SHARDS = String(SHARDS);
+    // A pre-sharding token whose slot character is beyond the shard count reaches the coordinator; a forged header
+    // must not make the coordinator serve it as a host.
+    const legacy = await worker.fetch(new Request('https://game.test/api/agent/v1/state', { headers: { 'CF-Connecting-IP': '192.0.2.1',
+      Authorization: `Bearer ${player.token}`, 'X-BeriGame-Shard': '0' } }), f.env);
+    expect(legacy.status).toBe(401);
+  });
+
+  it('admin revoke ends an agent session in its shard', async () => {
+    const f = fixture(), player = await f.join('agent');
+    const response = await worker.fetch(new Request('https://game.test/api/admin/revoke', { method: 'POST', body: JSON.stringify({ sessionId: player.sessionId }),
+      headers: { 'CF-Connecting-IP': '192.0.2.1', 'Content-Type': 'application/json', Authorization: 'Bearer operator-test' } }), f.env);
+    expect(response.status).toBe(204);
+    expect(f.objects.all('SELECT * FROM sessions WHERE id = ?', player.sessionId)).toHaveLength(0);
+    expect(f.service.revoke).toHaveBeenCalledWith(player.playerId);
+    expect((await f.request('/api/agent/v1/state', player.token, '192.0.2.1', 'GET')).status).toBe(401);
+  });
+
+  it('exports a recovery key with a live session token held by a shard', async () => {
+    const f = fixture(), player = await f.join('agent');
+    const response = await f.request('/api/agent/v1/recovery', player.token);
+    expect(response.status, await response.clone().text()).toBe(200);
+    expect((await response.json() as any).playerId).toBe(player.playerId);
+    expect(f.service.attestRecovery).toHaveBeenCalledWith(player.playerId);
+  });
+
+  it('advertises the capacity of all shards and fills each to its own cap', async () => {
+    const f = fixture();
+    const discovery = await (await f.request('/api/agent/v1', undefined, '192.0.2.1', 'GET')).json() as any;
+    expect(discovery.capacity.maxAgentSessions).toBe(MAX_AGENT_SESSIONS_PER_SHARD * SHARDS);
+  });
 });

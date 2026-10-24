@@ -1,3 +1,4 @@
+import { GRID_SIZE } from "../constants";
 import { homePoint, homePath, homeTarget, homeDestination, homeLocation, isHomeRegion, isHomeTarget } from "./homeMap";
 import { addItem, countItem, removeFromSlot } from "../inventory";
 import { getItemDef } from "../items";
@@ -165,7 +166,8 @@ export function validateCommand(value: unknown): Command {
     if (c[key] !== undefined) str(c[key]);
   for (const key of ["quantity", "x", "z", "rotation", "permissions"] as const)
     if (c[key] !== undefined)
-      integer(c[key], 0, key === "quantity" ? 999 : 127);
+      // Coordinates are local to a region; Bramblewild (the island and the Expanse) is the largest.
+      integer(c[key], 0, key === "quantity" ? 999 : key === "x" || key === "z" ? GRID_SIZE - 1 : 127);
   if (c.disciplines !== undefined)
     check(
       Array.isArray(c.disciplines) &&
@@ -519,7 +521,7 @@ export function perform(w: World, a: Actor, input: unknown): void {
       break;
     case "walk": {
       check(cmd.id === "bramblewild" || cmd.id === "settlement", "Choose a home island district");
-      queueHomeWalk(w, a, { region: cmd.id, x: integer(cmd.x), z: integer(cmd.z) });
+      queueHomeWalk(w, a, { region: cmd.id, x: integer(cmd.x, 0, GRID_SIZE - 1), z: integer(cmd.z, 0, GRID_SIZE - 1) });
       break;
     }
     case "move": {
@@ -527,7 +529,7 @@ export function perform(w: World, a: Actor, input: unknown): void {
         a.region !== "bramblewild" && a.region !== "sea" && !onboard(w, a.id),
         "Use walking on land and the helm at sea",
       );
-      const target = { x: integer(cmd.x), z: integer(cmd.z) };
+      const target = { x: integer(cmd.x, 0, GRID_SIZE - 1), z: integer(cmd.z, 0, GRID_SIZE - 1) };
       check(
         regionalPath(a.region, a, target, blocked(w, a)),
         "No walkable route",

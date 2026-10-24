@@ -8,6 +8,7 @@ import { sameId, clearInteractions } from './players';
 import { giveItem, readSlots, writeSlots } from './inventory';
 import { notify } from './social';
 import { unlockCosmetic } from './progress';
+import { loadPlayer, storePlayer } from './playerStore';
 export type ExpeditionRow = NonNullable<ReturnType<Ctx['db']['expedition']['id']['find']>>;
 export function profile(ctx: Ctx, id: Identity) {
   const existing = ctx.db.adventureProfile.identity.find(id);
@@ -58,7 +59,7 @@ export function finishExpedition(ctx: Ctx, e: ExpeditionRow, T: number, delivere
     const credit = creditFor(ctx, e.id, m.identity);
     if (!delivered || !credit.contributions || credit.rewarded) continue;
     ctx.db.expeditionCredit.key.update({ ...credit, rewarded: true });
-    const p = ctx.db.player.identity.find(m.identity); if (!p) continue;
+    const p = loadPlayer(ctx, m.identity); if (!p) continue;
     const inBag = giveItem(ctx, p.identity, 'berry_goldberry', reward, p, T);
     progress(ctx, p.identity, fed ? 4 : 2, EXPEDITION_COMPLETION_XP, fed ? Feat.Feed : Feat.Deliver);
     const pp = profile(ctx, p.identity);
@@ -84,9 +85,11 @@ export function syncShowcase(ctx: Ctx, id: Identity) {
   ctx.db.gardenShowcase.identity.update({ identity: id, plants: JSON.stringify(plants) });
 }
 /** Fixed cadence NPC movement, clear ground only. No player HP or inventory is at risk. */
-export function tickExpeditions(ctx: Ctx, T: number) {
+export function tickExpeditions(ctx: Ctx, T: number, worldBlocked?: Set<number>) {
   if (T % 3 !== 0) return;
-  const blocked = worldBlockedSet(ctx.db.tree.iter());
+  // Nothing to walk most of the time: skip building the blocked set for an empty table.
+  if (ctx.db.expedition.count() === 0n) return;
+  const blocked = worldBlocked ?? worldBlockedSet(ctx.db.tree.iter());
   const step = (from: Tile, to: Tile, distance = 1) => { const path = bfsPath(from, goalIsTile(to), blocked, (_from, t) => t.x >= 9 && t.z >= 9 && t.x <= 41 && t.z <= 41); return path?.[Math.min(path.length, distance) - 1] ?? from; };
   for (const row of ctx.db.expedition.iter()) {
     const e = { ...row };
@@ -100,15 +103,15 @@ export function tickExpeditions(ctx: Ctx, T: number) {
       else continue;
     }
     const members = [...ctx.db.expeditionMember.expeditionId.filter(e.id)];
-    const present = members.map(m => ctx.db.player.identity.find(m.identity)).filter(p => p?.online && p.state === PlayerState.Alive);
+    const present = members.map(m => loadPlayer(ctx, m.identity)).filter(p => p?.online && p.state === PlayerState.Alive);
     if (present.length) e.lastActiveTick = T;
     else if (T - e.lastActiveTick > 100) { finishExpedition(ctx, e, T, false); continue; }
-    const carrier = e.carrier && ctx.db.player.identity.find(e.carrier);
+    const carrier = e.carrier && loadPlayer(ctx, e.carrier);
     if (e.carrier) {
       if (!carrier?.online || carrier.state !== PlayerState.Alive) { e.carrier = undefined; e.message = 'The carrier left. The berry is safely on the ground.'; }
       else { e.x = carrier.x; e.z = carrier.z; e.hiddenUntil = 0; }
     }
-    const leader = ctx.db.player.identity.find(e.porter ?? e.leader);
+    const leader = loadPlayer(ctx, e.porter ?? e.leader);
     const leaderProfile = profile(ctx, e.porter ?? e.leader);
     if (e.mossCarrying) {
       const target = hasTechnique(leaderProfile, 13) && leader?.online ? leader : e.destination === 'feast' ? GIANT_FEAST : BERRY_MARKET;
@@ -125,7 +128,7 @@ export function tickExpeditions(ctx: Ctx, T: number) {
       const target = T < e.baitUntil ? { x: e.baitX, z: e.baitZ } : e;
       const giant = step({ x: e.giantX, z: e.giantZ }, target, present.length >= 4 ? 2 : 1); e.giantX = giant.x; e.giantZ = giant.z;
       if (chebyshev(giant, e) <= 1 && T >= e.guardUntil && T >= e.baitUntil) {
-        if (e.carrier) { const row = ctx.db.player.identity.find(e.carrier); if (row) { const p = { ...row }; clearInteractions(ctx, p); ctx.db.player.identity.update(p); } }
+        if (e.carrier) { const row = loadPlayer(ctx, e.carrier); if (row) { const p = { ...row }; clearInteractions(ctx, p); storePlayer(ctx, p); } }
         e.value = Math.max(0, e.value - 1); e.carrier = undefined; e.mossCarrying = false; e.giantUntil = T + 30;
         e.message = 'The Giant took a bite and paused to chew. Grab the rest and run!';
       }
@@ -137,7 +140,7 @@ export function tickExpeditions(ctx: Ctx, T: number) {
 export function duelFor(ctx: Ctx, id: Identity) { return [...ctx.db.friendlyDuel.iter()].find(d => (d.stage === 'countdown' || d.stage === 'active') && (sameId(d.a, id) || sameId(d.b, id))); }
 export function tickDuels(ctx: Ctx, T: number) {
   for (const row of ctx.db.friendlyDuel.iter()) {
-    const d = { ...row }, a = ctx.db.player.identity.find(d.a), b = ctx.db.player.identity.find(d.b);
+    const d = { ...row }, a = loadPlayer(ctx, d.a), b = loadPlayer(ctx, d.b);
     if (d.stage === 'complete') { if (T > d.expiresTick) ctx.db.friendlyDuel.id.delete(d.id); continue; }
     if (T > d.expiresTick || !a?.online || !b?.online || a.state !== PlayerState.Alive || b.state !== PlayerState.Alive || chebyshev(a, b) > 12 || inSafeRing(a) || inSafeRing(b)) {
       ctx.db.friendlyDuel.id.update({ ...d, stage: 'complete', expiresTick: T + 50, result: 'Duel ended: a player left, entered safety, or time expired. No items lost.' }); continue;

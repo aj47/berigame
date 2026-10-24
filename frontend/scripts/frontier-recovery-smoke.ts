@@ -2,6 +2,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { DbConnection, tables } from "../src/module_bindings";
+// Live positions: player_pos merged into player rows (the server moves only player_pos for a step).
+import { playerView } from '../src/spacetime/playerView';
 const origin = "http://127.0.0.1:8789";
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function main() {
@@ -45,14 +47,14 @@ async function main() {
         conn
           .subscriptionBuilder()
           .onApplied(() => resolve(conn))
-          .subscribe([tables.player, tables.frontierView]),
+          .subscribe([tables.player, tables.playerPos, tables.frontierView]),
       )
       .build(),
   );
   try {
     await conn.reducers.setTarget({ x: 22, z: 18 });
     for (let n = 0; n < 50; n++) {
-      const p = [...conn.db.player.iter()].find(
+      const p = [...playerView(conn).iter()].find(
         (p) => p.identity.toHexString() === v.playerId,
       );
       if (p && Math.max(Math.abs(p.x - 22), Math.abs(p.z - 18)) <= 4) break;

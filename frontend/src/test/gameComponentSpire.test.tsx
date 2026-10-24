@@ -161,8 +161,12 @@ describe('embedded Meadows', () => {
 
     it('mounts on the harbour road and while you are in Meadows', () => {
       mock.enabled = true;
+      // The island's harbour road is far from the seam now; the King's Road near x = 255 sees it.
       mock.me = player(90, 25);
       const ui = render(<GameComponent />);
+      expect(screen.queryByTestId('meadows')).not.toBeInTheDocument();
+      mock.me = player(240, 25);
+      ui.rerender(<GameComponent />);
       expect(screen.getByTestId('meadows')).toBeInTheDocument();
       mock.me = { ...player(31, 64), region: 'settlement' };
       ui.rerender(<GameComponent />);

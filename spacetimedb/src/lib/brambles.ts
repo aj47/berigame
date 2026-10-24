@@ -1,7 +1,7 @@
 import { SenderError } from 'spacetimedb/server';
 import {
   BOULDER_KEY_ITEM, BOULDER_MESSAGE, BRAMBLE_MESSAGE, STICK_ITEM_ID, bfsPath, enterRule, goalAdjacentTo, holdsItem,
-  type EnterRule, type Tile,
+  type EnterRule, type Slot, type Tile,
 } from '../../../shared/sim';
 import { readSlots } from './inventory';
 import type { Ctx, PlayerRow } from './types';
@@ -15,11 +15,14 @@ export function holdsStick(ctx: Ctx, p: PlayerRow): boolean {
   return holdsItem(readSlots(ctx, p.identity).slots, '', STICK_ITEM_ID);
 }
 
-/** Both area keys: the stick (brambles) and the stone club (the boulder line), with at most one slot read. */
-export function heldKeys(ctx: Ctx, p: PlayerRow): { stick: boolean; club: boolean } {
+/**
+ * Both area keys: the stick (brambles) and the stone club (the boulder line), with at most one slot read.
+ * `slots` replaces the read (the tick passes its cached copy, lib/inventory.ts cachedSlots).
+ */
+export function heldKeys(ctx: Ctx, p: PlayerRow, slotsOf: (ctx: Ctx, p: PlayerRow) => readonly (Slot | null)[] = (c, q) => readSlots(c, q.identity).slots): { stick: boolean; club: boolean } {
   const wieldStick = p.weapon === STICK_ITEM_ID, wieldClub = p.weapon === BOULDER_KEY_ITEM;
   if (wieldStick && wieldClub) return { stick: true, club: true };
-  const slots = readSlots(ctx, p.identity).slots;
+  const slots = slotsOf(ctx, p);
   return {
     stick: wieldStick || holdsItem(slots, '', STICK_ITEM_ID),
     club: wieldClub || holdsItem(slots, '', BOULDER_KEY_ITEM),

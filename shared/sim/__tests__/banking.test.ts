@@ -10,24 +10,33 @@ import { TREE_SEEDS } from '../items';
 import { SCENERY_BLOCKERS } from '../terrain';
 import { worldBlockedSet } from '../social';
 import { emptySlots } from '../inventory';
-import { HOTBAR_SIZE } from '../constants';
+import { HOTBAR_SIZE, ISLE_SIZE } from '../constants';
+import { EXPANSE_LANDMARKS } from '../expanse';
 import { REGIONS } from '../frontier/catalog';
 import { describeEconomy } from '../agentState';
 import { Pending } from '../types';
 
 describe('drop boxes', () => {
   const blocked = worldBlockedSet([...NODE_SEEDS, ...TREE_SEEDS, ...SCENERY_BLOCKERS]);
-  it('stand on open Coast tiles, one per quadrant, away from nodes and boss zones', () => {
-    expect(DROP_BOXES).toHaveLength(4);
+  it('stand on open Coast tiles, away from nodes and boss zones, with unique ids', () => {
+    expect(new Set(DROP_BOXES.map((b) => b.id)).size).toBe(DROP_BOXES.length);
     for (const box of DROP_BOXES) {
-      expect(isLandTile(box)).toBe(true);
-      expect(areaOf(box)).toBe('coast');
-      expect(blocked.has(tileKey(box))).toBe(false);
-      expect(bossNoPvpZone(box)).toBeNull();
-      for (const node of [...NODE_SEEDS, ...TREE_SEEDS]) expect(chebyshev(box, node)).toBeGreaterThan(3);
+      expect(isLandTile(box), box.name).toBe(true);
+      expect(areaOf(box), box.name).toBe('coast');
+      expect(blocked.has(tileKey(box)), box.name).toBe(false);
+      expect(bossNoPvpZone(box), box.name).toBeNull();
+      for (const node of [...NODE_SEEDS, ...TREE_SEEDS]) expect(chebyshev(box, node), `${box.name} vs node ${node.id}`).toBeGreaterThan(3);
     }
-    const quadrants = new Set(DROP_BOXES.map((b) => `${b.x < 25}${b.z < 25}`));
-    expect(quadrants.size).toBe(4);
+  });
+  it('keep four around the Grove, one per quadrant, and one in each mainland town', () => {
+    const grove = DROP_BOXES.filter((b) => b.x < ISLE_SIZE && b.z < ISLE_SIZE);
+    expect(grove).toHaveLength(4);
+    expect(new Set(grove.map((b) => `${b.x < 25}${b.z < 25}`)).size).toBe(4);
+    for (const id of ['crossroads', 'kingsgate', 'fenhold', 'oasis', 'crater']) {
+      const town = EXPANSE_LANDMARKS.find((l) => l.id === id)!;
+      expect(DROP_BOXES.filter((b) => chebyshev(b, town) <= 4), id).toHaveLength(1);
+    }
+    expect(DROP_BOXES).toHaveLength(9);
   });
   it('take deposits from one tile away', () => {
     const box = DROP_BOXES[2];

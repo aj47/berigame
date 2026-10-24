@@ -1,4 +1,4 @@
-import { getItemDef, SKILL_MAX_LEVEL, xpForLevel } from '@sim';
+import { getItemDef, SKILL_CURVE_KNEE, SKILL_MAX_LEVEL, xpForLevel } from '@sim';
 import {
   DISCIPLINES, FRONTIER, FRONTIER_RECIPES, PLOTS, PORTS, REGIONS, RESOURCE_PATCHES, SPECIES,
   type Cost, type RegionId,
@@ -138,7 +138,7 @@ export const frontierSystemsArticles: WikiArticle[] = [
     facts: [
       { label: 'Disciplines', value: String(DISCIPLINES.length) },
       { label: 'Active choices', value: '2 different disciplines' },
-      { label: 'Level cap', value: String(SKILL_MAX_LEVEL) },
+      { label: 'Level cap', value: String(SKILL_CURVE_KNEE) },
       { label: 'Change pair', value: `${FRONTIER.switchCost} coins · ${FRONTIER.switchCooldown / 3_600_000} hours between changes` },
     ],
     sections: [
@@ -173,8 +173,8 @@ export const frontierSystemsArticles: WikiArticle[] = [
         ['Exploration', 'First discover a port by docking / survey a region cache', '50 / 25'],
       ] } },
       { id: 'levels', title: 'Level milestones', paragraphs: [
-        'Each discipline uses the same total-XP curve: 25 × (level − 1)². XP remains saved when you change your active pair. The original island skills have their own separate XP totals.',
-      ], table: { headers: ['Level', 'Total XP'], rows: [1, 2, 5, 10, 20, 30].map(level => [String(level), xpForLevel(level).toLocaleString('en-US')]) } },
+        `Each discipline uses the island skills' total-XP curve, 25 × (level − 1)², and stops at level ${SKILL_CURVE_KNEE} (${xpForLevel(SKILL_CURVE_KNEE).toLocaleString('en-US')} XP). The island skills continue to level ${SKILL_MAX_LEVEL}. XP remains saved when you change your active pair. The original island skills have their own separate XP totals.`,
+      ], table: { headers: ['Level', 'Total XP'], rows: [1, 2, 5, 10, 20, SKILL_CURVE_KNEE].map(level => [String(level), xpForLevel(level).toLocaleString('en-US')]) } },
       { id: 'survey', title: 'Survey a region cache', paragraphs: [
         'With Exploration active at level 2, search the far south-east of the Meadows, Reedwake or Cinder Shoal. Within three tiles of (118, 112), use Survey a region cache in Disciplines to receive one Goldberry and 25 Exploration XP. Each region’s cache can be found once per character.',
       ] },

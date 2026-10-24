@@ -29,7 +29,7 @@ const TickDebug = () => {
   if (!(import.meta as any).env?.DEV) return null;
   return (
     <div className="tick-debug">
-      tick {tick} · {period}ms · {players.filter((p) => p.online).length} online
+      tick {tick} · {period}ms · {players.filter((p) => p.online).length} online in view
     </div>
   );
 };
