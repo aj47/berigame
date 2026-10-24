@@ -1,0 +1,208 @@
+{
+  "label": "baseline 2a59ed6 cap4096",
+  "startedAt": "2026-10-20T03:34:30.330Z",
+  "config": {
+    "n": 100,
+    "mode": "interest",
+    "db": "berigame-base",
+    "uri": "ws://127.0.0.1:3000",
+    "seconds": 60,
+    "warmup": 10,
+    "workers": 2,
+    "perWorker": 50,
+    "batch": 10,
+    "batchMs": 500,
+    "think": 2500,
+    "compression": "gzip",
+    "scatter": true
+  },
+  "machine": {
+    "cpus": 10,
+    "model": "Apple M1 Pro",
+    "memGb": 16,
+    "node": "v24.1.0",
+    "platform": "darwin"
+  },
+  "connections": {
+    "requested": 100,
+    "connected": 100,
+    "failed": 0,
+    "errors": {},
+    "rampSec": 2.8,
+    "joinMsP50": 40,
+    "joinMsP95": 51,
+    "dropsDuringRun": 0,
+    "measuredClients": 100
+  },
+  "tick": {
+    "targetPerSec": 1.67,
+    "ratePerSec": 1.67,
+    "rateVsTarget": 1,
+    "intervalMsP50": 600,
+    "intervalMsP95": 601,
+    "intervalMsMax": 604,
+    "lagMsP50": 45,
+    "lagMsP95": 68,
+    "lagMsP99": 77,
+    "lagSamples": 10000,
+    "lagTimeline": [
+      {
+        "fromSec": 0,
+        "p50": 42,
+        "p95": 62,
+        "max": 70
+      },
+      {
+        "fromSec": 5,
+        "p50": 48,
+        "p95": 67,
+        "max": 73
+      },
+      {
+        "fromSec": 10,
+        "p50": 44,
+        "p95": 69,
+        "max": 76
+      },
+      {
+        "fromSec": 15,
+        "p50": 43,
+        "p95": 64,
+        "max": 72
+      },
+      {
+        "fromSec": 20,
+        "p50": 46,
+        "p95": 79,
+        "max": 104
+      },
+      {
+        "fromSec": 25,
+        "p50": 48,
+        "p95": 67,
+        "max": 71
+      },
+      {
+        "fromSec": 30,
+        "p50": 50,
+        "p95": 69,
+        "max": 75
+      },
+      {
+        "fromSec": 35,
+        "p50": 46,
+        "p95": 65,
+        "max": 74
+      },
+      {
+        "fromSec": 40,
+        "p50": 50,
+        "p95": 76,
+        "max": 86
+      },
+      {
+        "fromSec": 45,
+        "p50": 43,
+        "p95": 62,
+        "max": 68
+      },
+      {
+        "fromSec": 50,
+        "p50": 47,
+        "p95": 69,
+        "max": 80
+      },
+      {
+        "fromSec": 55,
+        "p50": 42,
+        "p95": 64,
+        "max": 68
+      }
+    ],
+    "lagByWorker": [
+      {
+        "worker": 0,
+        "p50": 45,
+        "p95": 67,
+        "loopDelayP95Ms": 21.9,
+        "cpuCores": 0.12
+      },
+      {
+        "worker": 1,
+        "p50": 46,
+        "p95": 68,
+        "loopDelayP95Ms": 21.9,
+        "cpuCores": 0.12
+      }
+    ]
+  },
+  "perClientIn": {
+    "wireKBpsMean": 18.5,
+    "wireKBpsP50": 17.8,
+    "wireKBpsP95": 25.2,
+    "wireKBpsMax": 25.3,
+    "rawKBpsMean": 37.8,
+    "rawKBpsP95": 52,
+    "msgsPerSecMean": 29.4,
+    "msgsPerSecP95": 38.9
+  },
+  "serverEgress": {
+    "wireMBps": 1.81,
+    "rawMBps": 3.69
+  },
+  "reducers": {
+    "rttMs": {
+      "sendChat": {
+        "n": 156,
+        "p50": 8.1,
+        "p95": 27.9
+      },
+      "emote": {
+        "n": 171,
+        "p50": 6.7,
+        "p95": 31.6
+      },
+      "setTarget": {
+        "n": 1269,
+        "p50": 6.9,
+        "p95": 23.4
+      },
+      "startHarvest": {
+        "n": 519,
+        "p50": 6.4,
+        "p95": 22.6
+      },
+      "attack": {
+        "n": 225,
+        "p50": 6,
+        "p95": 26.8
+      }
+    },
+    "moveEffectMsP50": 326.8,
+    "moveEffectMsP95": 590.2,
+    "moveEffectSamples": 1263,
+    "outcomes": {
+      "sendChat: ok": 156,
+      "emote: ok": 171,
+      "setTarget: ok": 1269,
+      "startHarvest: ok": 519,
+      "attack: ok": 225,
+      "attack: No fighting in Clatterhorn's Glade": 9,
+      "sendChat: wait three seconds between messages": 5,
+      "attack: They are protected for # more seconds. Invite them to a friendly duel ": 1,
+      "startHarvest: Thorny brambles — you need a sturdy stick to push through": 1
+    }
+  },
+  "server": {
+    "pid": 6885,
+    "cpuCoresMean": 0.18,
+    "cpuCoresMax": 0.22,
+    "rssMbMax": 406.9,
+    "note": "whole spacetimedb-standalone process (all databases on the server)"
+  },
+  "loadgen": {
+    "cpuCores": 0.24,
+    "loopDelayP95Ms": 21.9,
+    "resubscribes": 43
+  }
+}

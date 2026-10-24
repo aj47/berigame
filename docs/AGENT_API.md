@@ -172,7 +172,7 @@ deadline alone does not confirm success. A new action may cancel gathering.
 
 Actions mirror the browser controls: `move`, `harvest`, `craft`, `eat`, `wield`, `unwield`,
 `stop`, `follow`, `pickup`, `drop`, `inventory_move`, `name`, `appearance`, `wear`,
-`attack_dummy`, `attack_giant`, `plant`, `harvest_garden`, `emote`, the social actions `invite_create`, `invite_redeem`,
+`attack_dummy`, `attack_giant`, `plant`, `harvest_garden`, `deliver_commission`, `emote`, the social actions `invite_create`, `invite_redeem`,
 `friend_add`, `friend_remove`, `trade_request`, `trade_respond`, `trade_offer`,
 `trade_confirm`, `trade_cancel`, and the scoped `attack` and `chat`. OpenAPI has
 the exact schemas.
@@ -281,7 +281,31 @@ per cut. All current IDs and positions are in `frontier.resources`.
   1 driftwood + 2 flint into a stone club instantly (rejected while dead or
   attacking; a full bag drops it at your feet). Wield it like the stick: 8
   damage a swing. `state.trees` (berry trees only) is kept for one release.
-- **The Boulders (M3).** Bramblewild uses a 128x128 local grid. Its coastline,
+- **The map and the Expanse.** Bramblewild uses a 256x256 local grid. The
+  original island keeps every tile it had in the 0..127 corner; the Expanse's
+  five biomes (`frostpine`, `hearthvale`, `glimmerfen`, `dunes`, `starfall`)
+  surround it and count as Coast for the area rules. Straits, rivers and
+  boulder ridges divide them: causeways are the only land between landmasses,
+  bridges the only dry river crossings and passes the only gaps in a ridge.
+  Ridge boulders are static obstacles in `world.map.obstacles`; `move` paths
+  around them. `state.me.biome` and `state.nodes[].biome` name the biome of a
+  tile (`isle` for the original island), and `state.nodeKinds[].biomes` lists
+  where each Long Season tier grows. Since 1.10.0 `world.map` (about 80 KB,
+  shape `rows`, `obstacles`, `landmarks`, `bridges`) is `null` in `/state`
+  unless you ask `GET /state?map=1`; that parameter stays for one release and is
+  the only query `/state` accepts. `state.players` is nearby only (within
+  `playersWithin`, 48 tiles, you first then nearest, at most 64), as are
+  `groundItems` (`groundItemsWithin`, 48, plus your own death drops) and
+  `trees`. `state.world.atlas {url, version, rule}` points at
+  **`GET /api/agent/v1/world`**: no session, static, about 30 KB. It returns
+  `rows` and `biomeRows` run-length encoded per z (a count then a character,
+  `"12~40."` is 12 water then 40 ground; biome letters `b f h g d s`),
+  `obstacles[z]` as column ranges (`"3-7,12"`), `biomes[] {id, name, detail,
+  tiers, nodeKinds, waystone}`, `landmarks[]` and `waystones[]` with their
+  biome, and `routes {causeways[] {id, name, from, to, halfWidth, connects},
+  bridges[], ridges[] {points, passes}, rivers[], roads[]}`. It changes only
+  when `version` (the terrain version) changes, so fetch it once and cache it.
+- **The Boulders (M3).** The island's coastline,
   lakes and brook are described in `world.map`; water is impassable and the
   named bridges cross the brook. The Boulders are walkable land on the Giant's
   headland (30 <= x < 66, 32 <= z < 66) with `max(x, z) > 50`. A one-tile
@@ -386,7 +410,8 @@ per cut. All current IDs and positions are in `frontier.resources`.
   expected claim for you.
 - **Safety.** No attack starts or lands while either player is inside the safe
   ring (`world.safeRing`, radius 3 around spawn). A player is also protected for
-  10 ticks after respawning, for 3 ticks after stepping out of the safe ring,
+  10 ticks after respawning (at the nearest of spawn and the five mainland
+  waystones to where it fell; only spawn has a safe ring), for 3 ticks after stepping out of the safe ring,
   and a new character is protected until it gets a stick (then 10 more ticks),
   attacks, or 3:00 (300 ticks) pass. Attacking ends your own protection. New
   characters start at 20/30 HP.
@@ -396,8 +421,8 @@ per cut. All current IDs and positions are in `frontier.resources`.
   one in four while tired. It refills one point per 6 s: online up to the
   rested line, logged out up to the top, so only time away makes you rested.
   Everything in the bag drops on defeat; `vault_deposit` / `vault_withdraw` are
-  instant in the safe ring, and the four Coast drop boxes
-  (`economy.vault.dropBoxes`) take deposits over 4 ticks that a hit or a step
+  instant in the safe ring, and the nine drop boxes (four on the original
+  Coast, five in the mainland towns; `economy.vault.dropBoxes`) take deposits over 4 ticks that a hit or a step
   stops (`player.action` is `depositing`). A bag worth 30+ glows for everyone
   (`player.load`). Outside the safe ring, Meadows town and boss zones, a
   confirmed trade swaps 3 ticks later (`state.trade.swapInTicks`) and a hit on
@@ -527,7 +552,7 @@ rows, so `/state` and `GET /danger` always agree with what the server resolves.
   `spire_full`, `no_pvp_zone`, `spire_inside`, `meal_limit`, `clatterhorn_burrowed`,
   `on_expedition`, `in_duel`. Anything else stays `action_rejected`.
 
-API version **1.7.0** (bosses) added `attack_clatterhorn`, `spire`, `dodge`, `GET /danger`, `state.clatterhorn`, `state.spire`, `state.bossNews`, `me.noPvp`, boss notices and the slim in-Spire state. API version **1.5.0** (personal garden) added `plant`, `harvest_garden` and `state.garden`. API version **1.4.0** (scheduled raids, mentors) added `state.giant.asleep`/`nextWakeAt`/`nextWakeInSeconds`/`raid`, the `asleep` giant state, `state.mentor` and `friends[].mentees`, and new cosmetics (`welcomed_ribbon`, `mentor_pin`, `mentor_pin_silver`, `mentor_pin_gold`, `giants_tooth`); `respawnInTicks` is gone (the Giant sleeps instead). API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
+API version **1.9.0** (the Expanse) grew the grid to 256x256 and added `GET /world`, `state.world.atlas`, `state.me.biome`, `state.nodes[].biome` and `state.nodeKinds[].biomes` (replacing the unreleased `distanceFromSpawn`). API version **1.8.0** (the Long Season) added the tiered node kinds, `skill`/`minLevel`/`xp`/`locked` on `state.nodes`, `state.nodeKinds`, `state.ledger`, `deliver_commission` and the `level_required` error. API version **1.7.0** (bosses) added `attack_clatterhorn`, `spire`, `dodge`, `GET /danger`, `state.clatterhorn`, `state.spire`, `state.bossNews`, `me.noPvp`, boss notices and the slim in-Spire state. API version **1.5.0** (personal garden) added `plant`, `harvest_garden` and `state.garden`. API version **1.4.0** (scheduled raids, mentors) added `state.giant.asleep`/`nextWakeAt`/`nextWakeInSeconds`/`raid`, the `asleep` giant state, `state.mentor` and `friends[].mentees`, and new cosmetics (`welcomed_ribbon`, `mentor_pin`, `mentor_pin_silver`, `mentor_pin_gold`, `giants_tooth`); `respawnInTicks` is gone (the Giant sleeps instead). API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
 fields `output`, `cosmetic`, `level`, `locked` and `xp`. API version **1.2.0** (M2) added `craft`, `harvest {nodeId | kind}`,
 `state.nodes` and `state.recipes`. API version **1.1.0** removed the rock-paper-scissors `stance` action and the
 `stance`/`fightState` player fields. `/actions/stance` now returns 404
@@ -552,7 +577,7 @@ permit expiration if the API process crashes.
 | Session | At most 1 hour total, 10 minutes idle, 18,000 distinct action receipts |
 | Idle logout | No game action for 15 minutes ends the character's permit, for browsers and agents alike; renewal answers `409 idle_logout` until the player returns with `{"resume": true}` |
 | Actions | 5 attempts/second, burst 10 (enough to act every 600 ms tick); invalid arguments and denied scopes consume the same budget. The game still accepts at most 5 inputs per character per tick |
-| Session reads | 4/second, burst 10, shared by `/state` and `/danger`; actions do not count against this budget |
+| Session reads | 4/second, burst 10, shared by `/state` and `/danger`; actions do not count against this budget. `GET /world` needs no session and counts only against the IP and global limits |
 | IP requests (local API) | 256/second, burst 1,024; all paths and failed authentication count |
 | IP joins | 4/second, burst 256, including invalid invite attempts; no default per-IP player cap |
 | Global requests (local API) | 2,560/second, burst 4,096; separate joins at 8/second, burst 256; 64 requests in flight; 128 HTTP connections |
@@ -571,6 +596,71 @@ strings are rejected. Responses use `no-store`. Logs contain event type, public
 session/player IDs, action and status; they omit tokens, headers, request bodies,
 chat text, and upstream errors. Player names/chat are labeled untrusted in state.
 Inventory is scoped by both the database visibility filter and the API response.
+
+## Session shards (hosted beta)
+
+The Cloudflare gateway (`frontend/cloudflare/worker.ts`) splits work across
+Durable Objects of the one `AgentGateway` class:
+
+- **Coordinator** `beta-v1`: admission, invites, network join budgets,
+  renewals, recoveries, accounts, MCP player keys and admin. When sharded it
+  holds no agent sessions and its own SpacetimeDB socket subscribes only to
+  `world` and `access_policy`.
+- **Session shards** `beta-v1/agents/<slot>` (slot `0..AGENT_SHARDS-1`): agent
+  sessions with their sockets, receipts, read/action budgets and idle reaping.
+  At most `MAX_AGENT_SESSIONS_PER_SHARD` (250) each, so 8 shards admit 2000.
+
+Every session host (shard, or the coordinator when unsharded, and the Node
+gateway) keeps **one shared world cache**: its gateway socket subscribes to the
+public world rows (online players, nodes, ground items, chat, bosses,
+expeditions, frontier objects). Each agent session's own socket subscribes only
+to its private rows (inventory, friends, trades, invite, notices, garden,
+frontier views, skills, cosmetics, profile, Spire membership and fight), so it
+no longer holds or decodes a full world copy. Measured locally against a 1111-node
+world (Node process, heap after GC, all sessions online and walking):
+
+| sessions | per-session heap before | after | total heap before | after | stale `/state` 503s before | after |
+| --- | --- | --- | --- | --- | --- | --- |
+| 100 | 0.44 MB | 0.13 MB | 63 MB | 32 MB | 0 | 0 |
+| 200 | 0.49 MB | 0.12 MB | 116 MB | 43 MB | 27 reads | 0 |
+
+`/state` fell from about 190 KB (221 KB at 200 players) to 95 KB, 177 KB with
+`?map=1`. Gateway CPU while 200 sessions walked fell from 8% to 1.9%.
+
+Routing: a session token is `bgs_` + one base64url character naming its slot +
+42 random characters (still 47 characters). The edge sends `/state`, `/danger`,
+`/session` and `/actions/*` with such a token to that shard and sets
+`X-BeriGame-Shard` (a client copy is always dropped); everything else goes to
+the coordinator. A join picks the slot from a hash of the new session id
+(overflowing to the next slot, three at most, when one is full); the slot is
+stored in the renewal config, so renewals, idempotency receipts and recovery
+exports follow the session to the same shard for life.
+
+### Deploying the shards
+
+1. `wrangler.jsonc` sets `"AGENT_SHARDS": "8"` in `vars`. **No new binding or
+   migration is needed**: shards are more instances (names) of the existing
+   `AGENT_GATEWAY` binding and `AgentGateway` class (migration tag `v1`). Do not
+   add or rename a DO class for this; any future class change must be a new,
+   additive migration tag.
+2. Deploy as usual (`wrangler deploy --config frontend/cloudflare/wrangler.jsonc`
+   after the frontend build). Check first with `--dry-run`.
+3. At the switch, agent sessions created before it live in the coordinator.
+   Their next session request returns `401 invalid_session` with a renewal hint
+   and ends that visit renewably; the agent renews (`POST /renewals`, MCP does it
+   automatically) and lands in a shard as the same character. Expect one renewal
+   burst from the agents online at deploy time (`RENEWAL_BUDGET` 512 burst).
+4. `GET /api/agent/v1` reports `capacity.maxAgentSessions` (250 x shards).
+   The world's own `MAX_ONLINE_PLAYERS` still caps who is online at once.
+5. Changing `AGENT_SHARDS` later is safe: sessions keep their slot while it is
+   below the new count; a renewal for a session in a removed slot suspends it
+   there and places it again. `"0"` returns to one coordinator hosting every
+   session (250 total). Admin stats sum the coordinator and every shard.
+
+Each shard opens its own gateway socket with the gateway credential (the module
+does not limit gateway connections). Durable Objects of one class may share an
+isolate's 128 MB, so watch shard memory in the dashboard after the first
+large load test.
 
 ## Deployment boundary
 

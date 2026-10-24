@@ -1,0 +1,207 @@
+{
+  "label": "baseline 2a59ed6 cap4096",
+  "startedAt": "2026-10-20T03:16:34.421Z",
+  "config": {
+    "n": 100,
+    "mode": "full",
+    "db": "berigame-base",
+    "uri": "ws://127.0.0.1:3000",
+    "seconds": 60,
+    "warmup": 10,
+    "workers": 2,
+    "perWorker": 50,
+    "batch": 10,
+    "batchMs": 500,
+    "think": 2500,
+    "compression": "gzip",
+    "scatter": true
+  },
+  "machine": {
+    "cpus": 10,
+    "model": "Apple M1 Pro",
+    "memGb": 16,
+    "node": "v24.1.0",
+    "platform": "darwin"
+  },
+  "connections": {
+    "requested": 100,
+    "connected": 100,
+    "failed": 0,
+    "errors": {},
+    "rampSec": 2.5,
+    "joinMsP50": 31,
+    "joinMsP95": 47,
+    "dropsDuringRun": 0,
+    "measuredClients": 100
+  },
+  "tick": {
+    "targetPerSec": 1.67,
+    "ratePerSec": 1.67,
+    "rateVsTarget": 1,
+    "intervalMsP50": 600,
+    "intervalMsP95": 605,
+    "intervalMsMax": 613,
+    "lagMsP50": 55,
+    "lagMsP95": 124,
+    "lagMsP99": 327,
+    "lagSamples": 10000,
+    "lagTimeline": [
+      {
+        "fromSec": 0,
+        "p50": 51,
+        "p95": 80,
+        "max": 98
+      },
+      {
+        "fromSec": 5,
+        "p50": 53,
+        "p95": 86,
+        "max": 116
+      },
+      {
+        "fromSec": 10,
+        "p50": 62,
+        "p95": 122,
+        "max": 148
+      },
+      {
+        "fromSec": 15,
+        "p50": 77,
+        "p95": 174,
+        "max": 302
+      },
+      {
+        "fromSec": 20,
+        "p50": 85,
+        "p95": 134,
+        "max": 182
+      },
+      {
+        "fromSec": 25,
+        "p50": 93,
+        "p95": 444,
+        "max": 550
+      },
+      {
+        "fromSec": 30,
+        "p50": 66,
+        "p95": 114,
+        "max": 151
+      },
+      {
+        "fromSec": 35,
+        "p50": 50,
+        "p95": 76,
+        "max": 111
+      },
+      {
+        "fromSec": 40,
+        "p50": 43,
+        "p95": 62,
+        "max": 70
+      },
+      {
+        "fromSec": 45,
+        "p50": 37,
+        "p95": 54,
+        "max": 62
+      },
+      {
+        "fromSec": 50,
+        "p50": 41,
+        "p95": 61,
+        "max": 68
+      },
+      {
+        "fromSec": 55,
+        "p50": 49,
+        "p95": 73,
+        "max": 86
+      }
+    ],
+    "lagByWorker": [
+      {
+        "worker": 0,
+        "p50": 54,
+        "p95": 122,
+        "loopDelayP95Ms": 33.8,
+        "cpuCores": 0.15
+      },
+      {
+        "worker": 1,
+        "p50": 55,
+        "p95": 126,
+        "loopDelayP95Ms": 32.9,
+        "cpuCores": 0.15
+      }
+    ]
+  },
+  "perClientIn": {
+    "wireKBpsMean": 22.8,
+    "wireKBpsP50": 22.8,
+    "wireKBpsP95": 22.8,
+    "wireKBpsMax": 22.8,
+    "rawKBpsMean": 49.2,
+    "rawKBpsP95": 49.2,
+    "msgsPerSecMean": 33.4,
+    "msgsPerSecP95": 33.6
+  },
+  "serverEgress": {
+    "wireMBps": 2.22,
+    "rawMBps": 4.8
+  },
+  "reducers": {
+    "rttMs": {
+      "setTarget": {
+        "n": 1342,
+        "p50": 10.3,
+        "p95": 52.8
+      },
+      "startHarvest": {
+        "n": 448,
+        "p50": 10.8,
+        "p95": 50.6
+      },
+      "sendChat": {
+        "n": 155,
+        "p50": 12.9,
+        "p95": 53
+      },
+      "emote": {
+        "n": 200,
+        "p50": 10.4,
+        "p95": 52.3
+      },
+      "attack": {
+        "n": 3,
+        "p50": 7.2,
+        "p95": 8.5
+      }
+    },
+    "moveEffectMsP50": 324.6,
+    "moveEffectMsP95": 586.9,
+    "moveEffectSamples": 1342,
+    "outcomes": {
+      "setTarget: ok": 1342,
+      "startHarvest: ok": 448,
+      "attack: They are protected for # more seconds. Invite them to a friendly duel ": 192,
+      "sendChat: ok": 155,
+      "emote: ok": 200,
+      "sendChat: wait three seconds between messages": 8,
+      "attack: No fighting in Clatterhorn's Glade": 7,
+      "attack: ok": 3
+    }
+  },
+  "server": {
+    "pid": 26738,
+    "cpuCoresMean": 0.37,
+    "cpuCoresMax": 0.97,
+    "rssMbMax": 571.4,
+    "note": "whole spacetimedb-standalone process (all databases on the server)"
+  },
+  "loadgen": {
+    "cpuCores": 0.29,
+    "loopDelayP95Ms": 33.8,
+    "resubscribes": 0
+  }
+}
