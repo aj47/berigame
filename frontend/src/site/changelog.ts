@@ -17,7 +17,7 @@ export const changelogEntries: ChangelogEntry[] = [
   {
     id: '2026-10-19-the-expanse', date: '2026-10-19', period: 'Oct 19, 2026',
     title: 'The Expanse: the map grows to 256 × 256 with five mainland biomes',
-    note: 'Not yet live on the beta.',
+    note: 'Live beta update: since Nov 4, 2026.',
     changes: [
       'The original island is unchanged in its corner of the map. Around it lie Frostpine Heights, Hearthvale, Glimmerfen, the Sunscorch Dunes and Starfall Reach, each with its own ground and trees.',
       'Eight causeways join the landmasses: the King’s Causeway at the end of the harbour road, the Sunfall Causeway from Sunfall Bluffs and the Fenway from Mossvale leave the island, and five more link the biomes to each other. Rivers with bridges and rock ridges with narrow passes shape the roads inside them.',
@@ -30,7 +30,7 @@ export const changelogEntries: ChangelogEntry[] = [
   {
     id: '2026-10-19-the-long-season', date: '2026-10-19', period: 'Oct 19, 2026',
     title: 'The Long Season: skills to level 99, ten tiered nodes and the daily Island Ledger',
-    note: 'Not yet live on the beta.',
+    note: 'Live beta update: since Nov 4, 2026.',
     changes: [
       'Foraging, Beachcombing and Crafting now go to level 99. The XP needed up to level 30 is unchanged, and so is the XP you have already earned.',
       'Ten new gathering nodes, from wild honey hives and oyster beds at level 15 to dreamvines and fallen stars at level 80. Tier 1 grows on Bramblewild’s Coast and each higher tier in its own biomes of the Expanse; the higher the level, the farther down the road it grows and the more XP each harvest pays.',
