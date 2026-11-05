@@ -8,6 +8,7 @@ import type { DbConnection } from '../module_bindings';
 import { useToastStore } from './stores/toastStore';
 import { useLoadingStore } from '../store';
 import { ConnectionLostError, trackCall } from './pendingCalls';
+import { WATCHING } from './viewer';
 
 /**
  * Typed wrappers around the module's reducers. Every rejected call surfaces
@@ -19,6 +20,7 @@ export function useGameActions() {
 
   const run = useCallback(
     async (label: string, fn: (conn: DbConnection) => Promise<unknown>) => {
+      if (WATCHING) return false;
       window.dispatchEvent(new Event(PLAYER_ACTION));
       const loading = useLoadingStore.getState();
       if (!navigator.onLine || loading.worldUpdatesStalled || !loading.websocketConnected || !loading.gameDataLoaded) {

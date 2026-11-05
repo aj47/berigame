@@ -8,6 +8,7 @@ import { configureWorldCameraInput, guardWorldCameraClicks } from './cameraInput
 import { tileToWorld } from '@sim';
 import { useBossStore } from '../../bosses/bossStore';
 import { useClatterFxStore } from '../../bosses/clatterhorn/clatterFx';
+import { WATCHING } from '../../spacetime/viewer';
 
 /** A fixed point the camera frames instead of following your avatar (the Spire's arena). */
 export interface CameraFocus {
@@ -22,6 +23,8 @@ export interface CameraFocus {
 
 /** The default follow camera's zoom range (restored when a focus ends). */
 const FOLLOW_MIN = 9, FOLLOW_MAX = 32;
+/** On /watch a target further off than this (a cut, a respawn) is a cut, not a pan across the map. */
+const WATCH_SNAP_TILES = 24;
 
 /** Follow-camera distance for a viewport: closer on short landscape screens, wider on portrait ones. */
 export function followDistance(width: number, height: number): number {
@@ -150,6 +153,7 @@ const CameraController = (props: { playerRef?: any; focus?: CameraFocus }) => {
 
 	const focusRef = useRef(focus);
 	focusRef.current = focus;
+	const framed = useRef<{ x: number; z: number } | null>(null);
 	useFrame(() => {
 		const f = focusRef.current;
 		if (f) {
@@ -159,7 +163,10 @@ const CameraController = (props: { playerRef?: any; focus?: CameraFocus }) => {
 		const position = props.playerRef?.current?.position;
 		if (position) {
 			const { x, y, z } = position;
-			ref.current?.moveTo(x, y, z, true);
+			const from = framed.current;
+			const snap = WATCHING && (!from || Math.hypot(x - from.x, z - from.z) > WATCH_SNAP_TILES);
+			framed.current = { x, z };
+			ref.current?.moveTo(x, y, z, !snap);
 		}
 		const c = ref.current;
 		if (!c || beforePreviewDistance.current !== null) return;
@@ -178,7 +185,7 @@ const CameraController = (props: { playerRef?: any; focus?: CameraFocus }) => {
 		}
 	});
 
-	return <CameraControls ref={ref}/>;
+	return <CameraControls ref={ref} enabled={!WATCHING}/>;
 };
 
 export default CameraController;

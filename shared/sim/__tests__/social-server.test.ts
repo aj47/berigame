@@ -104,6 +104,7 @@ function harness() {
     get timestamp() { return { microsSinceUnixEpoch: micros }; },
     db: {
       ...adventureTables(),
+      spectator: { identity: { find: () => null } },
       accessPolicy: { id: { find: () => ({ id: 0, owner: identity('owner'), gateway: identity('gw'), requireAdmission: false }) } },
       playerGrant: { identity: { find: () => undefined } },
       idleState: byId(new Map()),

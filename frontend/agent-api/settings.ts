@@ -19,7 +19,10 @@ export function settings() {
   if (origin.origin !== publicOrigin || origin.username || origin.password || !['http:', 'https:'].includes(origin.protocol)) throw new Error('BERIGAME_AGENT_ORIGIN must be an exact HTTP(S) origin.');
   if (origin.protocol !== 'https:' && !['127.0.0.1', 'localhost', '[::1]'].includes(origin.hostname)) throw new Error('Public API access requires HTTPS at the reverse proxy.');
   if (!['127.0.0.1', 'localhost', '::1'].includes(host) && origin.protocol !== 'https:') throw new Error('An exposed bind address requires an HTTPS public origin.');
-  return { directory, uri, database, host, port, publicOrigin,
+  // Viewers connect to the game server themselves: its public address, when the gateway reaches it privately.
+  const spectatorUri = process.env.BERIGAME_SPECTATOR_URI || undefined;
+  if (spectatorUri && !['ws:', 'wss:'].includes(new URL(spectatorUri).protocol)) throw new Error('BERIGAME_SPECTATOR_URI must be a WebSocket origin.');
+  return { directory, uri, database, host, port, publicOrigin, spectatorUri, watchKey: process.env.BERIGAME_WATCH_KEY || undefined,
     trustedProxyIPs: (process.env.BERIGAME_AGENT_TRUSTED_PROXY_IPS ?? '').split(',').map(v => v.trim()).filter(Boolean) };
 }
 

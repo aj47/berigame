@@ -5,6 +5,7 @@ export type SiteRoute =
   | { kind: 'game' }
   | { kind: 'agent' }
   | { kind: 'admin' }
+  | { kind: 'watch' }
   | { kind: 'wiki'; slug?: string }
   | { kind: 'not-found' };
 
@@ -19,6 +20,7 @@ export function resolveSiteRoute(pathname: string, search = '', hostname = ''): 
   if (path === '/play') return { kind: 'game' };
   if (path === '/agent') return { kind: 'agent' };
   if (path === '/admin') return { kind: 'admin' };
+  if (path === '/watch') return { kind: 'watch' };
   if (path === '/docs') return { kind: 'wiki' };
 
   const article = /^\/docs\/([^/]+)$/.exec(path) || (isWikiHost(hostname) ? /^\/([^/]+)$/.exec(path) : null);
@@ -48,6 +50,7 @@ export function resolveSiteRedirect(pathname: string, search = '', hash = '', ho
     if (path === '/agent') return `https://beta.berigame.com/agent${suffix}`;
     // The admin API lives on the game Worker only.
     if (path === '/admin') return `https://beta.berigame.com/admin${suffix}`;
+    if (path === '/watch') return `https://beta.berigame.com/watch${suffix}`;
     if (!isWikiHost(hostname) && path === '/' && new URLSearchParams(search).has('join')) {
       return `https://beta.berigame.com/${suffix}`;
     }

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { hitReactionPrefs } from '../../fx/hitReaction';
 import { DEFAULT_AMBIENT_VOLUME } from '../../audio/defaults';
+import { WATCH_PARAMS } from '../viewer';
 
 /** Player preferences. Persisted per browser; never sent to the server. */
 export interface Settings {
@@ -52,6 +53,8 @@ const KEY = 'berigame.settings.v1';
 const AMBIENT_DEFAULT_VERSION = 1;
 
 function load(): Settings {
+  // /watch comes from its URL. OBS sources share one browser profile, and a viewer must not take on a player's settings.
+  if (WATCH_PARAMS) return { ...DEFAULT_SETTINGS, graphics: WATCH_PARAMS.graphics, muted: !WATCH_PARAMS.audio, showGuidance: false };
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
@@ -78,6 +81,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...load(),
   set: (patch) => {
     set(patch);
+    if (WATCH_PARAMS) return;
     try {
       const { set: _s, reset: _r, ...values } = { ...get() };
       localStorage.setItem(KEY, JSON.stringify({ ...values, ambientDefaultVersion: AMBIENT_DEFAULT_VERSION }));
