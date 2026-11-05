@@ -18,4 +18,7 @@ export default __t.row({
   itemId: __t.string().name("item_id"),
   hp: __t.u8(),
   reset: __t.bool(),
+  x: __t.i32(),
+  z: __t.i32(),
+  cell: __t.u32(),
 });

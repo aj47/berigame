@@ -787,7 +787,7 @@ describe("connected home island", () => {
     expect(h.a.region).toBe('bramblewild');expect(h.a.x).toBe(46);
     expect(isHomeTarget(h.a.target)).toBe(true);
     let previous=homePoint(h.a,h.a.region), crossed=false;
-    for(let i=0;i<80 && h.a.target;i++) {
+    for(let i=0;i<120 && h.a.target;i++) {
       h.w.now+=600;advance(h.w);
       const next=homePoint(h.a,h.a.region);
       expect(Math.max(Math.abs(next.x-previous.x),Math.abs(next.z-previous.z))).toBeLessThanOrEqual(3);

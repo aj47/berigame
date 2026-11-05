@@ -4,8 +4,8 @@ import type { Ctx } from './types';
 
 const same = (a: Identity | undefined, b: Identity) => a?.toHexString() === b.toHexString();
 
-export function canPlay(ctx: Ctx, identity: Identity): boolean {
-  const policy = ctx.db.accessPolicy.id.find(0);
+/** `policy`: the access_policy row when the caller already read it (the tick checks every online player). */
+export function canPlay(ctx: Ctx, identity: Identity, policy = ctx.db.accessPolicy.id.find(0)): boolean {
   const grant = ctx.db.playerGrant.identity.find(identity);
   if (!grant) return !policy?.requireAdmission;
   return grant.expiresAtMicros > ctx.timestamp.microsSinceUnixEpoch

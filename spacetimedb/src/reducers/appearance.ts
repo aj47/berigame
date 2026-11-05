@@ -31,7 +31,7 @@ export const saveCharacter = spacetimedb.reducer(
     if (!/^[A-Za-z0-9_ ]+$/.test(trimmed)) throw new SenderError('Use letters, numbers, spaces or underscores');
     if (!validAppearance(choices)) throw new SenderError('Choose one of the available styles');
     const player = requirePlayer(ctx);
-    for (const other of ctx.db.player.iter()) {
+    for (const other of ctx.db.player.iter()) { // names only: no positions (lib/playerStore.ts)
       if (other.name.toLowerCase() === trimmed.toLowerCase() && other.identity.toHexString() !== ctx.sender.toHexString()) throw new SenderError('That name is already taken');
     }
     touchInput(player, currentTick(ctx));

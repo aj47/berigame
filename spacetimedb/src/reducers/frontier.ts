@@ -1,4 +1,5 @@
 import { t, SenderError } from "spacetimedb/server";
+import { Identity } from "spacetimedb";
 import spacetimedb from "../schema";
 import { perform, validateCommand } from "../../../shared/sim/frontier/engine";
 import { eatFromSlot } from './inventory';
@@ -19,6 +20,9 @@ import {
 import { readSlots } from "../lib/inventory";
 import { activityAction } from "../lib/activity";
 import { SPIRE_LOBBY_TRAVEL, inSpireLobby, leavesBramblewild, refuseOnSpireFloor } from "../lib/spireGuards";
+import { loadPlayer } from '../lib/playerStore';
+/** Region actions whose rules look at offline characters too (engine.ts placement, permit, invite_contest, boat_permit). */
+const ALL_ACTOR_ACTIONS = new Set(["build", "move_building", "permit", "invite_contest", "boat_permit"]);
 export const frontierAction = spacetimedb.reducer(
   { command: t.string() },
   (ctx, { command }) => {
@@ -47,7 +51,12 @@ export const frontierAction = spacetimedb.reducer(
     // Home walks and boats must never start from a sealed tile (eating above is capped by eatFromSlot).
     refuseOnSpireFloor(player, "You cannot use region actions inside the Sunken Spire");
     touchInput(player, currentTick(ctx));
-    const w = frontierWorld(ctx);
+    // Placement checks look at every character standing in a parcel, and permissions may name any known
+    // character: those load them all. Every other action sees the active ones plus the one it names.
+    const cmd = input as { action?: string; target?: unknown; id?: unknown };
+    const w = frontierWorld(ctx, ALL_ACTOR_ACTIONS.has(String(cmd?.action))
+      ? { scope: "all" }
+      : { scope: "active", extra: [cmd?.target, cmd?.id].filter((v): v is string => typeof v === "string") });
     // A Spire lobby member must stay in Bramblewild until the start checks run: refuse any
     // save that moves them out now (boat, region) or later (a queued cross-district walk).
     if (inSpireLobby(ctx, ctx.sender)) {
@@ -60,11 +69,11 @@ export const frontierAction = spacetimedb.reducer(
     ensureFrontierProfile(ctx, w.repo);
     const actor = w.actors.find((a) => a.id === ctx.sender.toHexString())!;
     actor.bag = readSlots(ctx, ctx.sender).slots;
+    // An attack reads only its target's bag (a defeat drops it); no other actor is saved.
     if ((input as any)?.action === "attack")
       for (const other of w.actors) {
-        const row = Array.from(ctx.db.player.iter()).find(
-          (p) => p.identity.toHexString() === other.id,
-        );
+        if (other.id !== cmd.id || other.id === actor.id) continue;
+        const row = loadPlayer(ctx, Identity.fromString(other.id));
         if (row) other.bag = readSlots(ctx, row.identity).slots;
       }
     if (

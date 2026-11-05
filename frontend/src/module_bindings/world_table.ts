@@ -14,4 +14,5 @@ export default __t.row({
   id: __t.u8().primaryKey(),
   tick: __t.u32(),
   tickStartedAt: __t.timestamp().name("tick_started_at"),
+  online: __t.u32(),
 });

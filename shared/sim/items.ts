@@ -1,6 +1,7 @@
 import { MATERIALS } from './frontier/catalog';
 import { HOTBAR_SIZE, MAX_STACK, PUNCH_DAMAGE } from './constants';
 import type { Slot, Tile } from './types';
+import { SEASON_ITEMS } from './season';
 
 export interface ItemDef {
   id: string;
@@ -47,6 +48,8 @@ export const ITEM_DEFS: Record<string, ItemDef> = {
   // Boss materials: Clatterhorn's shell plates and Spire keys make the obsidian sink; prism shards come from Spire clears.
   [GLEAMSHELL_ITEM_ID]: { id: GLEAMSHELL_ITEM_ID, description: 'An iridescent shell plate shed by Clatterhorn. With obsidian it makes Spire keys.', name: 'Gleamshell', icon: '/items/gleamshell.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#5FC9B4' },
   [SPIRE_KEY_ITEM_ID]: { id: SPIRE_KEY_ITEM_ID, description: "Opens the Sunken Spire's gate stair for one descent. Spent when your party starts.", name: 'Spire Key', icon: '/items/spire_key.png', healthRestore: 0, weaponDamage: 0, maxStack: 10, color: '#5B4A8F' },
+  // The Long Season: tiered materials, crafted goods and the ledger seal (season.ts).
+  ...Object.fromEntries(SEASON_ITEMS.map((m) => [m.id, { id: m.id, name: m.name, description: m.description, icon: `/items/season/${m.id}.png`, healthRestore: m.healthRestore ?? 0, weaponDamage: 0, maxStack: MAX_STACK, color: m.color }])),
   [PRISM_SHARD_ITEM_ID]: { id: PRISM_SHARD_ITEM_ID, description: 'A splinter of the Shardmother. Five make a Shard Circlet.', name: 'Prism Shard', icon: '/items/prism_shard.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#9FE7FF' },
 };
 

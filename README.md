@@ -8,18 +8,26 @@ Land claims, modular building, quests, five disciplines, companions, coin tradin
 
 ## Energy, banking and risk
 
-Gathering pays by an energy meter: double while rested (earned only by time logged out), normal in a session, and one in four when a character never stops. Everything in your bag drops on defeat, so bank it in your vault: instantly in the Grove safe ring (now radius 3), or over a few interruptible seconds at four Coast drop boxes. A big unbanked load glows for everyone, and a trade outside safe spots takes 3 ticks that a hit stops. The same rules apply to every character, with no bot detection. See [docs/design/ECONOMY.md](docs/design/ECONOMY.md).
+Gathering pays by an energy meter: double while rested (earned only by time logged out), normal in a session, and one in four when a character never stops. Everything in your bag drops on defeat, so bank it in your vault: instantly in the Grove safe ring (now radius 3), or over a few interruptible seconds at nine drop boxes (four on the Coast, five in the mainland towns). A big unbanked load glows for everyone, and a trade outside safe spots takes 3 ticks that a hit stops. The same rules apply to every character, with no bot detection. See [docs/design/ECONOMY.md](docs/design/ECONOMY.md).
 
 ## Boss fights
 
 Clatterhorn, a charging stag beetle in a glade on the Coast, and the Sunken Spire, a bullet-hell dungeon for parties of one to four, share the integer simulation in `shared/sim` (`clatterhorn.ts`, `spire.ts`, `bullets.ts`). Both ship closed; the world owner opens them with `configure_bosses`. Rules and numbers are in [docs/design/BOSSES.md](docs/design/BOSSES.md); the release and rollback steps are in [docs/CLOUDFLARE_BETA.md](docs/CLOUDFLARE_BETA.md). `SPIRE_VALIDATE=full npm test --prefix shared -- --run spire-patterns` runs the full 46,464-instance pattern validator.
+
+## The Long Season
+
+Foraging, Beachcombing and Crafting go to level 99; the curve to 30 is unchanged and steeper after. Ten tiered gathering nodes (five Foraging plants inland, five Beachcombing finds on the shore, needing level 15, 30, 45, 60 and 80) are placed deterministically by biome (tier 1 on the island's Coast, tiers 2 to 5 in the Expanse), with stable ids from 1000. Their materials feed a recipe chain and season keepsakes, and the Island Ledger hands out three daily commissions at four ledger clerks (the Sunberry Market, Crossroads, Kingsgate and Fenhold) for XP and ledger seals. Nothing adds damage or health. Data lives in `shared/sim/season.ts` (nodes, items, placement), `shared/sim/nodes.ts` (recipes, level gates), `shared/sim/skills.ts` (curve, keepsakes) and `shared/sim/ledger.ts` (commissions); agents read `state.nodes[].locked`, `state.nodeKinds` and `state.ledger` and hand in with `deliver_commission`. The wiki article is generated from the same data.
+
+## The Expanse
+
+The map is 256 × 256 tiles. The original island keeps its 128 × 128 corner; only the Sunfall and Fenway causeway landings gained tiles. Five biomes surround it (Frostpine Heights, Hearthvale, Glimmerfen, the Sunscorch Dunes and Starfall Reach), divided by straits, rivers and boulder ridges and joined by eight causeways, six bridges and four ridge passes. A defeated character comes back at the nearest of the Grove spawn and five waystones. The geometry lives in `shared/sim/expanse.ts` and `shared/sim/terrain.ts`; walks are searched with A* and cached between ticks (`shared/sim/pathfinding.ts`). Agents read `state.me.biome`, `state.nodes[].biome` and the compact `GET /api/agent/v1/world`. Design notes are in [docs/design/WORLD.md](docs/design/WORLD.md).
 
 ## Overview
 
 BeriGame is a real-time multiplayer game built around an authoritative
 600ms server tick (RuneScape cadence):
 
-- Tile-based click-to-move on a 50x50 island; the server paths up to two collision-checked tiles per tick, with clients interpolating along the confirmed route.
+- Tile-based click-to-move on a 256x256 map; the server paths up to two collision-checked tiles per tick, with clients interpolating along the confirmed route.
 - Melee is punch-or-stick. Everyone starts with bare fists: a **punch deals 3**. Each completed harvest has a **25% chance** to also turn up a **stick**; wielded, it deals **6** per swing, shows in your character's right hand for every player, and swings with its own animation.
 - The first three inventory slots are **quick slots** (keys **1/2/3**, also the buttons at the bottom of the screen). A berry there is eaten; a stick there is wielded or put away. The weapon chip shows what you are swinging with. Moving the stick out of the quick slots, dropping it or dying puts it away. There are no stances and nothing floats above your head besides your name, health and chat.
 - Exchanges alternate like a tennis rally: each attacker swings every 4 ticks, and a retaliating player's swings are offset by 2 ticks.

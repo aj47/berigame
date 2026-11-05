@@ -4,6 +4,7 @@ import spacetimedb from '../schema';
 import { GIANT_ID, GIANT_REACH, GiantState, Pending, chebyshev, formatCountdown } from '../../../shared/sim';
 import { requireOwner } from '../lib/access';
 import { countRaiders, ensureRaid, nowMs, wakeGiant } from '../lib/raid';
+import { onlinePlayers } from '../lib/activePlayers';
 import { blockedTiles } from '../lib/blocked';
 import { interactionTile } from '../lib/brambles';
 import { ensureGiant } from '../lib/giant';
@@ -64,7 +65,7 @@ export const triggerGiantRaid = spacetimedb.reducer(
     const T = currentTick(ctx);
     const raid = ensureRaid(ctx, T);
     if (raid.awake) throw new SenderError('A raid is already on');
-    if (delaySeconds === 0) { wakeGiant(ctx, T, countRaiders(ctx.db.player.iter())); return; }
+    if (delaySeconds === 0) { wakeGiant(ctx, T, countRaiders(onlinePlayers(ctx))); return; }
     const wake = ctx.timestamp.microsSinceUnixEpoch + BigInt(delaySeconds) * 1_000_000n;
     ctx.db.giantRaid.id.update({ ...raid, nextWakeAtMicros: wake, announced: 0 });
   }

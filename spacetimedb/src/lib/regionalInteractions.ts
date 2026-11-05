@@ -10,6 +10,7 @@ import { clearInteractions, currentTick, savePlayer } from './players';
 import { notify } from './social';
 import { requestTradeInRange, tradePartnerProblem } from './trade';
 import type { Ctx, PlayerRow } from './types';
+import { loadPlayer } from './playerStore';
 
 /** Existing identity intents are shared by both district engines; no client-side chase. */
 export function advanceRegionalInteractions(ctx: Ctx, w: World): void {
@@ -32,12 +33,16 @@ export function advanceRegionalInteractions(ctx: Ctx, w: World): void {
     }
     return null;
   };
-  const rows = () => [...ctx.db.player.iter()].filter(p => p.region && p.region !== 'bramblewild' && p.combatTarget);
+  // Holders of a combat target are online (or offline holders, lib/activePlayers.ts), so the World's
+  // actors cover them: the rows are re-read in the actors' (sorted) order instead of scanning every character.
+  const rows = () => w.actors
+    .map(a => loadPlayer(ctx, Identity.fromString(a.id)))
+    .filter((p): p is PlayerRow => !!p && !!p.region && p.region !== 'bramblewild' && !!p.combatTarget);
   // Everyone moves before hits/trade requests, so a moving target is checked at its new position.
   for (const before of rows()) {
-    const p = { ...ctx.db.player.identity.find(before.identity)! };
+    const p = { ...loadPlayer(ctx, before.identity)! };
     if (!p.combatTarget) continue;
-    const target = ctx.db.player.identity.find(p.combatTarget) ?? undefined;
+    const target = loadPlayer(ctx, p.combatTarget) ?? undefined;
     const problem = problemFor(p, target);
     if (problem) { stop(p, problem); continue; }
     const a = w.actors.find(a => a.id === p.identity.toHexString())!;
@@ -53,9 +58,9 @@ export function advanceRegionalInteractions(ctx: Ctx, w: World): void {
     w.save(a);
   }
   for (const before of rows()) {
-    const p = { ...ctx.db.player.identity.find(before.identity)! };
+    const p = { ...loadPlayer(ctx, before.identity)! };
     if (!p.combatTarget) continue;
-    const target = ctx.db.player.identity.find(p.combatTarget) ?? undefined;
+    const target = loadPlayer(ctx, p.combatTarget) ?? undefined;
     const problem = problemFor(p, target);
     if (problem) { stop(p, problem); continue; }
     const a = w.actors.find(a => a.id === p.identity.toHexString())!;
@@ -78,15 +83,15 @@ export function advanceRegionalInteractions(ctx: Ctx, w: World): void {
     other.facing = facingFromDelta(a.x - other.x, a.z - other.z);
     const hp = other.hp;
     perform(w, a, { action: 'attack', id: other.id });
-    const attacker = { ...ctx.db.player.identity.find(p.identity)! };
+    const attacker = { ...loadPlayer(ctx, p.identity)! };
     attacker.nextSwingTick = T + Math.ceil(((w.repo.get('profile', a.id)?.nextAttack ?? w.now) - w.now) / TICK_MS);
     savePlayer(ctx, attacker);
     emitEvent(ctx, { tick: T, kind: EventKind.Hit, attacker: p.identity, defender: target!.identity,
-      damage: hp - Math.max(0, other.hp), itemId: a.weapon, defenderHp: Math.max(0, other.hp) });
+      damage: hp - Math.max(0, other.hp), itemId: a.weapon, defenderHp: Math.max(0, other.hp), x: other.x, z: other.z, region: p.region });
     if (!other.alive) {
-      stop({ ...ctx.db.player.identity.find(Identity.fromString(other.id))! });
-      stop({ ...ctx.db.player.identity.find(p.identity)! });
-      emitEvent(ctx, { tick: T, kind: EventKind.Death, attacker: p.identity, defender: target!.identity });
+      stop({ ...loadPlayer(ctx, Identity.fromString(other.id))! });
+      stop({ ...loadPlayer(ctx, p.identity)! });
+      emitEvent(ctx, { tick: T, kind: EventKind.Death, attacker: p.identity, defender: target!.identity, x: other.x, z: other.z, region: p.region });
     }
   }
 }

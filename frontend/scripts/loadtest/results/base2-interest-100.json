@@ -1,0 +1,224 @@
+{
+  "label": "",
+  "startedAt": "2026-10-20T04:16:41.919Z",
+  "config": {
+    "n": 100,
+    "mode": "interest",
+    "db": "berigame-base",
+    "uri": "ws://127.0.0.1:3000",
+    "seconds": 60,
+    "warmup": 10,
+    "workers": 2,
+    "perWorker": 50,
+    "batch": 10,
+    "batchMs": 500,
+    "think": 2500,
+    "compression": "gzip",
+    "scatter": true,
+    "playerBlock": "default"
+  },
+  "machine": {
+    "cpus": 10,
+    "model": "Apple M1 Pro",
+    "memGb": 16,
+    "node": "v24.1.0",
+    "platform": "darwin"
+  },
+  "connections": {
+    "requested": 100,
+    "connected": 100,
+    "failed": 0,
+    "errors": {},
+    "rampSec": 2.8,
+    "joinMsP50": 53,
+    "joinMsP95": 65,
+    "dropsDuringRun": 0,
+    "measuredClients": 100
+  },
+  "tick": {
+    "targetPerSec": 1.67,
+    "ratePerSec": 1.67,
+    "rateVsTarget": 1,
+    "intervalMsP50": 600,
+    "intervalMsP95": 602,
+    "intervalMsMax": 604,
+    "lagMsP50": 39,
+    "lagMsP95": 52,
+    "lagMsP99": 57,
+    "lagSamples": 10000,
+    "lagTimeline": [
+      {
+        "fromSec": 0,
+        "p50": 44,
+        "p95": 52,
+        "max": 56
+      },
+      {
+        "fromSec": 5,
+        "p50": 46,
+        "p95": 54,
+        "max": 57
+      },
+      {
+        "fromSec": 10,
+        "p50": 40,
+        "p95": 49,
+        "max": 53
+      },
+      {
+        "fromSec": 15,
+        "p50": 41,
+        "p95": 50,
+        "max": 53
+      },
+      {
+        "fromSec": 20,
+        "p50": 41,
+        "p95": 49,
+        "max": 53
+      },
+      {
+        "fromSec": 25,
+        "p50": 48,
+        "p95": 57,
+        "max": 62
+      },
+      {
+        "fromSec": 30,
+        "p50": 41,
+        "p95": 58,
+        "max": 62
+      },
+      {
+        "fromSec": 35,
+        "p50": 42,
+        "p95": 49,
+        "max": 52
+      },
+      {
+        "fromSec": 40,
+        "p50": 30,
+        "p95": 45,
+        "max": 50
+      },
+      {
+        "fromSec": 45,
+        "p50": 27,
+        "p95": 39,
+        "max": 43
+      },
+      {
+        "fromSec": 50,
+        "p50": 32,
+        "p95": 40,
+        "max": 46
+      },
+      {
+        "fromSec": 55,
+        "p50": 27,
+        "p95": 33,
+        "max": 37
+      }
+    ],
+    "lagByWorker": [
+      {
+        "worker": 1,
+        "p50": 39,
+        "p95": 52,
+        "loopDelayP95Ms": 22.1,
+        "cpuCores": 0.08
+      },
+      {
+        "worker": 0,
+        "p50": 39,
+        "p95": 52,
+        "loopDelayP95Ms": 22.2,
+        "cpuCores": 0.11
+      }
+    ]
+  },
+  "perClientIn": {
+    "wireKBpsMean": 19.8,
+    "wireKBpsP50": 20.1,
+    "wireKBpsP95": 25.1,
+    "wireKBpsMax": 25.1,
+    "rawKBpsMean": 40.6,
+    "rawKBpsP95": 51.9,
+    "msgsPerSecMean": 31.6,
+    "msgsPerSecP95": 39.2
+  },
+  "serverEgress": {
+    "wireMBps": 1.93,
+    "rawMBps": 3.97
+  },
+  "reducers": {
+    "rttMs": {
+      "setTarget": {
+        "n": 1297,
+        "p50": 7.1,
+        "p95": 20.8
+      },
+      "sendChat": {
+        "n": 146,
+        "p50": 8.5,
+        "p95": 15.7
+      },
+      "startHarvest": {
+        "n": 492,
+        "p50": 6.5,
+        "p95": 17.9
+      },
+      "attack": {
+        "n": 216,
+        "p50": 6.5,
+        "p95": 18.8
+      },
+      "emote": {
+        "n": 199,
+        "p50": 6.4,
+        "p95": 22.8
+      }
+    },
+    "moveEffectMsP50": 310.3,
+    "moveEffectMsP95": 591.2,
+    "moveEffectSamples": 1292,
+    "outcomes": {
+      "setTarget: ok": 1297,
+      "sendChat: ok": 146,
+      "sendChat: wait three seconds between messages": 7,
+      "startHarvest: ok": 492,
+      "attack: ok": 216,
+      "emote: ok": 199,
+      "attack: No fighting in Clatterhorn's Glade": 12,
+      "attack: They are protected for # more seconds. Invite them to a friendly duel ": 1
+    }
+  },
+  "server": {
+    "pid": 6885,
+    "cpuCoresMean": 0.2,
+    "cpuCoresMax": 0.25,
+    "rssMbMax": 658.6,
+    "note": "whole spacetimedb-standalone process (all databases on the server)"
+  },
+  "loadgen": {
+    "cpuCores": 0.19,
+    "loopDelayP95Ms": 22.2,
+    "resubscribes": 36
+  },
+  "observerRowsPerSec": {
+    "player.update": 105,
+    "tree.update": 6.3,
+    "chatMessage.insert": 2.4,
+    "chatMessage.delete": 2.4,
+    "player.insert": 2.1,
+    "player.delete": 2,
+    "world.update": 1.7,
+    "groundItem.insert": 0.3,
+    "combatEvent.insert": 0.1,
+    "emoteEvent.insert": 0.1,
+    "inventorySlot.insert": 0,
+    "adventureProfile.update": 0,
+    "frontierView.update": 0,
+    "playerSkill.update": 0
+  }
+}

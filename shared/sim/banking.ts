@@ -4,7 +4,7 @@
  *
  * - The personal vault (the frontier's `vault-<id>` container) opens in the
  *   Grove's safe ring as well as in Meadows town. Items in it are safe.
- * - Drop boxes on the Coast take deposits into that vault, but a deposit there
+ * - Drop boxes on the Coast and in the mainland towns take deposits into that vault, but a deposit there
  *   takes DROP_BOX_DEPOSIT_TICKS and damage stops it.
  * - Items in the bag are at risk. A large unbanked load glows (the load level on
  *   the player row) so other players can see who is carrying value.
@@ -33,14 +33,22 @@ export interface DropBox extends Tile {
 }
 
 /**
- * Coast drop boxes, one per quadrant, each on an open tile at least four tiles
- * from any node so a box never blocks a harvest spot. They do not block their tile.
+ * Drop boxes: four on the Grove's Coast, one per quadrant around spawn, and one
+ * in each mainland town (ids 5-9) so a long trip can bank without the walk home.
+ * Each stands on an open tile at least four tiles from any node so a box never
+ * blocks a harvest spot (tier nodes keep clear of them, nodes.ts). They do not
+ * block their tile. Ids are stable.
  */
 export const DROP_BOXES: readonly DropBox[] = [
   { id: 1, name: 'North-west drop box', x: 9, z: 16 },
   { id: 2, name: 'North-east drop box', x: 40, z: 13 },
   { id: 3, name: 'South-west drop box', x: 8, z: 36 },
   { id: 4, name: 'South-east drop box', x: 41, z: 39 },
+  { id: 5, name: 'Crossroads drop box', x: 170, z: 125 },
+  { id: 6, name: 'Kingsgate drop box', x: 150, z: 27 },
+  { id: 7, name: 'Fenhold drop box', x: 31, z: 181 },
+  { id: 8, name: 'Oasis drop box', x: 127, z: 207 },
+  { id: 9, name: 'Crater drop box', x: 198, z: 218 },
 ];
 /** Chebyshev distance from a box at which a deposit can start and continue. */
 export const DROP_BOX_REACH = 1;

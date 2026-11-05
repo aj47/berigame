@@ -2,7 +2,7 @@ import { progress } from './adventure';
 import { Feat } from '../../../shared/sim';
 import type { Identity } from 'spacetimedb';
 import {
-  CosmeticSlot, Skill, addXp, getCosmetic, cosmeticsForLevelUp, harvestTicksAtLevel, harvestTicksFor, hasCosmetic, levelForXp, skillForNode, withCosmetic,
+  CosmeticSlot, Skill, addXp, getCosmetic, cosmeticsForAllSkills, cosmeticsForLevelUp, harvestTicksAtLevel, harvestTicksFor, hasCosmetic, levelForXp, skillForNode, withCosmetic,
 } from '../../../shared/sim';
 import type { Ctx, PlayerCosmeticRow, PlayerSkillRow } from './types';
 
@@ -27,7 +27,7 @@ export function harvestTicksForPlayer(ctx: Ctx, id: Identity, node: { kind: numb
   return harvestTicksAtLevel(harvestTicksFor(node.kind), skillLevel(ctx, id, skillForNode(node.kind)), node.itemId);
 }
 
-/** Grants XP (capped at L30) and any skill-level cosmetics it earns. Returns the new level. */
+/** Grants XP (capped at L99) and any skill-level or all-skill cosmetics it earns. Returns the new level. */
 export function grantXp(ctx: Ctx, id: Identity, skill: Skill, amount: number): number {
   progress(ctx, id, skill === Skill.Crafting ? 1 : skill === Skill.Beachcombing ? 2 : 0, amount, skill === Skill.Crafting ? Feat.Build : skill === Skill.Beachcombing ? Feat.Explore : Feat.Grow);
   const existing = ctx.db.playerSkill.identity.find(id);
@@ -42,6 +42,13 @@ export function grantXp(ctx: Ctx, id: Identity, skill: Skill, amount: number): n
     else ctx.db.playerSkill.insert(next);
   }
   for (const cosmetic of cosmeticsForLevelUp(skill, from, to)) unlockCosmetic(ctx, id, cosmetic);
+  if (to !== from) {
+    // All-skill keepsakes (the Paragon Sash at 99 in every skill) follow the lowest of the three levels.
+    const levels = XP_FIELD.map((f) => levelForXp(row[f]));
+    const minBefore = Math.min(...levels);
+    levels[skill] = to;
+    for (const cosmetic of cosmeticsForAllSkills(minBefore, Math.min(...levels))) unlockCosmetic(ctx, id, cosmetic);
+  }
   return to;
 }
 

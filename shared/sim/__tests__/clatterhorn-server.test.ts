@@ -1,4 +1,4 @@
-import { adventureTables, testTable } from './adventureHarness';
+import { adventureTables, mergedPlayer, playerTables, testTable } from './adventureHarness';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerState, Pending } from '../types';
 import { STICK_ITEM_ID, STONE_CLUB_ITEM_ID } from '../items';
@@ -55,7 +55,7 @@ const playerRow = (who: Identity, name: string, over: object = {}) => ({
 });
 
 function harness() {
-  const base: Record<string, any> = { ...adventureTables() };
+  const base: Record<string, any> = { ...adventureTables(), ...playerTables() };
   const db = new Proxy(base, {
     get(obj, name: string) {
       if (!(name in obj)) { const [pk, auto] = KEYS[name] ?? ['id', true]; obj[name] = testTable(pk, auto); }
@@ -66,7 +66,7 @@ function harness() {
   db.world.insert({ id: 0, tick: 100 });
   const ctx: any = { db, sender: A, identity: MODULE, random: () => 0.99, timestamp: { microsSinceUnixEpoch: 1_000_000_000_000n } };
   for (const [who, name] of [[A, 'Ann'], [B, 'Bo'], [C, 'Cy']] as const) db.player.insert(playerRow(who, name));
-  const p = (who: Identity) => db.player.identity.find(who);
+  const p = (who: Identity) => mergedPlayer(db, who);
   const place = (who: Identity, x: number, z: number, extra: object = {}) => db.player.identity.update({ ...p(who), x, z, ...extra });
   const give = (who: Identity, slot: number, itemId: string, quantity: number) => db.inventorySlot.insert({ id: 0n, owner: who, slot, itemId, quantity });
   const bag = (who: Identity) => [...db.inventorySlot.owner.filter(who)].map((r: any) => `${r.itemId}:${r.quantity}`).sort();

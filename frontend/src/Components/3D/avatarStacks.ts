@@ -59,3 +59,19 @@ export function useStackedAvatars(players: readonly Player[], me: string | null 
   for (const hex of stops.current.keys()) if (!seen.has(hex)) stops.current.delete(hex);
   return stackAvatars(inputs);
 }
+
+export type CrowdInput = { hex: string; x: number; z: number; priority: boolean };
+
+/**
+ * A crowd's split between full avatars and simple figures: every priority
+ * player (your target, anyone fighting you) plus the nearest others up to
+ * `max` in total get full avatars. Ties go to the lower identity, so the split
+ * is stable while nobody moves.
+ */
+export function crowdSplit(players: readonly CrowdInput[], me: { x: number; z: number } | null, max: number): { full: Set<string>; figures: CrowdInput[] } {
+  if (players.length <= max) return { full: new Set(players.map((p) => p.hex)), figures: [] };
+  const d = (p: CrowdInput) => (me ? Math.max(Math.abs(p.x - me.x), Math.abs(p.z - me.z)) : 0);
+  const ranked = players.slice().sort((a, b) => Number(b.priority) - Number(a.priority) || d(a) - d(b) || (a.hex < b.hex ? -1 : a.hex > b.hex ? 1 : 0));
+  const cut = Math.max(max, ranked.filter((p) => p.priority).length);
+  return { full: new Set(ranked.slice(0, cut).map((p) => p.hex)), figures: ranked.slice(cut) };
+}

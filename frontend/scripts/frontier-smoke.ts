@@ -3,6 +3,8 @@ import { REGIONS, RESOURCE_PATCHES } from "../../shared/sim/frontier/catalog";
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { DbConnection, tables } from "../src/module_bindings";
+// Live positions: player_pos merged into player rows (the server moves only player_pos for a step).
+import { playerView } from '../src/spacetime/playerView';
 import { frontierSnapshot } from "../../shared/sim/frontier/snapshot";
 const uri = process.env.SPACETIME_URI ?? "ws://127.0.0.1:3123",
   database = process.env.SPACETIME_DB ?? "settlements-validation-v2";
@@ -40,7 +42,7 @@ async function connect(
               : [
                   tables.world,
                   tables.tree,
-                  tables.player,
+                  tables.player, tables.playerPos,
                   tables.inventorySlot,
                   tables.frontierObject,
                   tables.frontierView,
@@ -72,7 +74,7 @@ async function main() {
     a = await connect(),
     b = await connect();
   const self = (client = a) =>
-    client.conn.db.player.identity.find(client.identity)!;
+    playerView(client.conn).identity.find(client.identity)!;
   const state = (client = a) =>
     frontierSnapshot(
       client.conn.db.frontierObject.iter(),

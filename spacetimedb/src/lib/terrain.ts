@@ -1,6 +1,8 @@
 import { isLandTile, nearestDryTile, SCENERY_BLOCKERS, tileKey, worldBlockedSet } from '../../../shared/sim';
 import { clearInteractions } from './players';
+import { nodeCell } from '../../../shared/sim/interest';
 import type { Ctx } from './types';
+import { storePlayer, allPlayers } from './playerStore';
 
 const scenery = new Set(SCENERY_BLOCKERS.map(tileKey));
 /** Idempotent, data-preserving repair when a coastline or building covers an old saved position. */
@@ -10,16 +12,17 @@ export function reconcileTerrain(ctx: Ctx): void {
     blocked ??= worldBlockedSet(ctx.db.tree.iter());
     return nearestDryTile(t, blocked);
   };
-  for (const row of ctx.db.player.iter()) {
+  for (const row of allPlayers(ctx)) {
     if (row.region && row.region !== 'bramblewild') continue;
     if (isLandTile(row) && !scenery.has(tileKey(row))) continue;
     const p = { ...row, ...landing(row) };
     clearInteractions(ctx, p);
-    ctx.db.player.identity.update(p);
+    storePlayer(ctx, p);
   }
   for (const row of ctx.db.groundItem.iter()) {
     if (isLandTile(row) && !scenery.has(tileKey(row))) continue;
-    ctx.db.groundItem.id.update({ ...row, ...landing(row) });
+    const at = landing(row);
+    ctx.db.groundItem.id.update({ ...row, ...at, cell: nodeCell(at.x, at.z) });
   }
   // Active expeditions survive deployment too: keep cargo and companions on dry ground.
   for (const row of ctx.db.expedition.iter()) {

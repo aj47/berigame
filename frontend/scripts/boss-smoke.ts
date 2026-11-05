@@ -19,6 +19,8 @@
 import { readFileSync } from 'node:fs';
 import { Identity } from 'spacetimedb';
 import { DbConnection, tables } from '../src/module_bindings';
+// Live positions: player_pos merged into player rows (the server moves only player_pos for a step).
+import { playerView } from '../src/spacetime/playerView';
 import type { BossEvent, BossNotice, Player } from '../src/module_bindings/types';
 import {
   BossEventKind, BossId, BossNoticeKind, CLATTER_GLADE, CLATTER_HOME, CLATTERHORN_ID, CLATTER_RESPAWN_TICKS, CLATTER_STATE_NAMES, ClatterState,
@@ -52,7 +54,7 @@ interface Client {
 }
 
 const SUBSCRIBE = [
-  tables.world, tables.player, tables.tree, tables.groundItem, tables.inventorySlot, tables.adventureProfile, tables.playerCosmetic,
+  tables.world, tables.player, tables.playerPos, tables.tree, tables.groundItem, tables.inventorySlot, tables.adventureProfile, tables.playerCosmetic,
   tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.spireFight, tables.bossEvent,
 ];
 /** Notices that reached a client addressed to someone else (the filtered subscription must deliver none). */
@@ -126,7 +128,7 @@ function check(label: string, ok: boolean, extra = ''): void {
 
 const tick = (c: Client) => c.conn.db.world.id.find(0)?.tick ?? 0;
 function me(c: Client): Player {
-  for (const p of c.conn.db.player.iter()) if (p.identity.toHexString() === c.identity) return p;
+  for (const p of playerView(c.conn).iter()) if (p.identity.toHexString() === c.identity) return p;
   throw new Error(`${c.name}: own player row missing`);
 }
 const inv = (c: Client) => [...c.conn.db.inventorySlot.iter()].filter((r) => r.owner.toHexString() === c.identity);
@@ -200,7 +202,7 @@ async function main() {
   const A = await connect('A', await admittedToken(owner));
   const B = await connect('B', await admittedToken(owner));
   await waitFor('a running world', () => tick(A) > 0, 10_000);
-  check('the owner control connection creates no character', ![...A.conn.db.player.iter()].some((p) => p.identity.toHexString() === owner.identity));
+  check('the owner control connection creates no character', ![...playerView(A.conn).iter()].some((p) => p.identity.toHexString() === owner.identity));
   // Names are unique per world: suffix the identity so reruns work.
   const nameOf = (c: Client) => `Boss${c.name}_${c.identity.slice(-4)}`;
   await A.r.setName({ name: nameOf(A) });
@@ -388,7 +390,7 @@ async function main() {
   check('members are teleported to their slot spawns on the floor', me(A).x === SPIRE_SPAWNS[0].x && me(A).z === SPIRE_SPAWNS[0].z && me(B).x === SPIRE_SPAWNS[1].x && me(B).z === SPIRE_SPAWNS[1].z,
     `A ${me(A).x},${me(A).z} B ${me(B).x},${me(B).z}`);
   check('a 2-member fight has 1700 HP', fight(A, runId)!.maxHp === 1700 && fight(A, runId)!.hp === 1700);
-  check('A sees B on the floor (same run)', [...A.conn.db.player.iter()].some((p) => p.identity.toHexString() === B.identity && p.x === SPIRE_SPAWNS[1].x));
+  check('A sees B on the floor (same run)', [...playerView(A.conn).iter()].some((p) => p.identity.toHexString() === B.identity && p.x === SPIRE_SPAWNS[1].x));
 
   const blocked = worldBlockedSet(A.conn.db.tree.iter());
   const hpLog: string[] = [];
@@ -407,7 +409,7 @@ async function main() {
       const m = member(c);
       if (!m || m.state !== SpireMemberState.In) continue;
       const p = me(c);
-      const feed = dangerFeed(bossRows(c), p, T, { players: c.conn.db.player.iter(), blocked, ageMs: 0, tickMs: TICK_MS });
+      const feed = dangerFeed(bossRows(c), p, T, { players: playerView(c.conn).iter(), blocked, ageMs: 0, tickMs: TICK_MS });
       const myStars = spireSlot(f, 'stars', m.slot);
       if (c === B && myStars >= 3) {
         // B has earned its reward: walk into the bullets until it is knocked out.

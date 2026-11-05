@@ -6,6 +6,7 @@ import { isIP } from 'node:net';
 import { ACTIONS, openapi, validateAction, validateObject } from './contract';
 import { AddressLimits, ApiError, Budget, digest, InviteStore, secret, type Invite } from './security';
 import { deadline, type GameService, type GameSession } from './game';
+import { worldAtlas } from './worldAtlas';
 
 const PREFIX = '/api/agent/v1';
 type Receipt = { fingerprint: string; status: number; body: unknown };
@@ -97,13 +98,18 @@ export function createAgentServer(options: Options) {
       if (publicOrigin) hosts.push(new URL(publicOrigin).host);
       if (!req.headers.host || !hosts.includes(req.headers.host)) throw new ApiError(403, 'host_not_allowed', 'Host is not configured for this API.');
       if (req.headers.origin && req.headers.origin !== publicOrigin) throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
-      if (!req.url?.startsWith(PREFIX) || req.url.includes('?') || req.url.includes('#')) throw new ApiError(404, 'not_found', 'Use /api/agent/v1; credentials belong in Authorization headers.');
-      const route = req.url.slice(PREFIX.length);
+      // The one query accepted: GET /state?map=1 (the full terrain map in state, kept for one release).
+      const withMap = req.method === 'GET' && req.url === `${PREFIX}/state?map=1`;
+      const url = withMap ? `${PREFIX}/state` : req.url;
+      if (!url?.startsWith(PREFIX) || url.includes('?') || url.includes('#')) throw new ApiError(404, 'not_found', 'Use /api/agent/v1; credentials belong in Authorization headers.');
+      const route = url.slice(PREFIX.length);
       if ((route === '' || route === '/') && req.method === 'GET') {
         send(200, { name: 'BeriGame', version: 1, ready: options.game.ready(), onboarding: '/agent', openapi: `${PREFIX}/openapi.json`,
           access: 'single-use invite', pollIntervalMs: AGENT_POLL_INTERVAL_MS, actionIntervalMs: AGENT_ACTION_INTERVAL_MS, idleTimeoutSeconds: idleMs / 1000 }); return;
       }
       if (route === '/openapi.json' && req.method === 'GET') { send(200, openapi); return; }
+      // Static world geometry, the same for everyone: no session, an ordinary request against the IP limit.
+      if (route === '/world' && req.method === 'GET') { send(200, worldAtlas()); return; }
       if (!options.game.ready()) throw new ApiError(503, 'world_unavailable', 'The admitted game world is unavailable.');
       if (route === '/sessions' && req.method === 'POST') {
         const code = bearer(req);
@@ -147,7 +153,7 @@ export function createAgentServer(options: Options) {
       session.lastSeen = now();
       if (route === '/session' && req.method === 'DELETE') { await remove(key, 'left'); send(204); return; }
       try {
-        if (route === '/state' && req.method === 'GET') { send(200, session.game.state()); return; }
+        if (route === '/state' && req.method === 'GET') { send(200, session.game.state({ map: withMap })); return; }
         // CORE_SCOPE: an ordinary read (the reads budget above), no long poll and no separate lane.
         if (route === '/danger' && req.method === 'GET') { send(200, session.game.danger()); return; }
         if (acting) {

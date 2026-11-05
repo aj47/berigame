@@ -2,7 +2,7 @@ import { frontierObject, frontierPrivate, frontierView } from './tables';
 import { schema } from 'spacetimedb/server';
 import {
   accessPolicy, playerGrant, appearance, chatMessage, combatEvent, dummyEvent, emoteCooldown, emoteEvent,
-  groundItem, inventorySlot, player, tickSchedule, trainingDummy, tree, world,
+  groundItem, inventorySlot, player, playerPos, tickSchedule, trainingDummy, tree, world,
   playStats,
   inviteCode, friend, trade, socialEvent,
   giant, giantContribution, giantEvent,
@@ -49,5 +49,7 @@ export const spacetimedb = schema({
   pendingDeposit,
   dailyActivity,
   idleState,
+  // Appended: a new table (lib/playerStore.ts) at the end.
+  playerPos,
 });
 export default spacetimedb;

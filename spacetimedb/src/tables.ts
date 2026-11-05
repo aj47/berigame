@@ -25,6 +25,9 @@ export const world = table(
     id: t.u8().primaryKey(),
     tick: t.u32(),
     tickStartedAt: t.timestamp(),
+    // Appended columns: new columns must go last and carry a default.
+    /** Characters online at the end of this tick (any region): the global "N online" without subscribing to every player. */
+    online: t.u32().default(0),
   }
 );
 
@@ -46,7 +49,8 @@ export const player = table(
   {
     identity: t.identity().primaryKey(),
     name: t.string(),
-    online: t.bool(),
+    /** Indexed: the tick and admission read the online characters, never every stored one (lib/activePlayers.ts). */
+    online: t.bool().index('btree'),
     /** Open connections for this identity (multiple tabs). Offline only when it hits 0. */
     connections: t.u8(),
     lastSeenAt: t.timestamp(),
@@ -62,8 +66,8 @@ export const player = table(
     // vitals
     hp: t.u8(),
     maxHp: t.u8(),
-    /** shared/sim PlayerState */
-    state: t.u8(),
+    /** shared/sim PlayerState. Indexed: the tick finds offline characters awaiting respawn. */
+    state: t.u8().index('btree'),
     respawnTick: t.u32(),
 
     // combat
@@ -103,6 +107,41 @@ export const player = table(
   }
 );
 
+/**
+ * The fast-changing half of an online character: where it stands, where it is
+ * walking and its per-tick input counter. The tick rewrites this narrow row
+ * every tick a character moves instead of the whole `player` row, so a step
+ * costs every viewer ~70 bytes instead of ~170, and `player` is written only
+ * when something else about the character changes (lib/playerStore.ts).
+ *
+ * A row exists exactly while its character is online (inserted on connect or
+ * on the first write after a publish, folded back into `player` and deleted
+ * when it goes offline), so a box query on this table is the "online players
+ * here" query. While a row exists it is authoritative for these columns and
+ * `player.x/z/facing/targetX/targetZ/lastInputTick/inputsThisTick` hold the
+ * values of the last `player` write; offline, `player` holds them.
+ * `region` mirrors `player.region` (both written when it changes).
+ */
+export const playerPos = table(
+  {
+    name: 'player_pos',
+    public: true,
+  },
+  {
+    identity: t.identity().primaryKey(),
+    region: t.string(),
+    x: t.i32(),
+    z: t.i32(),
+    facing: t.u8(),
+    targetX: t.option(t.i32()),
+    targetZ: t.option(t.i32()),
+    lastInputTick: t.u32(),
+    inputsThisTick: t.u8(),
+    /** shared/sim/interest.ts playerCell(region, x, z): clients subscribe `WHERE cell = K` per cell around them (0 on a row from before it: the tick fills it in). */
+    cell: t.u32().default(0).index('btree'),
+  }
+);
+
 /** Public so clients can subscribe, but a visibility filter restricts rows to their owner. */
 export const inventorySlot = table(
   { name: 'inventory_slot', public: true },
@@ -123,10 +162,14 @@ export const groundItem = table(
     quantity: t.u8(),
     x: t.i32(),
     z: t.i32(),
-    droppedBy: t.identity(),
+    /** Indexed so `dropped_by = :sender AND dropped_on_death = true` (your defeat bag) is an index point SpacetimeDB can prune by. */
+    droppedBy: t.identity().index('btree'),
     droppedTick: t.u32(),
     expiresTick: t.u32(),
     droppedOnDeath: t.bool(),
+    // Appended columns: new columns must go last and carry a default.
+    /** shared/sim/interest.ts nodeCell(x, z), for per-cell subscriptions (0 on a row from before it: the tick fills it in). */
+    cell: t.u32().default(0).index('btree'),
   }
 );
 
@@ -142,6 +185,8 @@ export const tree = table(
     // Appended columns: new columns must go last and carry a default.
     /** shared/sim NodeKind: 0 berry tree, 1 driftwood pile, 2 tide rock. */
     kind: t.u8().default(0),
+    /** shared/sim/interest.ts nodeCell(x, z), for per-cell subscriptions (0 on a row from before it: the tick fills it in). */
+    cell: t.u32().default(0).index('btree'),
   }
 );
 
@@ -149,7 +194,8 @@ export const chatMessage = table(
   { name: 'chat_message', public: true },
   {
     id: t.u64().primaryKey().autoInc(),
-    sender: t.identity(),
+    /** Indexed: the three-second limit reads only the sender's own lines (reducers/chat.ts). */
+    sender: t.identity().index('btree'),
     text: t.string(),
     tick: t.u32(),
     sentAt: t.timestamp(),
@@ -176,6 +222,12 @@ export const combatEvent = table(
     /** Hit: the attacker's weapon at swing time ('' = punch). HarvestDone / ItemFound: the item gained. */
     itemId: t.string(),
     defenderHp: t.u8(),
+    // Appended columns: new columns must go last and carry a default.
+    /** The tile where it happened, for area subscriptions (shared/sim/interest.ts); -1, -1 = global. */
+    x: t.i32().default(-1),
+    z: t.i32().default(-1),
+    /** shared/sim/interest.ts eventCell: what clients subscribe by (0 = world-wide). */
+    cell: t.u32().default(0),
   }
 );
 
@@ -209,6 +261,12 @@ export const dummyEvent = table(
     /** HP after the hit (maxHp again when the blow reset it). */
     hp: t.u8(),
     reset: t.bool(),
+    // Appended columns: new columns must go last and carry a default.
+    /** The dummy's tile, for area subscriptions; -1, -1 = global. */
+    x: t.i32().default(-1),
+    z: t.i32().default(-1),
+    /** shared/sim/interest.ts eventCell: what clients subscribe by (0 = world-wide). */
+    cell: t.u32().default(0),
   }
 );
 
@@ -219,6 +277,12 @@ export const emoteEvent = table(
     tick: t.u32(),
     player: t.identity(),
     emote: t.u8(),
+    // Appended columns: new columns must go last and carry a default.
+    /** The emoting player's tile, for area subscriptions; -1, -1 = global. */
+    x: t.i32().default(-1),
+    z: t.i32().default(-1),
+    /** shared/sim/interest.ts eventCell: what clients subscribe by (0 = world-wide). */
+    cell: t.u32().default(0),
   }
 );
 
@@ -406,6 +470,9 @@ export const giantEvent = table(
     hp: t.u32(),
     x: t.i32(),
     z: t.i32(),
+    // Appended columns: new columns must go last and carry a default.
+    /** shared/sim/interest.ts eventCell of the Giant's tile; 0 (world-wide) for Announce / Wake / Sleep (kind >= 7). */
+    cell: t.u32().default(0),
   }
 );
 /**

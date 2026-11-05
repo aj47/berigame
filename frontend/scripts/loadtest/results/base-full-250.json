@@ -1,0 +1,245 @@
+{
+  "label": "baseline 2a59ed6 cap4096",
+  "startedAt": "2026-10-20T03:26:46.109Z",
+  "config": {
+    "n": 250,
+    "mode": "full",
+    "db": "berigame-base",
+    "uri": "ws://127.0.0.1:3000",
+    "seconds": 60,
+    "warmup": 10,
+    "workers": 5,
+    "perWorker": 50,
+    "batch": 10,
+    "batchMs": 500,
+    "think": 2500,
+    "compression": "gzip",
+    "scatter": true
+  },
+  "machine": {
+    "cpus": 10,
+    "model": "Apple M1 Pro",
+    "memGb": 16,
+    "node": "v24.1.0",
+    "platform": "darwin"
+  },
+  "connections": {
+    "requested": 250,
+    "connected": 250,
+    "failed": 0,
+    "errors": {},
+    "rampSec": 3.8,
+    "joinMsP50": 81,
+    "joinMsP95": 685,
+    "dropsDuringRun": 0,
+    "measuredClients": 250
+  },
+  "tick": {
+    "targetPerSec": 1.67,
+    "ratePerSec": 1.6,
+    "rateVsTarget": 0.96,
+    "intervalMsP50": 600,
+    "intervalMsP95": 692,
+    "intervalMsMax": 1191,
+    "lagMsP50": 244,
+    "lagMsP95": 5970,
+    "lagMsP99": 8836,
+    "lagSamples": 25289,
+    "lagTimeline": [
+      {
+        "fromSec": 0,
+        "p50": 134,
+        "p95": 398,
+        "max": 549
+      },
+      {
+        "fromSec": 5,
+        "p50": 114,
+        "p95": 259,
+        "max": 339
+      },
+      {
+        "fromSec": 10,
+        "p50": 108,
+        "p95": 169,
+        "max": 242
+      },
+      {
+        "fromSec": 15,
+        "p50": 142,
+        "p95": 404,
+        "max": 590
+      },
+      {
+        "fromSec": 20,
+        "p50": 122,
+        "p95": 209,
+        "max": 272
+      },
+      {
+        "fromSec": 25,
+        "p50": 173,
+        "p95": 520,
+        "max": 937
+      },
+      {
+        "fromSec": 30,
+        "p50": 492,
+        "p95": 2102,
+        "max": 3823
+      },
+      {
+        "fromSec": 35,
+        "p50": 702,
+        "p95": 4023,
+        "max": 6010
+      },
+      {
+        "fromSec": 40,
+        "p50": 1194,
+        "p95": 5881,
+        "max": 7826
+      },
+      {
+        "fromSec": 45,
+        "p50": 835,
+        "p95": 7127,
+        "max": 11508
+      },
+      {
+        "fromSec": 50,
+        "p50": 1230,
+        "p95": 7186,
+        "max": 13591
+      },
+      {
+        "fromSec": 55,
+        "p50": 602,
+        "p95": 7057,
+        "max": 9614
+      },
+      {
+        "fromSec": 60,
+        "p50": 3990,
+        "p95": 9413,
+        "max": 11023
+      },
+      {
+        "fromSec": 65,
+        "p50": 1531,
+        "p95": 4640,
+        "max": 5239
+      }
+    ],
+    "lagByWorker": [
+      {
+        "worker": 1,
+        "p50": 194,
+        "p95": 770,
+        "loopDelayP95Ms": 97.4,
+        "cpuCores": 0.39
+      },
+      {
+        "worker": 3,
+        "p50": 192,
+        "p95": 768,
+        "loopDelayP95Ms": 98.8,
+        "cpuCores": 0.39
+      },
+      {
+        "worker": 0,
+        "p50": 369,
+        "p95": 5087,
+        "loopDelayP95Ms": 82.8,
+        "cpuCores": 0.34
+      },
+      {
+        "worker": 2,
+        "p50": 483,
+        "p95": 8046,
+        "loopDelayP95Ms": 87.2,
+        "cpuCores": 0.36
+      },
+      {
+        "worker": 4,
+        "p50": 474,
+        "p95": 7028,
+        "loopDelayP95Ms": 84.9,
+        "cpuCores": 0.36
+      }
+    ]
+  },
+  "perClientIn": {
+    "wireKBpsMean": 45.7,
+    "wireKBpsP50": 45.7,
+    "wireKBpsP95": 46.6,
+    "wireKBpsMax": 46.8,
+    "rawKBpsMean": 104.5,
+    "rawKBpsP95": 106.7,
+    "msgsPerSecMean": 39.3,
+    "msgsPerSecP95": 40.2
+  },
+  "serverEgress": {
+    "wireMBps": 11.15,
+    "rawMBps": 25.52
+  },
+  "reducers": {
+    "rttMs": {
+      "setTarget": {
+        "n": 2620,
+        "p50": 36.4,
+        "p95": 3194.6
+      },
+      "startHarvest": {
+        "n": 727,
+        "p50": 21.5,
+        "p95": 1023.8
+      },
+      "attack": {
+        "n": 408,
+        "p50": 32.7,
+        "p95": 2711.6
+      },
+      "emote": {
+        "n": 364,
+        "p50": 27,
+        "p95": 1908.1
+      },
+      "sendChat": {
+        "n": 314,
+        "p50": 38.8,
+        "p95": 2277.9
+      }
+    },
+    "moveEffectMsP50": 437.6,
+    "moveEffectMsP95": 3405.6,
+    "moveEffectSamples": 2626,
+    "outcomes": {
+      "setTarget: ok": 2620,
+      "startHarvest: ok": 727,
+      "attack: ok": 408,
+      "emote: ok": 364,
+      "attack: They are protected for # more seconds. Invite them to a friendly duel ": 44,
+      "sendChat: ok": 314,
+      "attack: No fighting in Clatterhorn's Glade": 23,
+      "startHarvest: Thorny brambles — you need a sturdy stick to push through": 1,
+      "setTarget: you are dead": 3,
+      "sendChat: wait three seconds between messages": 12,
+      "attack: target unavailable": 5,
+      "attack: you are dead": 2,
+      "startHarvest: you are dead": 1
+    }
+  },
+  "server": {
+    "pid": 6885,
+    "cpuCoresMean": 1.22,
+    "cpuCoresMax": 1.78,
+    "rssMbMax": 577.6,
+    "note": "whole spacetimedb-standalone process (all databases on the server)"
+  },
+  "loadgen": {
+    "cpuCores": 1.84,
+    "loopDelayP95Ms": 98.8,
+    "resubscribes": 0
+  }
+}

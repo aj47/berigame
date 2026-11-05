@@ -1,0 +1,9 @@
+/* Island Ledger: reuses the crafting card styles (crafting.css). */
+.ledger-summary { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 0 6px; font-size:13px; }
+.ledger-seals { display:inline-flex; align-items:center; gap:4px; }
+.ledger-seals img { width:22px; height:22px; object-fit:contain; }
+.ledger-seals strong { color:#8b392e; font-size:14px; }
+.ledger-reset { color:var(--ink-soft); font-size:12px; text-align:right; }
+.ledger-panel .ledger-hint { margin:0 0 8px; color:var(--ink-soft); font-size:12px; line-height:1.4; }
+.ledger-commission.is-done { opacity:.7; border-color:#6f9a5a; }
+.ledger-commission.is-done .craft-recipe-heading button { background:#e3edce; color:#355624; }

@@ -1,7 +1,24 @@
 /** HTTP work budgets. New-character creation cannot exhaust the renewal budget. */
-/** A whole world (MAX_ONLINE_PLAYERS 256) may be agents. */
-export const MAX_AGENT_SESSIONS = 250;
-/** Every agent session at its full action and read budgets, with headroom for browser play. */
+/**
+ * Agent sessions one gateway process or Durable Object hosts. Each session keeps only its own socket and private
+ * rows; the world cache is one shared observer per host (game.ts ConnectionScope), so this is socket- and
+ * CPU-bound, not memory-bound (docs/AGENT_API.md "Session shards").
+ */
+export const MAX_AGENT_SESSIONS_PER_SHARD = 250;
+/** Session shards when the Worker's AGENT_SHARDS var is unset. 0 would host every session in the coordinator, as before. */
+export const DEFAULT_AGENT_SHARDS = 8;
+/** Session tokens carry their shard as one base64url character, so at most 64 shards. */
+export const MAX_AGENT_SHARDS = 64;
+/** AGENT_SHARDS as a shard count: an integer 0..64, else the default. */
+export function agentShards(value: string | number | undefined): number {
+  const n = Number(value ?? DEFAULT_AGENT_SHARDS);
+  return Number.isInteger(n) && n >= 0 && n <= MAX_AGENT_SHARDS ? n : DEFAULT_AGENT_SHARDS;
+}
+/** Agent sessions a deployment can hold: per-shard cap x shards (one host when unsharded). */
+export const agentSessionCapacity = (shards: number) => MAX_AGENT_SESSIONS_PER_SHARD * Math.max(1, shards);
+/** 8 x 250 = 2000 agent sessions. The world's MAX_ONLINE_PLAYERS still caps who is online at once. */
+export const MAX_AGENT_SESSIONS = agentSessionCapacity(DEFAULT_AGENT_SHARDS);
+/** Per host: every session it holds at its full action and read budgets, with headroom for browser play. */
 export const REQUEST_BUDGET = { burst: 4096, perSecond: 2560 };
 export const JOIN_BUDGET = { burst: 256, perSecond: 8 };
 export const NETWORK_JOIN_BUDGET = { burst: 256, perSecond: 4 };

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('cloudflare:workers', () => ({ DurableObject: class {
@@ -12,6 +12,7 @@ import worker, { AgentGateway } from '../../cloudflare/worker';
 import { createGameService } from '../../agent-api/game';
 import { ACTIONS } from '../../agent-api/contract';
 import { VIEW_URI } from '../../cloudflare/mcp';
+import { gatewayObjects } from './gatewayObjects';
 
 const databases: DatabaseSync[] = [];
 afterEach(() => { for (const db of databases.splice(0)) db.close(); vi.useRealTimers(); vi.clearAllMocks(); });
@@ -29,11 +30,6 @@ const sampleState = (tile = { x: 25, z: 25 }) => ({
 });
 
 function fixture() {
-  const db = new DatabaseSync(':memory:'); databases.push(db);
-  const sql = { exec(query: string, ...args: any[]) {
-    const rows = db.prepare(query).all(...args);
-    return { toArray: () => rows, [Symbol.iterator]: () => rows[Symbol.iterator]() };
-  } };
   let identity = 0;
   const session = { state: vi.fn(() => sampleState()), action: vi.fn(async () => ({ destination: { x: 30, z: 22 } })), suspend: vi.fn(), close: vi.fn() };
   const service = { ready: () => true, close: vi.fn(),
@@ -45,8 +41,10 @@ function fixture() {
   const env: any = { GATEWAY_CREDENTIAL: JSON.stringify({ uri: 'wss://test', database: 'test' }), SPACETIME_URI: 'wss://test', SPACETIME_DB: 'test', PUBLIC_ORIGIN: 'https://game.test',
     EDGE_LIMIT: { limit: vi.fn(async () => ({ success: true })) }, ADMIN_TOKEN: 'operator-test',
     ASSETS: { fetch: vi.fn(async () => new Response('# BeriGame agent instructions')) } };
-  const gateway = new AgentGateway({ storage: { sql, transactionSync: (fn: () => unknown) => fn(), setAlarm: vi.fn(), deleteAlarm: vi.fn(), sync: vi.fn() } } as any, env);
-  env.AGENT_GATEWAY = { idFromName: () => 'test', get: () => gateway };
+  // The coordinator (MCP keys) and two session shards (the agent sessions MCP tools play through).
+  env.AGENT_SHARDS = '2';
+  const objects = gatewayObjects(AgentGateway, env, databases);
+  const { sql } = objects.home;
   let id = 0;
   const rpc = async (method: string, params: unknown = {}, headers: Record<string, string> = {}) => {
     const response = await worker.fetch(new Request('https://game.test/mcp', { method: 'POST',
@@ -54,7 +52,7 @@ function fixture() {
     return { status: response.status, body: await response.json() as any };
   };
   const call = async (name: string, args: Record<string, unknown> = {}) => (await rpc('tools/call', { name, arguments: args })).body.result;
-  return { sql, session, service, env, rpc, call };
+  return { sql, objects, session, service, env, rpc, call };
 }
 
 describe('BeriGame MCP server', () => {
@@ -95,6 +93,9 @@ describe('BeriGame MCP server', () => {
     expect(stored).toHaveLength(1);
     expect(stored[0].payload).not.toMatch(/bgs_|bgr_/);
     expect(f.session.action).toHaveBeenCalledWith('name', { name: 'Pip' });
+    // The character's session lives in a shard; the coordinator keeps only the MCP key and renewal.
+    expect(f.sql.exec("SELECT * FROM sessions WHERE kind = 'agent'").toArray()).toHaveLength(0);
+    expect(f.objects.all("SELECT * FROM sessions WHERE kind = 'agent'")).toHaveLength(1);
 
     const moved = await f.call('act', { player_key: key, action: 'move', args: { x: 30, z: 22 } });
     expect(moved.isError).toBeUndefined();
@@ -110,7 +111,7 @@ describe('BeriGame MCP server', () => {
     const f = fixture();
     const key = (await f.call('join_game')).structuredContent.player_key;
     // Ten idle minutes: the gateway reaps the session; the renewal token still returns the character.
-    f.sql.exec('UPDATE sessions SET last_seen = ?', Date.now() - 11 * 60_000);
+    f.objects.all('UPDATE sessions SET last_seen = ?', Date.now() - 11 * 60_000);
     const look = await f.call('look', { player_key: key });
     expect(look.isError).toBeUndefined();
     expect(f.service.renew).toHaveBeenCalledWith('1'.padStart(64, '0'), 3600, true);

@@ -9,6 +9,7 @@ import { claimStatus, type Claim, type Container, type GroundBag, type Profile }
 import { DISCIPLINES } from '../../../shared/sim/frontier/catalog';
 import { hex } from './players';
 import type { Ctx } from './types';
+import { loadPlayer, allPlayers } from './playerStore';
 
 /**
  * Read-only snapshots for the owner's admin panel (docs/ANALYTICS.md), served
@@ -95,7 +96,7 @@ export function adminSnapshot(ctx: Ctx, requestedDays: number) {
     lifetime.set(row.identity, entry);
   }
 
-  const players = Array.from(ctx.db.player.iter(), (p) => {
+  const players = allPlayers(ctx).map((p) => {
     const id = hex(p.identity);
     const s = stats.get(id);
     const profile = profiles.get(id);
@@ -186,7 +187,7 @@ export function adminSnapshot(ctx: Ctx, requestedDays: number) {
 export function adminPlayer(ctx: Ctx, identity: Identity) {
   const now = nowMs(ctx);
   const id = hex(identity);
-  const p = ctx.db.player.identity.find(identity);
+  const p = loadPlayer(ctx, identity);
   if (!p) throw new SenderError('no such character');
   const s = ctx.db.playStats.identity.find(identity);
   const grant = ctx.db.playerGrant.identity.find(identity);

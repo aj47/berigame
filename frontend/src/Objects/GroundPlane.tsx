@@ -5,7 +5,8 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { MOUSE_TAP_RADIUS, TOUCH_TAP_RADIUS, holdState, openMenuNear } from '../Components/3D/tapAssist';
 import { Mesh, MeshBasicMaterial, Plane, PlaneGeometry, Raycaster, ShaderMaterial, Vector2, Vector3, UniformsLib, UniformsUtils } from 'three';
 import { envTime } from '../Components/3D/envArt';
-import { terrainGeometry, terrainMaterial, coastTexture } from '../Components/3D/islandTerrainArt';
+import { getCoastTexture, refineCoastTexture } from '../Components/3D/islandTerrainArt';
+import TerrainChunks from '../Components/3D/world/TerrainChunks';
 import IslandLandmarks from '../Components/3D/IslandLandmarks';
 import React, { useEffect, useMemo, useRef } from 'react';
 import {
@@ -26,7 +27,7 @@ import { useUserInputStore } from '../store';
 const oceanGeo = new PlaneGeometry(720, 720);
 const oceanMat = new ShaderMaterial({
   fog: true,
-  uniforms: UniformsUtils.merge([UniformsLib.fog, { uTime: { value: 0 }, uCoast: { value: coastTexture }, uMapOrigin: {value:new Vector2(-.5,-.5)}, uMapSize: {value:new Vector2(GRID_SIZE,GRID_SIZE)} }]),
+  uniforms: UniformsUtils.merge([UniformsLib.fog, { uTime: { value: 0 }, uCoast: { value: null }, uMapOrigin: {value:new Vector2(-.5,-.5)}, uMapSize: {value:new Vector2(GRID_SIZE,GRID_SIZE)} }]),
   vertexShader: `varying vec2 vW;
     #include <fog_pars_vertex>
     void main(){
@@ -63,8 +64,13 @@ homeOceanMat.uniforms.uTime=envTime;
 homeOceanMat.uniforms.uCoast.value=homeCoastTexture;
 homeOceanMat.uniforms.uMapOrigin.value=new Vector2(-.5,MEADOW_OFFSET.z-.5);
 homeOceanMat.uniforms.uMapSize.value=new Vector2(HOME_GRID.width,HOME_GRID.height);
-/** The ocean plane, shaded around the island and the Boulders. */
-export const Ocean = ({connected=false}:{connected?:boolean}) => <mesh rotation={[-Math.PI / 2, 0, 0]} position={[100, -0.34, 40]} geometry={oceanGeo} material={connected?homeOceanMat:oceanMat} />;
+/** The ocean plane, shaded around the island and the Boulders. The coast texture is built on first mount. */
+export const Ocean = ({connected=false}:{connected?:boolean}) => {
+  if (!connected && !oceanMat.uniforms.uCoast.value) oceanMat.uniforms.uCoast.value = getCoastTexture();
+  // The shore is refined a few milliseconds a frame until it is exact (islandTerrainArt.ts).
+  useFrame(() => { if (!connected) refineCoastTexture(); });
+  return <mesh rotation={[-Math.PI / 2, 0, 0]} position={[100, -0.34, 40]} geometry={oceanGeo} material={connected?homeOceanMat:oceanMat} />;
+};
 
 /** A charge, spin or drum is telegraphed, or the swarm runs. */
 export function clatterHazardLive(row: ClatterRowLike | null | undefined): boolean {
@@ -205,7 +211,7 @@ const GroundPlane = () => {
   };
   return <>
     <GroundClickBindings />
-    <mesh name="land_mesh" onClick={onClick} geometry={terrainGeometry} material={terrainMaterial} />
+    <TerrainChunks onClick={onClick} />
     <IslandLandmarks onGroundClick={onClick} />
     <Ocean connected={expansionEnabled} />
     <ClatterDodgeHover />

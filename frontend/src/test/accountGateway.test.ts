@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('cloudflare:workers', () => ({ DurableObject: class {
@@ -10,17 +10,13 @@ vi.mock('../../cloudflare/socket', () => ({ openCloudflareSocket: vi.fn() }));
 vi.mock('../../agent-api/game', () => ({ createGameService: vi.fn(), deadline: (promise: Promise<any>) => promise }));
 import worker, { AgentGateway } from '../../cloudflare/worker';
 import { createGameService } from '../../agent-api/game';
+import { gatewayObjects } from './gatewayObjects';
 
 const databases: DatabaseSync[] = [];
 const realFetch = globalThis.fetch;
 afterEach(() => { for (const db of databases.splice(0)) db.close(); vi.clearAllMocks(); globalThis.fetch = realFetch; });
 
 function fixture(config: Record<string, unknown> = {}) {
-  const db = new DatabaseSync(':memory:'); databases.push(db);
-  const sql = { exec(query: string, ...args: any[]) {
-    const rows = db.prepare(query).all(...args);
-    return { toArray: () => rows, [Symbol.iterator]: () => rows[Symbol.iterator]() };
-  } };
   let identity = 0;
   const service = { ready: () => true, close: vi.fn(),
     provision: vi.fn(async () => { const id = (++identity).toString(16).padStart(64, '0'); return { identity: id, token: `character-${id}`, uri: 'wss://test', database: 'test' }; }),
@@ -33,8 +29,8 @@ function fixture(config: Record<string, unknown> = {}) {
   const email = { send: vi.fn(async (_message: any) => ({ messageId: 'm' })) };
   const env: any = { GATEWAY_CREDENTIAL: JSON.stringify({ uri: 'wss://test', database: 'test' }), SPACETIME_URI: 'wss://test', SPACETIME_DB: 'test', PUBLIC_ORIGIN: 'https://game.test',
     EDGE_LIMIT: { limit: vi.fn(async () => ({ success: true })) }, ADMIN_TOKEN: 'operator-test', EMAIL: email, EMAIL_FROM: 'login@game.test', ...config };
-  const gateway = new AgentGateway({ storage: { sql, transactionSync: (fn: () => unknown) => fn(), setAlarm: vi.fn(), deleteAlarm: vi.fn(), sync: vi.fn() } } as any, env);
-  env.AGENT_GATEWAY = { idFromName: () => 'test', get: () => gateway };
+  env.AGENT_SHARDS ??= '2';
+  const { sql } = gatewayObjects(AgentGateway, env, databases).home;
   const request = (path: string, { token, body, method = 'POST', ip = '192.0.2.1', cookie }: { token?: string; body?: unknown; method?: string; ip?: string; cookie?: string } = {}) =>
     worker.fetch(new Request(`https://game.test${path}`, {
       method, headers: { 'CF-Connecting-IP': ip, 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(cookie ? { Cookie: cookie } : {}) },
@@ -50,7 +46,7 @@ function fixture(config: Record<string, unknown> = {}) {
     expect(text).toContain(`https://game.test/play#login=${requestId}.${code}`);
     return { requestId, code, verify: (value = code) => request('/api/play/v1/account/email/verify', { ip, body: { requestId, code: value } }) };
   };
-  return { db, sql, service, env, email, request, join, emailLogin };
+  return { sql, service, env, email, request, join, emailLogin };
 }
 
 describe('player accounts', () => {

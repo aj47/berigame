@@ -25,7 +25,7 @@ async function fixture() {
     const timer=setTimeout(()=>reject(new Error('fixture timeout')),10000);
     const c=DbConnection.builder().withUri(process.env.SPACETIME_URI??'ws://127.0.0.1:3000').withDatabaseName(process.env.SPACETIME_DB??'berigame-graphics-review')
       .onConnectError((_ctx,e)=>{clearTimeout(timer);reject(e);})
-      .onConnect(c=>c.subscriptionBuilder().onApplied(()=>{clearTimeout(timer);resolve(c);}).onError((_ctx,e)=>{clearTimeout(timer);reject(e);}).subscribe([tables.player,tables.appearance])).build();
+      .onConnect(c=>c.subscriptionBuilder().onApplied(()=>{clearTimeout(timer);resolve(c);}).onError((_ctx,e)=>{clearTimeout(timer);reject(e);}).subscribe([tables.player, tables.playerPos,tables.appearance])).build();
     fixtures.push(c);
   });
 }

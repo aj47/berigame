@@ -2,6 +2,7 @@ import type { Identity } from 'spacetimedb';
 import { TICK_MS } from '../../../shared/sim';
 import type { ActivityCounter } from '../../../shared/sim/adminStats';
 import type { Ctx } from './types';
+import { onlinePlayers } from './activePlayers';
 
 /**
  * Daily activity counters for the admin panel (docs/ANALYTICS.md). Like
@@ -56,7 +57,7 @@ export function activityAction(ctx: Ctx, id: Identity, action: string): void {
  */
 export function activityHeartbeat(ctx: Ctx, T: number): void {
   if (T % ACTIVITY_SAMPLE_TICKS !== 0 || !ctx.db.dailyActivity) return;
-  for (const p of ctx.db.player.iter()) {
-    if (p.online && p.connections > 0) edit(ctx, p.identity, (row) => { row.playSeconds += SAMPLE_SECONDS; });
+  for (const p of onlinePlayers(ctx)) {
+    if (p.connections > 0) edit(ctx, p.identity, (row) => { row.playSeconds += SAMPLE_SECONDS; });
   }
 }

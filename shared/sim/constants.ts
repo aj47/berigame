@@ -5,8 +5,10 @@
  */
 
 // ---- World / grid -----------------------------------------------------------
-/** Server coordinates cover the original island, the Giant's headlands, Eastreach and the southern wilds. */
-export const GRID_SIZE = 128;
+/** Server coordinates cover the original island (0..127) and the Expanse's five biomes around it (expanse.ts). */
+export const GRID_SIZE = 256;
+/** The original island's corner: Bramblewild, Eastreach and the southern wilds keep every tile inside it. */
+export const ISLE_SIZE = 128;
 /** Historical core extent. Use isLandTile for the current coastline. */
 export const ISLAND_SIZE = 50;
 /** world = tile - TILE_ORIGIN. Integer world coords are tile centres. */

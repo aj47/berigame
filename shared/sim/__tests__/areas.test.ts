@@ -1,5 +1,6 @@
 import { canFindStick } from '../adventure';
 import { describe, expect, it } from 'vitest';
+import { FIRST_TIER_NODE_ID } from '../season';
 import {
   areaOf, brambleTiles, canEnter, enterRule, HEDGE_CROSSINGS, holdsItem, inGrace, inSafeRing, isBramble, isNewcomer, isSafe, ringOf,
 } from '../areas';
@@ -72,7 +73,8 @@ describe('one-way brambles: reachability', () => {
   });
 
   it('every Coast resource has a stickless route home, including either side of the river mouth', () => {
-    for(const node of M2_NODES.filter(t=>areaOf(t)==='coast')) {
+    // The hand-placed nodes; the tier nodes' routes are covered by season.test.ts and terrain.test.ts.
+    for(const node of M2_NODES.filter(t=>areaOf(t)==='coast' && t.id < FIRST_TIER_NODE_ID)) {
       const start=neighbors8(node).find(t=>!trees.has(tileKey(t)))!;
       expect(bfsPath(start,goalIsTile(SPAWN_TILE),trees,noStick)).not.toBeNull();
     }
@@ -149,5 +151,35 @@ describe('stick finds and safety helpers', () => {
     expect(isNewcomer({ state: alive, respawnTick: 0 }, 60)).toBe(false);
     expect(isSafe({ state: alive, respawnTick: 0, x: 26, z: 26 }, 60)).toBe(true);
     expect(isSafe({ state: alive, respawnTick: 0, x: 30, z: 26 }, 60)).toBe(false);
+  });
+});
+
+describe('canEnter masks', () => {
+  it('match the shapes they are computed from, for every tile and neighbour', async () => {
+    const { canEnter, isBramble, isBoulderLine, inBoulders } = await import('../areas');
+    const { insideGrove } = await import('../terrain');
+    const { isLandTile } = await import('../grid');
+    const { GRID_SIZE } = await import('../constants');
+    const shapes = (from: { x: number; z: number }, to: { x: number; z: number }, stick: boolean, club: boolean) => {
+      if (!isLandTile(to)) return false;
+      if (isBramble(to)) return stick || !insideGrove(from);
+      if (isBoulderLine(to)) return club || inBoulders(from);
+      return true;
+    };
+    let checked = 0;
+    for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) {
+      const from = { x, z };
+      for (const [dx, dz] of [[1, 0], [0, 1], [1, 1], [-1, 1]]) {
+        const to = { x: x + dx, z: z + dz };
+        for (const [stick, club] of [[false, false], [true, false], [false, true]] as const) {
+          if (canEnter(from, to, stick, club) !== shapes(from, to, stick, club)) throw new Error(`${x},${z} -> ${to.x},${to.z} ${stick} ${club}`);
+          if (canEnter(to, from, stick, club) !== shapes(to, from, stick, club)) throw new Error(`${to.x},${to.z} -> ${x},${z} ${stick} ${club}`);
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBe(GRID_SIZE * GRID_SIZE * 4 * 3);
+    // Off the map or between tiles: the shapes are asked directly.
+    expect(canEnter({ x: 0, z: 0 }, { x: -1, z: 0 }, true, true)).toBe(false);
   });
 });

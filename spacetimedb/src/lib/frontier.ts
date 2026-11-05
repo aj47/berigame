@@ -23,7 +23,9 @@ import {
 import { PORTS, type RegionId } from "../../../shared/sim/frontier/catalog";
 import { readSlots, writeSlots } from "./inventory";
 import { canPlay } from "./access";
-import type { Ctx } from "./types";
+import { activePlayers } from "./activePlayers";
+import { allPlayers, loadPlayer, storePlayer } from "./playerStore";
+import type { Ctx, PlayerRow } from "./types";
 import { advanceRegionalInteractions } from './regionalInteractions';
 import { firstPlayedMs } from './stats';
 const PUBLIC = new Set<Kind>([
@@ -88,27 +90,65 @@ export function frontierRepository(ctx: Ctx): Repository {
     },
   };
 }
-export function frontierWorld(ctx: Ctx): World {
+/**
+ * Which characters a frontier World carries as actors.
+ *
+ * 'all' (the default): every stored character, for actions that look at
+ * offline ones too (a building may not go where any character stands,
+ * permissions name any known character) and for the owner's enable/disable.
+ *
+ * 'active': what the tick's advance() and the per-player region actions can
+ * affect: online characters, the dead (frontier respawns), offline holders of
+ * a combat target (lib/activePlayers.ts), every boat's crew (a sailing boat
+ * carries its offline crew) and any `extra` identity hex (an action's target).
+ * advance() treats a missing actor exactly like an offline one.
+ */
+export type FrontierScope = { scope: "all" } | { scope: "active"; extra?: readonly string[] };
+
+function frontierRows(ctx: Ctx, repo: Repository, scope: FrontierScope): PlayerRow[] {
+  if (scope.scope === "all") return allPlayers(ctx);
+  const rows = new Map<string, PlayerRow>();
+  for (const p of activePlayers(ctx)) rows.set(p.identity.toHexString(), p);
+  const add = (id: string) => {
+    if (rows.has(id) || !/^[0-9a-f]{64}$/i.test(id)) return;
+    const p = loadPlayer(ctx, Identity.fromString(id));
+    if (p) rows.set(id, p);
+  };
+  for (const boat of repo.all("boat")) for (const id of boat.crew) add(id);
+  for (const id of scope.extra ?? []) if (typeof id === "string") add(id);
+  return [...rows.keys()].sort().map((k) => rows.get(k)!);
+}
+
+export function frontierWorld(ctx: Ctx, scope: FrontierScope = { scope: "all" }): World {
   const repo = frontierRepository(ctx);
-  const actors: Actor[] = Array.from(ctx.db.player.iter()).map((p) => ({
-    id: p.identity.toHexString(),
-    region: (p.region || "bramblewild") as RegionId,
-    x: p.x,
-    z: p.z,
-    online: p.online && canPlay(ctx, p.identity),
-    alive: p.state === 0,
-    hp: p.hp,
-    bag: [],
-    weapon: p.weapon,
-    facing: p.facing,
-    inputStamp: `${p.lastInputTick}:${p.inputsThisTick}`,
-    target:
-      p.targetX === undefined ? undefined : { x: p.targetX, z: p.targetZ! },
-    hostile: p.hostile,
-    combat:
-      ctx.db.playerGrant.identity.find(p.identity)?.combat ??
-      !ctx.db.accessPolicy.id.find(0)?.requireAdmission,
-  }));
+  const policy = ctx.db.accessPolicy.id.find(0);
+  const actors: Actor[] = frontierRows(ctx, repo, scope).map((p) => {
+    const actor = {
+      id: p.identity.toHexString(),
+      region: (p.region || "bramblewild") as RegionId,
+      x: p.x,
+      z: p.z,
+      online: p.online && canPlay(ctx, p.identity, policy),
+      alive: p.state === 0,
+      hp: p.hp,
+      bag: [],
+      weapon: p.weapon,
+      facing: p.facing,
+      inputStamp: `${p.lastInputTick}:${p.inputsThisTick}`,
+      target:
+        p.targetX === undefined ? undefined : { x: p.targetX, z: p.targetZ! },
+      hostile: p.hostile,
+      combat: false,
+    } as Actor;
+    // Read on demand: only combat checks look at it, so a World of thousands costs no grant reads.
+    let combat: boolean | undefined;
+    Object.defineProperty(actor, "combat", {
+      enumerable: true, configurable: true,
+      get: () => (combat ??= ctx.db.playerGrant.identity.find(p.identity)?.combat ?? !policy?.requireAdmission),
+      set: (v: boolean) => { combat = v; },
+    });
+    return actor;
+  });
   let homeObstacles: Set<number> | undefined;
   return {
     repo,
@@ -118,7 +158,7 @@ export function frontierWorld(ctx: Ctx): World {
     bornAt(id) { return firstPlayedMs(ctx, Identity.fromString(id)); },
     homeBlocked(point) { return (homeObstacles ??= blockedTiles(ctx)).has(tileKey(point)); },
     homeStepRule(a) {
-      const row = ctx.db.player.identity.find(Identity.fromString(a.id))!;
+      const row = loadPlayer(ctx, Identity.fromString(a.id))!;
       const rule = playerEnterRule(ctx, row);
       return (from, to) => to.region !== "bramblewild" || rule(from.region === "bramblewild" ? from : HOME_JOIN.bramblewild, to);
     },
@@ -129,7 +169,7 @@ export function frontierWorld(ctx: Ctx): World {
         && !ctx.db.expeditionMember.identity.find(identity) && !duelFor(ctx, identity) && !carrying(ctx, identity);
     },
     movementSteps(a) {
-      const identity = Identity.fromString(a.id), row = ctx.db.player.identity.find(identity);
+      const identity = Identity.fromString(a.id), row = loadPlayer(ctx, identity);
       if (carrying(ctx, identity)) return 1;
       const p = repo.get('profile', a.id), now = Number(ctx.timestamp.microsSinceUnixEpoch / 1000n);
       if (a.hostile || row?.combatTarget || (p?.events.hostileUntil ?? 0) > now || (p?.nextAttack ?? 0) > now
@@ -138,7 +178,7 @@ export function frontierWorld(ctx: Ctx): World {
     },
     save(a) {
       const identity = Identity.fromString(a.id),
-        p = ctx.db.player.identity.find(identity);
+        p = loadPlayer(ctx, identity);
       if (!p) return;
       const next = {
         ...p,
@@ -184,7 +224,7 @@ export function frontierWorld(ctx: Ctx): World {
           "targetZ",
         ].some((key) => (next as any)[key] !== (p as any)[key])
       )
-        ctx.db.player.identity.update(next);
+        storePlayer(ctx, next);
       if (a.bag.length)
         writeSlots(ctx, identity, readSlots(ctx, identity), a.bag);
     },
@@ -323,7 +363,7 @@ export function ensureFrontierProfile(ctx: Ctx, repo: Repository) {
 export function tickFrontier(ctx: Ctx) {
   const repo = frontierRepository(ctx);
   if (!repo.get("config", "world")?.enabled) return;
-  const w = frontierWorld(ctx);
+  const w = frontierWorld(ctx, { scope: "active" });
   advance(w);
   advanceRegionalInteractions(ctx, w);
   if (w.repo.changed?.size) projectFrontier(ctx, w.repo);

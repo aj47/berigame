@@ -31,7 +31,7 @@ test("frontier HTTP contract rejects malformed nested commands as client errors"
     "{",
     "null",
     '{"action":"claim","admin":true}',
-    '{"action":"move","x":128,"z":4}',
+    '{"action":"move","x":256,"z":4}',
     '{"action":"specialize","disciplines":[0,0]}',
   ]) {
     assert.throws(

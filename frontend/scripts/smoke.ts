@@ -3,6 +3,8 @@
  * with the berigame module published. Run: npx tsx scripts/smoke.ts
  */
 import { DbConnection, tables, type EventContext } from '../src/module_bindings';
+// Live positions: player_pos merged into player rows (the server moves only player_pos for a step).
+import { playerView } from '../src/spacetime/playerView';
 import type { CombatEvent, Player } from '../src/module_bindings/types';
 import {
   areaOf, chebyshev, EventKind, FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, getItemDef, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, MAX_HP, MOVEMENT_STEPS_PER_TICK,
@@ -42,7 +44,7 @@ function connect(name: string, token?: string): Promise<Client> {
             resolve({ name, conn: c, identity: identity.toHexString(), token: tok, events });
           })
           .onError((_ctx, err) => { clearTimeout(timer); reject(err); })
-          .subscribe([tables.world, tables.player, tables.tree, tables.groundItem, tables.chatMessage, tables.inventorySlot, tables.combatEvent]);
+          .subscribe([tables.world, tables.player, tables.playerPos, tables.tree, tables.groundItem, tables.chatMessage, tables.inventorySlot, tables.combatEvent]);
       })
       .build();
   });
@@ -60,12 +62,12 @@ async function waitFor(label: string, pred: () => boolean, timeoutMs = 8_000): P
 }
 
 function me(c: Client): Player {
-  for (const p of c.conn.db.player.iter()) if (p.identity.toHexString() === c.identity) return p;
+  for (const p of playerView(c.conn).iter()) if (p.identity.toHexString() === c.identity) return p;
   throw new Error(`${c.name}: own player row missing`);
 }
 
 function other(c: Client, id: string): Player {
-  for (const p of c.conn.db.player.iter()) if (p.identity.toHexString() === id) return p;
+  for (const p of playerView(c.conn).iter()) if (p.identity.toHexString() === id) return p;
   throw new Error(`${c.name}: player ${id.slice(0, 6)} missing`);
 }
 
@@ -136,7 +138,7 @@ async function main() {
   // A freshly published database may not have run its first tick yet.
   await waitFor('both clients see a running world', () => tick(A) > 0 && tick(B) > 0, 10_000);
   check('both clients see the world row', tick(A) > 0 && tick(B) > 0, `tick=${tick(A)}`);
-  await waitFor('both clients see each other online', () => [...A.conn.db.player.iter()].some((p) => p.identity.toHexString() === B.identity && p.online) && [...B.conn.db.player.iter()].some((p) => p.identity.toHexString() === A.identity && p.online));
+  await waitFor('both clients see each other online', () => [...playerView(A.conn).iter()].some((p) => p.identity.toHexString() === B.identity && p.online) && [...playerView(B.conn).iter()].some((p) => p.identity.toHexString() === A.identity && p.online));
   check('both clients see each other online', true);
   check(`A spawned at 25,25 tired: ${FIRST_SPAWN_HP}/${MAX_HP} HP`, me(A).x === 25 && me(A).z === 25 && me(A).hp === FIRST_SPAWN_HP && me(A).maxHp === MAX_HP);
   check('a new character is in first-spawn grace until +300 ticks', inGrace(me(A), tick(A)) && Math.abs(me(A).respawnTick + RESPAWN_GRACE_TICKS - (tick(A) + FIRST_SPAWN_GRACE_TICKS)) <= 20,
@@ -370,7 +372,7 @@ async function main() {
 
   // --- a third, fresh player is protected ------------------------------------------
   const C = await connect('C');
-  await waitFor('A sees C online', () => [...A.conn.db.player.iter()].some((p) => p.identity.toHexString() === C.identity && p.online));
+  await waitFor('A sees C online', () => [...playerView(A.conn).iter()].some((p) => p.identity.toHexString() === C.identity && p.online));
   check(`C washes ashore at ${FIRST_SPAWN_HP} HP`, me(C).hp === FIRST_SPAWN_HP);
   check('C cannot be attacked in first-spawn grace', /protected|safe ring/.test(await rejection(() => A.conn.reducers.attack({ target: me(C).identity }))));
   C.conn.disconnect();

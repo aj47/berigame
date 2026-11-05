@@ -1,3 +1,4 @@
+import { GRID_SIZE } from './constants';
 /**
  * The exhaustive Spire pattern validator (FINAL_SPEC 3.9, 6.5): backward
  * induction over (tile, tick) for one pattern instance, ported from
@@ -189,6 +190,9 @@ export function spireAimClasses(): Tile[] {
   return aimCache.map((t) => ({ x: t.x, z: t.z }));
 }
 
+/** Row width of the tile keys the hash was published with (the grid was 128 wide). */
+const HASH_ROW = 128;
+
 /** The two fixed aims the hash expands every kind at. */
 export const SPIRE_HASH_AIMS: readonly Tile[] = [{ x: 77, z: 69 }, { x: 72, z: 58 }];
 
@@ -220,7 +224,8 @@ export function spirePatternTableHash(): string {
         if (bulletTileAt(b, i, k, at)) { byte(at.x); byte(at.z); }
       }
       if (s > 3) return;
-      for (let T = 0; T <= 40; T++) for (const key of [...bulletDangerKeys(b, T, inFloor)].sort((x, y) => x - y)) int(key);
+      // Keys are hashed in the 128-wide rows the table was first validated with, so growing the map changes nothing.
+      for (let T = 0; T <= 40; T++) for (const key of [...bulletDangerKeys(b, T, inFloor)].sort((x, y) => x - y)) int(Math.floor(key / GRID_SIZE) * HASH_ROW + (key % GRID_SIZE));
     });
   }
   for (let seed = 1; seed <= 8; seed++) for (let w = 0; w < 4; w++) for (let K = 3; K <= 6; K++) {

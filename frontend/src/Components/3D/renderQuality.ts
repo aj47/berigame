@@ -12,12 +12,14 @@ export interface QualityProfile {
   shadows: boolean;
   /** Birds, crabs and floating motes (AmbientLife). */
   ambientLife: boolean;
+  /** Other players drawn as full animated avatars; the rest of a crowd are simple figures (CrowdFigures). */
+  fullAvatars: number;
 }
 
 export const QUALITY: Record<GraphicsTier, QualityProfile> = {
-  low: { dpr: 0.75, shadows: false, ambientLife: false },
-  medium: { dpr: [1, 1.5], shadows: false, ambientLife: true },
-  high: { dpr: [1, 2], shadows: true, ambientLife: true },
+  low: { dpr: 0.75, shadows: false, ambientLife: false, fullAvatars: 24 },
+  medium: { dpr: [1, 1.5], shadows: false, ambientLife: true, fullAvatars: 48 },
+  high: { dpr: [1, 2], shadows: true, ambientLife: true, fullAvatars: 80 },
 };
 
 /** Pixel-ratio ceiling inside the Spire: a bullet hell stacks transparent layers, so fill rate is its cost. */

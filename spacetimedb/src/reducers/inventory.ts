@@ -55,7 +55,7 @@ export function eatFromSlot(ctx: Ctx, slot: number) {
       repo.put('profile', profile);
       projectFrontier(ctx, repo);
     }
-    emitEvent(ctx, { tick: T, kind: EventKind.Eat, attacker: p.identity, defender: p.identity, damage: p.hp - before, defenderHp: p.hp });
+    emitEvent(ctx, { tick: T, kind: EventKind.Eat, attacker: p.identity, defender: p.identity, damage: p.hp - before, defenderHp: p.hp, x: p.x, z: p.z });
     savePlayer(ctx, p);
 }
 export const eatBerry = spacetimedb.reducer({ slot: t.u8() }, (ctx, { slot }) => eatFromSlot(ctx, slot));

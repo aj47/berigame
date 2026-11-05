@@ -11,6 +11,7 @@ import { notify, notifyThrottled, readPair, writePair } from '../lib/social';
 import { unlockCosmetic } from '../lib/progress';
 import { mentorMilestone, recordInviter } from '../lib/mentor';
 import type { Ctx } from '../lib/types';
+import { onlinePlayers } from '../lib/activePlayers';
 import { onSpireFloor } from '../lib/spireGuards';
 
 function hasFriend(ctx: Ctx, owner: Identity, other: Identity): boolean {
@@ -84,7 +85,7 @@ export const redeemInvite = spacetimedb.reducer(
       : `Your friends list is full (${MAX_FRIENDS}), so ${inviter.name} was not added.`;
 
     let text: string;
-    const attacked = [...ctx.db.player.iter()].some((o) => o.online && o.hostile && sameId(o.combatTarget, p.identity));
+    const attacked = onlinePlayers(ctx).some((o) => o.hostile && sameId(o.combatTarget, p.identity));
     if ((p.region || 'bramblewild') !== 'bramblewild' || (inviter.region || 'bramblewild') !== 'bramblewild') {
       text = `${lead} Meet them by travelling to their region.`;
     } else if (onSpireFloor(p)) {

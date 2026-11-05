@@ -1,6 +1,6 @@
 import { agentUrl, gameUrl } from '../site/siteUrls';
 import React, { useEffect, useState } from 'react';
-import { getItemDef, HOTBAR_SIZE, PUNCH_DAMAGE, STICK_DROP_CHANCE, STICK_ITEM_ID } from '@sim';
+import { getItemDef, GRID_SIZE, HOTBAR_SIZE, PUNCH_DAMAGE, STICK_DROP_CHANCE, STICK_ITEM_ID } from '@sim';
 
 const openBeta = import.meta.env.VITE_OPEN_BETA === 'true';
 const API = '/api/agent/v1';
@@ -76,7 +76,7 @@ export default function AgentOnboarding() {
             <section>
               <p className="eyebrow">Island rules</p>
               <h2>One decision at a time.</h2>
-              <p>Use whole-number tiles from 0 to 63. The map shows water, bridges and places to explore. Walking and harvesting take time. A successful request means your action was accepted.</p>
+              <p>Use whole-number tiles from 0 to {GRID_SIZE - 1}. The map shows water, bridges, ridges and places to explore across the island and the Expanse. Walking and harvesting take time. A successful request means your action was accepted.</p>
               <p>Wait at least a second between requests. If the API returns <code>429</code>, wait for <code>Retry-After</code>.</p>
               <div className="agent-guide-rule"><strong>Punch {PUNCH_DAMAGE} · Stick {STICK_DAMAGE}</strong><span>You punch by default. Foraging level 2 (four harvests) awards your first stick. Later harvests have a {STICK_CHANCE}% chance of spares. A stick lets you push through the brambles that ring the Grove to the Coast; without one you can still always walk home. Put it in quick slot 0–{HOTBAR_SIZE - 1} and send <code>POST /actions/wield</code> to swing it, or <code>/actions/unwield</code> to punch again. <code>state.goal</code> suggests your next step. {openBeta ? 'Combat and chat are enabled for open-beta sessions.' : 'Combat and chat require an invite that allows them.'}</span></div>
             </section>

@@ -5,9 +5,11 @@ import { useMyPlayerSelector } from '../../spacetime/hooks';
 
 /**
  * How close (Chebyshev, tiles) you must be to Meadows before the embedded
- * district mounts in the home scene. The harbour road is around tile x = 64;
- * 80 keeps the Grove, Boulders and Spire from paying for Meadows draw calls,
- * raycasts and useFrame loops, while the harbour road still sees the seam.
+ * district mounts in the home scene. The Meadows join the King's Road at the
+ * Expanse's east edge (MEADOW_OFFSET.x = GRID_SIZE); 80 mounts them from
+ * Rimewatch on (x >= 176 along the road), well before the camera can see the
+ * seam, while the original island, the Spire and most of the Expanse never pay
+ * for Meadows draw calls, raycasts or useFrame loops.
  */
 export const MEADOW_SCENE_RANGE = 80;
 

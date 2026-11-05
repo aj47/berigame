@@ -14,6 +14,8 @@ import { hex } from './players';
 import { unlockCosmetic } from './progress';
 import { emitBossEvent, emitBossNotice, readBossConfig, sameRowShallow, u32 } from './rows';
 import type { ClatterhornCreditRow, ClatterhornRow, Ctx, PlayerRow } from './types';
+import { loadPlayer, storePlayer, allPlayers } from './playerStore';
+import { onlinePlayers } from './activePlayers';
 
 /**
  * Clatterhorn on the server (FINAL_SPEC 2, 5.3): one tick of payout batches,
@@ -43,7 +45,7 @@ const swingsAtBeetle = (p: PlayerRow) => p.pending === Pending.Clatterhorn && p.
  * then the row is deleted. The caller decrements `owedLeft`.
  */
 function payCredit(ctx: Ctx, T: number, c: ClatterhornCreditRow, loaded?: PlayerRow): void {
-  const p = loaded ?? ctx.db.player.identity.find(c.identity);
+  const p = loaded ?? loadPlayer(ctx, c.identity);
   if (p) {
     for (const item of CLATTER_REWARD.items) {
       giveItem(ctx, c.identity, item.itemId, item.quantity, p, T);
@@ -265,9 +267,9 @@ export function phaseClatterhorn(t: BossTick): void {
 /** Every player row still walking to or swinging at the beetle stops (direct writes; reducers only). */
 function dropAllSwingers(ctx: Ctx): void {
   const swingers: PlayerRow[] = [];
-  for (const p of ctx.db.player.iter()) if (p.pending === Pending.Clatterhorn) swingers.push(p);
+  for (const p of allPlayers(ctx)) if (p.pending === Pending.Clatterhorn) swingers.push(p);
   for (const p of swingers) {
-    ctx.db.player.identity.update({ ...p, pending: Pending.None, pendingId: 0n, targetX: undefined, targetZ: undefined });
+    storePlayer(ctx, { ...p, pending: Pending.None, pendingId: 0n, targetX: undefined, targetZ: undefined });
   }
 }
 
@@ -304,7 +306,7 @@ export function clatterDebug(ctx: Ctx, T: number, op: string, value: number): vo
       const step = stepClatterhorn(row, T, [{ ...at, order: 0, key: 1 }], cfg);
       ctx.db.clatterhorn.id.update(step.next!);
       let n = 0;
-      for (const p of ctx.db.player.iter()) {
+      for (const p of onlinePlayers(ctx)) {
         if (alive(p) && (p.region || 'bramblewild') === 'bramblewild' && inBossRect(p, CLATTER_GLADE) && !inGrace(p, T)) n++;
       }
       emitBossEvent(ctx, { tick: T, boss: BossId.Clatterhorn, kind: BossEventKind.ClatterWake, quantity: Math.max(1, n), ...at });

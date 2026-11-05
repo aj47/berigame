@@ -23,6 +23,7 @@ import { FrontierSync } from '../frontier/useFrontier';
 import BossSync from '../bosses/BossSync';
 import { isPlayerVisible } from '../bosses/selectors';
 import { useBossStore } from '../bosses/bossStore';
+import { playerView } from './playerView';
 
 /**
  * Listen to one table of the connection's own world subscription. Unlike
@@ -51,7 +52,8 @@ function useRowListener(accessor: string, onInsert?: (row: any) => void, onUpdat
  * overworld, or another run seen from inside) never reach the FX stores.
  */
 function combatEventVisible(conn: any, row: CombatEvent): boolean {
-  const players = conn?.db?.player?.identity;
+  // Live positions (playerView.ts): the server moves only the player_pos row for a step.
+  const players = conn?.db?.player ? playerView(conn).identity : undefined;
   const myId = conn?.identity;
   if (!players || !myId) return true;
   const viewer = players.find(myId) ?? null;

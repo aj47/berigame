@@ -69,7 +69,7 @@ function fixture(token?: string, crowd = true) {
       .onConnect((c) => {
         c.subscriptionBuilder().onApplied(() => { clearTimeout(timer); resolve(c); })
           .onError((_ctx, error) => { clearTimeout(timer); reject(error); })
-          .subscribe([tables.world, tables.player, tables.appearance]);
+          .subscribe([tables.world, tables.player, tables.playerPos, tables.appearance]);
       }).build();
     connections.push(connection);
     if (crowd) fixtures.push(connection);

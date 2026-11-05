@@ -154,6 +154,9 @@ export const CombatEvent = __t.object("CombatEvent", {
   damage: __t.u8(),
   itemId: __t.string(),
   defenderHp: __t.u8(),
+  x: __t.i32(),
+  z: __t.i32(),
+  cell: __t.u32(),
 });
 export type CombatEvent = __Infer<typeof CombatEvent>;
 
@@ -184,6 +187,9 @@ export const DummyEvent = __t.object("DummyEvent", {
   itemId: __t.string(),
   hp: __t.u8(),
   reset: __t.bool(),
+  x: __t.i32(),
+  z: __t.i32(),
+  cell: __t.u32(),
 });
 export type DummyEvent = __Infer<typeof DummyEvent>;
 
@@ -197,6 +203,9 @@ export const EmoteEvent = __t.object("EmoteEvent", {
   tick: __t.u32(),
   player: __t.identity(),
   emote: __t.u8(),
+  x: __t.i32(),
+  z: __t.i32(),
+  cell: __t.u32(),
 });
 export type EmoteEvent = __Infer<typeof EmoteEvent>;
 
@@ -351,6 +360,7 @@ export const GiantEvent = __t.object("GiantEvent", {
   hp: __t.u32(),
   x: __t.i32(),
   z: __t.i32(),
+  cell: __t.u32(),
 });
 export type GiantEvent = __Infer<typeof GiantEvent>;
 
@@ -376,6 +386,7 @@ export const GroundItem = __t.object("GroundItem", {
   droppedTick: __t.u32(),
   expiresTick: __t.u32(),
   droppedOnDeath: __t.bool(),
+  cell: __t.u32(),
 });
 export type GroundItem = __Infer<typeof GroundItem>;
 
@@ -503,6 +514,20 @@ export const PlayerGrant = __t.object("PlayerGrant", {
   chat: __t.bool(),
 });
 export type PlayerGrant = __Infer<typeof PlayerGrant>;
+
+export const PlayerPos = __t.object("PlayerPos", {
+  identity: __t.identity(),
+  region: __t.string(),
+  x: __t.i32(),
+  z: __t.i32(),
+  facing: __t.u8(),
+  targetX: __t.option(__t.i32()),
+  targetZ: __t.option(__t.i32()),
+  lastInputTick: __t.u32(),
+  inputsThisTick: __t.u8(),
+  cell: __t.u32(),
+});
+export type PlayerPos = __Infer<typeof PlayerPos>;
 
 export const PlayerSkill = __t.object("PlayerSkill", {
   identity: __t.identity(),
@@ -645,6 +670,7 @@ export const Tree = __t.object("Tree", {
   cooldownUntilTick: __t.u32(),
   harvester: __t.option(__t.identity()),
   kind: __t.u8(),
+  cell: __t.u32(),
 });
 export type Tree = __Infer<typeof Tree>;
 
@@ -652,6 +678,7 @@ export const World = __t.object("World", {
   id: __t.u8(),
   tick: __t.u32(),
   tickStartedAt: __t.timestamp(),
+  online: __t.u32(),
 });
 export type World = __Infer<typeof World>;
 

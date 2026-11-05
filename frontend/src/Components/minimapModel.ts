@@ -1,8 +1,8 @@
 import { MATERIALS } from "../../../shared/sim/frontier/catalog";
 import { homePoint, isHomeRegion } from "../../../shared/sim/frontier/homeMap";
-import { drawBossMarkers, drawGoalMarker, drawHomeMap, legacyMapProjection, type HomeMapView } from "../frontier/homeMapArt";
+import { biomeLandRgb, ledgerClerkGlyph, drawBossMarkers, drawGoalMarker, drawHomeMap, drawStaticLayer, legacyMapProjection, paintTilePixels, tileImage, type HomeMapView } from "../frontier/homeMapArt";
 import {
-  terrainField, trailDistance, isBridge, areaOf, LANDMARKS, SCENERY_BLOCKERS,
+  terrainField, trailDistance, isBridge, areaOf, LANDMARKS, SCENERY_BLOCKERS, RIDGE_TILES, ISLE_SIZE, WAYSTONES, LEDGER_CLERKS, biomeOf, onRidge,
   GiantState,
   formatCountdown,
   raidStatus,
@@ -21,6 +21,7 @@ import {
   SPIRE_GATE,
   SpireStage,
   TICK_MS,
+  TIER_NODES,
   inSpireFloor,
 } from "@sim";
 
@@ -74,6 +75,8 @@ const KIND_COLOR: Record<number, string> = {
   [NodeKind.Driftwood]: "#b08a5c",
   [NodeKind.TideRock]: "#7c8794",
   [NodeKind.Obsidian]: "#3b2f55",
+  // The Long Season's tier nodes wear their tier colour.
+  ...Object.fromEntries(TIER_NODES.map((d) => [d.kind, d.color])),
 };
 
 export function minimapModel(input: {
@@ -140,39 +143,73 @@ export function minimapModel(input: {
   };
 }
 
-const mapTiles = Array.from({length:GRID_SIZE*GRID_SIZE},(_,k)=>{
-  const x=k%GRID_SIZE,z=Math.floor(k/GRID_SIZE),t={x,z},a=areaOf(t),d=terrainField(x,z);
+const hexRgb = (hex: string): [number, number, number] => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+/** The legacy map's island palette; Expanse land takes its biome's ground colours. */
+export function legacyTileRgb(x: number, z: number): readonly [number, number, number] | null {
+  const t = { x, z }, a = areaOf(t), d = terrainField(x, z);
   // The Spire's sealed floor is not land you can walk to: draw it as the sea around it.
-  if(a==='sea'||a==='spire')return d> -1.3?'#7ac7c4':null;
-  if(isBridge(t))return '#b89562';
-  if(a==='hedge')return '#344f2d';
-  if(a==='boulder-line')return '#625c54';
-  if(a==='boulders')return d<1.3?'#b2a58b':'#858876';
-  if(d<1.8)return '#ead09a';
-  if(trailDistance(x,z)<1)return '#cbb581';
-  return a==='grove'?'#75a354':'#94ac65';
-});
+  if (a === 'sea' || a === 'spire') return d > -1.3 ? hexRgb('#7ac7c4') : null;
+  if (isBridge(t)) return hexRgb('#b89562');
+  if (a === 'hedge') return hexRgb('#344f2d');
+  if (a === 'boulder-line') return hexRgb('#625c54');
+  if (a === 'boulders') return hexRgb(d < 1.3 ? '#b2a58b' : '#858876');
+  const biome = x < ISLE_SIZE && z < ISLE_SIZE ? 'isle' : biomeOf(t);
+  if (biome !== 'isle') {
+    if (onRidge(t)) return hexRgb('#6f685e');
+    return trailDistance(x, z) < 1 ? hexRgb('#cbb581') : biomeLandRgb(biome, x, z, d);
+  }
+  if (d < 1.8) return hexRgb('#ead09a');
+  if (trailDistance(x, z) < 1) return hexRgb('#cbb581');
+  return hexRgb(a === 'grove' ? '#75a354' : '#94ac65');
+}
+let legacyPixels: Uint8ClampedArray | null = null;
+/** One RGBA pixel per tile, sampled on first draw (not at import). */
+function legacyTilePixels(): Uint8ClampedArray {
+  if (legacyPixels) return legacyPixels;
+  const out = new Uint8ClampedArray(GRID_SIZE * GRID_SIZE * 4);
+  for (let k = 0; k < GRID_SIZE * GRID_SIZE; k++) {
+    const rgb = legacyTileRgb(k % GRID_SIZE, Math.floor(k / GRID_SIZE));
+    if (!rgb) continue;
+    out[k * 4] = rgb[0]; out[k * 4 + 1] = rgb[1]; out[k * 4 + 2] = rgb[2]; out[k * 4 + 3] = 255;
+  }
+  return (legacyPixels = out);
+}
+const RIDGE_KEYS = new Set(RIDGE_TILES.map(t => t.z * GRID_SIZE + t.x));
+
+/** The legacy map's static layer: sea, tiles, scenery, the safe zone, waystones and numbered places. */
+function paintLegacyStatic(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, size: number) {
+  const { scale: s, center: px } = legacyMapProjection(size);
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = '#3f9fb1';
+  ctx.fillRect(0, 0, size, size);
+  const image = tileImage('legacy', GRID_SIZE, GRID_SIZE, legacyTilePixels);
+  if (image) {
+    ctx.imageSmoothingEnabled = s < 1;
+    ctx.drawImage(image, 0, 0, size, size);
+    ctx.imageSmoothingEnabled = true;
+  } else paintTilePixels(ctx, legacyTilePixels(), GRID_SIZE, GRID_SIZE, 0, 0, s);
+  ctx.fillStyle = '#315b3c';
+  for (const t of SCENERY_BLOCKERS) if (!RIDGE_KEYS.has(t.z * GRID_SIZE + t.x)) ctx.fillRect(t.x * s, t.z * s, s, s);
+  ctx.fillStyle = '#ecd9a0';
+  ctx.fillRect((SPAWN_TILE.x - SAFE_RADIUS) * s, (SPAWN_TILE.z - SAFE_RADIUS) * s, (SAFE_RADIUS * 2 + 1) * s, (SAFE_RADIUS * 2 + 1) * s);
+  for (const w of WAYSTONES) {
+    const k = Math.max(1.5, s * 1.4);
+    ctx.fillStyle = '#e8ecef'; ctx.fillRect(px(w.x) - k / 2, px(w.z) - k, k, k * 1.6);
+    ctx.fillStyle = '#4f8fd6'; ctx.fillRect(px(w.x) - k / 5, px(w.z) - k / 2, k / 2.5, k * .7);
+  }
+  for (const c of LEDGER_CLERKS) ledgerClerkGlyph(ctx, px(c.x), px(c.z), Math.max(1.3, s * 1.2));
+  if (size >= 240) {
+    ctx.font = 'bold 9px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    LANDMARKS.forEach((t, i) => { ctx.fillStyle = '#fff5dc'; ctx.beginPath(); ctx.arc(px(t.x), px(t.z), 6, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#364936'; ctx.fillText(String(i + 1), px(t.x), px(t.z)); });
+  }
+}
 
 /** Paint the map into a square canvas `size` CSS pixels wide (the context is already DPR-scaled). */
 export function drawMinimap(ctx: CanvasRenderingContext2D, m: MinimapModel, size: number, view: HomeMapView = 'overview'): void {
   if (m.home) { drawHomeMap(ctx, m, size, view); return; }
   const { scale: s, center: px } = legacyMapProjection(size);
-  ctx.clearRect(0, 0, size, size);
-  ctx.fillStyle = '#3f9fb1';
-  ctx.fillRect(0,0,size,size);
-  for(let z=0;z<GRID_SIZE;z++)for(let x=0;x<GRID_SIZE;x++){
-    const color = mapTiles[z*GRID_SIZE+x];
-    if(!color)continue;
-    ctx.fillStyle=color;ctx.fillRect(x*s,z*s,s+.25,s+.25);
-  }
-  ctx.fillStyle='#315b3c';
-  for(const t of SCENERY_BLOCKERS)ctx.fillRect(t.x*s,t.z*s,s,s);
-  ctx.fillStyle='#ecd9a0';
-  ctx.fillRect((SPAWN_TILE.x-SAFE_RADIUS)*s,(SPAWN_TILE.z-SAFE_RADIUS)*s,(SAFE_RADIUS*2+1)*s,(SAFE_RADIUS*2+1)*s);
-  if(size>=240){
-    ctx.font='bold 9px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
-    LANDMARKS.forEach((t,i)=>{ctx.fillStyle='#fff5dc';ctx.beginPath();ctx.arc(px(t.x),px(t.z),6,0,Math.PI*2);ctx.fill();ctx.fillStyle='#364936';ctx.fillText(String(i+1),px(t.x),px(t.z));});
-  }
+  // Geography is painted once per size; each frame only blits it and adds the live markers.
+  drawStaticLayer(ctx, 'legacy', size, layer => paintLegacyStatic(layer, size));
   // Gathering nodes: berry trees are round, coast nodes square.
   const r = Math.max(2, s * 0.9);
   for (const n of m.nodes) {

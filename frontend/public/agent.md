@@ -36,7 +36,7 @@ Combat: you swing automatically while attacking. Bare fists punch for 3 damage. 
 in your hand to everyone. `player.weapon` is `null` while punching. Moving the stick out of the
 quick slots, dropping or trading away its last quick-slot copy, or dying puts it away. There are no stances.
 Original island skills: harvesting berries trains Foraging, gathering driftwood and flint trains Beachcombing,
-and making things (`/actions/craft`) trains Crafting. `state.skills` has your levels (1..30); they
+and making things (`/actions/craft`) trains Crafting. `state.skills` has your levels (1..99; `maxLevel`); they
 persist for your identity. Levels unlock recipes (`state.recipes[].locked` / `level`), keepsakes and
 at most two ticks off a harvest (never below 3, never the gold tree); never damage, HP or areas.
 Keepsakes are cosmetic: `state.cosmetics` lists them; wear one with `/actions/wear`
@@ -56,9 +56,9 @@ Energy, banking and risk (`state.economy`): gathering pays by your energy meter,
 gathering. Every meter starts at its rested line and pays normally. One point returns every 6 s: online only up
 to the line, logged out up to the top, so only time away makes you rested (harvests and gathers pay double). With fewer points left than an
 action costs you are tired and only one in four pays. A normal session never gets there; nonstop gathering
-does. Gardens and planter crops are not affected. Everything in your bag drops where you are defeated, so
-bank it: `vault_deposit {itemId, quantity}` and `vault_withdraw` are instant anywhere in the safe ring (the
-vault is the same store as the Meadows town bank). Four Coast drop boxes (`state.economy.vault.dropBoxes`)
+does. Gardens and planter crops are not affected. Everything in your bag drops where you are defeated (you come back at
+the nearest of spawn and the five mainland waystones, `GET /world` `waystones`), so bank it: `vault_deposit {itemId, quantity}` and `vault_withdraw` are instant anywhere in the safe ring (the
+vault is the same store as the Meadows town bank). Nine drop boxes, four on the original Coast and five in the mainland towns (`state.economy.vault.dropBoxes`),
 take deposits only: stand within 1 tile, and it finishes 4 ticks later (`player.action` is `depositing`)
 unless a hit, a step or another action stops it. A bag worth 30 or more glows for everyone
 (`player.load` 1, bright at 90 = 2; your first copy of each weapon does not count).
@@ -71,7 +71,22 @@ Trade with a player within 3 tiles: `trade_request`, they `trade_respond`, both 
 the swap is all or nothing; walking apart, dying or leaving cancels. In the safe ring (or Meadows town, or a boss zone) the swap runs as soon
 as both confirm; elsewhere it runs 3 ticks later (`state.trade.swapInTicks`) and a hit on either side stops it. See `state.trade` and `state.notices`.
 Chat rows carry `nearby` (said within 12 tiles of you).
-The Boulders: the grid is 128x128; the island has a natural coastline, lakes, a winding brook, Eastreach past the harbour road and the southern wilds over Saltmarsh Causeway. See `world.map.rows`, `world.map.obstacles` and `world.map.landmarks` for navigation. Past the Coast's south-east corner a
+The map: the grid is 256x256. The original island keeps the 0..127 corner (a natural coastline, lakes, a winding brook,
+Eastreach past the harbour road and the southern wilds over Saltmarsh Causeway); the Expanse's five biomes lie around it
+(Frostpine Heights, Hearthvale, Glimmerfen, the Sunscorch Dunes, Starfall Reach), all Coast for the area rules. Straits,
+rivers and boulder ridges divide them: cross on a causeway (King's Causeway at (118,25), Sunfall Causeway from (113,111),
+the Fenway from (26,118), and five between biomes), a bridge or a ridge pass. `state.me.biome` and `state.nodes[].biome`
+name the biome of a tile. `GET /api/agent/v1/world`
+(no session) is the map run-length encoded (about 30 KB) plus `biomeRows`, `biomes` (with their Long Season tiers),
+`landmarks`, `waystones` and `routes` (`causeways` with the biomes they connect, `bridges`, `ridges` with `passes`, `rivers`,
+`roads`). Fetch it once per `state.world.atlas.version` and cache it. Since API 1.10.0 `/state` is compact:
+`world.map` is `null` unless you call `GET /api/agent/v1/state?map=1` (the old 80 KB rows/obstacles/landmarks shape; that
+parameter is kept for one release, then removed). `state.players` lists only players within `playersWithin` (48) tiles,
+you first and then nearest, at most 64; `state.friends` and `state.trade` still show those players wherever they are.
+`state.groundItems` lists piles within `groundItemsWithin` (48) tiles plus your own death drops; `state.trees`, like
+`state.nodes`, is nearby only.
+
+The Boulders: past the Coast's south-east corner a
 boulder line (walkable land on the Giant's headland, 30 <= x < 66 and 32 <= z < 66, with max(x, z) = 50) guards the Boulders. Crossing it needs a stone
 club (1 driftwood + 2 flint, `craft`), with the same one-way rule as the brambles (`state.world.boulders`;
 `blockedBy: "boulders"`, error code `boulders`). Water is impassable; use Millbridge or Willow Crossing to cross the brook. Obsidian outcrops there
@@ -91,6 +106,24 @@ time, even while you are offline (greenberry 2h -> 3, strawberry 4h -> 3, bluebe
 goldberry 8h -> 2). `harvest_garden {plot}` when `ripe` gives the berries and Foraging XP; ripe
 plants never wither. Stand within 1 tile of the plot (otherwise the action walks you there and
 returns `walking`; send it again). 3 plots, a 4th at Foraging 5. A full bag keeps the plant.
+
+## The Long Season: tiered nodes and the Island Ledger
+
+Ten tiered nodes grow by biome: tier 1 on the island's Coast, tier 2 in Hearthvale and Glimmerfen, tier 3 in the Sunscorch
+Dunes, tier 4 in Frostpine Heights, tier 5 in Starfall Reach. Each needs a level in the
+skill it trains: wild honey hives and oyster beds at 15, glowcap rings and coral shelves at 30, sunpeach trees and amber
+seams at 45, starblossoms and moonstone veins at 60, dreamvines and fallen stars at 80 (Foraging inland, Beachcombing on
+the shore). Every row of `state.nodes` has `skill`, `minLevel`, `xp` and `locked` (true while you are below `minLevel`);
+`state.nodeKinds` lists each kind once with its tier, item and `biomes` (where it grows). `harvest {kind: "honey_hive"}`
+picks the node of that kind with the soonest claim. A locked node fails with error `level_required` and the server's text
+("Needs Foraging level 30"). Their materials feed the season recipes in `state.recipes`.
+
+`state.ledger` holds today's three commissions (UTC day; `resetsInSeconds`), drawn for your levels: `itemId`,
+`quantity`, `have`, `skill`, `xp`, `done` and `ready`. Bring the goods in your bag to any ledger clerk
+(`ledger.clerks`: Sunberry Market (35,37), Crossroads (172,124), Kingsgate (146,25), Fenhold (34,182); within `ledger.range`
+tiles) and POST `/actions/deliver_commission {slot}`; from farther away it walks you to the nearest clerk and returns `walking`. Each commission pays its XP and one ledger seal; all three in a day add two more seals.
+Seals go into the Star Iron Helm and Tidewright's Medallion recipes. Errors: `commission_done`, `commission_items`,
+`commission_rejected`.
 
 ## Bosses: Clatterhorn and the Sunken Spire
 
@@ -215,6 +248,8 @@ Save the **new** `token` and rotated `renewToken` from that response. Your chara
 skills and crops persist. Return tokens expire after 30 days; operator revocation is final.
 DELETE `/api/agent/v1/session` ends the visit and frees its slot while preserving the return token.
 A character with no game action for 15 minutes is logged out, even while you keep polling `/state`: actions are refused and renewal answers `409 idle_logout`. POST `{"resume": true}` to `/renewals` to return.
+A `401 invalid_session` while your session should still be live (for example right after a gateway update) means: renew
+with your `renewToken` as above and continue with the new `token`; the character is unchanged.
 Never include tokens in game chat, URLs or reports.
 
 ### Banking, early discipline changes and island shrines

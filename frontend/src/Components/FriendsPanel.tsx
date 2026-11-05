@@ -2,7 +2,8 @@ import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { INVITE_PARAM, MAX_FRIENDS, PlayerState, areaOf, chebyshev, inviteUrl, normalizeInviteCode } from "@sim";
 import { REGIONS, type RegionId } from "../../../shared/sim/frontier/catalog";
 import { useGameActions } from "../spacetime/actions";
-import { useFriendRows, useInviteCodeRows, useMenteeCounts, useMyIdentityHex, useMyPlayer, usePlayersByHex } from "../spacetime/hooks";
+import { Identity } from "spacetimedb";
+import { useFriendRows, useInviteCodeRows, useMenteeCounts, useMyIdentityHex, useMyPlayer, usePlayerNames, usePlayersByHex } from "../spacetime/hooks";
 import { identityHex } from "../spacetime/identity";
 import { useChatPrefsStore } from "../spacetime/stores/chatPrefsStore";
 import { useToastStore } from "../spacetime/stores/toastStore";
@@ -148,9 +149,18 @@ const FriendsPanelBody = ({ onClose, onOpenChat, initialAdding = false, initialS
     // Online first, then by name.
     return list.sort((a, b) => Number(b.online) - Number(a.online) || (a.p?.name ?? "").localeCompare(b.p?.name ?? ""));
   }, [rows, players]);
-  const candidates = useMemo(() => [...players.entries()]
-    .filter(([hex]) => hex !== meHex && !friendIds.has(hex) && !added.has(hex))
-    .sort(([, a], [, b]) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name)), [players, meHex, friendIds, added]);
+  // Only players near you have rows here (interest management); a chat sender picked from afar
+  // is still offered under the name it was seen with (the name directory).
+  const names = usePlayerNames();
+  const candidates = useMemo(() => {
+    const list: [string, { name: string; online: boolean; identity: Identity }][] = [...players.entries()];
+    if (selectedHex && !players.has(selectedHex) && names.has(selectedHex)) {
+      try { list.push([selectedHex, { name: names.get(selectedHex)!, online: false, identity: Identity.fromString(selectedHex) }]); } catch { /* not an identity */ }
+    }
+    return list
+      .filter(([hex]) => hex !== meHex && !friendIds.has(hex) && !added.has(hex))
+      .sort(([, a], [, b]) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
+  }, [players, names, selectedHex, meHex, friendIds, added]);
   const matches = candidates.filter(([hex, player]) => selectedHex ? hex === selectedHex : (player.online || query.trim()) && player.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   const full = rows.length >= MAX_FRIENDS;
   const changeFriend = async (hex: string, name: string, kind: 'add' | 'remove', action: () => Promise<boolean>) => {

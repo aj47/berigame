@@ -7,7 +7,9 @@ import { useChatPrefsStore } from '../spacetime/stores/chatPrefsStore';
 const mock = vi.hoisted(() => ({ rows: [] as any[], players: new Map<string, any>(), messages: [] as any[], sendChat: vi.fn().mockResolvedValue(true), setName: vi.fn(), focus: vi.fn() }));
 vi.mock('../spacetime/hooks', () => ({
   useChatMessages: () => mock.messages, useFriendRows: () => mock.rows,
-  useMyIdentityHex: () => 'me', useMyPlayer: () => ({ x: 20, z: 20 }), usePlayersByHex: () => mock.players,
+  useMyIdentityHex: () => 'me', useMyPlayer: () => ({ x: 20, z: 20 }),
+  // Chat names come from the name directory (far senders have no player row).
+  usePlayerNames: () => new Map([...mock.players].map(([hex, p]) => [hex, p.name])),
 }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => mock }));
 vi.mock('../store', () => ({ useChatStore: (selector: any) => selector({ setFocusedChat: mock.focus }) }));

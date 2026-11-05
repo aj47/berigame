@@ -1,0 +1,299 @@
+{
+  "label": "fin-before-2000",
+  "startedAt": "2026-10-20T06:34:41.173Z",
+  "config": {
+    "n": 2000,
+    "mode": "interest",
+    "db": "berigame-box",
+    "uri": "ws://127.0.0.1:3000",
+    "seconds": 45,
+    "warmup": 10,
+    "workers": 16,
+    "perWorker": 125,
+    "batch": 10,
+    "batchMs": 500,
+    "think": 2500,
+    "compression": "gzip",
+    "scatter": true,
+    "playerBlock": "default",
+    "view": "sink"
+  },
+  "machine": {
+    "cpus": 10,
+    "model": "Apple M1 Pro",
+    "memGb": 16,
+    "node": "v24.1.0",
+    "platform": "darwin"
+  },
+  "connections": {
+    "requested": 2000,
+    "connected": 2000,
+    "failed": 0,
+    "errors": {},
+    "rampSec": 44.3,
+    "joinMsP50": 823,
+    "joinMsP95": 4577,
+    "dropsDuringRun": 0,
+    "measuredClients": 2000
+  },
+  "tick": {
+    "targetPerSec": 1.67,
+    "ratePerSec": 0.39,
+    "rateVsTarget": 0.23,
+    "intervalMsP50": 2446,
+    "intervalMsP95": 4269,
+    "intervalMsMax": 4269,
+    "lagMsP50": 598,
+    "lagMsP95": 761,
+    "lagMsP99": 844,
+    "lagSamples": 34000,
+    "lagTimeline": [
+      {
+        "fromSec": 0,
+        "p50": 527,
+        "p95": 630,
+        "max": 652
+      },
+      {
+        "fromSec": 5,
+        "p50": 616,
+        "p95": 691,
+        "max": 770
+      },
+      {
+        "fromSec": 10,
+        "p50": 530,
+        "p95": 652,
+        "max": 695
+      },
+      {
+        "fromSec": 15,
+        "p50": 532,
+        "p95": 665,
+        "max": 695
+      },
+      {
+        "fromSec": 20,
+        "p50": 580,
+        "p95": 690,
+        "max": 723
+      },
+      {
+        "fromSec": 25,
+        "p50": 621,
+        "p95": 712,
+        "max": 758
+      },
+      {
+        "fromSec": 30,
+        "p50": 695,
+        "p95": 791,
+        "max": 890
+      },
+      {
+        "fromSec": 35,
+        "p50": 734,
+        "p95": 873,
+        "max": 1045
+      },
+      {
+        "fromSec": 40,
+        "p50": 670,
+        "p95": 773,
+        "max": 822
+      }
+    ],
+    "lagByWorker": [
+      {
+        "worker": 4,
+        "p50": 603,
+        "p95": 751,
+        "loopDelayP95Ms": 31.9,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 2,
+        "p50": 595,
+        "p95": 748,
+        "loopDelayP95Ms": 30.7,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 7,
+        "p50": 597,
+        "p95": 748,
+        "loopDelayP95Ms": 33.3,
+        "cpuCores": 0.18
+      },
+      {
+        "worker": 12,
+        "p50": 598,
+        "p95": 771,
+        "loopDelayP95Ms": 31.5,
+        "cpuCores": 0.17
+      },
+      {
+        "worker": 5,
+        "p50": 596,
+        "p95": 766,
+        "loopDelayP95Ms": 32.9,
+        "cpuCores": 0.18
+      },
+      {
+        "worker": 1,
+        "p50": 600,
+        "p95": 778,
+        "loopDelayP95Ms": 34.3,
+        "cpuCores": 0.2
+      },
+      {
+        "worker": 15,
+        "p50": 598,
+        "p95": 763,
+        "loopDelayP95Ms": 32.2,
+        "cpuCores": 0.2
+      },
+      {
+        "worker": 0,
+        "p50": 599,
+        "p95": 759,
+        "loopDelayP95Ms": 33.3,
+        "cpuCores": 0.2
+      },
+      {
+        "worker": 13,
+        "p50": 605,
+        "p95": 754,
+        "loopDelayP95Ms": 32,
+        "cpuCores": 0.17
+      },
+      {
+        "worker": 11,
+        "p50": 594,
+        "p95": 752,
+        "loopDelayP95Ms": 31.7,
+        "cpuCores": 0.2
+      },
+      {
+        "worker": 14,
+        "p50": 601,
+        "p95": 748,
+        "loopDelayP95Ms": 33.1,
+        "cpuCores": 0.21
+      },
+      {
+        "worker": 10,
+        "p50": 599,
+        "p95": 764,
+        "loopDelayP95Ms": 31.6,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 3,
+        "p50": 597,
+        "p95": 758,
+        "loopDelayP95Ms": 31.5,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 9,
+        "p50": 593,
+        "p95": 764,
+        "loopDelayP95Ms": 31.7,
+        "cpuCores": 0.2
+      },
+      {
+        "worker": 8,
+        "p50": 596,
+        "p95": 748,
+        "loopDelayP95Ms": 30.9,
+        "cpuCores": 0.18
+      },
+      {
+        "worker": 6,
+        "p50": 600,
+        "p95": 758,
+        "loopDelayP95Ms": 31.1,
+        "cpuCores": 0.18
+      }
+    ]
+  },
+  "perClientIn": {
+    "wireKBpsMean": 22.1,
+    "wireKBpsP50": 21.9,
+    "wireKBpsP95": 27.4,
+    "wireKBpsMax": 29.6,
+    "rawKBpsMean": 14.2,
+    "rawKBpsP95": 15.6,
+    "msgsPerSecMean": 44,
+    "msgsPerSecP95": 48.2
+  },
+  "serverEgress": {
+    "wireMBps": 43.09,
+    "rawMBps": 27.72
+  },
+  "reducers": {
+    "rttMs": {
+      "startHarvest": {
+        "n": 1030,
+        "p50": 1934.5,
+        "p95": 3552.5
+      },
+      "setTarget": {
+        "n": 13372,
+        "p50": 1931.3,
+        "p95": 3605.3
+      },
+      "sendChat": {
+        "n": 1359,
+        "p50": 1949.5,
+        "p95": 3593.4
+      },
+      "attack": {
+        "n": 1799,
+        "p50": 1929.5,
+        "p95": 3580.9
+      },
+      "emote": {
+        "n": 1559,
+        "p50": 1928,
+        "p95": 3618.3
+      }
+    },
+    "moveEffectMsP50": 1362.1,
+    "moveEffectMsP95": 3177.9,
+    "moveEffectSamples": 13191,
+    "outcomes": {
+      "startHarvest: ok": 1030,
+      "setTarget: ok": 13372,
+      "sendChat: ok": 1359,
+      "attack: ok": 1799,
+      "attack: target unavailable": 11,
+      "emote: ok": 1559,
+      "attack: They are protected for # more seconds. Invite them to a friendly duel ": 207,
+      "attack: No fighting in Clatterhorn's Glade": 38,
+      "emote: slow down": 30,
+      "setTarget: you are dead": 8,
+      "sendChat: wait three seconds between messages": 4
+    }
+  },
+  "server": {
+    "pid": 16578,
+    "cpuCoresMean": 2.75,
+    "cpuCoresMax": 3.2,
+    "rssMbMax": 1678.5,
+    "note": "whole spacetimedb-standalone process (all databases on the server)"
+  },
+  "loadgen": {
+    "cpuCores": 3.01,
+    "loopDelayP95Ms": 34.3,
+    "resubscribes": 309
+  },
+  "observerRowsPerSec": {
+    "chatMessage.insert": 30.2,
+    "chatMessage.delete": 30.2,
+    "playerPos.update": 0.6,
+    "world.update": 0.4,
+    "player.update": 0.1
+  }
+}

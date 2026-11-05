@@ -1,8 +1,9 @@
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { inBounds, nearestReachableTile } from '../../../shared/sim';
+import { enterRule, inBounds, nearestReachableTile } from '../../../shared/sim';
 import { blockedTiles } from '../lib/blocked';
-import { playerEnterRule } from '../lib/brambles';
+import { heldKeys } from '../lib/brambles';
+import { seedRoute } from '../lib/routes';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
 
 /**
@@ -16,7 +17,9 @@ export const setTarget = spacetimedb.reducer(
     const p = requireAlivePlayer(ctx);
     touchInput(p, currentTick(ctx));
     clearInteractions(ctx, p);
-    const dest = nearestReachableTile(p, { x, z }, blockedTiles(ctx), playerEnterRule(ctx, p));
+    const blocked = blockedTiles(ctx), keys = heldKeys(ctx, p);
+    // The route found here is the tick's first walk step too (lib/routes.ts): searched once, not twice.
+    const dest = nearestReachableTile(p, { x, z }, blocked, enterRule(keys.stick, keys.club), (path) => seedRoute(ctx, p, { x, z }, path, keys, blocked));
     p.targetX = dest.x;
     p.targetZ = dest.z;
     savePlayer(ctx, p);

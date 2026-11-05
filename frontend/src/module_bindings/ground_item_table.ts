@@ -20,4 +20,5 @@ export default __t.row({
   droppedTick: __t.u32().name("dropped_tick"),
   expiresTick: __t.u32().name("expires_tick"),
   droppedOnDeath: __t.bool().name("dropped_on_death"),
+  cell: __t.u32(),
 });

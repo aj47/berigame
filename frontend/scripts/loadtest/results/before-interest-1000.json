@@ -1,0 +1,349 @@
+{
+  "label": "long-season before player_pos",
+  "startedAt": "2026-10-20T04:33:33.639Z",
+  "config": {
+    "n": 1000,
+    "mode": "interest",
+    "db": "berigame-before",
+    "uri": "ws://127.0.0.1:3000",
+    "seconds": 60,
+    "warmup": 10,
+    "workers": 20,
+    "perWorker": 50,
+    "batch": 10,
+    "batchMs": 500,
+    "think": 2500,
+    "compression": "gzip",
+    "scatter": true,
+    "playerBlock": "default"
+  },
+  "machine": {
+    "cpus": 10,
+    "model": "Apple M1 Pro",
+    "memGb": 16,
+    "node": "v24.1.0",
+    "platform": "darwin"
+  },
+  "connections": {
+    "requested": 1000,
+    "connected": 1000,
+    "failed": 0,
+    "errors": {},
+    "rampSec": 9.1,
+    "joinMsP50": 374,
+    "joinMsP95": 1100,
+    "dropsDuringRun": 0,
+    "measuredClients": 1000
+  },
+  "tick": {
+    "targetPerSec": 1.67,
+    "ratePerSec": 0.19,
+    "rateVsTarget": 0.12,
+    "intervalMsP50": 5065,
+    "intervalMsP95": 6791,
+    "intervalMsMax": 6791,
+    "lagMsP50": 1720,
+    "lagMsP95": 3584,
+    "lagMsP99": 5158,
+    "lagSamples": 11916,
+    "lagTimeline": [
+      {
+        "fromSec": 0,
+        "p50": 1070,
+        "p95": 2831,
+        "max": 3996
+      },
+      {
+        "fromSec": 5,
+        "p50": 1427,
+        "p95": 2635,
+        "max": 3186
+      },
+      {
+        "fromSec": 10,
+        "p50": 1171,
+        "p95": 2308,
+        "max": 2841
+      },
+      {
+        "fromSec": 15,
+        "p50": 1927,
+        "p95": 3873,
+        "max": 4773
+      },
+      {
+        "fromSec": 20,
+        "p50": 2007,
+        "p95": 3808,
+        "max": 4298
+      },
+      {
+        "fromSec": 25,
+        "p50": 3044,
+        "p95": 4807,
+        "max": 5693
+      },
+      {
+        "fromSec": 30,
+        "p50": 1304,
+        "p95": 3009,
+        "max": 3671
+      },
+      {
+        "fromSec": 35,
+        "p50": 2002,
+        "p95": 3263,
+        "max": 4205
+      },
+      {
+        "fromSec": 40,
+        "p50": 2398,
+        "p95": 5058,
+        "max": 5447
+      },
+      {
+        "fromSec": 45,
+        "p50": 1468,
+        "p95": 5898,
+        "max": 6634
+      },
+      {
+        "fromSec": 50,
+        "p50": 1249,
+        "p95": 2615,
+        "max": 4206
+      },
+      {
+        "fromSec": 55,
+        "p50": 1953,
+        "p95": 3077,
+        "max": 3878
+      }
+    ],
+    "lagByWorker": [
+      {
+        "worker": 2,
+        "p50": 1702,
+        "p95": 3695,
+        "loopDelayP95Ms": 460.3,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 0,
+        "p50": 1674,
+        "p95": 3538,
+        "loopDelayP95Ms": 461.4,
+        "cpuCores": 0.18
+      },
+      {
+        "worker": 17,
+        "p50": 1722,
+        "p95": 3913,
+        "loopDelayP95Ms": 570.4,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 18,
+        "p50": 1737,
+        "p95": 3228,
+        "loopDelayP95Ms": 662.2,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 13,
+        "p50": 1666,
+        "p95": 3777,
+        "loopDelayP95Ms": 697.8,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 4,
+        "p50": 1806,
+        "p95": 3342,
+        "loopDelayP95Ms": 840.4,
+        "cpuCores": 0.2
+      },
+      {
+        "worker": 8,
+        "p50": 1787,
+        "p95": 3791,
+        "loopDelayP95Ms": 766,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 1,
+        "p50": 1760,
+        "p95": 3335,
+        "loopDelayP95Ms": 714.1,
+        "cpuCores": 0.2
+      },
+      {
+        "worker": 11,
+        "p50": 1666,
+        "p95": 3332,
+        "loopDelayP95Ms": 346.3,
+        "cpuCores": 0.18
+      },
+      {
+        "worker": 5,
+        "p50": 1711,
+        "p95": 4112,
+        "loopDelayP95Ms": 697.8,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 14,
+        "p50": 1719,
+        "p95": 3851,
+        "loopDelayP95Ms": 522.2,
+        "cpuCores": 0.18
+      },
+      {
+        "worker": 15,
+        "p50": 1637,
+        "p95": 3854,
+        "loopDelayP95Ms": 535.6,
+        "cpuCores": 0.2
+      },
+      {
+        "worker": 9,
+        "p50": 1692,
+        "p95": 3514,
+        "loopDelayP95Ms": 686.8,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 19,
+        "p50": 1736,
+        "p95": 3757,
+        "loopDelayP95Ms": 777.5,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 3,
+        "p50": 1716,
+        "p95": 4054,
+        "loopDelayP95Ms": 464.3,
+        "cpuCores": 0.18
+      },
+      {
+        "worker": 12,
+        "p50": 1796,
+        "p95": 3770,
+        "loopDelayP95Ms": 887.1,
+        "cpuCores": 0.2
+      },
+      {
+        "worker": 10,
+        "p50": 1653,
+        "p95": 3163,
+        "loopDelayP95Ms": 277.9,
+        "cpuCores": 0.17
+      },
+      {
+        "worker": 7,
+        "p50": 1775,
+        "p95": 3415,
+        "loopDelayP95Ms": 567.3,
+        "cpuCores": 0.19
+      },
+      {
+        "worker": 6,
+        "p50": 1728,
+        "p95": 3593,
+        "loopDelayP95Ms": 467.4,
+        "cpuCores": 0.18
+      },
+      {
+        "worker": 16,
+        "p50": 1754,
+        "p95": 3402,
+        "loopDelayP95Ms": 680.5,
+        "cpuCores": 0.19
+      }
+    ]
+  },
+  "perClientIn": {
+    "wireKBpsMean": 14.7,
+    "wireKBpsP50": 15.4,
+    "wireKBpsP95": 20.5,
+    "wireKBpsMax": 21.2,
+    "rawKBpsMean": 28.4,
+    "rawKBpsP95": 40.2,
+    "msgsPerSecMean": 15.9,
+    "msgsPerSecP95": 18.5
+  },
+  "serverEgress": {
+    "wireMBps": 14.36,
+    "rawMBps": 27.77
+  },
+  "reducers": {
+    "rttMs": {
+      "setTarget": {
+        "n": 5192,
+        "p50": 4960.7,
+        "p95": 6770.4
+      },
+      "attack": {
+        "n": 703,
+        "p50": 4981,
+        "p95": 6782.5
+      },
+      "sendChat": {
+        "n": 442,
+        "p50": 4953.2,
+        "p95": 6779.3
+      },
+      "emote": {
+        "n": 571,
+        "p50": 4977.5,
+        "p95": 6790.4
+      },
+      "startHarvest": {
+        "n": 333,
+        "p50": 4821.3,
+        "p95": 6429.2
+      }
+    },
+    "moveEffectMsP50": 2805.8,
+    "moveEffectMsP95": 6467.9,
+    "moveEffectSamples": 5268,
+    "outcomes": {
+      "setTarget: ok": 5192,
+      "attack: ok": 703,
+      "sendChat: ok": 442,
+      "emote: ok": 571,
+      "startHarvest: ok": 333,
+      "emote: slow down": 19,
+      "sendChat: wait three seconds between messages": 36,
+      "setTarget: you are dead": 7,
+      "attack: target unavailable": 3,
+      "attack: No fighting in Clatterhorn's Glade": 3,
+      "startHarvest: you are dead": 1
+    }
+  },
+  "server": {
+    "pid": 6885,
+    "cpuCoresMean": 0.94,
+    "cpuCoresMax": 1.37,
+    "rssMbMax": 519.2,
+    "note": "whole spacetimedb-standalone process (all databases on the server)"
+  },
+  "loadgen": {
+    "cpuCores": 3.77,
+    "loopDelayP95Ms": 887.1,
+    "resubscribes": 5
+  },
+  "observerRowsPerSec": {
+    "player.update": 96.2,
+    "chatMessage.insert": 7.4,
+    "chatMessage.delete": 7.4,
+    "player.insert": 1.1,
+    "player.delete": 1.1,
+    "tree.update": 1.1,
+    "world.update": 0.2,
+    "groundItem.insert": 0,
+    "combatEvent.insert": 0,
+    "emoteEvent.insert": 0
+  }
+}

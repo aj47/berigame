@@ -1,3 +1,4 @@
+import { GRID_SIZE } from "../constants";
 /** Settlements expansion tuning. Stable IDs are persisted: never reuse them. */
 export const DAY = 86_400_000;
 export const WEEK = 7 * DAY;
@@ -40,7 +41,7 @@ export const REGIONS: Record<
 > = {
   bramblewild: {
     name: "Bramblewild",
-    size: 128,
+    size: GRID_SIZE,
     spawn: { x: 25, z: 25 },
     color: "#82a568",
   },

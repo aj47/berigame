@@ -1,6 +1,6 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useGameActions } from "../spacetime/actions";
-import { useChatMessages, useFriendRows, useMyIdentityHex, useMyPlayer, usePlayersByHex } from "../spacetime/hooks";
+import { useChatMessages, useFriendRows, useMyIdentityHex, useMyPlayer, usePlayerNames } from "../spacetime/hooks";
 import { useChatStore } from "../store";
 import { useChatPrefsStore } from "../spacetime/stores/chatPrefsStore";
 import { useGiantStore } from "../spacetime/stores/giantStore";
@@ -21,7 +21,8 @@ const ChatBox = memo(({ open, onClose, onOpenFriends }) => {
   const allMessages = useChatMessages();
   const friendRows = useFriendRows();
   const myId = useMyIdentityHex();
-  const players = usePlayersByHex();
+  // Senders far away have no player row here (interest management): names come from the name directory.
+  const names = usePlayerNames();
   const mode = useChatPrefsStore((s) => s.mode);
   const setMode = useChatPrefsStore((s) => s.setMode);
   const muted = useChatPrefsStore((s) => s.muted);
@@ -116,9 +117,9 @@ const ChatBox = memo(({ open, onClose, onOpenFriends }) => {
               </p>
             );
             const hex = message.sender.toHexString();
-            const sender = players.get(hex);
-            const name = sender?.name ?? `Player-${hex.slice(4, 8)}`;
-            const canAdd = onOpenFriends && sender && hex !== myId && !friendRows.some(row => row.friend.toHexString() === hex);
+            const known = names.get(hex);
+            const name = known ?? `Player-${hex.slice(4, 8)}`;
+            const canAdd = onOpenFriends && known && hex !== myId && !friendRows.some(row => row.friend.toHexString() === hex);
             return (
               <p key={message.id.toString()}>
                 <strong>

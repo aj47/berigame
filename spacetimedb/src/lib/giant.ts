@@ -1,5 +1,6 @@
 import type { Identity } from 'spacetimedb';
 import { GIANT_ID, freshGiant } from '../../../shared/sim';
+import { GLOBAL_CELL, eventCell } from '../../../shared/sim/interest';
 import type { Ctx } from './types';
 
 /** Insert the Boulders' Giant if it is missing (idempotent; the tick calls it too). */
@@ -31,7 +32,9 @@ export function emitGiantEvent(ctx: Ctx, e: GiantEventInput): void {
     itemId: e.itemId ?? '',
     quantity: Math.min(255, e.quantity ?? 0),
     hp: e.hp ?? 0,
-    x: e.x ?? 0,
-    z: e.z ?? 0,
+    x: e.x ?? -1,
+    z: e.z ?? -1,
+    // Announce / Wake / Sleep (kind >= 7) are world-wide raid lines, though stamped with the Giant's tile.
+    cell: e.kind >= 7 ? GLOBAL_CELL : eventCell('bramblewild', e.x ?? -1, e.z ?? -1),
   });
 }

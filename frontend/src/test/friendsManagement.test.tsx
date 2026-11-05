@@ -7,7 +7,7 @@ import { useChatPrefsStore } from '../spacetime/stores/chatPrefsStore';
 
 const mock = vi.hoisted(() => ({
   listeners: new Set<() => void>(),
-  friends: [] as any[], players: new Map<string, any>(), codes: [] as any[],
+  friends: [] as any[], players: new Map<string, any>(), names: new Map<string, string>(), codes: [] as any[],
   add: vi.fn(), remove: vi.fn(), follow: vi.fn(), createInvite: vi.fn(), show: vi.fn(),
 }));
 const identity = (hex: string) => ({ toHexString: () => hex });
@@ -22,6 +22,7 @@ vi.mock('../spacetime/hooks', async () => {
     usePlayersByHex: () => useSyncExternalStore(subscribe, () => mock.players),
     useFriendRows: () => useSyncExternalStore(subscribe, () => mock.friends),
     useInviteCodeRows: () => mock.codes, useMenteeCounts: () => new Map(),
+    usePlayerNames: () => mock.names,
   };
 });
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ addFriend: mock.add, removeFriend: mock.remove, follow: mock.follow, createInvite: mock.createInvite }) }));
@@ -34,6 +35,7 @@ beforeEach(() => {
     ['casey', player('casey', 'Casey')], ['ash', player('ash', 'Ash', false)],
   ]);
   mock.codes = [];
+  mock.names = new Map();
   for (const fn of [mock.add, mock.remove, mock.follow, mock.createInvite]) fn.mockReset().mockResolvedValue(true);
   mock.show.mockClear();
   useChatPrefsStore.setState({ friends: new Set(), muted: new Set() });
@@ -76,6 +78,15 @@ describe('Friends management in Chat', () => {
     expect(mock.add).not.toHaveBeenCalled();
     fireEvent.change(screen.getByRole('searchbox', { name: 'Find a player' }), { target: { value: 'ash ' } });
     expect(screen.getAllByRole('button', { name: 'Add Ash as a friend' })).toHaveLength(2);
+  });
+  it('offers a chat sender picked from afar, whose row is outside your interest block, by its remembered name', async () => {
+    const far = 'f'.repeat(64);
+    mock.names = new Map([[far, 'Rowan']]);
+    renderFriends({ initialAdding: true, initialSearch: 'Rowan', initialPlayerHex: far });
+    const add = screen.getByRole('button', { name: 'Add Rowan as a friend' });
+    fireEvent.click(add);
+    await waitFor(() => expect(mock.add).toHaveBeenCalledTimes(1));
+    expect(mock.add.mock.calls[0][0].toHexString()).toBe(far);
   });
   it('blocks duplicate adds, exposes retry on rejection, and tracks live confirmed rows', async () => {
     let finish!: (accepted: boolean) => void;

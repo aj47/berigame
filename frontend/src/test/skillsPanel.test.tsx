@@ -1,8 +1,8 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ADVENTURE_CAMP, PATHS, SKILL_MAX_XP, TECHNIQUES, xpForLevel } from '@sim';
-import SkillsPanel from '../Components/SkillsPanel';
+import { ADVENTURE_CAMP, PATHS, SKILL_MAX_LEVEL, SKILL_MAX_XP, Skill, TECHNIQUES, xpForLevel } from '@sim';
+import SkillsPanel, { nextUnlock } from '../Components/SkillsPanel';
 
 const mock = vi.hoisted(() => ({
   me: null as any,
@@ -114,7 +114,7 @@ describe('compact skills menu', () => {
   it('preserves legacy progress, max levels and the Skills/Style controls', () => {
     mock.skills = { foragingXp: SKILL_MAX_XP, beachcombingXp: 0, craftingXp: 0 };
     render(panel());
-    expect(screen.getByRole('button', { name: 'Growing, level 30, max level' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: `Growing, level ${SKILL_MAX_LEVEL}, max level` })).toHaveAttribute('aria-pressed', 'true');
     expect(within(screen.getByRole('region', { name: 'Growing techniques' })).getByText('Max level')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Gathering & recipes'));
     expect(screen.getByRole('progressbar', { name: 'Foraging progress to the next level' })).toHaveAttribute('aria-valuenow', '100');
@@ -122,5 +122,25 @@ describe('compact skills menu', () => {
     expect(onStyle).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'Close skills' }));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('tells each gathering skill what its next level brings', () => {
+    mock.skills = { foragingXp: xpForLevel(12), beachcombingXp: xpForLevel(29), craftingXp: SKILL_MAX_XP };
+    render(panel());
+    fireEvent.click(screen.getByText('Gathering & recipes'));
+    expect(screen.getByTestId('next-unlock-foraging')).toHaveTextContent('Next unlock at level 15: Work Wild honey hive');
+    expect(screen.getByTestId('next-unlock-beachcombing')).toHaveTextContent('Next unlock at level 30: Work Coral shelf, Coral Circlet keepsake');
+    expect(screen.getByTestId('next-unlock-crafting')).toHaveTextContent('Everything unlocked');
+  });
+});
+
+describe('nextUnlock', () => {
+  it('names the nearest tier node, recipe and keepsake for a skill', () => {
+    expect(nextUnlock(Skill.Foraging, 1)).toBe('Next unlock at level 10: Flower Crown keepsake');
+    expect(nextUnlock(Skill.Foraging, 60)).toBe('Next unlock at level 80: Work Dreamvine');
+    expect(nextUnlock(Skill.Foraging, 80)).toBe('Next unlock at level 99: Dreamvine Crown keepsake');
+    expect(nextUnlock(Skill.Crafting, 1)).toMatch(/^Next unlock at level 2: Make /);
+    expect(nextUnlock(Skill.Crafting, 29)).toContain("Artisan's Kerchief keepsake");
+    expect(nextUnlock(Skill.Beachcombing, 99)).toBeNull();
   });
 });

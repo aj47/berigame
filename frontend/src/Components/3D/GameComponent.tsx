@@ -26,7 +26,8 @@ import FxLayer from '../../fx/FxLayer';
 import HoldToWalk from './HoldToWalk';
 import WorldHover, { WorldHoverTooltip } from './WorldHover';
 import { useSettingsStore } from '../../spacetime/stores/settingsStore';
-import { useGroundItems, usePlayersByHex, useTick, useTrees } from '../../spacetime/hooks';
+import { useGroundItems, useMyPlayerSelector, usePlayersByHex, useTick, useTrees } from '../../spacetime/hooks';
+import { nearbyNodes, nodeViewCell } from './nodes/nearbyNodes';
 import { identityHex } from '../../spacetime/identity';
 import { isWebGLError, WebGLContextWatch, webglAvailable, webglSupport } from './webgl';
 import AdaptiveQuality from './AdaptiveQuality';
@@ -87,16 +88,21 @@ class WorldBoundary extends React.Component<{ children: React.ReactNode }, { fai
  * Gathering nodes and ground piles. Kept out of GameComponent so a server tick
  * re-renders this list, not the Canvas and the whole HUD. A node only sees the
  * tick while it regrows (its countdown); a ripe node gets a constant, so its
- * memoized component skips the tick.
+ * memoized component skips the tick. Only nodes near you are mounted
+ * (nearbyNodes.ts): your position is quantized to a view cell, so the filter
+ * reruns when the trees change or you cross a cell, not every tick.
  */
+const selectViewCell = (me: { x: number; z: number; region?: string } | null) => nodeViewCell(me);
 const WorldObjects = () => {
   const trees = useTrees();
   const groundItems = useGroundItems();
   const players = usePlayersByHex();
   const tick = useTick();
+  const cell = useMyPlayerSelector(selectViewCell);
+  const visible = useMemo(() => nearbyNodes(trees, cell), [trees, cell]);
   return (
     <>
-      {trees.map((tree) => {
+      {visible.map((tree) => {
         const nodeTick = Math.min(tick, tree.cooldownUntilTick);
         const harvester = tree.harvester ? players.get(identityHex(tree.harvester)) ?? null : null;
         return !isBerryNode(tree)

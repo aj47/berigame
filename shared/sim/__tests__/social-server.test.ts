@@ -151,7 +151,7 @@ function harness() {
       mentee: byId(mentees),
       mentorStat: byId(mentorStats),
       chatMessage: {
-        iter: () => chat.values(),
+        iter: () => chat.values(), count: () => BigInt(chat.size),
         insert: (row: any) => { const id = nextChat++; chat.set(id, { ...row, id }); },
         id: { delete: (id: bigint) => chat.delete(id) },
       },

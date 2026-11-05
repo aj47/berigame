@@ -7,6 +7,7 @@ import { interactionTile } from '../lib/brambles';
 import { clearInteractions, currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
 import { ensureDummy } from '../lib/dummy';
 import { refuseOnSpireFloor } from '../lib/spireGuards';
+import { eventCell } from '../../../shared/sim/interest';
 
 /**
  * Walk up to a training dummy and keep swinging at it with whatever you hold.
@@ -60,7 +61,7 @@ export const emote = spacetimedb.reducer(
     if (!emoteReady(last?.lastTick, T)) throw new SenderError('slow down');
     if (last) ctx.db.emoteCooldown.identity.update({ ...last, lastTick: T });
     else ctx.db.emoteCooldown.insert({ identity: p.identity, lastTick: T });
-    ctx.db.emoteEvent.insert({ tick: T, player: p.identity, emote });
+    ctx.db.emoteEvent.insert({ tick: T, player: p.identity, emote, x: p.x, z: p.z, cell: eventCell(p.region, p.x, p.z) });
     savePlayer(ctx, p);
   }
 );

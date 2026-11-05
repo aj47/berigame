@@ -20,7 +20,8 @@ export function homeLocation(p: Point): Location {
 /** A tagged target in the existing optional target columns avoids rewriting saved characters.
  * Ordinary movement and cancel clear those columns, so they also cancel a cross-district walk.
  */
-const HOME_TARGET_TAG = 256;
+/** Above every home-frame x (the Meadows end at GRID_SIZE + 128), so a tagged target never reads as a tile. */
+const HOME_TARGET_TAG = 1024;
 export const isHomeTarget = (p?: Point) => !!p && p.x >= HOME_TARGET_TAG;
 export const homeTarget = (p: Point): Point => ({ x: p.x + HOME_TARGET_TAG, z: p.z - MEADOW_OFFSET.z });
 export const homeDestination = (p: Point): Point => ({ x: p.x - HOME_TARGET_TAG, z: p.z + MEADOW_OFFSET.z });

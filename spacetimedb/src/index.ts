@@ -14,6 +14,7 @@ export * from './reducers/chat';
 export * from './reducers/appearance';
 export * from './reducers/access';
 export * from './reducers/craft';
+export * from './reducers/ledger';
 export * from './reducers/social';
 export * from './reducers/friends';
 export * from './reducers/trade';

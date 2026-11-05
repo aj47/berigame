@@ -1,3 +1,4 @@
+import { playerCell } from '../interest';
 import { adventureTables } from './adventureHarness';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EAT_SWING_DELAY_TICKS, HARVEST_TICKS, HOTBAR_SIZE, INVENTORY_SIZE, MAX_INPUTS_PER_TICK, MAX_STACK, MOVEMENT_STEPS_PER_TICK, PUNCH_DAMAGE, STICK_DROP_CHANCE, SWING_INTERVAL_TICKS, TICK_MS } from '../constants';
@@ -33,7 +34,8 @@ import { DEFAULT_APPEARANCE } from '../appearance';
 import { areaOf, BRAMBLE_MESSAGE, inGrace, isBramble } from '../areas';
 import { FIRST_SPAWN_GRACE_TICKS, FIRST_SPAWN_HP, RESPAWN_GRACE_TICKS } from '../constants';
 import { firstDayGoal, type GoalDoneId } from '../goals';
-import { chebyshev, neighbors8 } from '../grid';
+import { chebyshev, isLandTile, neighbors8 } from '../grid';
+import { WAYSTONES } from '../expanse';
 import { emptySlots } from '../inventory';
 import { TREE_SEEDS } from '../items';
 import type { Slot } from '../types';
@@ -754,6 +756,30 @@ describe('sticks: gifted early keys and grace', () => {
     expect(inGrace(h.me(), 11 + RESPAWN_GRACE_TICKS)).toBe(false);
   });
 
+  it('respawns at the waystone nearest to where the character fell, with the same grace, and leaves the bag there', () => {
+    const crossroads = WAYSTONES.find((w) => w.id === 'crossroads')!;
+    Object.assign(h.me(), { state: PlayerState.Dead, respawnTick: 11, hp: 0, x: 175, z: 120 });
+    run();
+    expect(h.me()).toMatchObject({ state: PlayerState.Alive, hp: 30, x: crossroads.x, z: crossroads.z });
+    expect(inGrace(h.me(), 11 + RESPAWN_GRACE_TICKS - 1)).toBe(true);
+    expect(inGrace(h.me(), 11 + RESPAWN_GRACE_TICKS)).toBe(false);
+    // On the island the Grove is still the nearest.
+    Object.assign(h.me(), { state: PlayerState.Dead, respawnTick: 11, hp: 0, x: 60, z: 30 });
+    run();
+    expect(h.me()).toMatchObject({ state: PlayerState.Alive, x: 25, z: 25 });
+  });
+
+  it('steps off a waystone tile if something ever blocks it', () => {
+    const fen = WAYSTONES.find((w) => w.id === 'fenhold')!;
+    h.trees.set(999_999, { id: 999_999, x: fen.x, z: fen.z });
+    Object.assign(h.me(), { state: PlayerState.Dead, respawnTick: 11, hp: 0, x: fen.x + 3, z: fen.z });
+    run();
+    expect(h.me().state).toBe(PlayerState.Alive);
+    expect({ x: h.me().x, z: h.me().z }).not.toEqual({ x: fen.x, z: fen.z });
+    expect(chebyshev(h.me(), fen)).toBe(1);
+    expect(isLandTile(h.me())).toBe(true);
+  });
+
   it('a find during first-spawn grace leaves 10 more ticks', () => {
     h.me().respawnTick = 300;
     h.skills.set('a', { identity: A, foragingXp: 24, beachcombingXp: 0, craftingXp: 0 });
@@ -1248,7 +1274,7 @@ describe('emotes', () => {
   it('broadcasts a cosmetic event and changes nothing else', () => {
     Object.assign(h.me(), { targetX: 30, targetZ: 25 });
     emote(h.ctx, { emote: Emote.Wave });
-    expect(sent()).toEqual([{ tick: 10, player: A, emote: Emote.Wave }]);
+    expect(sent()).toEqual([{ tick: 10, player: A, emote: Emote.Wave, x: 25, z: 25, cell: playerCell('bramblewild', 25, 25) }]);
     expect(h.me().targetX).toBe(30);
   });
 
@@ -1722,6 +1748,7 @@ import { frontierRepository } from '../../../spacetimedb/src/lib/frontier';
 import { vaultDeposit as registeredDeposit, vaultWithdraw as registeredWithdraw } from '../../../spacetimedb/src/reducers/vault';
 import { confirmTrade as registeredConfirm } from '../../../spacetimedb/src/reducers/trade';
 import { onDisconnect as registeredDisconnect } from '../../../spacetimedb/src/reducers/lifecycle';
+import { markLoad } from '../../../spacetimedb/src/lib/inventory';
 const disconnect = registeredDisconnect as unknown as Reducer;
 
 describe('economy rules on the server', () => {
@@ -1736,6 +1763,7 @@ describe('economy rules on the server', () => {
   const give = (owner: ReturnType<typeof identity>, slot: number, itemId: string, quantity: number) => {
     const id = BigInt(1000 + h.inventory.size);
     h.inventory.set(id, { id, owner, slot, itemId, quantity });
+    markLoad(owner as any); // as every server write of inventory rows does (lib/inventory.ts writeSlots)
   };
   beforeEach(() => {
     Object.assign(h.ctx.db, { socialEvent: testTable('id', true), socialPair: testTable('pair'), trade: testTable('id', true), pendingDeposit: testTable('identity') });

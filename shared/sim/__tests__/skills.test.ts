@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  COSMETICS, Cosmetic, CosmeticSlot, SKILL_MAX_LEVEL, SKILL_MAX_XP, Skill, addXp, canWear, cosmeticsForLevelUp,
+  COSMETICS, Cosmetic, CosmeticSlot, SKILL_MAX_LEVEL, SKILL_MAX_XP, Skill, addXp, canWear, cosmeticsForAllSkills, cosmeticsForLevelUp,
   harvestTickBonus, harvestTicksAtLevel, harvestXp, hasCosmetic, levelForXp, levelProgress, skillForNode, withCosmetic, xpForLevel,
 } from '../skills';
 import { NodeKind, RECIPES, craft, craftRejection, getRecipe, recipeStatus } from '../nodes';
@@ -8,25 +8,32 @@ import { ITEM_DEFS, getItemDef } from '../items';
 import { emptySlots } from '../inventory';
 
 describe('XP math', () => {
-  it('xpForLevel(L) = 25·(L−1)², capped at L30', () => {
+  it('xpForLevel(L) = 25·(L−1)² to L30, then a steeper tail to 3M at L99', () => {
     expect([1, 2, 3, 10, 20, 30].map(xpForLevel)).toEqual([0, 25, 100, 2025, 9025, 21025]);
-    expect(xpForLevel(31)).toBe(21025);
-    expect(SKILL_MAX_XP).toBe(21025);
-    expect(SKILL_MAX_LEVEL).toBe(30);
+    expect(SKILL_MAX_LEVEL).toBe(99);
+    expect(xpForLevel(100)).toBe(SKILL_MAX_XP);
+    expect(SKILL_MAX_XP).toBe(3_000_000);
+    // No level past the knee is cheaper than level 30 was, and no single level is over 4% of the climb.
+    expect(xpForLevel(31) - xpForLevel(30)).toBeGreaterThan(xpForLevel(30) - xpForLevel(29));
+    for (let l = 31; l <= 99; l++) expect(xpForLevel(l) - xpForLevel(l - 1)).toBeLessThan(SKILL_MAX_XP * 0.04);
+    for (let l = 31; l <= 99; l++) expect(xpForLevel(l) - xpForLevel(l - 1)).toBeGreaterThan(xpForLevel(l - 1) - xpForLevel(l - 2));
+    // A u32 column holds the cap many times over.
+    expect(SKILL_MAX_XP).toBeLessThan(2 ** 32);
   });
 
   it('levelForXp inverts it exactly at every threshold', () => {
-    for (let l = 1; l <= 30; l++) {
+    for (let l = 1; l <= SKILL_MAX_LEVEL; l++) {
       expect(levelForXp(xpForLevel(l))).toBe(l);
       if (l > 1) expect(levelForXp(xpForLevel(l) - 1)).toBe(l - 1);
     }
     expect(levelForXp(0)).toBe(1);
     expect(levelForXp(-5)).toBe(1);
-    expect(levelForXp(10_000_000)).toBe(30);
+    expect(levelForXp(10_000_000)).toBe(99);
   });
 
-  it('addXp caps at L30 and ignores negatives', () => {
-    expect(addXp(21000, 100)).toBe(21025);
+  it('addXp caps at L99 and ignores negatives', () => {
+    expect(addXp(21000, 100)).toBe(21100);
+    expect(addXp(SKILL_MAX_XP - 5, 100)).toBe(SKILL_MAX_XP);
     expect(addXp(10, -4)).toBe(10);
   });
 
@@ -37,7 +44,7 @@ describe('XP math', () => {
 
   it('about 5 hours of steady foraging reach L30', () => {
     const perSecond = harvestXp(NodeKind.Berry) / 6.6;
-    const hours = SKILL_MAX_XP / perSecond / 3600;
+    const hours = xpForLevel(30) / perSecond / 3600;
     expect(hours).toBeGreaterThan(4);
     expect(hours).toBeLessThan(6);
   });
@@ -99,7 +106,12 @@ describe('cosmetics', () => {
   it('level-ups unlock skill cosmetics once, crossing the threshold', () => {
     expect(cosmeticsForLevelUp(Skill.Foraging, 9, 10)).toEqual([Cosmetic.FlowerCrown]);
     expect(cosmeticsForLevelUp(Skill.Foraging, 10, 11)).toEqual([]);
-    expect(cosmeticsForLevelUp(Skill.Beachcombing, 1, 30)).toEqual([Cosmetic.ShellNecklace]);
+    expect(cosmeticsForLevelUp(Skill.Beachcombing, 1, 30)).toEqual([Cosmetic.ShellNecklace, Cosmetic.CoralCirclet]);
+    expect(cosmeticsForLevelUp(Skill.Beachcombing, 59, 99)).toEqual([Cosmetic.MoonstoneTorc, Cosmetic.StarfallDiadem]);
+    expect(cosmeticsForAllSkills(98, 99)).toEqual([Cosmetic.ParagonSash]);
+    expect(cosmeticsForAllSkills(99, 99)).toEqual([]);
+    // Every bit fits the u32 mask.
+    expect(Math.max(...COSMETICS.map((c) => c.id))).toBeLessThan(32);
     expect(cosmeticsForLevelUp(Skill.Crafting, 9, 10)).toEqual([Cosmetic.WovenSash]);
   });
 

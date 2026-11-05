@@ -249,7 +249,7 @@ describe('moves and canonical middles', () => {
     expect(canonicalMiddle(T(72, 58), T(72, 58), blocked)).toEqual(T(72, 58));
     expect(canonicalMiddle(T(72, 58), T(80, 58), blocked)).toEqual(T(80, 58));
     expect(CLATTER_STONES.length).toBe(8);
-    expect(GRID_SIZE).toBe(128);
+    expect(GRID_SIZE).toBe(256);
   });
 });
 
