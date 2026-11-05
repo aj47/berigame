@@ -25,8 +25,20 @@ export const NETWORK_JOIN_BUDGET = { burst: 256, perSecond: 4 };
 export const RENEWAL_BUDGET = { burst: 512, perSecond: 32 };
 export const CHARACTER_RENEWAL_BUDGET = { burst: 3, perSecond: 1 / 30 };
 
+/** Issues a read-only viewer's pass (/watch). Browser-callable from any origin: the page may be hosted apart from its world. */
+export const SPECTATOR_PATH = '/api/agent/v1/spectators';
+
+/** Without a configured key anyone may watch. Constant-time, as the key is a bearer credential. */
+export function watchKeyAccepted(key: string | undefined, authorization: string | null | undefined): boolean {
+  if (!key) return true;
+  const given = authorization?.match(/^Bearer (.+)$/)?.[1] ?? '';
+  let difference = given.length ^ key.length;
+  for (let i = 0; i < key.length; i++) difference |= key.charCodeAt(i) ^ given.charCodeAt(i);
+  return difference === 0;
+}
+
 export function requestLane(path: string, method: string) {
-  if (method === 'POST' && ['/api/play/v1/sessions', '/api/agent/v1/sessions'].includes(path)) return 'join';
+  if (method === 'POST' && ['/api/play/v1/sessions', '/api/agent/v1/sessions', SPECTATOR_PATH].includes(path)) return 'join';
   if (method === 'POST' && ['/api/play/v1/renewals', '/api/agent/v1/renewals'].includes(path)) return 'renew';
   return 'requests';
 }

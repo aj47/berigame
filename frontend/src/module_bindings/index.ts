@@ -64,6 +64,7 @@ import FrontierActionReducer from "./frontier_action_reducer";
 import GardenDevRipenReducer from "./garden_dev_ripen_reducer";
 import GrantAgentReducer from "./grant_agent_reducer";
 import GrantPlayerReducer from "./grant_player_reducer";
+import GrantSpectatorReducer from "./grant_spectator_reducer";
 import HarvestGardenReducer from "./harvest_garden_reducer";
 import MoveItemReducer from "./move_item_reducer";
 import PickupItemReducer from "./pickup_item_reducer";
@@ -648,6 +649,7 @@ const reducersSchema = __reducers(
   __reducerSchema("garden_dev_ripen", GardenDevRipenReducer),
   __reducerSchema("grant_agent", GrantAgentReducer),
   __reducerSchema("grant_player", GrantPlayerReducer),
+  __reducerSchema("grant_spectator", GrantSpectatorReducer),
   __reducerSchema("harvest_garden", HarvestGardenReducer),
   __reducerSchema("move_item", MoveItemReducer),
   __reducerSchema("pickup_item", PickupItemReducer),

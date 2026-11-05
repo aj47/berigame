@@ -27,6 +27,7 @@ function world() {
     identity: { find: (identity: any) => rows.get(identity.toHexString()), update: (row: any) => rows.set(row.identity.toHexString(), row) },
   });
   const ctx = { sender: guest, timestamp: { microsSinceUnixEpoch: 100_000_000n }, db: {
+    spectator: { identity: { find: () => null } },
     accessPolicy: { id: { find: (key: number) => policies.get(key), update: (row: any) => policies.set(row.id, row) } },
     playerGrant: keyed(grants), player: keyed(players), idleState: keyed(idle), tree: { id: { find: () => undefined } },
     world: { id: { find: () => ({ tick: 20 }) } }, chatMessage: { iter: () => [] }, trade: { a: { filter: () => [] }, b: { filter: () => [] } },

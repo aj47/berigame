@@ -39,6 +39,13 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   const policy = ctx.db.accessPolicy.id.find(0);
   // Control connections do not create characters or consume player slots.
   if (sameId(policy?.owner, ctx.sender) || sameId(policy?.gateway, ctx.sender)) return;
+  // Read-only viewers (/watch) neither create a character nor count as online. An expired pass is refused here,
+  // never treated as a new player.
+  const watcher = ctx.db.spectator.identity.find(ctx.sender);
+  if (watcher) {
+    if (watcher.expiresAtMicros <= ctx.timestamp.microsSinceUnixEpoch) throw new SenderError('spectator pass expired');
+    return;
+  }
   requireAdmission(ctx);
   const existing = findPlayer(ctx, ctx.sender);
   if (existing && existing.connections >= MAX_CHARACTER_CONNECTIONS) throw new SenderError('too many connections for this player');

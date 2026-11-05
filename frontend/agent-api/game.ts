@@ -26,6 +26,7 @@ import * as appearance from '../../shared/sim/appearance';
 import { admissionError, ApiError, type Invite } from './portable';
 import { deliveryProblem, describeLedger, describeNodeKinds, levelError, NODE_KIND_NAMES, nodeKindOf, nodeLevelInfo, nodeLockReason } from './seasonPresentation';
 import { biomeAt } from './worldAtlas';
+import { SPECTATOR_PASS_SECONDS } from '../../shared/sim/admission';
 /** Chebyshev radius of the nodes /state lists around the caller. */
 const NODES_WITHIN = 48;
 /** Chebyshev radius of the other players /state lists (you are always first), and at most this many, nearest first. */
@@ -53,7 +54,7 @@ export interface GameSession {
   close(): Promise<void>;
   suspend?(): Promise<void>;
 }
-export interface GameService { ready(): boolean; create(invite: Invite): Promise<GameSession>; }
+export interface GameService { ready(): boolean; create(invite: Invite): Promise<GameSession>; spectate(): Promise<Credential & { expiresAt: string }>; }
 export type Backend = { uri: string; database: string };
 export type Credential = Backend & { identity: string; token: string };
 const GIANT_STATE_NAMES = ['idle', 'winding_up', 'recovering', 'defeated', 'asleep'];
@@ -232,6 +233,17 @@ export async function createGameService(credential: Credential, options: Service
       try { await revoke(player.identity); } catch { /* Permit still has a database-enforced expiry. */ }
       throw error;
     }
+  };
+  /** A read-only viewer's credential (/watch): registered before it connects, so it never gets a character. */
+  const spectate = async (lifetimeSeconds = SPECTATOR_PASS_SECONDS) => {
+    if (!ready()) throw unavailable();
+    const viewer = await mintIdentity(credential);
+    try { await deadline(control.conn.reducers.grantSpectator({ identity: Identity.fromString(viewer.identity), lifetimeSeconds })); }
+    catch (error) {
+      if (/spectator capacity/.test(error instanceof Error ? error.message : String(error))) throw new ApiError(429, 'spectator_capacity', 'Too many viewers on this world.', 60);
+      throw error;
+    }
+    return { ...viewer, expiresAt: new Date(Date.now() + lifetimeSeconds * 1000).toISOString() };
   };
   const resume = async (invite: Invite, player: Credential): Promise<GameSession> => {
     if (!ready() || !world) throw unavailable();
@@ -691,7 +703,7 @@ export async function createGameService(credential: Credential, options: Service
       catch (error) { throw /no such character/.test(String(error)) ? new ApiError(404, 'not_found', 'No character has this identity.') : error; }
     },
   };
-  return { world, verifyCredential: async (credential: Credential) => { const link = await connect(credential, 'control', options); disconnect(link.conn); }, attestRecovery: async (identity: string) => { await control.conn.reducers.attestRecovery({ identity: Identity.fromString(identity) }); }, ready, close: () => disconnect(control.conn), provision, renew, resume, revoke, suspend, admin,
+  return { world, verifyCredential: async (credential: Credential) => { const link = await connect(credential, 'control', options); disconnect(link.conn); }, attestRecovery: async (identity: string) => { await control.conn.reducers.attestRecovery({ identity: Identity.fromString(identity) }); }, ready, close: () => disconnect(control.conn), provision, renew, resume, revoke, suspend, spectate, admin,
     async create(invite: Invite) { return resume(invite, await provision(invite)); },
   };
 }
