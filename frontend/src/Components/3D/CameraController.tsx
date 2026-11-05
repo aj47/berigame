@@ -154,7 +154,9 @@ const CameraController = (props: { playerRef?: any; focus?: CameraFocus }) => {
 	const focusRef = useRef(focus);
 	focusRef.current = focus;
 	const framed = useRef<{ x: number; z: number } | null>(null);
-	useFrame(() => {
+	useFrame((_state, delta) => {
+		// drei only advances enabled controls, and /watch disables them to refuse input: without this the camera never moves.
+		if (WATCHING) ref.current?.update(delta);
 		const f = focusRef.current;
 		if (f) {
 			ref.current?.moveTo(f.target[0], 0, f.target[1], true);
