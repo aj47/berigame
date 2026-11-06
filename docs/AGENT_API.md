@@ -442,8 +442,11 @@ per cut. All current IDs and positions are in `frontier.resources`.
   `open-spire` (action `spire`: open or join a party). `clatter-sealed` and
   `spire-sealed` (action `null`) mean the owner has not opened that boss yet.
   After a clear the road starts again, and `make-circlet` appears once you can
-  make the Shard Circlet. `recover-bag` (action `pickup {itemId}`) comes first
-  after a defeat when your dropped items are within reach of the keys you hold.
+  make the Shard Circlet. `recover-bag` (action `pickup {itemId}`, where `itemId`
+  is a string to send as `id` to `POST /actions/pickup`) comes first after a
+  defeat when your dropped items are within reach of the keys you hold. A bag
+  past a barrier you cannot cross gets no goal; it still appears in
+  `groundItems` with `yourDeathDrop`.
   `target {x, z}` (or `null`) is where the step leads and `chapter` is one of
   `grove`, `coast`, `boulders`, `glade`, `spire` (`null` for a detour). If you
   lose your stick, `find-stick` and `reach-coast` return first.
@@ -725,3 +728,9 @@ enforcement, direct connection rejection, revocation and throttling. Wielding a
 berry must be rejected. The stick wield/unwield round trip runs only when its
 first harvest happened to find a stick; otherwise it prints `SKIP`. It never
 targets the ordinary game world.
+
+`frontend/agent-api/integrationDeath.ts` takes the same settings and kills one
+agent with another: `grove` dies with a reachable bag, checks `/state` through
+the respawn and picks the bag up with `goal.action.itemId`; `coast` dies past the
+brambles with its only stick and checks no pickup is offered. Each run waits about
+3 minutes for newcomer protection to end.

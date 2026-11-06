@@ -50,7 +50,8 @@ export type GoalAction =
   | { kind: 'clatterhorn' }
   /** Open the Sunken Spire's party panel (you stand at the gate). */
   | { kind: 'spire' }
-  | { kind: 'pickup'; itemId: number | bigint };
+  /** The ground item's u64 row id as a decimal string: this action crosses JSON to agents, and BigInt() reads it back. */
+  | { kind: 'pickup'; itemId: string };
 
 export interface Goal {
   id: GoalStepId;
@@ -462,7 +463,7 @@ function bagGoal(input: GoalInput, hasStick: boolean): Goal | null {
     : hasStick || from !== 'grove';
   if (!reachable || to === 'spire' || to === 'sea') return null;
   if (me.pending === Pending.Pickup) return { id: 'recover-bag', text: 'Recover your dropped bag', hint: 'Walking back to it…', action: null };
-  return { id: 'recover-bag', text: 'Recover your dropped bag', hint: 'Tap to walk back and pick it up before it crumbles. It is marked on your map', action: { kind: 'pickup', itemId: bag.id } };
+  return { id: 'recover-bag', text: 'Recover your dropped bag', hint: 'Tap to walk back and pick it up before it crumbles. It is marked on your map', action: { kind: 'pickup', itemId: String(bag.id) } };
 }
 
 /**

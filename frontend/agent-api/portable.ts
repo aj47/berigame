@@ -13,6 +13,18 @@ export function admissionError(error: unknown): ApiError | undefined {
   return undefined;
 }
 
+/** Tokens can sit in a socket URL or an auth header quoted by an error message; none of them belong in a log. */
+const scrub = (text: string) => text
+  .replace(/(token=)[^\s&"']+/gi, '$1[redacted]')
+  .replace(/Bearer\s+\S+/gi, 'Bearer [redacted]')
+  .replace(/\bbg[a-z]_[A-Za-z0-9_-]{43}/g, '[redacted]')
+  .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[redacted]');
+/** An exception that is not a known refusal, for the server log only. Clients get a generic reply. */
+export function unexpectedError(error: unknown): { name: string; message: string; stack?: string } {
+  if (!(error instanceof Error)) return { name: 'non-error', message: scrub(String(error)).slice(0, 500) };
+  return { name: error.name, message: scrub(error.message).slice(0, 500), ...(error.stack ? { stack: scrub(error.stack).slice(0, 2000) } : {}) };
+}
+
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 export const secret = (prefix: string) => prefix + randomBytes(32).toString('base64url');
 export type Invite = { expiresAt: number; lifetimeSeconds: number; combat: boolean; chat: boolean };

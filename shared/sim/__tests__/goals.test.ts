@@ -251,9 +251,21 @@ describe('First Day goal chip', () => {
       expect(road({ me: club(54, 54), slots: shards, cosmetics, craftingLevel: 10 })).toMatchObject({ id: 'make-circlet', action: { kind: 'craft', recipe: 'shard_circlet' } });
     });
 
+    it('hands out a dropped bag id that survives JSON at full u64 precision', () => {
+      const id = 18446744073709551615n;
+      const goal = road({ me: player({ x: 25, z: 25 }), slots: emptySlots(), bag: { id, x: 20, z: 20 } });
+      const action = JSON.parse(JSON.stringify(goal)).action;
+      expect(action).toEqual({ kind: 'pickup', itemId: '18446744073709551615' });
+      expect(BigInt(action.itemId)).toBe(id);
+    });
+
+    it('offers no pickup for a bag left in the Boulders: the club fell with it, so no BigInt ever reached a Giant victim', () => {
+      expect(road({ me: player({ x: 25, z: 25 }), slots: emptySlots(), bag: { id: 7n, x: 54, z: 54 } })?.action?.kind).not.toBe('pickup');
+    });
+
     it('walks back for a dropped bag it can reach, and not for one past a barrier it cannot cross', () => {
       const grove = road({ me: player({ x: 25, z: 25 }), slots: emptySlots(), bag: { id: 7n, x: 20, z: 20 } });
-      expect(grove).toMatchObject({ id: 'recover-bag', action: { kind: 'pickup', itemId: 7n } });
+      expect(grove).toMatchObject({ id: 'recover-bag', action: { kind: 'pickup', itemId: '7' } });
       expect(road({ me: player({ x: 25, z: 25 }), slots: emptySlots(), bag: { id: 7n, x: 46, z: 29 } })?.id).not.toBe('recover-bag');
       expect(road({ me: player({ x: 25, z: 25, weapon: 'stick' }), slots: bag('stick'), bag: { id: 7n, x: 46, z: 29 } })?.id).toBe('recover-bag');
       expect(road({ me: player({ x: 25, z: 25, weapon: 'stick' }), slots: bag('stick'), bag: { id: 7n, x: 60, z: 40 } })?.id).not.toBe('recover-bag');

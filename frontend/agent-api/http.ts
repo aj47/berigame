@@ -1,5 +1,5 @@
 import { AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS } from './admissionPolicy';
-import { admissionError } from './portable';
+import { admissionError, unexpectedError } from './portable';
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage } from 'node:http';
 import { isIP } from 'node:net';
@@ -199,7 +199,10 @@ export function createAgentServer(options: Options) {
         throw error;
       }
     } catch (error) {
-      const safe = admissionError(error) ?? new ApiError(503, 'unavailable', 'The request could not be completed.');
+      const known = admissionError(error);
+      // Anything else is a bug: the client gets the generic reply below, the operator gets the real error.
+      if (!known) log({ event: 'unexpected_error', method: req.method, path: (req.url ?? '').split(/[?#]/)[0].slice(0, 128), error: unexpectedError(error) });
+      const safe = known ?? new ApiError(503, 'unavailable', 'The request could not be completed.');
       send(safe.status, errorBody(safe), safe.retryAfter);
     } finally { inflight--; }
   });
