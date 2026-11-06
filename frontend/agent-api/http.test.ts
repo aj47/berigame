@@ -6,12 +6,16 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import { createAgentServer } from './http';
-import { ApiError } from './portable';
+import { ApiError, unexpectedError } from './portable';
 import { InviteStore } from './security';
 import { AGENT_ACTION_BUDGET, AGENT_READ_BUDGET } from './admissionPolicy';
 import { GRID_SIZE } from '../../shared/sim/constants';
+import { describeObjective } from '../../shared/sim/agentState';
+import { firstDayGoal } from '../../shared/sim/goals';
+import { emptySlots } from '../../shared/sim/inventory';
+import { PlayerState, Pending } from '../../shared/sim/types';
 
-async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean; link?: { stalled: boolean; alive: boolean } } = {}) {
+async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean; link?: { stalled: boolean; alive: boolean }; state?: () => Record<string, any> } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'berigame-agent-api-'));
   let now = Date.now();
   const calls: string[] = [];
@@ -22,12 +26,13 @@ async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: numbe
   let release: (() => void) | undefined;
   const gate = options.delayed ? new Promise<void>(r => { release = r; }) : Promise.resolve();
   const invites = new InviteStore(directory);
-  const api = createAgentServer({ invites, maxSessions: options.maxSessions, maxSessionsPerIp: options.maxSessionsPerIp, now: () => now, game: {
+  const logs: Record<string, any>[] = [];
+  const api = createAgentServer({ invites, maxSessions: options.maxSessions, maxSessionsPerIp: options.maxSessionsPerIp, now: () => now, log: entry => logs.push(entry), game: {
     ready: () => true,
     async create() {
       const identity = String(++created).padStart(64, '0');
       await gate;
-      return { identity, state: (options?: { map?: boolean }) => ({ player: { id: identity }, inventory: [], world: { map: options?.map ? { rows: [] } : null } }),
+      return { identity, state: (map?: { map?: boolean }) => options.state?.() ?? { player: { id: identity }, inventory: [], world: { map: map?.map ? { rows: [] } : null } },
         danger: () => {
           if (options.link?.stalled) throw new ApiError(503, 'world_unavailable', 'The live world is unavailable. Retry shortly.');
           return { v: 1, tick: ++dangerReads, where: null, moves: [], best: null, path: [] } as any;
@@ -49,7 +54,7 @@ async function fixture(options: { maxSessions?: number; maxSessionsPerIp?: numbe
     const req = httpRequest(base + path, { headers }, res => { res.resume(); resolve(res.statusCode!); });
     req.on('error', reject); req.end();
   });
-  return { directory, request, rawStatus, issue, enter, calls, inputs, closed, release, created: () => created, advance: (ms: number) => { now += ms; },
+  return { directory, request, rawStatus, issue, enter, calls, inputs, closed, logs, release, created: () => created, advance: (ms: number) => { now += ms; },
     async close() { release?.(); await api.close(); await rm(directory, { recursive: true, force: true }); } };
 }
 
@@ -84,6 +89,58 @@ test('authentication, scope and strict schemas reject requests before game actio
     }
     assert.deepEqual(f.calls, []);
   } finally { await f.close(); }
+});
+
+test('the dropped-bag goal reaches /state after a death and its id is what pickup accepts', async () => {
+  const id = 18446744073709551615n;
+  const me = { x: 25, z: 25, hp: 30, maxHp: 30, state: PlayerState.Alive, weapon: '', pending: Pending.None, pendingId: 0, harvestTreeId: 0, harvestEndTick: 0, respawnTick: 0, lastInputTick: 0 };
+  const { goal } = firstDayGoal({ me, slots: emptySlots(), trees: [], others: [], tick: 10, canFight: true, done: [], bag: { id, x: 20, z: 20 } });
+  // describeObjective spreads the goal, so the action reaches /state twice.
+  const f = await fixture({ state: () => ({ goal, objective: describeObjective('bramblewild', goal, { enabled: false, quests: [] }) }) });
+  try {
+    const { token } = await f.enter();
+    const response = await f.request('/state', token);
+    assert.equal(response.status, 200);
+    const body = await response.json() as any;
+    const action = body.goal.action;
+    assert.deepEqual(action, { kind: 'pickup', itemId: String(id) });
+    assert.deepEqual(body.objective.action, action);
+    assert.equal((await f.request('/actions/pickup', token, { id: action.itemId }, { 'Idempotency-Key': randomUUID() })).status, 200);
+    assert.equal(BigInt(f.inputs[0].id as string), id);
+  } finally { await f.close(); }
+});
+
+test('an unexpected exception logs the real error and tells the client nothing', async () => {
+  const f = await fixture({ state: () => ({ leaked: 1n }) });
+  try {
+    const { token } = await f.enter();
+    const response = await f.request('/state', token);
+    assert.equal(response.status, 503);
+    const body = await response.text();
+    assert.deepEqual(JSON.parse(body), { error: { code: 'unavailable', message: 'The request could not be completed.' } });
+    const entry = f.logs.find(e => e.event === 'unexpected_error');
+    assert.ok(entry, 'the exception must reach the server log');
+    assert.equal(entry.method, 'GET'); assert.equal(entry.path, '/api/agent/v1/state');
+    assert.match(entry.error.message, /serialize a BigInt/);
+    assert.match(entry.error.stack, /http\.ts/);
+  } finally { await f.close(); }
+});
+
+test('expected refusals stay out of the unexpected error log', async () => {
+  const f = await fixture();
+  try {
+    assert.equal((await f.request('/state')).status, 401);
+    assert.equal(f.logs.filter(e => e.event === 'unexpected_error').length, 0);
+  } finally { await f.close(); }
+});
+
+test('logged errors never carry credentials', () => {
+  const error = new Error('connect wss://db.test/v1?token=eyJhbGciOi.payload.sig failed for Bearer bgs_' + 'a'.repeat(43) + ' and bgi_' + 'b'.repeat(43));
+  error.stack = error.message + '\n    at connect (game.ts:1:1)';
+  const logged = JSON.stringify(unexpectedError(error));
+  assert.doesNotMatch(logged, /eyJhbGciOi|aaaa|bbbb/);
+  assert.match(logged, /game\.ts:1:1/);
+  assert.equal(unexpectedError('plain').message, 'plain');
 });
 
 test('wield and unwield reach the game with the documented quick-slot range', async () => {

@@ -257,6 +257,9 @@ test('state.clatterhorn and state.spire come from the shared presenters, null ou
   const me = person(1, 74, 60);
   const players = [me, person(2, 75, 61, { region: 'settlement' }), person(3, 62, 46)];
   const blocks = describeBosses(rows, me, 1010, { players, keysHeld: 2, contribution: 20, blocked: WORLD }) as any;
+  // Run ids are u64 BigInts in the rows: a leak would blank /state or /danger for the whole party.
+  assert.doesNotThrow(() => JSON.stringify(blocks));
+  assert.doesNotThrow(() => JSON.stringify(dangerFeed(rows, me, 1010, { players, blocked: WORLD, ageMs: 0, tickMs: 600 })));
   assert.equal(blocks.clatterhorn.state, 'dormant');
   assert.deepEqual(blocks.clatterhorn.you.contribution, 20);
   assert.equal(blocks.spire.key.held, 2);

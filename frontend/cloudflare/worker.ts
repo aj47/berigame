@@ -5,7 +5,7 @@ import './codecs';
 import { DurableObject } from 'cloudflare:workers';
 import { timingSafeEqual } from 'node:crypto';
 import { ACTIONS, openapi, validateAction, validateObject } from '../agent-api/contract';
-import { admissionError, ApiError, digest, secret, type Invite } from '../agent-api/portable';
+import { admissionError, ApiError, digest, secret, unexpectedError, type Invite } from '../agent-api/portable';
 import { createGameService, deadline, type Credential, type GameSession } from '../agent-api/game';
 import { worldAtlas } from '../agent-api/worldAtlas';
 import { openCloudflareSocket } from './socket';
@@ -52,10 +52,15 @@ interface SessionHost {
   hostSessions(sessionId: string): Promise<HostedSession[]>;
   hostActiveSession(key: string): Promise<string | null>;
 }
+/** A failure that is not a known refusal: clients get a generic reply, `wrangler tail` gets the real error. */
+function logUnexpected(where: string, error: unknown) {
+  if (!admissionError(error)) console.error('Agent API unexpected error', JSON.stringify({ where, error: unexpectedError(error) }));
+}
 const forgetting = (error: ApiError) => Object.assign(error, { forget: true });
 async function settle<T>(run: () => Promise<T>): Promise<Result<T>> {
   try { return { ok: true, value: await run() }; }
   catch (error) {
+    logUnexpected('session host', error);
     const safe = admissionError(error) ?? new ApiError(503, 'world_unavailable', 'The island is unavailable. Retry shortly.');
     return { ok: false, status: safe.status, code: safe.code, message: safe.message, retryAfter: safe.retryAfter, forget: (error as { forget?: boolean })?.forget };
   }
@@ -130,6 +135,7 @@ export default {
       const target = gatewayFor(env, request, url.pathname);
       return await target.stub.fetch(target.request);
     } catch (error) {
+      logUnexpected(new URL(request.url).pathname, error);
       const safe = admissionError(error) ?? unavailable();
       return send(safe.status, errorBody(safe), safe.retryAfter);
     }
@@ -817,6 +823,7 @@ export class AgentGateway extends DurableObject<Env> implements SessionHost {
           const stale = this.live.get(key);
           if (error instanceof ApiError && error.status === 401) await this.remove(row);
           else if (stale && stale.alive?.() === false) { this.live.delete(key); if (stale.suspend) await stale.suspend(); else await stale.close(); await this.remove(row); }
+          logUnexpected(path, error);
           throw error instanceof ApiError ? error : unavailable();
         }
       }
@@ -865,6 +872,7 @@ export class AgentGateway extends DurableObject<Env> implements SessionHost {
       }
       throw new ApiError(404, 'not_found', 'Unknown endpoint or method. See openapi.json.');
     } catch (error) {
+      logUnexpected(new URL(request.url).pathname, error);
       const safe = admissionError(error) ?? unavailable();
       return send(safe.status, errorBody(safe), safe.retryAfter);
     } finally { this.inflight--; if (lane === 'join') this.joining--; await this.rest(); }
