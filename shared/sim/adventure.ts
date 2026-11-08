@@ -2,6 +2,7 @@ import { STICK_DROP_CHANCE } from './constants';
 import { levelForXp } from './skills';
 import { chebyshev } from './grid';
 import type { Tile } from './types';
+import { ledgerDay, ledgerResetInMs } from './ledger';
 
 export const ADVENTURE_CAMP = { x: 22, z: 18 };
 export const BERRY_PATCH = { x: 34, z: 17 };
@@ -10,6 +11,35 @@ export const GIANT_FEAST = { x: 12, z: 36 };
 export const ADVENTURE_TICKS = 600; // Six minutes; no real-time garden wait.
 export const GIANT_FEAST_BONUS = 2;
 export const EXPEDITION_COMPLETION_XP = 35;
+/**
+ * Goldberry-paying expedition completions per character per UTC day (the
+ * Ledger's day, LEDGER_DAY_MS). Later completions that day still give the
+ * completion XP, friendship and keepsake progress, but no goldberries, and the
+ * tracked seed cache stops paying its goldberry too. Stored per character as a
+ * private frontier record, kind 'expeditionPaid', `{ id, day, paid, lastPaid }`.
+ */
+export const EXPEDITION_DAILY_PAID = 5;
+/** `lastPaid` is the id (decimal string) of the last expedition that paid this character, so a finished one can show whether it paid. */
+export interface ExpeditionPaidState { day: number; paid: number; lastPaid?: string }
+/** Paid completions so far on `day` (a record from an earlier day counts as none). */
+export function expeditionPaidToday(state: ExpeditionPaidState | undefined, day: number): number {
+  return state && state.day === day ? state.paid : 0;
+}
+/** What is left of today's paid expeditions, and when the count resets (00:00 UTC). */
+export function expeditionPaidStatus(state: ExpeditionPaidState | undefined, nowMs: number) {
+  const used = Math.min(EXPEDITION_DAILY_PAID, expeditionPaidToday(state, ledgerDay(nowMs)));
+  return { cap: EXPEDITION_DAILY_PAID, used, left: EXPEDITION_DAILY_PAID - used, resetsInSeconds: Math.ceil(ledgerResetInMs(nowMs) / 1000) };
+}
+/** The stored record's JSON (frontier_view row kind 'expeditionPaid'), or undefined if malformed. */
+export function parseExpeditionPaid(data: string | undefined): ExpeditionPaidState | undefined {
+  if (!data) return undefined;
+  try {
+    const parsed = JSON.parse(data) as { day?: unknown; paid?: unknown; lastPaid?: unknown };
+    if (typeof parsed.day !== 'number' || typeof parsed.paid !== 'number') return undefined;
+    return typeof parsed.lastPaid === 'string' ? { day: parsed.day, paid: parsed.paid, lastPaid: parsed.lastPaid } : { day: parsed.day, paid: parsed.paid };
+  } catch { return undefined; }
+}
+export const EXPEDITION_CAP_NOTICE = `Daily expedition rewards used (${EXPEDITION_DAILY_PAID}/${EXPEDITION_DAILY_PAID}); XP only until 00:00 UTC`;
 export const GIANT_FRIENDSHIP_MILESTONES = [1, 3, 5] as const;
 /** Feeding is useful from the first feast, without occupying a technique slot. */
 export function giantFriendship(feasts: number) {

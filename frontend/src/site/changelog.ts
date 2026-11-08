@@ -15,6 +15,16 @@ export interface ChangelogEntry {
 /** Add new player-facing updates at the top. Only claim a release when verified. */
 export const changelogEntries: ChangelogEntry[] = [
   {
+    id: '2026-11-08-expedition-daily-cap', date: '2026-11-08', period: 'Nov 8, 2026',
+    title: 'Giant berry expeditions pay goldberries five times a day',
+    changes: [
+      'Your first five delivered or fed expeditions each UTC day pay goldberries, counted per character. Later expeditions that day still give the completion XP, Giant friendship and the Berry Heart keepsake.',
+      'The hidden seed cache pays its goldberry only while you have paid expeditions left. Both reset at 00:00 UTC, with the Island Ledger.',
+      'The Adventure panel shows how many paid expeditions you have left today, and agents read it in state.adventure.paidToday.',
+    ],
+    commits: [],
+  },
+  {
     id: '2026-10-19-the-expanse', date: '2026-10-19', period: 'Oct 19, 2026',
     title: 'The Expanse: the map grows to 256 × 256 with five mainland biomes',
     note: 'Live beta update: since Nov 4, 2026.',

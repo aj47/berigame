@@ -14,6 +14,7 @@ vi.mock('../spacetime/hooks', () => ({
   useMyPlayer: () => mock.me, useExpeditions: () => mock.expeditions, useExpeditionMembers: () => mock.members,
   useAdventureProfiles: () => mock.profiles, useInventoryRows: () => mock.inventory, usePlayers: () => mock.players,
   useFriendlyDuels: () => [], useIslandProjects: () => [], useTick: () => mock.tick,
+  useExpeditionPaid: () => ({ day: 0, paid: 1, lastPaid: '7' }),
 }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ expeditionAction: mock.action, setTarget: mock.walk }) }));
 vi.mock('../Components/adventureNavigation', () => ({ openAdventure: mock.openAdventure }));

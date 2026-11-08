@@ -2,7 +2,7 @@ import {
   EAT_COOLDOWN_TICKS, EAT_SWING_DELAY_TICKS, GARDEN_CROPS, ITEM_DEFS,
   NODE_KINDS, NODE_SEEDS, RAID_MIN_CONTRIBUTION, RAID_REWARD, RECIPES,
   SWING_INTERVAL_TICKS, TICK_MS, TREE_SEEDS, harvestXp,
-  LEDGER_CLERKS, LEDGER_SEAL_ITEM_ID, LEDGER_TEMPLATES, SEASON_ITEMS, SKILLS, TIER_NODES, skillForNode, tierBiomeNames,
+  LEDGER_CLERKS, LEDGER_SEAL_ITEM_ID, LEDGER_TEMPLATES, SEASON_ITEMS, SKILLS, TIER_NODES, skillForNode, tierBiomeNames, EXPEDITION_DAILY_PAID,
 } from '@sim';
 import type { ItemDef, Recipe } from '@sim';
 import { DISCIPLINES, FRONTIER, FRONTIER_RECIPES, MATERIALS, PIECES, REGIONS, RESOURCE_PATCHES } from '../../../shared/sim/frontier/catalog';
@@ -64,6 +64,7 @@ const notes: Record<string, ItemNotes> = {
       'A delivery normally awards four Goldberries per qualifying member; a feast adds two bonus Goldberries. Giant fruit starts cargo at six, and a completed workshop adds one more. Splitting cargo and first hiring Moss each reduce cargo value by one unless Berry basket or Porter pact prevents that cost.',
       'Remain in the expedition until completion and earn contribution credit by an action such as carrying, hiding or delivering cargo. Simply joining or tracking the hidden cache does not earn completion credit.',
       'Read tracks unlocks a hidden seed cache at (14, 15). With the technique equipped, stand within two tiles of the cache and track it during hauling to receive one goldberry and 25 Exploring XP. Each character can claim that cache once per expedition.',
+      `Expedition Goldberries are capped: only your first ${EXPEDITION_DAILY_PAID} completions each UTC day pay them, and once those are used the hidden cache gives its XP without the goldberry until 00:00 UTC.`,
       'Enabled settlement worlds have separate region caches. With Exploration active at level 2, survey within three tiles of (118, 112) in the Meadows, Reedwake or Cinder Shoal for one Goldberry and 25 Exploration XP, once per region per character.',
     ] }, { id: 'practical-uses', title: 'Use the full heal', paragraphs: [
       'A goldberry gives its full 10 HP only when at least that much health is missing. Healing stops at your maximum HP, so any excess is lost. Keep one accessible before a dangerous trip.',

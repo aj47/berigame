@@ -1,5 +1,5 @@
 import React from 'react';
-import { GIANT_FEAST_BONUS, EXPEDITION_COMPLETION_XP, expeditionPayout, giantFriendship } from '@sim';
+import { GIANT_FEAST_BONUS, EXPEDITION_CAP_NOTICE, EXPEDITION_COMPLETION_XP, expeditionPayout, giantFriendship } from '@sim';
 import './berryGiant.css';
 
 export function GiantFriendship({ feasts }: { feasts: number }) {
@@ -11,9 +11,10 @@ export function GiantFriendship({ feasts }: { feasts: number }) {
   </div>;
 }
 
-export function FeastRewards({ value, firstFeast = false, earned = false }: { value?: number; firstFeast?: boolean; earned?: boolean }) {
+/** `paid` false: an earned feast past the daily paid cap (EXPEDITION_DAILY_PAID), which paid XP and friendship but no goldberries. */
+export function FeastRewards({ value, firstFeast = false, earned = false, paid = true }: { value?: number; firstFeast?: boolean; earned?: boolean; paid?: boolean }) {
   return <div className={`giant-rewards${earned ? ' is-earned' : ''}`} aria-label={earned ? 'Feast rewards earned' : 'Feast rewards'}>
-    <div><img src="/items/goldberry.png" alt="" /><strong>{value === undefined ? `+${GIANT_FEAST_BONUS} bonus goldberries` : `${earned ? '+' : ''}${expeditionPayout(value, true)} goldberries`}</strong></div>
+    <div><img src="/items/goldberry.png" alt="" /><strong>{!paid ? EXPEDITION_CAP_NOTICE : value === undefined ? `+${GIANT_FEAST_BONUS} bonus goldberries` : `${earned ? '+' : ''}${expeditionPayout(value, true)} goldberries`}</strong></div>
     <span>{earned ? '+' : ''}{EXPEDITION_COMPLETION_XP} Befriending XP · completion bonus</span>
     {firstFeast && <div className="giant-keepsake-reward"><span aria-hidden="true">♥</span><strong>Berry Heart keepsake</strong><small>{earned ? 'Character → Details' : 'Your first feast'}</small></div>}
     {!earned && <small>Every helper earns a share. Keep the berry whole for more!</small>}

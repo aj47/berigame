@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { ADVENTURE_CAMP, GIANT_FEAST, PlayerState, chebyshev, hasTechnique } from '@sim';
-import { useAdventureProfiles, useExpeditions, useExpeditionMembers, useFriendlyDuels, useInventoryRows, useMyPlayer, usePlayers, useTick } from '../spacetime/hooks';
+import { useAdventureProfiles, useExpeditionPaid, useExpeditions, useExpeditionMembers, useFriendlyDuels, useInventoryRows, useMyPlayer, usePlayers, useTick } from '../spacetime/hooks';
 import { useGameActions } from '../spacetime/actions';
 import { berryGiantMood } from './berryGiantUi';
 import { FeastRewards, GiantFriendship } from './GiantFriendship';
@@ -13,7 +13,7 @@ const hex = (id: { toHexString(): string } | undefined) => id?.toHexString();
 export default function BerryGiantInteraction({ expeditionId, onClose }: { expeditionId: bigint; onClose: () => void }) {
   const me = useMyPlayer(), expeditions = useExpeditions(), members = useExpeditionMembers();
   const profiles = useAdventureProfiles(), inventory = useInventoryRows(), players = usePlayers();
-  const duels = useFriendlyDuels(), tick = useTick(), actions = useGameActions();
+  const duels = useFriendlyDuels(), tick = useTick(), actions = useGameActions(), paidState = useExpeditionPaid();
   const pending = useRef(false), [busy, setBusy] = useState(false), [error, setError] = useState('');
   if (!me) return null;
   const e = expeditions.find(row => row.id === expeditionId);
@@ -30,7 +30,7 @@ export default function BerryGiantInteraction({ expeditionId, onClose }: { exped
     return <div className="giant-interaction">
       <p className="giant-speech">“{celebrated ? 'Best. Berry. Ever! You have a very big friend.' : growing ? 'Grow, little berry, grow! I’ll save room.' : 'Little friend… could you grow me a BIG berry?'}”</p>
       {e && !celebrated && !growing && <p className="giant-interaction-note">This Giant’s adventure has ended.</p>}
-      {earned ? <FeastRewards value={e.value} firstFeast={feasts === 1} earned /> : <>
+      {earned ? <FeastRewards value={e.value} firstFeast={feasts === 1} earned paid={paidState?.lastPaid === String(e.id)} /> : <>
         <p className="giant-interaction-note">{celebrated ? 'The berry crew shared a feast! Grow one to earn your own gifts.' : growing ? 'Your berry is growing. Head to the patch!' : 'Grow it at camp. Bring it here. Share a feast!'}</p>
         <FeastRewards firstFeast={feasts === 0} />
       </>}

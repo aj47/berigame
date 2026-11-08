@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { adventureTables, testTable } from './adventureHarness';
-import { canFindStick, cargoMovementSteps, duelHit, expeditionPayout, Feat, giantFriendship, hasTechnique, loadoutCount, rollDestination, techniqueUnlocked } from '../adventure';
+import { canFindStick, cargoMovementSteps, duelHit, EXPEDITION_DAILY_PAID, expeditionPaidStatus, expeditionPayout, parseExpeditionPaid, Feat, giantFriendship, hasTechnique, loadoutCount, rollDestination, techniqueUnlocked } from '../adventure';
 import { Cosmetic, hasCosmetic } from '../skills';
 import { INVENTORY_SIZE } from '../constants';
+import { LEDGER_DAY_MS } from '../ledger';
 vi.mock('../../../spacetimedb/node_modules/spacetimedb/dist/server/index.mjs', () => ({ t: new Proxy({}, { get: () => () => ({}) }), SenderError: class SenderError extends Error {} }));
 vi.mock('../../../spacetimedb/src/schema', () => ({ default: { reducer: (...args: unknown[]) => args.at(-1) } }));
 import { expeditionAction, equipTechnique, duelAction, contributeProject, shareGarden } from '../../../spacetimedb/src/reducers/adventure';
@@ -215,5 +216,94 @@ describe('friendly duels', () => {
   });
   it('surrender and disconnect safely finish the duel', () => {
     const h=harness(); h.at(30,30); h.at(31,30,B); call(duelAction,h.ctx,{action:'challenge',target:B}); h.ctx.sender=B; call(duelAction,h.ctx,{action:'accept',target:A}); call(duelAction,h.ctx,{action:'surrender',target:A}); expect([...h.db.friendlyDuel.iter()][0].result).toContain('surrendered');
+  });
+});
+
+describe('daily paid expedition cap', () => {
+  const goldberries = (h: ReturnType<typeof harness>, who = A) =>
+    [...h.db.inventorySlot.owner.filter(who), ...[...h.db.groundItem.iter()].filter((g: any) => g.owner?.toHexString?.() === who.toHexString())]
+      .filter((s: any) => s.itemId === 'berry_goldberry').reduce((n: number, s: any) => n + s.quantity, 0);
+  const feast = (h: ReturnType<typeof harness>) => { h.at(22,18); h.ripe('feast'); h.action('take'); h.at(12,36); h.action('feed'); };
+  const notices = (h: ReturnType<typeof harness>) => [...h.db.socialEvent.iter()].map((n: any) => n.text);
+  const paidView = (h: ReturnType<typeof harness>, who = A) => h.db.frontierView.key.find(`${who.toHexString()}:expeditionPaid:${who.toHexString()}`);
+
+  it('counts days like the ledger and reports what is left', () => {
+    expect(EXPEDITION_DAILY_PAID).toBe(5);
+    const now = 20_000 * LEDGER_DAY_MS + 3_600_000;
+    expect(expeditionPaidStatus(undefined, now)).toEqual({ cap: 5, used: 0, left: 5, resetsInSeconds: (LEDGER_DAY_MS - 3_600_000) / 1000 });
+    expect(expeditionPaidStatus({ day: 20_000, paid: 3 }, now)).toMatchObject({ used: 3, left: 2 });
+    expect(expeditionPaidStatus({ day: 19_999, paid: 5 }, now)).toMatchObject({ used: 0, left: 5 });
+    expect(expeditionPaidStatus({ day: 20_000, paid: 9 }, now)).toMatchObject({ used: 5, left: 0 });
+    expect(parseExpeditionPaid('{"id":"a","day":3,"paid":2,"lastPaid":"7"}')).toEqual({ day: 3, paid: 2, lastPaid: '7' });
+    expect(parseExpeditionPaid('{"day":3}')).toBeUndefined();
+    expect(parseExpeditionPaid('{')).toBeUndefined();
+  });
+  it('pays goldberries for the first five completions a UTC day, then only XP, friendship and progress', () => {
+    const h = harness();
+    for (let i = 0; i < EXPEDITION_DAILY_PAID; i++) feast(h);
+    const paid = goldberries(h);
+    expect(paid).toBeGreaterThan(0);
+    expect(JSON.parse(paidView(h).data)).toEqual({ id: 'a', day: Math.floor(100_000 / LEDGER_DAY_MS), paid: 5, lastPaid: String(h.e().id) });
+    const fifth = String(h.e().id);
+    const before = profile(h.ctx, A);
+    feast(h);
+    expect(goldberries(h)).toBe(paid);
+    expect(profile(h.ctx, A)).toMatchObject({ completions: 6, giantTrust: 6 });
+    expect(profile(h.ctx, A).befriendingXp).toBeGreaterThan(before.befriendingXp);
+    const last = notices(h).at(-1)!;
+    expect(last).toContain('Daily expedition rewards used (5/5); XP only until 00:00 UTC');
+    expect(last).toContain('+35 Befriending completion XP');
+    expect(last).not.toMatch(/\+\d+ goldberries/);
+    expect(JSON.parse(paidView(h).data)).toMatchObject({ paid: 5, lastPaid: fifth });
+    // A market delivery past the cap pays nothing either.
+    h.at(22,18); h.ripe('market'); h.action('take'); h.at(35,37); h.action('deliver');
+    expect(goldberries(h)).toBe(paid);
+    expect(profile(h.ctx, A).completions).toBe(7);
+  });
+  it('resets at the next UTC day boundary', () => {
+    const h = harness();
+    for (let i = 0; i <= EXPEDITION_DAILY_PAID; i++) feast(h);
+    const capped = goldberries(h);
+    h.ctx.timestamp = { microsSinceUnixEpoch: h.ctx.timestamp.microsSinceUnixEpoch + BigInt(LEDGER_DAY_MS) * 1000n };
+    feast(h);
+    expect(goldberries(h)).toBeGreaterThan(capped);
+    expect(JSON.parse(paidView(h).data)).toMatchObject({ paid: 1 });
+  });
+  it('counts a party completion once for each paid member, per character', () => {
+    const h = harness();
+    // B has already used four of today's paid completions; A has used none.
+    h.db.frontierPrivate.insert({ key: 'expeditionPaid:b', kind: 'expeditionPaid', data: JSON.stringify({ id: 'b', day: Math.floor(100_000 / LEDGER_DAY_MS), paid: 4 }) });
+    const party = () => {
+      h.ctx.sender = A; h.at(22,18); h.ripe('feast'); h.action('take');
+      h.ctx.sender = B; h.at(h.e().x, h.e().z, B); h.action('join');
+      h.ctx.sender = C; h.at(h.e().x, h.e().z, C); h.action('join');
+      h.ctx.sender = A; h.action('pass', { target: B });
+      h.ctx.sender = B; h.at(12,36,B); h.action('feed'); h.ctx.sender = A;
+    };
+    party();
+    expect(JSON.parse(paidView(h, A).data).paid).toBe(1);
+    expect(JSON.parse(paidView(h, B).data).paid).toBe(5);
+    expect(paidView(h, C)).toBeUndefined();
+    const a = goldberries(h, A), b = goldberries(h, B);
+    party();
+    expect(goldberries(h, A)).toBeGreaterThan(a);
+    expect(goldberries(h, B)).toBe(b);
+    expect(JSON.parse(paidView(h, A).data).paid).toBe(2);
+    expect(notices(h).filter(t => t.includes('Daily expedition rewards used (5/5)'))).toHaveLength(1);
+  });
+  it('stops the tracked seed cache paying a goldberry once the day is used up', () => {
+    const h = harness();
+    saveProfile(h.ctx, { ...profile(h.ctx, A), loadout: 1 << 6 });
+    h.db.frontierPrivate.insert({ key: 'expeditionPaid:a', kind: 'expeditionPaid', data: JSON.stringify({ id: 'a', day: Math.floor(100_000 / LEDGER_DAY_MS), paid: 4 }) });
+    h.ripe(); h.at(14,15); h.action('track');
+    expect(goldberries(h)).toBe(1);
+    h.action('leave');
+    h.db.frontierPrivate.key.update({ key: 'expeditionPaid:a', kind: 'expeditionPaid', data: JSON.stringify({ id: 'a', day: Math.floor(100_000 / LEDGER_DAY_MS), paid: 5 }) });
+    h.at(22,18); h.ripe(); h.at(14,15);
+    const xp = profile(h.ctx, A).exploringXp;
+    h.action('track');
+    expect(goldberries(h)).toBe(1);
+    expect(profile(h.ctx, A).exploringXp).toBeGreaterThan(xp);
+    expect(notices(h).at(-1)).toContain('Daily expedition rewards used (5/5); XP only until 00:00 UTC');
   });
 });

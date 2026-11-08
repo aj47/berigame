@@ -1,8 +1,8 @@
-import { frontierRepository, projectFrontier } from './frontier';
+import { frontierRepository, projectFrontier, publishOwnView } from './frontier';
 import { awardDisciplineXp } from '../../../shared/sim/frontier/shrines';
 import type { Identity } from 'spacetimedb';
 import { SenderError } from 'spacetimedb/server';
-import { addXp, Cosmetic, hasCosmetic, PATH_FIELDS, type Tile, PlayerState, chebyshev, Feat, hasTechnique, BERRY_MARKET, GIANT_FEAST, ADVENTURE_CAMP, expeditionPayout, EXPEDITION_COMPLETION_XP, giantFriendship, rollDestination, worldBlockedSet, inSafeRing, swingDamage, duelHit, tileKey, bfsPath, goalIsTile } from '../../../shared/sim';
+import { addXp, Cosmetic, hasCosmetic, PATH_FIELDS, type Tile, PlayerState, chebyshev, Feat, hasTechnique, BERRY_MARKET, GIANT_FEAST, ADVENTURE_CAMP, expeditionPayout, EXPEDITION_COMPLETION_XP, EXPEDITION_DAILY_PAID, EXPEDITION_CAP_NOTICE, expeditionPaidToday, ledgerDay, type ExpeditionPaidState, giantFriendship, rollDestination, worldBlockedSet, inSafeRing, swingDamage, duelHit, tileKey, bfsPath, goalIsTile } from '../../../shared/sim';
 import type { Ctx } from './types';
 import { sameId, clearInteractions } from './players';
 import { giveItem, readSlots, writeSlots } from './inventory';
@@ -35,6 +35,33 @@ export function spend(ctx: Ctx, id: Identity, itemId: string, quantity: number) 
   const after = snap.slots.map(s => { if (!s || s.itemId !== itemId || !left) return s; const take = Math.min(left, s.quantity); left -= take; return s.quantity > take ? { ...s, quantity: s.quantity - take } : null; });
   writeSlots(ctx, id, snap, after);
 }
+/**
+ * Today's paid expedition completions (EXPEDITION_DAILY_PAID): one private
+ * frontier record per character, kind 'expeditionPaid', `{ id: <identity hex>,
+ * day, paid, lastPaid }`, published to its owner as the frontier_view row
+ * `expeditionPaid:<hex>`. Stored like the Ledger, so no table changes.
+ */
+interface ExpeditionPaidRecord extends ExpeditionPaidState { id: string }
+interface ExpeditionPaidRepo {
+  get(kind: 'expeditionPaid', id: string): ExpeditionPaidRecord | undefined;
+  put(kind: 'expeditionPaid', value: ExpeditionPaidRecord): void;
+}
+const paidRepo = (ctx: Ctx) => frontierRepository(ctx) as unknown as ExpeditionPaidRepo;
+const today = (ctx: Ctx) => ledgerDay(Number(ctx.timestamp.microsSinceUnixEpoch / 1000n));
+/** Paid expedition completions `id` has left today. */
+export function paidExpeditionsLeft(ctx: Ctx, id: Identity): number {
+  return Math.max(0, EXPEDITION_DAILY_PAID - expeditionPaidToday(paidRepo(ctx).get('expeditionPaid', id.toHexString()), today(ctx)));
+}
+/** Use one of today's paid completions for `id` on `expeditionId`; false once they are all used (nothing is stored then). */
+export function claimPaidExpedition(ctx: Ctx, id: Identity, expeditionId: bigint): boolean {
+  const repo = paidRepo(ctx), idHex = id.toHexString(), day = today(ctx);
+  const paid = expeditionPaidToday(repo.get('expeditionPaid', idHex), day);
+  if (paid >= EXPEDITION_DAILY_PAID) return false;
+  const record: ExpeditionPaidRecord = { id: idHex, day, paid: paid + 1, lastPaid: expeditionId.toString() };
+  repo.put('expeditionPaid', record);
+  publishOwnView(ctx, id, 'expeditionPaid', idHex, record);
+  return true;
+}
 export function creditFor(ctx: Ctx, expeditionId: bigint, id: Identity) {
   const key = `${expeditionId}:${id.toHexString()}`;
   return ctx.db.expeditionCredit.key.find(key) ?? ctx.db.expeditionCredit.insert({ key, expeditionId, identity: id, contributions: 0, rewarded: false, tracked: false });
@@ -60,16 +87,18 @@ export function finishExpedition(ctx: Ctx, e: ExpeditionRow, T: number, delivere
     if (!delivered || !credit.contributions || credit.rewarded) continue;
     ctx.db.expeditionCredit.key.update({ ...credit, rewarded: true });
     const p = loadPlayer(ctx, m.identity); if (!p) continue;
-    const inBag = giveItem(ctx, p.identity, 'berry_goldberry', reward, p, T);
+    const paid = claimPaidExpedition(ctx, p.identity, e.id);
+    const inBag = paid ? giveItem(ctx, p.identity, 'berry_goldberry', reward, p, T) : 0;
     progress(ctx, p.identity, fed ? 4 : 2, EXPEDITION_COMPLETION_XP, fed ? Feat.Feed : Feat.Deliver);
     const pp = profile(ctx, p.identity);
     const giantTrust = pp.giantTrust + (fed ? 1 : 0);
     saveProfile(ctx, { ...pp, completions: pp.completions + 1, giantTrust });
     const keepsake = fed && unlockCosmetic(ctx, p.identity, Cosmetic.BerryHeart);
     const friendship = giantFriendship(giantTrust);
-    const rewardNotice = `+${reward} goldberries · +${EXPEDITION_COMPLETION_XP} ${fed ? 'Befriending' : 'Exploring'} completion XP`;
+    const xpNotice = `+${EXPEDITION_COMPLETION_XP} ${fed ? 'Befriending' : 'Exploring'} completion XP`;
+    const rewardNotice = paid ? `+${reward} goldberries · ${xpNotice}` : `${EXPEDITION_CAP_NOTICE} · ${xpNotice}`;
     const friendshipNotice = fed ? ` · ${friendship.label}: +${friendship.pauseSeconds}s head start` : '';
-    const overflowNotice = inBag < reward ? ` · ${reward - inBag} goldberries on the ground beside you` : '';
+    const overflowNotice = paid && inBag < reward ? ` · ${reward - inBag} goldberries on the ground beside you` : '';
     notify(ctx, p.identity, e.leader, 0, `${rewardNotice}${friendshipNotice}${keepsake ? ' · Berry Heart unlocked' : ''}${overflowNotice}`);
   }
   if (delivered) {

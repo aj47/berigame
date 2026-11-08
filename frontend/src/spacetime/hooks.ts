@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { useSpacetimeDB } from 'spacetimedb/react';
 import { tables, type DbConnection } from '../module_bindings';
 import type { Player } from '../module_bindings/types';
-import { worldBlockedSet } from '@sim';
+import { parseExpeditionPaid, worldBlockedSet } from '@sim';
 import { identityHex } from './identity';
 import { playerView } from './playerView';
 import { WATCHING, useViewerStore } from './viewer';
@@ -394,6 +394,21 @@ export function useMyVaultSlots(): readonly import('@sim').Slot[] {
     if (!data) return EMPTY;
     try { return (JSON.parse(data).slots ?? EMPTY) as readonly import('@sim').Slot[]; } catch { return EMPTY; }
   }, [data]);
+}
+
+/**
+ * Today's goldberry-paying expedition completions (shared/sim/adventure.ts
+ * EXPEDITION_DAILY_PAID), published to you alone through frontier_view as
+ * `{ id, day, paid, lastPaid }`. Undefined before your first paid completion;
+ * a row from an earlier day counts as none used (expeditionPaidStatus).
+ */
+export function useExpeditionPaid(): import('@sim').ExpeditionPaidState | undefined {
+  const me = useMyIdentityHex();
+  const data = useTableSelector(tables.frontierView, (rows: readonly import('../module_bindings/types').FrontierView[]) => {
+    const row = me ? rows.find((r) => r.kind === 'expeditionPaid' && r.source === `expeditionPaid:${me}`) : undefined;
+    return row ? row.data : undefined;
+  });
+  return useMemo(() => parseExpeditionPaid(data), [data]);
 }
 
 /**
