@@ -6,14 +6,14 @@ import {
   LANTERN_REWARD, LANTERN_RULES_VERSION, LANTERN_SPAWNS, LANTERN_TIME_LIMIT, Pending, PlayerState, RESPAWN_GRACE_TICKS, SocialNotice,
   SpireMemberState, SpireOutcome, SpireStage, inHotbar, lanternAdvance, lanternBlowAt, lanternClearReward, lanternConfigOr,
   lanternEmptySlots, lanternEntryRejection, lanternFreshFight, lanternLocal, lanternMaxHp, lanternPulseAt, lanternResolveTick,
-  lanternSeed, lanternSlot, lanternTile, lanternUtcDay, swingDamage, withLanternSlot,
+  lanternSeed, lanternSlot, lanternTile, lanternUtcDay, lanternWeaponDraw, swingDamage, withLanternSlot, HOTBAR_SIZE, moveItem as moveSlotsItem,
   type LanternConfigLike, type LanternFightLike, type LanternMemberSim, type LanternRunSim, type Tile,
 } from '../../../shared/sim';
 import { newProfile } from '../../../shared/sim/frontier/model';
 import { progress, spend } from './adventure';
 import type { BossTick } from './bossTick';
 import { frontierRepository, projectFrontier } from './frontier';
-import { giveItem, readSlots } from './inventory';
+import { giveItem, readSlots, writeSlots } from './inventory';
 import { clearInteractions, hex } from './players';
 import { emitBossEvent, emitBossNotice, sameRowShallow } from './rows';
 import { cancelTrade, notify, tradesOf } from './social';
@@ -27,7 +27,7 @@ import { loadPlayer, storePlayer } from './playerStore';
  * The Spire's machinery on its own tables: one sealed floor shared by every
  * run (logical instancing), lobbies at the Fen Gate, knockouts that never kill
  * (ejected with 10 HP and 10 ticks of grace, bag untouched), 50-tick away
- * grace, 6 meals, refunds of the bait and the fee on an owner close, a rules
+ * grace, 4 meals, refunds of the bait and the fee on an owner close, a rules
  * reset or a whole-party abandon, and the rules version.
  *
  * The fight itself is the shared reference: every Active tick builds a
@@ -435,6 +435,22 @@ export function lanternEntryProblem(ctx: Ctx, p: PlayerRow): string | null {
   return lanternEntryRejection(readSlots(ctx, p.identity).slots, lanternCoins(ctx, p.identity), p.weapon);
 }
 
+/**
+ * The fight swings only the wielded weapon, and entry accepts one in the bag: draw the best qualifying weapon
+ * (moving it into the quick bar first if it sits past it) and tell the member with a Wielded notice. Mutates `p`.
+ */
+function drawWeapon(ctx: Ctx, T: number, runId: bigint, p: PlayerRow): void {
+  const snap = readSlots(ctx, p.identity);
+  const draw = lanternWeaponDraw(snap.slots, p.weapon);
+  if (!draw) return;
+  if (draw.slot >= HOTBAR_SIZE) {
+    const to = [0, 1, 2].find((s) => !snap.slots[s]) ?? 0;
+    writeSlots(ctx, p.identity, snap, moveSlotsItem(snap.slots, draw.slot, to));
+  }
+  p.weapon = draw.itemId;
+  emitBossNotice(ctx, { tick: T, boss: BossId.Lanternmaw, kind: BossNoticeKind.Wielded, player: p.identity, runId, itemId: draw.itemId, amount: draw.damage });
+}
+
 export interface LanternStartIo {
   player(hex: string): PlayerRow | undefined;
   save(p: PlayerRow): void;
@@ -457,6 +473,7 @@ export function lanternStartRun(ctx: Ctx, T: number, run: LanternRunRow, members
     if (!p) continue;
     spend(ctx, p.identity, LANTERN_BAIT.itemId, 1);
     payers.push(p.identity);
+    drawWeapon(ctx, T, run.id, p);
     clearInteractions(ctx, p);
     for (const trade of tradesOf(ctx, p.identity)) cancelTrade(ctx, trade, 'Trade cancelled: they went down into the Drowned Hollow');
     p.respawnTick = Math.min(p.respawnTick, Math.max(0, T - RESPAWN_GRACE_TICKS));

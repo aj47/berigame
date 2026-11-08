@@ -251,6 +251,25 @@ describe('lantern_start', () => {
     expect(h.events(BossEventKind.LanternRunStart)[0]).toMatchObject({ boss: BossId.Lanternmaw, runId, quantity: 2 });
   });
 
+  it('a qualifying weapon in the bag is drawn at the start (moved to the quick bar if needed) with a Wielded notice', () => {
+    config();
+    ready(A);
+    h.set(A, { weapon: 'stick' });
+    // The club sits past the quick bar; the stick fills slot 0 and is wielded.
+    for (const r of [...h.db.inventorySlot.owner.filter(A)]) h.db.inventorySlot.id.delete(r.id);
+    h.db.inventorySlot.insert({ id: 0n, owner: A, slot: 0, itemId: 'stick', quantity: 1 });
+    h.db.inventorySlot.insert({ id: 0n, owner: A, slot: 7, itemId: 'stone_club', quantity: 1 });
+    h.give(A, LANTERN_BAIT.itemId, 1);
+    open(h.as(A), RULES);
+    start(h.as(A), RULES);
+    expect(h.p(A).weapon).toBe('stone_club');
+    const club = [...h.db.inventorySlot.owner.filter(A)].find((r: any) => r.itemId === 'stone_club');
+    expect(club.slot).toBeLessThan(3);
+    expect(h.notices(BossNoticeKind.Wielded, A)[0]).toMatchObject({ boss: BossId.Lanternmaw, itemId: 'stone_club', amount: 8 });
+    // A member already wielding a qualifying weapon keeps it and gets no notice.
+    h.run(30);
+  });
+
   it('a weapon in the bag (not wielded) is enough', () => {
     config();
     ready(A);
@@ -271,6 +290,18 @@ function pickMove(f: LanternFightLike, startTick: number, T: number, from: numbe
   const want = f.stage === LanternStage.Tide ? (i: number) => i === LANTERN_SPRINGS[f.spring] : (i: number) => lanternInCourt(i);
   return (swing || f.stage === LanternStage.Tide) ? pool.find(want) ?? pool[0] : pool[0];
 }
+
+describe('the start grace (the water stills)', () => {
+  it('nothing can hit anyone for the first 15 + 3 ticks after the start, even standing idle on the spawn tile', () => {
+    const runId = begin([A, B]);
+    const T0 = h.T();
+    expect(lanternRow(runId).startTick).toBe(T0 + 15);
+    h.run(17);
+    expect(h.p(A).hp).toBe(30);
+    expect(h.p(B).hp).toBe(30);
+    expect(fight(runId).hits0 + fight(runId).hits1 + fight(runId).drowned0).toBe(0);
+  });
+});
 
 describe('the tick runs the shared reference (server and clients agree)', () => {
   it('every tick of a scripted solo run matches lanternResolveTick field for field', () => {
@@ -307,8 +338,8 @@ describe('the tick runs the shared reference (server and clients agree)', () => 
     const runId = fighting([A]);
     const run = lanternRow(runId);
     const T = h.T() + 1;
-    // A Maw Bellow published 3 ticks ago: rings 2-6 are hit at T.
-    setFight(runId, { stage: LanternStage.Den, curKind: 7, curStart: T - 3, curSeed: 0, denCount: 1 });
+    // A Maw Bellow published 4 ticks ago (rules 3): rings 2-6 are hit at T.
+    setFight(runId, { stage: LanternStage.Den, curKind: 7, curStart: T - 4, curSeed: 0, denCount: 1 });
     const b = lanternBlowAt(fightLike(fight(runId)), T, run.startTick)!;
     const on = LANTERN_TILES.find((i) => b.tiles[i] && lanternInCourt(i))!;
     h.place(A, lanternTile(on), { hp: 30, nextSwingTick: 1_000_000 });
@@ -331,15 +362,15 @@ describe('the tick runs the shared reference (server and clients agree)', () => 
     expect(run.startTick).toBeGreaterThan(0);
   });
 
-  it('a flooded tile costs 4 HP per tick with a Drown notice', () => {
+  it('a flooded tile costs 3 HP per tick with a Drown notice', () => {
     const runId = fighting([A]);
     setFight(runId, { stage: LanternStage.Tide, curKind: LANTERN_NONE, surfaceTick: h.T() - 1, spring: 0, pulseSeed: 0, capped: true });
     const shallow = LANTERN_TILES.find((i) => !LANTERN_PLANK[i] && LANTERN_STANDABLE[i])!;
     h.place(A, lanternTile(shallow), { hp: 30 });
     h.run(1);
-    expect(h.p(A).hp).toBe(26);
+    expect(h.p(A).hp).toBe(27);
     expect(fight(runId).drowned0).toBe(1);
-    expect(h.notices(BossNoticeKind.Hurt, A).at(-1)).toMatchObject({ amount: 4, quantity: HurtSource.Drown });
+    expect(h.notices(BossNoticeKind.Hurt, A).at(-1)).toMatchObject({ amount: 3, quantity: HurtSource.Drown });
   });
 });
 
@@ -453,17 +484,17 @@ describe('clear, rewards and the daily cap', () => {
 });
 
 describe('guards on the Drowned Hollow floor', () => {
-  it('the 7th meal of a run is refused', () => {
+  it('the meal after the 4th of a run is refused (rules 3: 4 meals)', () => {
     fighting([A]);
     h.give(A, 'berry_blueberry', 10);
     const slot = [...h.db.inventorySlot.owner.filter(A)].find((r: any) => r.itemId === 'berry_blueberry').slot;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
       h.set(A, { eatCooldownUntilTick: 0, hp: 5, inputsThisTick: 0 });
       eat(h.as(A), { slot });
     }
-    expect(member(A).meals).toBe(6);
+    expect(member(A).meals).toBe(4);
     h.set(A, { eatCooldownUntilTick: 0, hp: 5, inputsThisTick: 0 });
-    expect(() => eat(h.as(A), { slot })).toThrow('You have eaten your fill in the Drowned Hollow (6/6)');
+    expect(() => eat(h.as(A), { slot })).toThrow('You have eaten your fill in the Drowned Hollow (4/4)');
   });
 
   it('drop, harvest and trade are refused on the floor', () => {

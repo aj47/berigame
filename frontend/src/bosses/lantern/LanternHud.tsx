@@ -131,7 +131,7 @@ function InsideHud() {
         {spring && status.surfacesIn === null && fight?.stage === LanternStage.Tide && <> · at the {spring} spring</>}
       </div>
       {intro !== null
-        ? <div className="spire-enrage">Get ready: {Math.ceil(intro)} s</div>
+        ? <div className="spire-enrage">The water stills: {Math.ceil(intro)} s</div>
         : enraged && <div className="spire-enrage">Enraged: blows hit harder</div>}
       {status.choked && <div className="spire-banner lantern-choked" data-testid="lantern-choked">Choked! Double damage<small>It cannot heal or pulse</small></div>}
       {status.flooded && !status.choked && <div className="spire-banner lantern-flood" data-testid="lantern-flood">High tide: stay on the planks</div>}

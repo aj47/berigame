@@ -22,7 +22,7 @@ import type { Slot } from './types';
 import type { Tile } from './types';
 
 /** Stamped on every run; any change to the pattern table needs the validator and a bump (lanternmaw-patterns.test.ts). */
-export const LANTERN_RULES_VERSION = 2;
+export const LANTERN_RULES_VERSION = 3;
 export const LANTERN_BOSS_NAME = 'Lanternmaw';
 
 // ---- Geometry ------------------------------------------------------------------------------------------------------
@@ -196,9 +196,10 @@ function buildBlows(kind: number, seed6: number, aim: number): LanternBlow[] {
     }
     case LanternKind.Bellow: {
       // Everything but the outer edge (rings 2-6), then the edge and the boardwalk band (rings 5-7): run out to
-      // ring 7 and straight back in. From ring 2 the first escape needs all 3 ticks of notice.
-      const late = 6 + (s & 1);
-      return [blow(3, (i) => lanternRing(i) <= 6), blow(late, (i) => lanternRing(i) >= 5)];
+      // ring 7 and straight back in. Rules 3: 4 ticks of notice, so a player who sees it a tick late can still
+      // leave ring 2 (5 steps: three moves); the second blow keeps its 3-4 tick gap.
+      const late = 7 + (s & 1);
+      return [blow(4, (i) => lanternRing(i) <= 6), blow(late, (i) => lanternRing(i) >= 5)];
     }
     case LanternKind.Storm:
       // Ten geysers, two per tick.
@@ -255,7 +256,11 @@ export function lanternPulseTiles(spring: number, type: number): Uint8Array {
 // ---- Numbers -------------------------------------------------------------------------------------------------------
 
 export const LANTERN_MAX_PARTY = 4;
-export const LANTERN_INTRO_TICKS = 5;
+/**
+ * The start grace, "the water stills": 15 ticks between the start and the fight clock (startTick), and the
+ * first den blow lands 3 ticks after that, so a member whose dodge loop starts a few seconds late is not hit.
+ */
+export const LANTERN_INTRO_TICKS = 15;
 /** 6:00 after the intro. */
 export const LANTERN_TIME_LIMIT = 600;
 /** From 4:12 the den draws from the phase 3 pool and every blow and pulse deals 1 more. */
@@ -264,14 +269,18 @@ export const LANTERN_ENRAGE_BONUS = 1;
 /** Den blow damage by phase (index 1..3). */
 export const LANTERN_BLOW_DAMAGE = [0, 10, 13, 15] as const;
 export const LANTERN_PULSE_DAMAGE = 7;
-/** Per tick on a flooded tile; no i-frames either way. */
-export const LANTERN_DROWN_DAMAGE = 4;
+/** Per tick on a flooded tile; no i-frames either way (rules 3: 3, was 4). */
+export const LANTERN_DROWN_DAMAGE = 3;
 export const LANTERN_IFRAME_TICKS = 2;
 /** Heal per tide tick while it feeds, by party size (index 1..4): always below one stick swing per member per 4 ticks. */
 export const LANTERN_FEED_HEAL = [0, 1, 2, 3, 4] as const;
 /** Swing cadence: slot s swings on ticks with (T - startTick) mod 4 == s. */
 export const LANTERN_SWING_TICKS = 4;
-export const LANTERN_MEALS = 6;
+/**
+ * Meals per member per run (rules 3: 4, was 6). With the Bellow's 4th tick of notice and the lighter flood this keeps
+ * the careful solo bot near 30% (BOSSES.md 9.9).
+ */
+export const LANTERN_MEALS = 4;
 export const LANTERN_KO_HP = 10;
 /** Damage dealt in the run needed for the clear reward. */
 export const LANTERN_MIN_DAMAGE = 40;
@@ -585,4 +594,19 @@ export function lanternEmptySlots(): LanternSlotColumns {
 /** Seconds of fight time left at T (0 before the run starts or after it ends). */
 export function lanternSecondsLeft(startTick: number, endTick: number, T: number): number {
   return T < startTick ? Math.ceil(LANTERN_TIME_LIMIT * 0.6) : Math.max(0, Math.ceil((endTick - T) * 0.6));
+}
+
+/**
+ * The weapon drawn at the start: when the wielded weapon is below LANTERN_MIN_WEAPON_DAMAGE (or none), the bag
+ * slot of the strongest weapon that meets it (the fight swings only the wielded weapon), else null.
+ */
+export function lanternWeaponDraw(slots: readonly Slot[], wielded: string): { slot: number; itemId: string; damage: number } | null {
+  const damage = (id: string) => (id ? getItemDef(id)?.weaponDamage ?? 0 : 0);
+  if (damage(wielded) >= LANTERN_MIN_WEAPON_DAMAGE) return null;
+  let best: { slot: number; itemId: string; damage: number } | null = null;
+  slots.forEach((s, slot) => {
+    const d = s ? damage(s.itemId) : 0;
+    if (s && d >= LANTERN_MIN_WEAPON_DAMAGE && (!best || d > best.damage)) best = { slot, itemId: s.itemId, damage: d };
+  });
+  return best;
 }

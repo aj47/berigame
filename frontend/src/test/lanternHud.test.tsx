@@ -52,7 +52,7 @@ describe('LanternHud', () => {
     const party = screen.getByTestId('lantern-party');
     expect(party).toHaveTextContent('Me');
     expect(party).toHaveTextContent('22 HP');
-    expect(screen.getByLabelText('6 of 6 meals left')).toBeInTheDocument();
+    expect(screen.getByLabelText('4 of 4 meals left')).toBeInTheDocument();
   });
 
   it('counts the dive down to the published spring, then floods and chokes', () => {

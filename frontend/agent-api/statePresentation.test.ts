@@ -372,7 +372,7 @@ test('state.lantern comes from the shared presenter: entry, lobbies and your run
   assert.deepEqual(blocks.lantern.lobbies, []); // inside a started run
   assert.equal(blocks.lantern.run.runId, '61');
   assert.equal(blocks.lantern.run.fightStage, 'den');
-  assert.equal(blocks.lantern.run.you.mealsLeft, 5);
+  assert.equal(blocks.lantern.run.you.mealsLeft, 3);
   assert.equal(blocks.lantern.run.members[1].name, 'p2');
   const atGate = describeBosses(rows, players[2], LS + 2, { players, keysHeld: 0, contribution: null, blocked: WORLD }) as any;
   assert.equal(atGate.lantern.atGate, true);
@@ -531,4 +531,20 @@ test('every documented Lanternmaw /danger and state.lantern.run field exists in 
   check('AGENT_API state.lantern.run', runSection, 'spring', run.spring);
   assert.deepEqual(feed.spring.tile, { x: feed.spring.x, z: feed.spring.z });
   assert.deepEqual(feed.spring.tile, run.spring.tile);
+});
+
+test('the start grace reads "still" in /danger and state.lantern.run; the Wielded notice names the weapon', () => {
+  const runId = 91n;
+  const rows = lrows({ lanternRuns: [lrun(runId)], lanternMembers: [lmember(1, runId, 0), lmember(2, runId, 1)], lanternFights: [lfight(runId, LS - 1)] });
+  const me = onFloor(1, LANTERN_SPAWNS[0]);
+  const players = [me, onFloor(2, LANTERN_SPAWNS[1])];
+  const feed = dangerFeed(rows, me, LS - 3, { players, blocked: WORLD, ageMs: 10, tickMs: 600 }) as any;
+  assert.equal(feed.boss.stage, 'still');
+  const run = (describeBosses(rows, me, LS - 3, { players, keysHeld: 0, contribution: null, blocked: WORLD }) as any).lantern.run;
+  assert.equal(run.fightStage, 'still');
+  assert.equal(run.still.untilTick, LS);
+  assert.equal((describeBosses(rows, me, LS + 1, { players, keysHeld: 0, contribution: null, blocked: WORLD }) as any).lantern.run.fightStage, 'den');
+  const n = describeBossNotice({ tick: LS - 15, boss: 3, kind: 9, runId, amount: 8, total: 0, hp: 0, half: 0, quantity: 0, itemId: 'stone_club' });
+  assert.equal(n.kind, 'wielded');
+  assert.match(n.text, /You drew your Stone Club \(8 damage\)/);
 });

@@ -39,9 +39,11 @@ function attemptsToFirstClear(rates: readonly number[], K: number, cap = 500): {
 describe('Lanternmaw difficulty estimate (scripted players, solo stone club)', () => {
   const rates: number[] = [];
 
-  it('a perfect player always clears; a careful one clears 25-30%; a sloppy one almost never', () => {
+  it('a perfect player (almost) always clears; a careful one clears 25-35%; a sloppy one almost never', () => {
     const perfect = winRate([PERFECT], RUNS, 1), careful = winRate([CAREFUL], RUNS, 2), sloppy = winRate([SLOPPY], RUNS, 3);
-    expect(perfect).toBe(1);
+    // Rules 3 (4 meals): the scripted perfect player caps every spring, so on its longest seed (1 of 400) a twelfth
+    // bite outlasts its food; a real expert would skip that cap. Every sampled clock run still clears (patterns test).
+    expect(perfect).toBeGreaterThanOrEqual(FULL ? 0.99 : 1);
     // The default sample is small: allow its noise around the 20-40% target the full run measures.
     expect(careful).toBeGreaterThanOrEqual(FULL ? 0.2 : 0.1);
     expect(careful).toBeLessThanOrEqual(FULL ? 0.35 : 0.5);

@@ -9,4 +9,5 @@
 export const LANTERN_VALIDATED: readonly { hash: string; rules: number }[] = [
   { hash: '5f69cc7e', rules: 1 },
   { hash: 'b52934ff', rules: 2 },
+  { hash: '91c36734', rules: 3 },
 ];

@@ -346,9 +346,9 @@ describe('describeLantern', () => {
       runId: '12', stage: 'active', outcome: null, fightStage: 'den', cycle: 0, spring: null,
       boss: { name: 'Lanternmaw', health: fight.hp, maxHealth: fight.maxHp, phase: 1, enraged: false },
       startsInTicks: 0, timeLeftTicks: 598, enrageInTicks: 418,
-      damage: { blow: 10, pulse: 7, flood: 4, bite: 6 },
+      damage: { blow: 10, pulse: 7, flood: 3, bite: 6 },
       reach: { x: 63, z: 136, range: 2 },
-      you: { slot: 0, inReach: true, nextSwingTick: L + 4, nextSwingInTicks: 2, dealt: 44, qualified: true, mealsLeft: 5, hits: 1, drowned: 0, caps: 0 },
+      you: { slot: 0, inReach: true, nextSwingTick: L + 4, nextSwingInTicks: 2, dealt: 44, qualified: true, mealsLeft: 3, hits: 1, drowned: 0, caps: 0 },
       danger: '/api/agent/v1/danger',
     });
     const blows = [...new Set(lanternBuildPattern(fight.curKind, fight.curSeed, fight.curAim).map((b) => fight.curStart + b.at))];

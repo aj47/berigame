@@ -47,6 +47,8 @@ export const BossNoticeKind = {
   Keepsake: 7,
   /** quantity = SpireOutcome, total = clear ticks, amount = your stars (Spire) or damage dealt (Lanternmaw) */
   RunResult: 8,
+  /** Lanternmaw start: your best weapon was drawn from the bag for the fight. itemId, amount = its damage */
+  Wielded: 9,
 } as const;
 export type BossNoticeKind = (typeof BossNoticeKind)[keyof typeof BossNoticeKind];
 

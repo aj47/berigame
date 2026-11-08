@@ -303,6 +303,7 @@ export function describeBossNotice(n: BossNoticeRow) {
       case BossNoticeKind.KnockedOut: return n.boss === BossId.Lanternmaw
         ? 'You were knocked out of the Drowned Hollow; your bag is safe' : 'You were knocked out of the Sunken Spire; your bag is safe';
       case BossNoticeKind.Reward: return `Reward: ${n.quantity} ${item}`;
+      case BossNoticeKind.Wielded: return `You drew your ${item} (${n.amount} damage): the fight swings only your wielded weapon`;
       case BossNoticeKind.Keepsake: return `Keepsake unlocked: ${getCosmetic(n.quantity)?.name ?? n.quantity}`;
       case BossNoticeKind.RunResult: return n.boss === BossId.Lanternmaw
         ? `Lanternmaw run ${SPIRE_OUTCOME_NAMES[n.quantity] ?? 'ended'} (${n.amount} damage)`

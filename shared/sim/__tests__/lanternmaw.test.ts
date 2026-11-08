@@ -96,14 +96,14 @@ describe('Lanternmaw den patterns', () => {
     expect(outer[0].tiles[lanternIdx(7, 3)]).toBe(1);
   });
 
-  it('maw bellow leaves only the outer edge, then only the inner rings', () => {
+  it('maw bellow (rules 3: 4 ticks of notice) leaves only the outer edge, then only the inner rings', () => {
     const [a, b] = lanternBuildPattern(LanternKind.Bellow, 0, 0);
     for (const i of LANTERN_TILES) {
       expect(a.tiles[i]).toBe(lanternRing(i) <= 6 ? 1 : 0);
       expect(b.tiles[i]).toBe(lanternRing(i) >= 5 ? 1 : 0);
     }
-    expect([a.at, b.at]).toEqual([3, 6]);
-    expect(lanternBuildPattern(LanternKind.Bellow, 1, 0)[1].at).toBe(7);
+    expect([a.at, b.at]).toEqual([4, 7]);
+    expect(lanternBuildPattern(LanternKind.Bellow, 1, 0)[1].at).toBe(8);
   });
 
   it('mire marks start on the aimed tile', () => {

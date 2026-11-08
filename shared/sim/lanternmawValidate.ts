@@ -238,3 +238,38 @@ export function lanternPatternTableHash(): string {
   for (let s = 0; s < 4; s++) for (let t = 0; t < 2; t++) mask(lanternPulseTiles(s, t));
   return h.toString(16).padStart(8, '0');
 }
+
+/**
+ * Reaction room (rules 3): the tiles from which a player who sees den pattern (kind, seed, aim) `react` ticks
+ * after it is published at P (it stands still through P + react) can still dodge every blow. Backward induction
+ * over the pattern's ticks; each move covers up to 2 steps and blows land on end tiles.
+ */
+export function lanternReactionSafe(kind: number, seed: number, aim: number, react: number): Uint8Array {
+  const blows = lanternBuildPattern(kind, seed, aim);
+  const last = blows.length ? blows[blows.length - 1].at : 0;
+  const hitAt = (k: number) => {
+    const m = new Uint8Array(LANTERN_CELLS);
+    for (const b of blows) if (b.at === k) for (let i = 0; i < LANTERN_CELLS; i++) m[i] |= b.tiles[i];
+    return m;
+  };
+  let win = Uint8Array.from(LANTERN_STANDABLE);
+  for (let k = last; k >= 1; k--) {
+    const hit = hitAt(k), next = new Uint8Array(LANTERN_CELLS);
+    // win: safe to end tick k on i and survive the rest. Before the reaction (k <= react) the player stays put.
+    for (const i of LANTERN_TILES) if (!hit[i] && win[i]) next[i] = 1;
+    win = next;
+    if (k <= react) continue;
+    // The tick k move: from j you can reach a winning end tile i.
+    const from = new Uint8Array(LANTERN_CELLS);
+    for (const j of LANTERN_TILES) {
+      for (let m = LANTERN_MOVE_AT[j]; m < LANTERN_MOVE_AT[j + 1]; m++) if (win[LANTERN_MOVE_TO[m]]) { from[j] = 1; break; }
+    }
+    win = from;
+  }
+  return win;
+}
+
+/** One start tile of lanternReactionSafe. */
+export function lanternReactionEscape(kind: number, seed: number, aim: number, from: number, react: number): boolean {
+  return lanternReactionSafe(kind, seed, aim, react)[from] === 1;
+}

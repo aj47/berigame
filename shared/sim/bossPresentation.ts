@@ -355,7 +355,9 @@ function describeLanternRun(run: LanternRunInput, f: LanternFightRowLike, mine: 
     stage: SPIRE_STAGE_NAMES[run.stage] ?? 'unknown',
     outcome: run.outcome ? SPIRE_OUTCOME_NAMES[run.outcome] ?? 'unknown' : null,
     boss: { name: LANTERN_BOSS_NAME, health: f.hp, maxHealth: f.maxHp, phase: f.phase, enraged },
-    fightStage: LANTERN_STAGE_NAMES[f.stage] ?? 'den',
+    // The start grace: until startTick nothing attacks ("the water stills"); start your dodge loop now.
+    fightStage: active && tick < run.startTick ? 'still' : LANTERN_STAGE_NAMES[f.stage] ?? 'den',
+    ...(active && tick < run.startTick ? { still: { untilTick: run.startTick, text: 'The water stills: nothing attacks until the fight begins. Start your dodge loop now.' } } : {}),
     cycle: f.cycle,
     den: def ? {
       pattern: def.key, name: def.name, aim: def.aimed ? tile(lanternTile(f.curAim)) : null, blowTicks: blows,

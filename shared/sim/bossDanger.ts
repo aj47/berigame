@@ -728,7 +728,8 @@ function lanternFeed(feed: DangerFeed, input: DangerInput, ln: NonNullable<Dange
     enraged: active && lanternEnraged(run.startTick, tick),
     enrageInTicks: active ? Math.max(0, run.startTick + LANTERN_ENRAGE_TICKS - tick) : 0,
     timeoutInTicks: active ? Math.max(0, run.endTick - tick) : 0,
-    stage: LANTERN_STAGE_NAMES[f.stage] ?? 'den',
+    // 'still' during the start grace (the intro before startTick: nothing attacks).
+    stage: active && tick < run.startTick ? 'still' : LANTERN_STAGE_NAMES[f.stage] ?? 'den',
   };
   feed.party = members.filter((m) => m.slot !== mySlot).sort((a, b) => a.slot - b.slot).map((m) => ({
     id: m.player?.identity ?? '', name: m.name,

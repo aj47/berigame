@@ -105,7 +105,7 @@ export function spireEatGuard(ctx: Ctx, p: PlayerRow): void {
   ctx.db.spireMember.identity.update({ ...m, meals: m.meals + 1 });
 }
 
-/** The Drowned Hollow's meal cap, as spireEatGuard: "You have eaten your fill in the Drowned Hollow (6/6)". */
+/** The Drowned Hollow's meal cap (LANTERN_MEALS), as spireEatGuard: "You have eaten your fill in the Drowned Hollow (4/4)". */
 export function lanternEatGuard(ctx: Ctx, p: PlayerRow): void {
   if (!ctx.db.lanternMember) return;
   const m = ctx.db.lanternMember.identity.find(p.identity);

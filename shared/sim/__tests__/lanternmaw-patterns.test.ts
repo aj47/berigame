@@ -11,10 +11,11 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  LANTERN_DIVE_TICKS, LANTERN_PATTERNS, LANTERN_RULES_VERSION, LANTERN_TIDE_TICKS, lanternEntryRejection, lanternPatternDuration,
+  LANTERN_DIVE_TICKS, LANTERN_PATTERNS, LANTERN_RULES_VERSION, LANTERN_TIDE_TICKS, LANTERN_TILES, LanternKind, lanternBuildPattern,
+  lanternEntryRejection, lanternInCourt, lanternPatternDuration,
 } from '../lanternmaw';
 import {
-  LANTERN_PRECONDITION_WEAPON, lanternHealProblem, lanternInstances, lanternPatternTableHash, lanternValidateInstance, lanternWorstCapTicks,
+  LANTERN_PRECONDITION_WEAPON, lanternHealProblem, lanternInstances, lanternPatternTableHash, lanternReactionEscape, lanternReactionSafe, lanternValidateInstance, lanternWorstCapTicks,
   type LanternInstance, type LanternValidation,
 } from '../lanternmawValidate';
 import { LANTERN_VALIDATED } from './lanternmawValidated';
@@ -34,7 +35,7 @@ const TABLE: Record<string, { n: number; first: number; last: number; minFree: n
   mire_marks: { n: 13824, first: 3, last: 5, minFree: 207, pinch: 0.95, reach: 0.69, still: 0.02 },
   drowning_cross: { n: 64, first: 3, last: 7, minFree: 144, pinch: 0.67, reach: 0.25, still: 0.63 },
   lantern_storm: { n: 64, first: 3, last: 7, minFree: 198, pinch: 0.91, reach: 0.56, still: 0.25 },
-  maw_bellow: { n: 64, first: 3, last: 7, minFree: 56, pinch: 0.26, reach: 0, still: 1 },
+  maw_bellow: { n: 64, first: 4, last: 8, minFree: 56, pinch: 0.26, reach: 0, still: 1 },
   tide: { n: 768, first: 8, last: 22, minFree: 49, pinch: 0.23, reach: 0.08, still: 0.78 },
   tide_capped: { n: 768, first: 8, last: 22, minFree: 49, pinch: 0.12, reach: 0.08, still: 0.78 },
 };
@@ -89,6 +90,25 @@ describe('Lanternmaw pattern validator (full sweep)', () => {
     sweep();
     expect(results.get('tide')!.reachMin).toBeGreaterThanOrEqual(2);
     expect(results.get('tide_capped')!.reachMin).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('Lanternmaw reaction room (rules 3)', () => {
+  it('a player who sees a den pattern one tick late can still leave ring 2 before its blows land', () => {
+    const trapped: string[] = [];
+    for (const x of lanternInstances()) {
+      if (x.group !== 'den') continue;
+      const safe = lanternReactionSafe(x.kind, x.seed, x.aim, 1);
+      for (const i of LANTERN_TILES) {
+        if (!lanternInCourt(i) || safe[i]) continue;
+        trapped.push(`${LANTERN_PATTERNS[x.kind].key} seed ${x.seed} aim ${x.aim} from ${i}`);
+      }
+    }
+    expect(trapped.slice(0, 5), `${trapped.length} trapped starts`).toEqual([]);
+  });
+
+  it('the Maw Bellow gives 4 ticks of notice', () => {
+    for (let s = 0; s < 64; s++) expect(lanternBuildPattern(LanternKind.Bellow, s, 0)[0].at).toBe(4);
   });
 });
 
