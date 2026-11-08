@@ -55,7 +55,7 @@ The key sits in the source URL, so keep it out of anything shown on stream.
 
 ## How it stays up
 
-The socket retries forever with backoff (`maxAttempts: Infinity`), and a refused pass is replaced. The page reloads itself after five minutes offline or on a render crash. A pass lasts 48 hours and is replaced with 12 hours left.
+The socket retries forever with backoff (`maxAttempts: Infinity`), and a refused pass is replaced. The page reloads itself after five minutes offline or on a render crash. A pass lasts 48 hours and is replaced with 12 hours left. A reload reuses the tab's pass (sessionStorage), because every pass holds one of the world's `MAX_SPECTATORS` rows until it expires.
 
 ## Load
 

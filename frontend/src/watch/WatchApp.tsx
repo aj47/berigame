@@ -11,8 +11,10 @@ import { useLoadingStore } from '../store';
 import { Director } from './director';
 import OverviewMap from './OverviewMap';
 import { resolvePlayer } from './watchParams';
+import { keepPass, keptPass } from './passStore';
 
 const params = WATCH_PARAMS!;
+const PASS_WORLD = params.world ?? window.location.origin;
 const PASS_PATH = '/api/agent/v1/spectators';
 const PASS_RETRY_MS = 5000;
 /** A pass with less than this left is replaced ahead of the next reconnect. */
@@ -49,6 +51,7 @@ function useWatchPass(): { ready: boolean; note: string } {
         const pass = await requestPass();
         if (!alive) return;
         setWatchPass(pass);
+        keepPass(PASS_WORLD, pass);
         setReady(true);
       } catch (error) {
         if (!alive) return;
@@ -59,11 +62,15 @@ function useWatchPass(): { ready: boolean; note: string } {
     };
     // A server that is simply down refuses every attempt: no need to ask the gateway each time.
     onWatchPassExpired(() => {
+      keepPass(PASS_WORLD, null);
       if (Date.now() - lastRefused < PASS_RETRY_MS * 6) return;
       lastRefused = Date.now();
       void fetchPass();
     });
-    void fetchPass();
+    // A reload reuses this tab's pass rather than taking another of the world's MAX_SPECTATORS rows.
+    const kept = keptPass(PASS_WORLD, PASS_RENEW_MS);
+    if (kept) { setWatchPass(kept); setReady(true); }
+    else void fetchPass();
     const check = window.setInterval(() => {
       const pass = watchPass();
       if (pass && Date.parse(pass.expiresAt) - Date.now() < PASS_RENEW_MS) void fetchPass();
