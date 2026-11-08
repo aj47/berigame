@@ -1,5 +1,5 @@
 import { AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS, SPECTATOR_PATH } from './admissionPolicy';
-import { admissionError, unexpectedError, watchKeyError } from './portable';
+import { admissionError, toJson, unexpectedError, watchKeyError } from './portable';
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage } from 'node:http';
 import { isIP } from 'node:net';
@@ -80,7 +80,7 @@ export function createAgentServer(options: Options) {
       if (retryAfter) res.setHeader('Retry-After', retryAfter);
       if (status >= 400) res.setHeader('Connection', 'close');
       if (body !== undefined) res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.end(body === undefined ? undefined : JSON.stringify(body));
+      res.end(body === undefined ? undefined : toJson(body));
     };
     inflight++;
     try {

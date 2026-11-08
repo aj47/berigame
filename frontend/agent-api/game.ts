@@ -572,9 +572,10 @@ export async function createGameService(credential: Credential, options: Service
               const withStick = nearestReachableTile(self, { x: input.x, z: input.z }, blocked, enterRule(true, hasClub));
               const open = nearestReachableTile(self, { x: input.x, z: input.z }, blocked);
               const sea = !isLandTile({ x: input.x, z: input.z });
-              if (destination.x === open.x && destination.z === open.z) return { destination, ...(sea ? { blockedBy: 'sea' } : {}) };
+              const at = { x: destination.x, z: destination.z };
+              if (destination.x === open.x && destination.z === open.z) return { destination: at, ...(sea ? { blockedBy: 'sea' } : {}) };
               const byBrambles = !hasStick && (withStick.x !== destination.x || withStick.z !== destination.z);
-              return { destination, ...(byBrambles ? { blockedBy: 'brambles', message: BRAMBLE_MESSAGE } : { blockedBy: 'boulders', message: BOULDER_MESSAGE }) };
+              return { destination: at, ...(byBrambles ? { blockedBy: 'brambles', message: BRAMBLE_MESSAGE } : { blockedBy: 'boulders', message: BOULDER_MESSAGE }) };
             }
             case 'expedition': await r.expeditionAction({ action: input.action, expeditionId: BigInt(input.expeditionId ?? 0), target: input.playerId ? Identity.fromString(input.playerId) : undefined, x: input.x ?? self.x, z: input.z ?? self.z, destination: input.destination ?? 'market' }); break;
             case 'technique': await r.equipTechnique({ technique: input.technique }); break;

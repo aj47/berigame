@@ -1,9 +1,9 @@
-import { ApiError } from '../agent-api/portable';
+import { ApiError, toJson } from '../agent-api/portable';
 
 export const unauthorized = () => new ApiError(401, 'invalid_session', 'A valid, unexpired session bearer token is required.');
 export const errorBody = (error: ApiError) => ({ error: { code: error.code, message: error.message } });
 export function send(status: number, body?: unknown, retryAfter?: number) {
-  return new Response(body === undefined ? null : JSON.stringify(body), { status, headers: {
+  return new Response(body === undefined ? null : toJson(body), { status, headers: {
     'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
     'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
     ...(body === undefined ? {} : { 'Content-Type': 'application/json; charset=utf-8' }),

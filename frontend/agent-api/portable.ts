@@ -88,3 +88,12 @@ export class AddressLimits {
     if (joining) entry.joins.take(now);
   }
 }
+
+/**
+ * JSON for every gateway reply and stored receipt: a stray BigInt (a u64 row id, an Identity's
+ * __identity__) becomes its decimal string instead of throwing, so one unconverted field can
+ * never turn a read or an action into an unexpected 500.
+ */
+export function toJson(body: unknown): string {
+  return JSON.stringify(body, (_key, value) => (typeof value === 'bigint' ? value.toString() : value));
+}

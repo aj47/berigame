@@ -15,7 +15,7 @@ import { firstDayGoal } from '../../shared/sim/goals';
 import { emptySlots } from '../../shared/sim/inventory';
 import { PlayerState, Pending } from '../../shared/sim/types';
 
-async function fixture(options: { watchKey?: string; spectatorUri?: string; maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean; link?: { stalled: boolean; alive: boolean }; state?: () => Record<string, any> } = {}) {
+async function fixture(options: { result?: () => unknown; watchKey?: string; spectatorUri?: string; maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean; link?: { stalled: boolean; alive: boolean }; state?: () => Record<string, any> } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'berigame-agent-api-'));
   let now = Date.now();
   const calls: string[] = [];
@@ -39,7 +39,7 @@ async function fixture(options: { watchKey?: string; spectatorUri?: string; maxS
           return { v: 1, tick: ++dangerReads, where: null, moves: [], best: null, path: [] } as any;
         },
         ...(options.link ? { alive: () => options.link!.alive } : {}),
-        async action(name: string, input: Record<string, unknown>) { calls.push(name); inputs.push(input); }, async close() { closed.push(identity); } };
+        async action(name: string, input: Record<string, unknown>) { calls.push(name); inputs.push(input); return options.result?.() as any; }, async close() { closed.push(identity); } };
     },
   } });
   await new Promise<void>(r => api.server.listen(0, '127.0.0.1', r));
@@ -112,7 +112,7 @@ test('the dropped-bag goal reaches /state after a death and its id is what picku
 });
 
 test('an unexpected exception logs the real error and tells the client nothing', async () => {
-  const f = await fixture({ state: () => ({ leaked: 1n }) });
+  const f = await fixture({ state: () => ({ leaked: { toJSON() { throw new TypeError('Do not know how to serialize this value'); } } }) });
   try {
     const { token } = await f.enter();
     const response = await f.request('/state', token);
@@ -122,7 +122,7 @@ test('an unexpected exception logs the real error and tells the client nothing',
     const entry = f.logs.find(e => e.event === 'unexpected_error');
     assert.ok(entry, 'the exception must reach the server log');
     assert.equal(entry.method, 'GET'); assert.equal(entry.path, '/api/agent/v1/state');
-    assert.match(entry.error.message, /serialize a BigInt/);
+    assert.match(entry.error.message, /serialize this value/);
     assert.match(entry.error.stack, /http\.ts/);
   } finally { await f.close(); }
 });
@@ -469,5 +469,18 @@ test('passes have their own per-address lane, charged only after the key is acce
     await f.enter();
     f.advance(Math.ceil(1000 / WATCH_PASS_BUDGET.perSecond));
     assert.equal((await f.request('/spectators', 'secret-key', undefined, {}, 'POST')).status, 201);
+  } finally { await f.close(); }
+});
+
+test('a BigInt anywhere in /state or an action receipt is sent as a decimal string, never a 500', async () => {
+  const f = await fixture({ state: () => ({ player: { id: 'x', pendingId: 5n }, lantern: { run: { runId: 71n } } }), result: () => ({ destination: { x: 3, z: 4, pendingId: 12n } }) });
+  try {
+    const { token } = await f.enter();
+    const state = await f.request('/state', token);
+    assert.equal(state.status, 200);
+    assert.equal((await state.json() as any).lantern.run.runId, '71');
+    const moved = await f.request('/actions/move', token, { x: 3, z: 4 }, { 'Idempotency-Key': randomUUID() });
+    assert.equal(moved.status, 200);
+    assert.equal((await moved.json() as any).destination.pendingId, '12');
   } finally { await f.close(); }
 });

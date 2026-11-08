@@ -469,3 +469,29 @@ test('Lanternmaw notices and news', () => {
       { tick: 9, boss: 'lanternmaw', kind: name, runId: null, x: 47, z: 152, quantity: 0, value: 10, text: '' });
   }
 });
+
+test('lantern rows with real identities and u64 ids serialize: /state blocks, /danger and dodge receipts', async () => {
+  const { Identity } = await import('spacetimedb');
+  const idOf = (i: number) => Identity.fromString(i.toString(16).padStart(64, '0'));
+  const runId = 71n;
+  const real = (i: number, local: number) => ({ ...onFloor(i, local), identity: idOf(i), pendingId: 9n } as any);
+  const rows = lrows({
+    lanternRuns: [{ ...lrun(runId), leader: idOf(1) } as any, { ...lrun(72n, { stage: SpireStage.Lobby, endTick: LS + 100, partySize: 1 }), leader: idOf(3) } as any],
+    lanternMembers: [{ ...lmember(1, runId, 0), identity: idOf(1) } as any, { ...lmember(2, runId, 1), identity: idOf(2) } as any, { ...lmember(3, 72n, 0, SpireMemberState.Lobby), identity: idOf(3) } as any],
+    lanternFights: [lfight(runId, LS + 30)],
+  });
+  const me = real(1, LANTERN_SPAWNS[0]);
+  const players = [me, real(2, LANTERN_SPAWNS[1]), { ...person(3, 47, 151), identity: idOf(3), pendingId: 4n } as any];
+  const blocks = describeBosses(rows, me, LS + 31, { players, keysHeld: 0, contribution: null, blocked: WORLD, entry: { slots: emptySlots(), coins: 5, wielded: 'stone_club' } });
+  assert.doesNotThrow(() => JSON.stringify(blocks));
+  assert.equal((blocks as any).lantern.run.runId, '71');
+  const feed = dangerFeed(rows, me, LS + 31, { players, blocked: WORLD, ageMs: 10, tickMs: 600 });
+  assert.equal(feed.where, 'lantern');
+  assert.doesNotThrow(() => JSON.stringify(feed));
+  const step = feed.moves[0] as any;
+  const target = step ? { x: step.x ?? step.to?.[0] ?? me.x, z: step.z ?? step.to?.[1] ?? me.z } : { x: me.x, z: me.z };
+  assert.doesNotThrow(() => JSON.stringify(dodgeCheck(rows, me, target, LS + 31, WORLD)));
+  // At the gate, a lobby member's view.
+  const gate = { ...person(3, 47, 151), identity: idOf(3), pendingId: 4n } as any;
+  assert.doesNotThrow(() => JSON.stringify(describeBosses(rows, gate, LS + 31, { players, keysHeld: 0, contribution: null, blocked: WORLD })));
+});
