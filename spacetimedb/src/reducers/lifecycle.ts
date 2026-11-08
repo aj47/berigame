@@ -13,7 +13,7 @@ import { statsSessionEnd, statsSessionStart } from '../lib/stats';
 import { activity } from '../lib/activity';
 import { noteConnected } from '../lib/idle';
 import { cancelTrade, tradesOf } from '../lib/social';
-import { MAX_CHARACTER_CONNECTIONS, MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
+import { MAX_CHARACTER_CONNECTIONS, MAX_SPECTATOR_CONNECTIONS, MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
 import { playersTargeting, worldHasSpace } from '../lib/activePlayers';
 import { storePlayer, insertPlayer } from '../lib/playerStore';
 
@@ -44,6 +44,8 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
   const watcher = ctx.db.spectator.identity.find(ctx.sender);
   if (watcher) {
     if (watcher.expiresAtMicros <= ctx.timestamp.microsSinceUnixEpoch) throw new SenderError('spectator pass expired');
+    if (watcher.connections >= MAX_SPECTATOR_CONNECTIONS) throw new SenderError('too many connections for this pass');
+    ctx.db.spectator.identity.update({ ...watcher, connections: watcher.connections + 1 });
     return;
   }
   requireAdmission(ctx);
@@ -105,6 +107,16 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
 });
 
 export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
+  const watcher = ctx.db.spectator?.identity.find(ctx.sender);
+  if (watcher) {
+    const connections = Math.max(0, watcher.connections - 1);
+    // An expired or cleared pass goes with its last socket, where its token cannot then join as a player.
+    const done = connections === 0 && watcher.expiresAtMicros <= ctx.timestamp.microsSinceUnixEpoch
+      && !!ctx.db.accessPolicy.id.find(0)?.requireAdmission;
+    if (done) ctx.db.spectator.identity.delete(watcher.identity);
+    else ctx.db.spectator.identity.update({ ...watcher, connections });
+    return;
+  }
   const existing = findPlayer(ctx, ctx.sender);
   if (!existing) return;
   const p = { ...existing, lastSeenAt: ctx.timestamp, connections: Math.max(0, existing.connections - 1) };

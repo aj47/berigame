@@ -6,6 +6,8 @@ export const MAX_STORED_CHARACTERS = 100_000;
 export const MAX_SPECTATORS = 32;
 /** A spectator pass: long enough to outlast a 24-hour broadcast before it needs replacing. */
 export const SPECTATOR_PASS_SECONDS = 48 * 3600;
+/** Sockets one pass may hold at once: the page's own reconnect can briefly overlap its old socket. */
+export const MAX_SPECTATOR_CONNECTIONS = 2;
 
 /** A saved permit alone never occupies an online slot. */
 export function hasWorldSpace(players: Iterable<{ online: boolean }>, alreadyOnline = false): boolean {

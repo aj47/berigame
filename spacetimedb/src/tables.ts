@@ -801,4 +801,7 @@ export const spectator = table({ name: 'spectator' }, {
   identity: t.identity().primaryKey(),
   issuer: t.identity(),
   expiresAtMicros: t.u64(),
+  /** Open sockets on this pass, capped at MAX_SPECTATOR_CONNECTIONS. The host runs the disconnect hook for every
+   *  socket that was open when it stopped, so a restart brings this back to 0. */
+  connections: t.u8(),
 });

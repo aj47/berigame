@@ -170,5 +170,8 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
     .onDisconnect((ctx) => {
       console.warn('SpacetimeDB disconnected');
       markConnectionLost(ctx, seq < connectedSeq);
+      // The server refuses a pass in its connect hook (expired, cleared, or too many sockets), and the SDK reports that
+      // as a disconnect before any connect: replace the pass, or every retry would present the refused one again.
+      if (WATCHING && connectedSeq < seq) watchPassExpired();
     });
 }

@@ -43,6 +43,7 @@ import AttestRecoveryReducer from "./attest_recovery_reducer";
 import BossDebugReducer from "./boss_debug_reducer";
 import CancelReducer from "./cancel_reducer";
 import CancelTradeRequestReducer from "./cancel_trade_request_reducer";
+import ClearSpectatorsReducer from "./clear_spectators_reducer";
 import ConfigureAccessReducer from "./configure_access_reducer";
 import ConfigureBossesReducer from "./configure_bosses_reducer";
 import ConfigureExpansionReducer from "./configure_expansion_reducer";
@@ -628,6 +629,7 @@ const reducersSchema = __reducers(
   __reducerSchema("boss_debug", BossDebugReducer),
   __reducerSchema("cancel", CancelReducer),
   __reducerSchema("cancel_trade_request", CancelTradeRequestReducer),
+  __reducerSchema("clear_spectators", ClearSpectatorsReducer),
   __reducerSchema("configure_access", ConfigureAccessReducer),
   __reducerSchema("configure_bosses", ConfigureBossesReducer),
   __reducerSchema("configure_expansion", ConfigureExpansionReducer),

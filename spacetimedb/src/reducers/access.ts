@@ -40,7 +40,28 @@ export const grantSpectator = spacetimedb.reducer(
       if (policy?.requireAdmission) for (const row of [...ctx.db.spectator.iter()]) if (row.expiresAtMicros <= now) ctx.db.spectator.identity.delete(row.identity);
       if (ctx.db.spectator.count() >= BigInt(MAX_SPECTATORS)) throw new SenderError('spectator capacity reached');
     }
-    ctx.db.spectator.insert({ identity, issuer: ctx.sender, expiresAtMicros: now + BigInt(lifetimeSeconds) * 1_000_000n });
+    ctx.db.spectator.insert({ identity, issuer: ctx.sender, expiresAtMicros: now + BigInt(lifetimeSeconds) * 1_000_000n, connections: 0 });
+  },
+);
+
+/**
+ * The owner clears spectator passes: the expired ones, or all of them. A pass no socket holds is deleted; one still
+ * open is expired instead (refused from its next connect) and deleted when its last socket closes (lifecycle.ts), so
+ * the reducer guard in schema.ts never loses a connected viewer. Deleting needs admission: without it, a cleared
+ * pass's token would connect as a new character.
+ */
+export const clearSpectators = spacetimedb.reducer(
+  { expiredOnly: t.bool() },
+  (ctx, { expiredOnly }) => {
+    const policy = requireOwner(ctx);
+    if (!policy.requireAdmission) throw new SenderError('clearing spectator passes needs admission on, or their tokens would join as players');
+    const now = ctx.timestamp.microsSinceUnixEpoch;
+    for (const row of [...ctx.db.spectator.iter()]) {
+      const expired = row.expiresAtMicros <= now;
+      if (expiredOnly && !expired) continue;
+      if (row.connections === 0) ctx.db.spectator.identity.delete(row.identity);
+      else if (!expired) ctx.db.spectator.identity.update({ ...row, expiresAtMicros: now });
+    }
   },
 );
 
