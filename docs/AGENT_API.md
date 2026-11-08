@@ -667,7 +667,23 @@ closed; the owner opens it with `configure_lanternmaw` (`state.bossNews` shows
   fenlight from at most 4 qualifying clears per character per UTC day (later clears
   pay XP only). `/danger` and `/state` share the 4 reads/second budget.
 
-API version **1.11.0** (Lanternmaw) added the `lantern` action, `state.lantern`,
+### Expeditions: daily paid cap (1.12.0)
+
+Giant berry expeditions (`expedition`, `state.adventure`) pay goldberries for the
+first 5 delivered or fed completions per character per UTC day (the Ledger's day;
+it resets at 00:00 UTC). A party completion counts once for each member it pays.
+Later completions that day still give the 35 completion XP, Giant friendship and the
+Berry Heart keepsake, but no goldberries; their notice reads `Daily expedition
+rewards used (5/5); XP only until 00:00 UTC`. The tracked seed cache (`track`) gives its
+25 Exploring XP at once, but its goldberry is added to the run's reward only when
+that run is delivered or fed and the completion is paid (the notice says `(1 from
+the seed cache)`); an abandoned or lost run pays no cache goldberry. `state.adventure.paidToday`
+is `{cap, used, left, resetsInSeconds, rule}`; check `left` before planting another
+seed for goldberries. The count is a private per-character record published only
+to you (frontier_view kind `expeditionPaid`).
+
+API version **1.12.0** added `state.adventure.paidToday` and the daily paid
+expedition cap. API version **1.11.0** (Lanternmaw) added the `lantern` action, `state.lantern`,
 `where: "lantern"` with `spring` and `swing` in `GET /danger`, dodging in the
 Drowned Hollow, `blockedBy: "lantern"`, the `lantern_*` error codes, boss
 `lanternmaw` notices and news, and `party[].dealt` (Spire `party[].stars` is

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ADVENTURE_CAMP, BERRY_MARKET, GIANT_FEAST, TECHNIQUES, PlayerState, chebyshev, hasTechnique, getItemDef, inSafeRing, expeditionPayout } from '@sim';
-import { useAdventureProfiles, useExpeditions, useExpeditionMembers, useFriendlyDuels, useGardenShowcases, useInventoryRows, useIslandProjects, useMyPlayer, usePlayers, useTick } from '../spacetime/hooks';
+import { ADVENTURE_CAMP, BERRY_MARKET, GIANT_FEAST, TECHNIQUES, PlayerState, chebyshev, hasTechnique, getItemDef, inSafeRing, expeditionPayout, expeditionPaidStatus, EXPEDITION_CAP_NOTICE, type ExpeditionPaidState } from '@sim';
+import { useAdventureProfiles, useExpeditionPaid, useExpeditions, useExpeditionMembers, useFriendlyDuels, useGardenShowcases, useInventoryRows, useIslandProjects, useMyPlayer, usePlayers, useTick } from '../spacetime/hooks';
 import { useGameActions } from '../spacetime/actions';
+import { WATCHING } from '../spacetime/viewer';
 import { openAdventure, type AdventureView } from './adventureNavigation';
 import { FeastRewards, GiantFriendship } from './GiantFriendship';
 import { berryGiantMood } from './berryGiantUi';
@@ -27,12 +28,19 @@ function BerrySteps({ step }: { step: number }) {
   </ol>;
 }
 
+/** How many of today's expeditions still pay goldberries (EXPEDITION_DAILY_PAID per UTC day). */
+function PaidToday({ state }: { state: ExpeditionPaidState | undefined }) {
+  const { left, cap } = expeditionPaidStatus(state, Date.now());
+  return <p className="adventure-note" data-testid="expedition-paid-today">{left ? `Goldberry rewards today: ${left} of ${cap} expeditions left · resets 00:00 UTC` : EXPEDITION_CAP_NOTICE}</p>;
+}
+
 export function AdventureHud({ visible }: { visible: boolean }) {
-  const me = useMyPlayer(), members = useExpeditionMembers(), expeditions = useExpeditions();
+  const me = useMyPlayer(), members = useExpeditionMembers(), expeditions = useExpeditions(), paidState = useExpeditionPaid();
+  // A spectator (/watch) cannot read the watched player's private expeditionPaid row, so it shows the plain line.
   const m = members.find(m => hex(m.identity) === hex(me?.identity));
   const e = expeditions.find(e => e.id === m?.expeditionId);
   if (!e || !visible) return null;
-  if (e.stage === 'complete') return <button className="adventure-hud" onClick={() => openAdventure(e.destination === 'feast' ? 'feast' : 'expedition')}><strong>{e.destination === 'feast' ? (m?.contributions ? '♥ You made a very big friend!' : 'The crew shared a feast!') : 'Berry delivered!'}</strong><span>{m?.contributions ? `+${expeditionPayout(e.value, e.destination === 'feast')} goldberries · See rewards` : 'The crew made it · See the celebration'} →</span></button>;
+  if (e.stage === 'complete') return <button className="adventure-hud" onClick={() => openAdventure(e.destination === 'feast' ? 'feast' : 'expedition')}><strong>{e.destination === 'feast' ? (m?.contributions ? '♥ You made a very big friend!' : 'The crew shared a feast!') : 'Berry delivered!'}</strong><span>{m?.contributions ? WATCHING ? 'Expedition complete · See rewards' : paidState?.lastPaid === String(e.id) ? `+${expeditionPayout(e.value, e.destination === 'feast')} goldberries · See rewards` : 'XP only: daily goldberry rewards used · See rewards' : 'The crew made it · See the celebration'} →</span></button>;
   if (!activeStage(e.stage)) return null;
   const hint = e.stage === 'growing' ? 'Your berry is growing. Go find it!' : hex(e.carrier) === hex(me?.identity)
     ? `Carry it to ${e.destination === 'feast' ? 'the Giant’s feast' : 'the drop-off'}.` : 'Help your berry reach its destination.';
@@ -55,7 +63,7 @@ export default function AdventurePanel({ open, onClose, initialView = 'hub', onS
 }) {
   const me = useMyPlayer(), players = usePlayers(), members = useExpeditionMembers(), expeditions = useExpeditions();
   const profiles = useAdventureProfiles(), projects = useIslandProjects(), gardens = useGardenShowcases();
-  const inventory = useInventoryRows(), duels = useFriendlyDuels(), tick = useTick(), actions = useGameActions();
+  const inventory = useInventoryRows(), duels = useFriendlyDuels(), tick = useTick(), actions = useGameActions(), paidState = useExpeditionPaid();
   const [view, setView] = useState<AdventureView>(initialView);
   const [destination, setDestination] = useState(initialView === 'feast' ? 'feast' : 'market');
   const [busy, setBusy] = useState(false), pending = useRef(false);
@@ -79,6 +87,7 @@ export default function AdventurePanel({ open, onClose, initialView = 'hub', onS
   const project = projects[0], wood = project?.wood ?? 0, obsidian = project?.obsidian ?? 0;
   const built = wood >= 20 && obsidian >= 10;
   const feasts = profile?.giantTrust ?? 0;
+  const paidThis = !!e && paidState?.lastPaid === String(e.id);
   const seedValue = (hasTechnique(profile, 2) ? 6 : 4) + (built ? 1 : 0);
   const quantity = (itemId: string) => inventory.filter(row => row.itemId === itemId).reduce((sum, row) => sum + row.quantity, 0);
   const inDuel = duels.some(d => ['active', 'countdown'].includes(d.stage) && (hex(d.a) === myId || hex(d.b) === myId));
@@ -128,6 +137,7 @@ export default function AdventurePanel({ open, onClose, initialView = 'hub', onS
       </div></div>
       <div className="adventure-stats"><span>{expeditionPayout(e.value, e.destination === 'feast')} goldberries / helper</span><span>{Math.floor(seconds(e.untilTick - tick) / 60)}:{String(seconds(e.untilTick - tick) % 60).padStart(2, '0')} left</span><span>{members.filter(m => m.expeditionId === e.id).length} playing</span></div>
       <p>{next.hint}</p>
+      <PaidToday state={paidState} />
       {cooldown > 0 && <p className="adventure-note" role="status">Catch your breath · {cooldown}s</p>}
       {e.stage === 'hauling' && mine && <button className="adventure-text-button" disabled={actionDisabled} onClick={() => act('put_down')}>Put berry down</button>}
     </div>
@@ -163,7 +173,7 @@ export default function AdventurePanel({ open, onClose, initialView = 'hub', onS
 
   const result = e && !active && <div className="adventure-result" role="status">
     <strong>{e.stage !== 'complete' ? 'The berry got away!' : e.destination === 'feast' ? '♥ A very big new friend!' : 'Nice work, berry crew!'}</strong>
-    {e.stage !== 'complete' ? <p>Your bag and skills are safe. Fancy another go?</p> : member?.contributions ? e.destination === 'feast' ? <><FeastRewards value={e.value} firstFeast={feasts === 1} earned /><GiantFriendship feasts={feasts} /></> : <p>+{expeditionPayout(e.value)} goldberries · +35 Exploring XP completion bonus</p> : <p>The crew shared the berry! Help carry or protect the next one to earn rewards.</p>}
+    {e.stage !== 'complete' ? <p>Your bag and skills are safe. Fancy another go?</p> : member?.contributions ? e.destination === 'feast' ? <><FeastRewards value={e.value} firstFeast={feasts === 1} earned paid={paidThis} /><GiantFriendship feasts={feasts} /></> : <p>{paidThis ? `+${expeditionPayout(e.value)} goldberries` : EXPEDITION_CAP_NOTICE} · +35 Exploring XP completion bonus</p> : <p>The crew shared the berry! Help carry or protect the next one to earn rewards.</p>}
   </div>;
 
   return <section className="game-panel adventure-panel" aria-label={titles[view]}>
@@ -199,6 +209,7 @@ export default function AdventurePanel({ open, onClose, initialView = 'hub', onS
               <button aria-pressed={destination === 'feast'} onClick={() => setDestination('feast')}><span aria-hidden="true">♡</span><strong>Giant’s feast</strong><small>Make a very big friend</small></button>
             </fieldset>
             {destination === 'feast' && <FeastRewards value={seedValue} firstFeast={feasts === 0} />}
+            <PaidToday state={paidState} />
             <p className="adventure-note">{available.length >= 4 ? 'Four berries are on the move. Join a crew below!' : camp ? `Ready in ${hasTechnique(profile, 0) ? 6 : 18} seconds. Your bag and skills stay safe.` : 'The gardener at camp will help you plant.'}</p>
           </div>
           {available.length > 0 && <details className="adventure-details" open={available.length >= 4}><summary>Join a berry crew · {available.length}</summary>{available.map(row => {

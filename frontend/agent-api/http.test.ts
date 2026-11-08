@@ -153,7 +153,7 @@ test('wield and unwield reach the game with the documented quick-slot range', as
     assert.equal((await f.request('/actions/unwield', token, {}, { 'Idempotency-Key': randomUUID() })).status, 200);
     assert.deepEqual(f.calls, ['wield', 'unwield']);
     const spec = await (await f.request('/openapi.json')).json() as any;
-    assert.equal(spec.info.version, '1.11.0');
+    assert.equal(spec.info.version, '1.12.0');
     assert.equal(spec.paths['/actions/stance'], undefined);
     assert.deepEqual(spec.paths['/actions/wield'].post.requestBody.content['application/json'].schema.properties.slot, { type: 'integer', minimum: 0, maximum: 2 });
   } finally { await f.close(); }
@@ -357,7 +357,7 @@ test('OpenAPI 1.11.0 documents /danger and the boss actions without a capability
   const f = await fixture();
   try {
     const spec = await (await f.request('/openapi.json')).json() as any;
-    assert.equal(spec.info.version, '1.11.0');
+    assert.equal(spec.info.version, '1.12.0');
     assert.equal(spec.paths['/danger'].get.operationId, 'inspect_danger');
     assert.equal(spec.paths['/danger/next/{afterTick}'], undefined);
     for (const name of ['attack_clatterhorn', 'spire', 'lantern', 'dodge']) {

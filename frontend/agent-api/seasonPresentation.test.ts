@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LEDGER_CLERK, LEDGER_DAY_MS, NodeKind, TIER_NODES, emptySlots, ledgerFor } from '../../shared/sim';
-import { deliveryProblem, describeLedger, describeNodeKinds, levelError, NODE_KIND_NAMES, nodeKindOf, nodeLevelInfo, nodeLockReason, ledgerStateOf } from './seasonPresentation';
+import { deliveryProblem, describeExpeditionPaid, describeLedger, describeNodeKinds, levelError, NODE_KIND_NAMES, nodeKindOf, nodeLevelInfo, nodeLockReason, ledgerStateOf } from './seasonPresentation';
 import { summarizeState } from './mcpView';
 
 const identity = 'b'.repeat(64);
@@ -98,4 +98,15 @@ test('the MCP summary shows Lanternmaw at the Fen Gate and in a run, and nothing
     lantern: { ...lantern, atGate: false, you: { runId: '5', stage: 'active' }, run: { runId: '5', fightStage: 'tide' } } });
   assert.deepEqual(inRun.bosses.lantern, { open: true, you: { runId: '5', stage: 'active' }, run: { runId: '5', fightStage: 'tide' } });
   assert.equal(summarizeState({ player: { id: identity, tile: { x: 10, z: 10 } }, lantern: { ...lantern, atGate: false } }).bosses.lantern, undefined);
+});
+
+test('adventure.paidToday counts today\'s paid expeditions from your own view row', () => {
+  const view = (who: string, paid: number, d = day) => ({ kind: 'expeditionPaid', source: `expeditionPaid:${who}`, data: JSON.stringify({ id: who, day: d, paid }) });
+  assert.deepEqual({ ...describeExpeditionPaid([], identity, now), rule: '' }, { cap: 5, used: 0, left: 5, resetsInSeconds: (LEDGER_DAY_MS - 3_600_000) / 1000, rule: '' });
+  assert.equal(describeExpeditionPaid([view(identity, 3)], identity, now).left, 2);
+  assert.equal(describeExpeditionPaid([view(identity, 5)], identity, now).left, 0);
+  assert.equal(describeExpeditionPaid([view(identity, 5, day - 1)], identity, now).left, 5);
+  assert.equal(describeExpeditionPaid([view('c'.repeat(64), 5)], identity, now).left, 5);
+  assert.equal(describeExpeditionPaid([{ ...view(identity, 5), data: '{' }], identity, now).left, 5);
+  assert.match(describeExpeditionPaid([], identity, now).rule, /first 5 .* UTC day/);
 });

@@ -80,7 +80,7 @@ import {
   clatterContributionOf, crossesLanternFloor, crossesSpireFloor, dangerFeed, describeBosses, dodgeCheck, LANTERN_FLOOR_MOVE, moveStepsOf, onSealedFloor, SPIRE_FLOOR_MOVE,
   visiblePlayers, type BossRows,
 } from "../../agent-api/statePresentation";
-import { deliveryProblem, describeLedger, describeNodeKinds, NODE_KIND_NAMES, nodeKindOf, nodeLevelInfo, nodeLockReason } from "../../agent-api/seasonPresentation";
+import { deliveryProblem, describeExpeditionPaid, describeLedger, describeNodeKinds, NODE_KIND_NAMES, nodeKindOf, nodeLevelInfo, nodeLockReason } from "../../agent-api/seasonPresentation";
 import { LEDGER_CLERKS, LEDGER_SLOTS, SKILL_MAX_LEVEL, nearestLedgerClerk, nodeKindDef } from "@sim";
 
 export type WebMCPStatus = "checking" | "ready" | "unsupported" | "error";
@@ -369,6 +369,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
               expeditions: state.expeditions.map((e: any) => ({ ...e, id: String(e.id), leader: identityHex(e.leader), carrier: e.carrier ? identityHex(e.carrier) : null, porter: e.porter ? identityHex(e.porter) : null })),
               members: state.members.map((m: any) => ({ ...m, identity: identityHex(m.identity), expeditionId: String(m.expeditionId) })),
               project: state.projects[0] ?? null,
+              paidToday: player ? describeExpeditionPaid(state.frontierViews, identityHex(player.identity), Date.now()) : null,
             },
             techniques: (() => { const p = state.profiles.find((p: any) => identityHex(p.identity) === (player ? identityHex(player.identity) : "")); return TECHNIQUES.map(t => ({ ...t, unlocked: p ? techniqueUnlocked(p, t.id) : false, equipped: hasTechnique(p, t.id) })); })(),
             duels: state.duels.map((d: any) => ({ ...d, id: String(d.id), a: identityHex(d.a), b: identityHex(d.b) })),

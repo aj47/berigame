@@ -11,7 +11,7 @@ import {
   SPIRE_SWING_TICKS, SPIRE_TIME_LIMIT,
   Cosmetic, HARVEST_SPEED_LEVELS, LEDGER_CLERKS, LEDGER_FULL_BONUS_SEALS, LEDGER_RANGE, LEDGER_SEAL_ITEM_ID, LEDGER_SEALS, LEDGER_SEALS_PER_DAY,
   LEDGER_SLOTS, LEDGER_TEMPLATES, SEASON_RECIPES, SKILLS, SKILL_CURVE_KNEE, SKILL_MAX_LEVEL, TIER_NODES, tierBiomeNames, GRID_SIZE,
-  TIER_NODE_SEEDS, nodeMinLevel, skillForNode, DROP_BOXES,
+  TIER_NODE_SEEDS, nodeMinLevel, skillForNode, DROP_BOXES, EXPEDITION_DAILY_PAID,
 } from '@sim';
 import { itemArticles } from './itemArticles';
 import { changelogArticle } from './changelog';
@@ -563,7 +563,7 @@ export const guideArticles: WikiArticle[] = [
     category: 'Skills & activities',
     summary: 'Grow enormous fruit, outwit Pip, recruit Moss and feed something much bigger.',
     lead: 'An expedition is an on-demand cargo adventure that starts at the gardener camp. Grow a giant berry and bring it to the market or feast clearing before time runs out. Play alone with NPC help or join other players; losing the fruit does not cost your bag, health or skill progress.',
-    facts: [{ label: 'Start', value: 'Camp · (22, 18)' }, { label: 'Duration', value: 'Up to 6 minutes' }, { label: 'Base growth', value: '18 seconds' }, { label: 'Starting cargo value', value: '4 reward berries' }, { label: 'Simultaneous expeditions', value: 'Up to 4' }],
+    facts: [{ label: 'Start', value: 'Camp · (22, 18)' }, { label: 'Duration', value: 'Up to 6 minutes' }, { label: 'Base growth', value: '18 seconds' }, { label: 'Starting cargo value', value: '4 reward berries' }, { label: 'Simultaneous expeditions', value: 'Up to 4' }, { label: 'Paid completions', value: `${EXPEDITION_DAILY_PAID} per UTC day` }],
     sections: [
       { id: 'start-join', title: 'Start or join an expedition', paragraphs: [
         'Within four tiles of camp, open Adventure and grow a giant berry. Choose Berry drop-off or Giant’s feast as the destination. Your fruit grows at (34, 17), so begin walking there while it ripens. Seed sense shortens its base 18-second growth to 6 seconds.',
@@ -587,6 +587,7 @@ export const guideArticles: WikiArticle[] = [
       { id: 'rewards', title: 'Completion and rewards', paragraphs: [
         'Current members who helped receive Goldberries equal to the remaining cargo value, from one to eight. A feast adds two bonus Goldberries, so an untouched fruit normally pays four at the drop-off or six at the feast. Giant fruit adds two starting cargo value and a completed workshop adds one; bites, splitting and Moss’s fee can reduce it.',
         'The drop-off awards 35 Exploring XP; a feast awards 35 Befriending XP. Your first rewarded feast unlocks the Berry Heart keepsake. Simply joining without contributing does not earn completion rewards.',
+        `Only your first ${EXPEDITION_DAILY_PAID} completions each UTC day pay Goldberries; a party completion counts once for each member it pays. Later completions that day still award the completion XP, Giant friendship and the Berry Heart keepsake, and the Adventure panel shows how many paid expeditions you have left. The count resets at 00:00 UTC, the same moment as the Island Ledger.`,
         'After one, three and five rewarded feasts, the Giant gives you a 12-, 24- or 36-second head start on expeditions you start. Equipping Giant trust after your first feast adds another 30 seconds.',
         'An expedition ends unsuccessfully if its value reaches zero, its six-minute timer expires, or everyone abandons it. Skills and bag contents remain safe. A disconnected carrier leaves the fruit on the ground for the group.',
       ] },

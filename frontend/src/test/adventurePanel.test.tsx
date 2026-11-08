@@ -12,6 +12,7 @@ const mock = vi.hoisted(() => ({
   profiles: [] as any[],
   inventory: [] as any[],
   duels: [] as any[],
+  paid: undefined as any,
   tick: 100,
   setTarget: vi.fn().mockResolvedValue(true),
   expeditionAction: vi.fn().mockResolvedValue(true),
@@ -30,6 +31,7 @@ vi.mock('../spacetime/hooks', () => ({
   useTick: () => mock.tick,
   useIslandProjects: () => [{ id: 0, wood: 8, obsidian: 3, meals: 4 }],
   useGardenShowcases: () => [],
+  useExpeditionPaid: () => mock.paid,
 }));
 vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({
   setTarget: mock.setTarget,
@@ -66,6 +68,8 @@ beforeEach(() => {
   mock.profiles = [];
   mock.inventory = [];
   mock.duels = [];
+  // The finished expedition in these tests (id 1) paid its goldberries.
+  mock.paid = { day: Math.floor(Date.now() / 86_400_000), paid: 1, lastPaid: '1' };
   mock.tick = 100;
 });
 afterEach(cleanup);
@@ -89,6 +93,30 @@ describe('feast payoff', () => {
     expect(screen.queryByLabelText('Feast rewards earned')).not.toBeInTheDocument();
     expect(screen.queryByText('♥ You made a very big friend!')).not.toBeInTheDocument();
     expect(screen.getByText('The crew shared a feast!')).toBeVisible();
+  });
+});
+
+describe('daily paid expeditions', () => {
+  it('shows how many paid expeditions are left before planting', () => {
+    mock.paid = { day: Math.floor(Date.now() / 86_400_000), paid: 3, lastPaid: '9' };
+    render(panel('expedition'));
+    expect(screen.getByTestId('expedition-paid-today')).toHaveTextContent('Goldberry rewards today: 2 of 5 expeditions left · resets 00:00 UTC');
+  });
+  it('counts a stored day before today as none used', () => {
+    mock.paid = { day: Math.floor(Date.now() / 86_400_000) - 1, paid: 5, lastPaid: '9' };
+    render(panel('expedition'));
+    expect(screen.getByTestId('expedition-paid-today')).toHaveTextContent('5 of 5 expeditions left');
+  });
+  it('says XP only once the day is used up, on the planting card and on an unpaid finish', () => {
+    mock.paid = { day: Math.floor(Date.now() / 86_400_000), paid: 5, lastPaid: '0' };
+    expedition({ stage: 'complete', destination: 'feast', value: 4 });
+    mock.members[0].contributions = 1;
+    mock.profiles = [{ identity: mock.me.identity, giantTrust: 6 }];
+    render(<>{panel('expedition')}<AdventureHud visible /></>);
+    expect(screen.getByTestId('expedition-paid-today')).toHaveTextContent('Daily expedition rewards used (5/5); XP only until 00:00 UTC');
+    expect(screen.getByLabelText('Feast rewards earned')).toHaveTextContent('Daily expedition rewards used (5/5); XP only until 00:00 UTC');
+    expect(screen.getByLabelText('Feast rewards earned')).not.toHaveTextContent('+6 goldberries');
+    expect(screen.getByText(/XP only: daily goldberry rewards used/)).toBeVisible();
   });
 });
 

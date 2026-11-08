@@ -1,6 +1,6 @@
 import {
   FIRST_TIER_KIND, LEDGER_CLERKS, LEDGER_FULL_BONUS_SEALS, LEDGER_RANGE, LEDGER_SEAL_ITEM_ID, LEDGER_SEALS, LEDGER_SLOTS, NODE_KINDS, SKILLS, TIER_BIOMES, TIER_NODES,
-  countItem, getItemDef, harvestXp, ledgerDay, ledgerFor, ledgerResetInMs, nearLedgerClerk, nearestLedgerClerk, nodeLevelRejection, nodeMinLevel, skillForNode, tierNode,
+  EXPEDITION_DAILY_PAID, countItem, expeditionPaidStatus, getItemDef, parseExpeditionPaid, harvestXp, ledgerDay, ledgerFor, ledgerResetInMs, nearLedgerClerk, nearestLedgerClerk, nodeLevelRejection, nodeMinLevel, skillForNode, tierNode,
   type LedgerState, type Slot, type Tile,
 } from '../../shared/sim';
 
@@ -57,6 +57,17 @@ export function ledgerStateOf(views: Iterable<{ kind: string; source: string; da
     } catch { /* a malformed row counts as nothing done */ }
   }
   return undefined;
+}
+
+/**
+ * state.adventure.paidToday: what is left of today's goldberry-paying expedition completions
+ * (EXPEDITION_DAILY_PAID per UTC day), from your frontier_view row kind 'expeditionPaid', data {id, day, paid}.
+ */
+export function describeExpeditionPaid(views: Iterable<{ kind: string; source: string; data: string }>, identity: string, now: number) {
+  let state;
+  for (const row of views) if (row.kind === 'expeditionPaid' && row.source === `expeditionPaid:${identity}`) { state = parseExpeditionPaid(row.data); break; }
+  const status = expeditionPaidStatus(state, now);
+  return { ...status, rule: `The first ${EXPEDITION_DAILY_PAID} delivered or fed expeditions each UTC day pay goldberries (counted per character, once per paid party member); later ones that day pay completion XP and friendship only. A tracked seed cache adds its goldberry to that run's paid completion only; abandoned or lost runs pay none.` };
 }
 
 export interface LedgerInput {

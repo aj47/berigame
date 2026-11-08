@@ -25,7 +25,7 @@ import {
 import { GARDEN_EXTRA_PLOT_LEVEL, GARDEN_PLOT_TILES, GARDEN_STAGE_NAMES, gardenPlotCountForXp, gardenRemainingMs, gardenStage, getGardenCrop, inGardenReach } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
 import { admissionError, ApiError, type Invite } from './portable';
-import { deliveryProblem, describeLedger, describeNodeKinds, levelError, NODE_KIND_NAMES, nodeKindOf, nodeLevelInfo, nodeLockReason } from './seasonPresentation';
+import { deliveryProblem, describeExpeditionPaid, describeLedger, describeNodeKinds, levelError, NODE_KIND_NAMES, nodeKindOf, nodeLevelInfo, nodeLockReason } from './seasonPresentation';
 import { biomeAt } from './worldAtlas';
 import { SPECTATOR_PASS_SECONDS } from '../../shared/sim/admission';
 /** Chebyshev radius of the nodes /state lists around the caller. */
@@ -476,8 +476,9 @@ export async function createGameService(credential: Credential, options: Service
               expeditions: (inside ? [] : [...db.expedition.iter()]).map(e => ({ ...e, id: e.id.toString(), leader: e.leader.toHexString(), carrier: e.carrier?.toHexString() ?? null, porter: e.porter?.toHexString() ?? null })),
               members: (inside ? [] : [...db.expeditionMember.iter()]).map(m => ({ ...m, identity: m.identity.toHexString(), expeditionId: m.expeditionId.toString() })),
               project: db.islandProject.id.find(0) ?? { wood: 0, obsidian: 0, meals: 0 },
+              paidToday: describeExpeditionPaid(conn.db.frontierView.iter(), player.identity, Date.now()),
               projectGoal: '20 driftwood + 10 obsidian builds a permanent camp workshop: all future expedition berries gain one reward. Meals count successful expeditions.',
-              rule: 'Start at camp (22,18), then walk to the berry patch (34,17). Join others or bring Moss. Cargo needs both hands and slows movement. Pip steals unattended bites; bribe with a greenberry. Bait distracts the pursuing Giant. Deliver at market or feed at the western clearing. Only cargo is at risk. Act through expedition; inspect message and stage after every action.',
+              rule: 'Start at camp (22,18), then walk to the berry patch (34,17). Join others or bring Moss. Cargo needs both hands and slows movement. Pip steals unattended bites; bribe with a greenberry. Bait distracts the pursuing Giant. Deliver at market or feed at the western clearing; paidToday.left says how many more pay goldberries today. Only cargo is at risk. Act through expedition; inspect message and stage after every action.',
             },
             progression: (() => {
               const legacy = conn.db.playerSkill.identity.find(id);
