@@ -1,5 +1,6 @@
 import React, { memo, useMemo, useRef, useState } from 'react';
-import { getItemDef, hasCosmetic, levelForXp, recipeStatus } from '@sim';
+import { getItemDef, hasCosmetic, lanternConfigOr, levelForXp, recipeStatus } from '@sim';
+import { useBossStore } from '../bosses/bossStore';
 import { useGameActions } from '../spacetime/actions';
 import { useInventoryRows, useMyCosmetics, useMySkills, useMyPlayer } from '../spacetime/hooks';
 import { slotsFromRows } from './itemUi';
@@ -18,6 +19,7 @@ const CraftingPanel = memo(({ open, onClose, frontier }: { open: boolean; onClos
   const skills = useMySkills();
   const cosmetics = useMyCosmetics();
   const slots = useMemo(() => slotsFromRows(rows), [rows]);
+  const lanternOpen = useBossStore((s) => lanternConfigOr(s.lanternConfig).lanternOpen);
   const craftingLevel = levelForXp(skills?.craftingXp ?? 0);
   const { craft, frontier: frontierAction } = useGameActions();
   const [pending, setPending] = useState(false);
@@ -40,7 +42,7 @@ const CraftingPanel = memo(({ open, onClose, frontier }: { open: boolean; onClos
   };
   if (!open) return null;
   const recipes = [
-    ...recipeStatus(slots, craftingLevel).map(recipe => {
+    ...recipeStatus(slots, craftingLevel, lanternOpen).map(recipe => {
       const output = recipe.output ? getItemDef(recipe.output.itemId) : null;
       const owned = recipe.cosmetic !== null && hasCosmetic(cosmetics?.unlocked ?? 0, recipe.cosmetic);
       return {

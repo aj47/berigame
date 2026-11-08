@@ -297,9 +297,20 @@ export function canCraft(slots: readonly Slot[], recipe: Recipe): boolean {
   return recipeMissing(slots, recipe).length === 0;
 }
 
-/** Recipe status for the agent API, the bag and the chip. `craftingLevel` defaults to 1. */
-export function recipeStatus(slots: readonly Slot[], craftingLevel = 1) {
-  return RECIPES.map((r) => {
+/** Lanternmaw's recipes: made only while the Drowned Hollow is open (closed means closed for crafting too). */
+export const LANTERN_RECIPE_IDS: readonly string[] = ['fen_bait', 'lanternmaw_lure'];
+
+/** "<Recipe> can only be made while the Drowned Hollow is open", or null. */
+export function lanternRecipeSealed(recipe: Recipe, lanternOpen: boolean): string | null {
+  return !lanternOpen && LANTERN_RECIPE_IDS.includes(recipe.id) ? `${recipe.name} can only be made while the Drowned Hollow is open` : null;
+}
+
+/**
+ * Recipe status for the agent API, the bag and the chip. `craftingLevel` defaults to 1. Lanternmaw's recipes
+ * are listed only when `lanternOpen` (lanternConfigOr(row).lanternOpen) is true.
+ */
+export function recipeStatus(slots: readonly Slot[], craftingLevel = 1, lanternOpen = false) {
+  return RECIPES.filter((r) => lanternOpen || !LANTERN_RECIPE_IDS.includes(r.id)).map((r) => {
     const missing = recipeMissing(slots, r);
     const locked = craftingLevel < r.level;
     return {

@@ -13,7 +13,7 @@ import {
   areaOf, bestTree, BRAMBLE_KEY_ITEM, chebyshev, RESPAWN_GRACE_TICKS, BRAMBLE_MESSAGE, worldBlockedSet, DUMMY_ID, dummyHpAt, emoteByKey, GROUND_ITEM_TTL_TICKS, emptySlots, enterRule, firstDayGoal, getItemDef, GRID_SIZE, HEDGE_RING,
   holdsItem, HOTBAR_SIZE, inGrace, INVENTORY_SIZE, isSafe, nearestReachableTile, PlayerState, PUNCH_DAMAGE, SAFE_RADIUS, SPAWN_TILE,
   STICK_DROP_CHANCE, STICK_ITEM_ID, swingDamage, TICK_MS, treeReadyTick, type Slot,
-  NodeKind, nodeKindDef, recipeStatus,
+  NodeKind, nodeKindDef, recipeStatus, lanternConfigOr,
   CHAT_NEARBY_RADIUS, INVITE_PARAM, TRADE_BREAK_RANGE, TRADE_RANGE, TRADE_SWAP_TICKS, chatVisible, normalizeInviteCode, parseOffer, formatOffer,
   BOULDER_KEY_ITEM, BOULDER_LINE, BOULDER_MESSAGE, BOULDERS_ENTRY, BOULDERS_MIN, GIANT_ID, GIANT_AGGRO_RANGE,
   GIANT_REACH, GiantAttack, GiantState, attackDamage, attackRadius, giantHpAt, isLandTile,
@@ -468,7 +468,7 @@ export async function createGameService(credential: Credential, options: Service
             /** @deprecated alias of the berry trees in nodes (also nearby only); kept for one release. */
             trees: nearTrees.filter(tree => tree.kind === NodeKind.Berry).map(tree => ({ id: tree.id, tile: { x: tree.x, z: tree.z }, berry: getItemDef(tree.itemId)?.name,
               ready: tree.cooldownUntilTick <= tick && !tree.harvester, regrowTicks: Math.max(0, tree.cooldownUntilTick - tick), harvesting: !!tree.harvester })),
-            recipes: recipeStatus(slotsOf(), skillLevels().crafting).map(r => ({ id: r.id, name: r.name, inputs: r.inputs, output: r.output, cosmetic: r.cosmetic === null ? null : COSMETICS[r.cosmetic]?.key ?? null,
+            recipes: recipeStatus(slotsOf(), skillLevels().crafting, lanternConfigOr([...db.lanternConfig.iter()][0]).lanternOpen).map(r => ({ id: r.id, name: r.name, inputs: r.inputs, output: r.output, cosmetic: r.cosmetic === null ? null : COSMETICS[r.cosmetic]?.key ?? null,
               level: r.level, locked: r.locked, xp: r.xp, canCraft: r.canCraft, missing: r.missing })),
             skills: describeSkills(),
             adventure: {

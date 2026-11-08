@@ -31,6 +31,8 @@ import * as admin from '../../../spacetimedb/src/reducers/bossAdmin';
 import * as inventory from '../../../spacetimedb/src/reducers/inventory';
 import * as trade from '../../../spacetimedb/src/reducers/trade';
 import * as harvest from '../../../spacetimedb/src/reducers/harvest';
+import * as craftReducers from '../../../spacetimedb/src/reducers/craft';
+import { recipeStatus } from '../nodes';
 import { tick } from '../../../spacetimedb/src/reducers/tick';
 
 const open = R(lantern.lanternOpen), join = R(lantern.lanternJoin), leave = R(lantern.lanternLeave), start = R(lantern.lanternStart);
@@ -364,12 +366,22 @@ describe('knockout, wipe, away, timeout', () => {
     expect(member(A)).toBeUndefined();
   });
 
-  it('the whole party away 50 ticks: Abandoned with bait and fee refunded', () => {
+  it('the whole party away 50 ticks after the fight started: Abandoned as a loss, no refund', () => {
     const runId = fighting([A]);
+    h.run(1); // the first fight tick, present
     h.set(A, { online: false });
     h.run(50);
     expect(lanternRow(runId).stage).toBe(SpireStage.Active);
     h.run(1);
+    expect(lanternRow(runId)).toMatchObject({ stage: SpireStage.Failed, outcome: SpireOutcome.Abandoned });
+    expect(h.count(A, LANTERN_BAIT.itemId)).toBe(0);
+    expect(coins(A)).toBe(0);
+  });
+
+  it('the whole party away since before the fight started: Abandoned with bait and fee refunded', () => {
+    const runId = begin([A]);
+    h.set(A, { online: false });
+    h.run(51);
     expect(lanternRow(runId)).toMatchObject({ stage: SpireStage.Failed, outcome: SpireOutcome.Abandoned });
     expect(h.count(A, LANTERN_BAIT.itemId)).toBe(1);
     expect(coins(A)).toBe(LANTERN_ENTRY_FEE);
@@ -548,5 +560,31 @@ describe('the Fen Gate and the floor on the map', () => {
     expect(spireSeesPlayer(fl, lanternTile(LANTERN_SPAWNS[1]), false)).toBe(false);
     expect(spireSeesPlayer(fl, SPIRE_SPAWNS[0], true)).toBe(false);
     expect(spireSeesPlayer(out, { x: 40, z: 25 }, false)).toBe(true);
+  });
+});
+
+describe('closed means closed for crafting', () => {
+  const craft = R(craftReducers.craft);
+  const kit = () => { h.give(A, 'gleamshell', 1); h.give(A, 'obsidian', 1); h.give(A, 'driftwood', 2); };
+  it('fen_bait and the Lanternmaw Lure are refused while sealed (no row, or open = false) and made once open', () => {
+    kit();
+    expect(() => craft(h.as(A), { recipe: 'fen_bait' })).toThrow('Fen Bait can only be made while the Drowned Hollow is open');
+    fresh(A);
+    expect(() => craft(h.as(A), { recipe: 'lanternmaw_lure' })).toThrow('Lanternmaw Lure can only be made while the Drowned Hollow is open');
+    config({ lanternOpen: false });
+    fresh(A);
+    expect(() => craft(h.as(A), { recipe: 'fen_bait' })).toThrow('only be made while the Drowned Hollow is open');
+    config({ lanternOpen: true });
+    fresh(A);
+    craft(h.as(A), { recipe: 'fen_bait' });
+    expect(h.count(A, 'fen_bait')).toBe(1);
+  });
+
+  it('recipe lists hide them while sealed', () => {
+    const ids = (open?: boolean) => recipeStatus([], 1, open).map((r) => r.id);
+    expect(ids()).not.toContain('fen_bait');
+    expect(ids(false)).not.toContain('lanternmaw_lure');
+    expect(ids(true)).toEqual(expect.arrayContaining(['fen_bait', 'lanternmaw_lure']));
+    expect(ids(false)).toContain('spire_key');
   });
 });

@@ -1,10 +1,11 @@
 import { carrying, duelFor } from '../lib/adventure';
 import { t, SenderError } from 'spacetimedb/server';
 import spacetimedb from '../schema';
+import { readLanternConfig } from '../lib/lantern';
 import { statsCraft } from '../lib/stats';
 import { activity } from '../lib/activity';
 import { mentorMilestone } from '../lib/mentor';
-import { MentorMilestone, STONE_CLUB_ITEM_ID, Skill, craft as craftSlots, craftRejection, getItemDef, getRecipe, hasCosmetic } from '../../../shared/sim';
+import { MentorMilestone, STONE_CLUB_ITEM_ID, Skill, craft as craftSlots, craftRejection, getItemDef, getRecipe, hasCosmetic, lanternRecipeSealed } from '../../../shared/sim';
 import { dropOnGround, readSlots, writeSlots } from '../lib/inventory';
 import { currentTick, requireAlivePlayer, savePlayer, touchInput } from '../lib/players';
 import { cosmeticRow, grantXp, skillLevel, unlockCosmetic } from '../lib/progress';
@@ -25,6 +26,8 @@ export const craft = spacetimedb.reducer(
     const p = requireAlivePlayer(ctx, true);
     // An overflow would land on the floor, and ground items are global.
     refuseOnSpireFloor(p, 'You cannot craft inside the Sunken Spire');
+    const sealed = lanternRecipeSealed(def, readLanternConfig(ctx).lanternOpen);
+    if (sealed) throw new SenderError(sealed);
     if (carrying(ctx, p.identity)) throw new SenderError("Put down the giant berry first; it needs both hands");
     const T = currentTick(ctx);
     touchInput(p, T);
