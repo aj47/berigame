@@ -310,10 +310,10 @@ publish that changes the pattern table must bump it (the validator test asks
 for it): live runs then reset with refunds, and old tabs are refused at the gate
 until `beta:deploy` lands.
 
-### Walk endings and the Reedbank (terrain v5, API 1.12.0)
+### Walk endings and the Reedbank (terrain v5, API 1.13.0)
 
 A module publish with no schema change: the migration plan is empty. Rehearsed
-locally on top of `main` ce955ce: an empty plan, the 1,111 tree rows and every
+locally on top of `main` cbbdedf: an empty plan, the 1,111 tree rows and every
 player row survive, and a client on main's bindings stays connected and keeps
 walking through the publish.
 
