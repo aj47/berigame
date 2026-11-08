@@ -791,3 +791,17 @@ export const idleState = table({ name: 'idle_state' }, {
   activeTick: t.u32(),
   loggedOut: t.bool(),
 });
+
+/**
+ * Read-only broadcast viewers (/watch, docs/SPECTATOR.md). Private, like player_grant. An identity listed here never
+ * gets a character: onConnect admits it without a player row, and schema.ts refuses it every reducer. The row outlives
+ * the pass on purpose, so an expired pass is refused instead of falling through to "new connection, new character".
+ */
+export const spectator = table({ name: 'spectator' }, {
+  identity: t.identity().primaryKey(),
+  issuer: t.identity(),
+  expiresAtMicros: t.u64(),
+  /** Open sockets on this pass, capped at MAX_SPECTATOR_CONNECTIONS. The host runs the disconnect hook for every
+   *  socket that was open when it stopped, so a restart brings this back to 0. */
+  connections: t.u8(),
+});

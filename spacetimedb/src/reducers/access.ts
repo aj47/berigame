@@ -6,7 +6,7 @@ import type { Ctx } from '../lib/types';
 import { clearInteractions, sameId, savePlayer } from '../lib/players';
 import { clearIdleLogout, isIdleLoggedOut } from '../lib/idle';
 import { statsSessionStart } from '../lib/stats';
-import { MAX_STORED_CHARACTERS } from '../../../shared/sim/admission';
+import { MAX_SPECTATORS, MAX_STORED_CHARACTERS, SPECTATOR_PASS_SECONDS } from '../../../shared/sim/admission';
 import { playersTargeting, worldHasSpace } from '../lib/activePlayers';
 import { loadPlayer, storePlayer } from '../lib/playerStore';
 
@@ -17,6 +17,51 @@ export const configureAccess = spacetimedb.reducer(
     const policy = requireOwner(ctx);
     if (sameId(gateway, policy.owner)) throw new SenderError('use a separate gateway identity');
     ctx.db.accessPolicy.id.update({ ...policy, gateway, requireAdmission });
+  },
+);
+
+/**
+ * The gateway or the owner registers a read-only viewer (/watch) before it connects, because a connection from any
+ * unlisted identity gets a character. It must be fresh: a character can never turn into a spectator or back.
+ */
+export const grantSpectator = spacetimedb.reducer(
+  { identity: t.identity(), lifetimeSeconds: t.u32() },
+  (ctx, { identity, lifetimeSeconds }) => {
+    const policy = ctx.db.accessPolicy.id.find(0);
+    if (!sameId(policy?.gateway, ctx.sender) && !sameId(policy?.owner, ctx.sender)) throw new SenderError('world owner or gateway required');
+    if (lifetimeSeconds < 60 || lifetimeSeconds > SPECTATOR_PASS_SECONDS) throw new SenderError(`spectator lifetime must be 60..${SPECTATOR_PASS_SECONDS} seconds`);
+    if (sameId(identity, policy?.owner) || sameId(identity, policy?.gateway) || ctx.db.playerGrant.identity.find(identity)
+      || ctx.db.spectator.identity.find(identity) || loadPlayer(ctx, identity)) {
+      throw new SenderError('a fresh spectator identity is required');
+    }
+    const now = ctx.timestamp.microsSinceUnixEpoch;
+    if (ctx.db.spectator.count() >= BigInt(MAX_SPECTATORS)) {
+      // Expired passes make room, but only where a forgotten token cannot then join: without admission it would get a character.
+      if (policy?.requireAdmission) for (const row of [...ctx.db.spectator.iter()]) if (row.expiresAtMicros <= now) ctx.db.spectator.identity.delete(row.identity);
+      if (ctx.db.spectator.count() >= BigInt(MAX_SPECTATORS)) throw new SenderError('spectator capacity reached');
+    }
+    ctx.db.spectator.insert({ identity, issuer: ctx.sender, expiresAtMicros: now + BigInt(lifetimeSeconds) * 1_000_000n, connections: 0 });
+  },
+);
+
+/**
+ * The owner clears spectator passes: the expired ones, or all of them. A pass no socket holds is deleted; one still
+ * open is expired instead (refused from its next connect) and deleted when its last socket closes (lifecycle.ts), so
+ * the reducer guard in schema.ts never loses a connected viewer. Deleting needs admission: without it, a cleared
+ * pass's token would connect as a new character.
+ */
+export const clearSpectators = spacetimedb.reducer(
+  { expiredOnly: t.bool() },
+  (ctx, { expiredOnly }) => {
+    const policy = requireOwner(ctx);
+    if (!policy.requireAdmission) throw new SenderError('clearing spectator passes needs admission on, or their tokens would join as players');
+    const now = ctx.timestamp.microsSinceUnixEpoch;
+    for (const row of [...ctx.db.spectator.iter()]) {
+      const expired = row.expiresAtMicros <= now;
+      if (expiredOnly && !expired) continue;
+      if (row.connections === 0) ctx.db.spectator.identity.delete(row.identity);
+      else if (!expired) ctx.db.spectator.identity.update({ ...row, expiresAtMicros: now });
+    }
   },
 );
 

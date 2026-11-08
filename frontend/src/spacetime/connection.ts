@@ -8,6 +8,9 @@ import { worldQueries, WORLD_TABLES } from './worldSubscription';
 import { abortPendingCalls } from './pendingCalls';
 import { readSessionToken, sessionTokenKey, visiblyInvalidToken } from './sessionToken';
 import { reportSignedOut } from './visitRenewal';
+import { WATCHING, WATCH_PARAMS, watchPass, watchPassExpired } from './viewer';
+import { delayedSocket } from '../watch/delayedSocket';
+import { lockReducers, subscribeWatchWorld } from '../watch/watchWorld';
 
 const env = (import.meta as any).env ?? {};
 export const SPACETIME_URI: string = env.VITE_SPACETIME_URI ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3000`;
@@ -23,6 +26,8 @@ function readToken(): string | undefined {
 }
 
 function saveToken(token: string): void {
+  // A viewer's pass must never replace the character saved in this browser.
+  if (WATCHING) return;
   try {
     localStorage.setItem(TOKEN_KEY, token);
   } catch {
@@ -102,8 +107,11 @@ export function poolKeyUri(seq: number): string {
 
 export function buildConnection() {
   const seq = ++buildSeq;
-  const savedToken = readToken();
+  const pass = watchPass();
+  const savedToken = WATCHING ? pass?.token : readToken();
   const builder = connectionBuilder(seq, savedToken);
+  if (pass) builder.withUri(pass.uri).withDatabaseName(pass.database);
+  if (WATCH_PARAMS?.delayMs) builder.withWSFn(delayedSocket(WATCH_PARAMS.delayMs)).withCompression('none');
   builder.getUri = () => poolKeyUri(seq);
   return builder;
 }
@@ -121,6 +129,11 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
       useLoadingStore.getState().setConnectionIssue(null, false);
       console.log('SpacetimeDB connected as', identity.toHexString().slice(0, 8));
       useLoadingStore.getState().setWebsocketConnected(true);
+      if (WATCHING) {
+        lockReducers(conn);
+        subscribeWatchWorld(conn, () => useLoadingStore.getState().setGameDataLoaded(true), () => markConnectionLost(conn));
+        return;
+      }
       subscribeFrontier(conn, identity.toHexString(), () => useLoadingStore.getState().setGameDataLoaded(false));
       // Your Spire run's fight row only (a per-run SQL subscription that follows your spire_member row).
       subscribeSpire(conn, identity.toHexString(), () => console.error('Spire fight subscription failed'));
@@ -141,6 +154,8 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
     .onConnectError((ctx, error) => {
       console.error('Game server connection failed');
       markConnectionLost(ctx, seq < connectedSeq);
+      // Expired, or a world that no longer knows this pass: either way the next attempt needs a new one.
+      if (WATCHING) { watchPassExpired(); return; }
       // The permit ended while this tab still held it (an idle logout, for one): ask the gateway, don't retry.
       if (/access required or expired/.test(error instanceof Error ? error.message : String(error))) reportSignedOut();
       useLoadingStore.getState().setConnectionIssue(
@@ -155,5 +170,8 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
     .onDisconnect((ctx) => {
       console.warn('SpacetimeDB disconnected');
       markConnectionLost(ctx, seq < connectedSeq);
+      // The server refuses a pass in its connect hook (expired, cleared, or too many sockets), and the SDK reports that
+      // as a disconnect before any connect: replace the pass, or every retry would present the refused one again.
+      if (WATCHING && connectedSeq < seq) watchPassExpired();
     });
 }

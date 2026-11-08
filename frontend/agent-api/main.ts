@@ -7,7 +7,7 @@ async function main() {
   const config = settings();
   const game = await createGameService(await readCredential(config));
   const api = createAgentServer({ game, invites: new InviteStore(config.directory), publicOrigin: config.publicOrigin,
-    trustedProxyIPs: config.trustedProxyIPs, log: event => console.log(JSON.stringify(event)) });
+    trustedProxyIPs: config.trustedProxyIPs, watchKey: config.watchKey, spectatorUri: config.spectatorUri, log: event => console.log(JSON.stringify(event)) });
   let stopping = false;
   const stop = async () => { if (stopping) return; stopping = true; await api.close(); game.close(); };
   process.once('SIGINT', () => { void stop(); });

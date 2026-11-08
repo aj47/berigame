@@ -43,6 +43,7 @@ import AttestRecoveryReducer from "./attest_recovery_reducer";
 import BossDebugReducer from "./boss_debug_reducer";
 import CancelReducer from "./cancel_reducer";
 import CancelTradeRequestReducer from "./cancel_trade_request_reducer";
+import ClearSpectatorsReducer from "./clear_spectators_reducer";
 import ConfigureAccessReducer from "./configure_access_reducer";
 import ConfigureBossesReducer from "./configure_bosses_reducer";
 import ConfigureExpansionReducer from "./configure_expansion_reducer";
@@ -64,6 +65,7 @@ import FrontierActionReducer from "./frontier_action_reducer";
 import GardenDevRipenReducer from "./garden_dev_ripen_reducer";
 import GrantAgentReducer from "./grant_agent_reducer";
 import GrantPlayerReducer from "./grant_player_reducer";
+import GrantSpectatorReducer from "./grant_spectator_reducer";
 import HarvestGardenReducer from "./harvest_garden_reducer";
 import MoveItemReducer from "./move_item_reducer";
 import PickupItemReducer from "./pickup_item_reducer";
@@ -627,6 +629,7 @@ const reducersSchema = __reducers(
   __reducerSchema("boss_debug", BossDebugReducer),
   __reducerSchema("cancel", CancelReducer),
   __reducerSchema("cancel_trade_request", CancelTradeRequestReducer),
+  __reducerSchema("clear_spectators", ClearSpectatorsReducer),
   __reducerSchema("configure_access", ConfigureAccessReducer),
   __reducerSchema("configure_bosses", ConfigureBossesReducer),
   __reducerSchema("configure_expansion", ConfigureExpansionReducer),
@@ -648,6 +651,7 @@ const reducersSchema = __reducers(
   __reducerSchema("garden_dev_ripen", GardenDevRipenReducer),
   __reducerSchema("grant_agent", GrantAgentReducer),
   __reducerSchema("grant_player", GrantPlayerReducer),
+  __reducerSchema("grant_spectator", GrantSpectatorReducer),
   __reducerSchema("harvest_garden", HarvestGardenReducer),
   __reducerSchema("move_item", MoveItemReducer),
   __reducerSchema("pickup_item", PickupItemReducer),

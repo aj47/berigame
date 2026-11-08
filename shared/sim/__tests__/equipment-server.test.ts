@@ -88,3 +88,89 @@ describe('padded vest equipment and consistent eating', () => {
     expect(h.profile()).toMatchObject({ nextAttack: 1_005_000, nextAbility: 1_030_000 });
   });
 });
+
+// Sol's report (2026-11-07 17:34): banking one of two iron clubs removed the quick-slot copy, but the
+// row kept the club wielded until a Bramblewild swing (dummy training) re-checked the quick bar.
+import { vaultDeposit } from '../../../spacetimedb/src/reducers/vault';
+import { inHotbar } from '../items';
+import { readSlots } from '../../../spacetimedb/src/lib/inventory';
+import { FRONTIER } from '../frontier/catalog';
+import { tickFrontier } from '../../../spacetimedb/src/lib/frontier';
+
+describe('maximum health after a frontier defeat', () => {
+  it('a Meadows defeat drops the vest with the bag and respawns at Might only', () => {
+    const h = fixture(), repo = frontierRepository(h.ctx), id = h.identity.toHexString();
+    repo.put('profile', { ...repo.get('profile', id)!, active: [0], events: { vest: 1 } });
+    repo.put('creature', { id: 'hostile', species: 'bristleback', owner: '', active: false, trained: false,
+      region: 'settlement', x: 12, z: 65, hp: 30, nextMove: 2_000_000, restUntil: 0 });
+    projectFrontier(h.ctx, repo);
+    h.act({ action: 'eat', item: 'berry_blueberry' }); // any action saves the row: Might + vest = 36
+    expect(h.me().maxHp).toBe(36);
+    h.db.player.identity.update({ ...h.me(), hp: 3 });
+    h.ctx.timestamp.microsSinceUnixEpoch += 3_000_000n;
+    h.act({ action: 'attack', id: 'hostile' }); // the bristleback hits back for 3
+    expect(h.me()).toMatchObject({ hp: 0, weapon: '', maxHp: 33 });
+    expect([...h.db.inventorySlot.iter()].filter((row: any) => row.owner === h.identity)).toHaveLength(0);
+    h.ctx.timestamp.microsSinceUnixEpoch += 3_100_000n;
+    tickFrontier(h.ctx);
+    expect(h.me()).toMatchObject({ hp: 33, maxHp: 33 });
+  });
+});
+
+describe('banking one of two wielded weapons', () => {
+  function twoClubs() {
+    const h = fixture();
+    h.db.player.identity.update({ ...h.me(), region: 'bramblewild', x: 25, z: 25, weapon: 'iron_club' });
+    for (const row of [...h.db.inventorySlot.iter()]) h.db.inventorySlot.id.delete(row.id);
+    h.db.inventorySlot.insert({ id: 0n, owner: h.identity, slot: 0, itemId: 'iron_club', quantity: 1 }); // quick slot 1, wielded
+    h.db.inventorySlot.insert({ id: 0n, owner: h.identity, slot: 5, itemId: 'iron_club', quantity: 1 }); // spare in the bag
+    const bag = () => readSlots(h.ctx, h.identity as any).slots;
+    return { ...h, bag };
+  }
+
+  it('the Grove vault takes the spare from the back and keeps the wielded quick-slot copy', () => {
+    const h = twoClubs();
+    (vaultDeposit as any)(h.ctx, { itemId: 'iron_club', quantity: 1 });
+    expect(h.bag()[0]?.itemId).toBe('iron_club');
+    expect(h.bag()[5]).toBeNull();
+    expect(h.me().weapon).toBe('iron_club');
+  });
+
+  it('the region container deposit (vault-<id>) also keeps the quick-slot copy, or puts the weapon away', () => {
+    const h = twoClubs();
+    h.act({ action: 'container', id: `vault-${h.identity.toHexString()}`, target: 'deposit', item: 'iron_club', quantity: 1 });
+    const bag = h.bag(), weapon = h.me().weapon;
+    // A wielded weapon must sit in the quick bar (combat.ts wieldItem; tick.ts re-checks before each swing).
+    expect(weapon === '' || inHotbar(bag, weapon)).toBe(true);
+    // Like vaultTransfer, banking gives from the back of the bag so the quick bar is kept.
+    expect(bag[0]?.itemId).toBe('iron_club');
+  });
+
+  it('with two quick-bar copies, banking one through the region container keeps the weapon wielded', () => {
+    const h = twoClubs();
+    for (const row of [...h.db.inventorySlot.iter()]) if (row.slot === 5) h.db.inventorySlot.id.update({ ...row, slot: 1 });
+    h.act({ action: 'container', id: `vault-${h.identity.toHexString()}`, target: 'deposit', item: 'iron_club', quantity: 1 });
+    expect(h.bag()[0]?.itemId).toBe('iron_club');
+    expect(h.bag()[1]).toBeNull();
+    expect(h.me().weapon).toBe('iron_club');
+  });
+
+  it('a deposit into a full container is refused and leaves the bag and the wielded weapon unchanged', () => {
+    const h = twoClubs(), id = `vault-${h.identity.toHexString()}`;
+    const repo = frontierRepository(h.ctx);
+    repo.put('container', { id, owner: h.identity.toHexString(), slots: Array.from({ length: FRONTIER.bankSlots }, () => ({ itemId: 'fibre', quantity: 1 })) });
+    projectFrontier(h.ctx, repo);
+    const before = JSON.stringify(h.bag());
+    expect(() => h.act({ action: 'container', id, target: 'deposit', item: 'iron_club', quantity: 1 })).toThrow('This storage is full');
+    expect(JSON.stringify(h.bag())).toBe(before);
+    expect(h.me().weapon).toBe('iron_club');
+    expect(frontierRepository(h.ctx).get('container', id)?.slots.every((s: any) => s?.itemId === 'fibre')).toBe(true);
+  });
+
+  it('is not a duplication: banking the last copy through either path puts the weapon away', () => {
+    const h = twoClubs();
+    h.act({ action: 'container', id: `vault-${h.identity.toHexString()}`, target: 'deposit', item: 'iron_club', quantity: 2 });
+    expect(h.bag().some((s) => s?.itemId === 'iron_club')).toBe(false);
+    expect(h.me().weapon).toBe('');
+  });
+});

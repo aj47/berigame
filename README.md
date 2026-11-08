@@ -222,6 +222,10 @@ optimisation check, then starts a local server + Vite and runs `smoke.ts` and
   or self-hosting.
 - **Client**: `cd frontend && VITE_SPACETIME_URI=wss://... npm run build` and host `dist/`.
 
+## Spectator view
+
+`/watch` is a read-only picture of a world for OBS: follow one character (`/watch?player=<id>`), the whole map (`/watch?mode=overview`) or an automatic director (`/watch?mode=director`), with an optional broadcast delay. A viewer has no character and every reducer refuses it. See [docs/SPECTATOR.md](docs/SPECTATOR.md).
+
 ## Contributing
 
 1. Fork the repository

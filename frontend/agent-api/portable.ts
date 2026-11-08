@@ -1,5 +1,5 @@
 import { MAX_ONLINE_PLAYERS } from '../../shared/sim/admission';
-import { JOIN_BUDGET, NETWORK_JOIN_BUDGET, REQUEST_BUDGET } from './admissionPolicy';
+import { JOIN_BUDGET, NETWORK_JOIN_BUDGET, REQUEST_BUDGET, WATCH_PASS_BUDGET, watchKeyVerdict } from './admissionPolicy';
 import { createHash, randomBytes } from 'node:crypto';
 
 export class ApiError extends Error {
@@ -44,8 +44,33 @@ export class Budget {
   }
 }
 
+/**
+ * A /watch pass request's key, checked before any budget is charged: 403 when the world has no watch key (fail
+ * closed), 401 for a wrong one, null when it may proceed to the pass lane.
+ */
+export function watchKeyError(key: string | undefined, authorization: string | null | undefined): ApiError | null {
+  const verdict = watchKeyVerdict(key, authorization);
+  if (verdict === 'disabled') return new ApiError(403, 'watch_disabled', 'This world has no watch key, so it cannot be watched.');
+  if (verdict === 'invalid') return new ApiError(401, 'invalid_watch_key', 'This world needs its watch key.');
+  return null;
+}
+
 export class AddressLimits {
   private entries = new Map<string, { requests: Budget; joins: Budget; lastSeen: number }>();
+  private passes = new Map<string, { budget: Budget; lastSeen: number }>();
+  /** /watch passes: their own lane per address (WATCH_PASS_BUDGET), apart from requests and joins. */
+  takePass(ip: string, now = Date.now()) {
+    const idle = Math.ceil(WATCH_PASS_BUDGET.burst / WATCH_PASS_BUDGET.perSecond) * 1000;
+    for (const [key, entry] of this.passes) if (now - entry.lastSeen > idle) this.passes.delete(key);
+    let entry = this.passes.get(ip);
+    if (!entry) {
+      if (this.passes.size >= 4096) throw new ApiError(429, 'capacity', 'Request capacity reached.', 60);
+      entry = { budget: new Budget(WATCH_PASS_BUDGET.burst, WATCH_PASS_BUDGET.perSecond, now), lastSeen: now };
+      this.passes.set(ip, entry);
+    }
+    entry.lastSeen = now;
+    entry.budget.take(now);
+  }
   private global = new Budget(REQUEST_BUDGET.burst, REQUEST_BUDGET.perSecond);
   private globalJoins = new Budget(JOIN_BUDGET.burst, JOIN_BUDGET.perSecond);
   take(ip: string, joining: boolean, now = Date.now()) {

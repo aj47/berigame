@@ -554,6 +554,14 @@ export const SocialPair = __t.object("SocialPair", {
 });
 export type SocialPair = __Infer<typeof SocialPair>;
 
+export const Spectator = __t.object("Spectator", {
+  identity: __t.identity(),
+  issuer: __t.identity(),
+  expiresAtMicros: __t.u64(),
+  connections: __t.u8(),
+});
+export type Spectator = __Infer<typeof Spectator>;
+
 export const SpireFight = __t.object("SpireFight", {
   runId: __t.u64(),
   hp: __t.u32(),
