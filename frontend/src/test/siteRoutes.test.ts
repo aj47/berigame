@@ -8,6 +8,7 @@ describe('public site entry routes', () => {
     ['/play/', { kind: 'game' }],
     ['/agent/', { kind: 'agent' }],
     ['/admin', { kind: 'admin' }],
+    ['/watch', { kind: 'watch' }],
     ['/docs', { kind: 'wiki' }],
     ['/docs/', { kind: 'wiki' }],
     ['/docs/getting-started', { kind: 'wiki', slug: 'getting-started' }],

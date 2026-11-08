@@ -1,4 +1,4 @@
-import { requestLane, agentSessionCapacity, agentShards, AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS_PER_SHARD, MAX_SESSION_ACTIONS, REQUEST_BUDGET, JOIN_BUDGET, NETWORK_JOIN_BUDGET, RENEWAL_BUDGET, CHARACTER_RENEWAL_BUDGET } from '../agent-api/admissionPolicy';
+import { requestLane, SPECTATOR_PATH, watchKeyAccepted, agentSessionCapacity, agentShards, AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS_PER_SHARD, MAX_SESSION_ACTIONS, REQUEST_BUDGET, JOIN_BUDGET, NETWORK_JOIN_BUDGET, RENEWAL_BUDGET, CHARACTER_RENEWAL_BUDGET } from '../agent-api/admissionPolicy';
 import { IDLE_LOGOUT_MINUTES, MAX_ONLINE_PLAYERS, MAX_STORED_CHARACTERS } from '../../shared/sim/admission';
 import { sealRecovery, openRecovery } from '../agent-api/recovery';
 import './codecs';
@@ -26,6 +26,8 @@ interface Env extends AccountEnv {
   GATEWAY_CREDENTIAL: string;
   RECOVERY_ENCRYPTION_KEY?: string;
   ADMIN_TOKEN: string;
+  /** Optional: viewers must present this to get a pass (`/watch?key=`), so agents in a private match cannot spectate themselves. */
+  WATCH_KEY?: string;
   /** Agent session shards (Durable Objects of this class named beta-v1/agents/<n>); "0" keeps every session in beta-v1. */
   AGENT_SHARDS?: string;
 }
@@ -93,6 +95,8 @@ function playerRejection(error: unknown): string {
   return /^(Needs |Walk |Put |Pick |The |This |That |You |Both |One |Finish |Change |Earn |Three |Visit |Four |Join |Choose |Catch |Pass |Ask |Equip |Fresh |No |They |Only |empty slot|still chewing|not a weapon|No fighting)/i.test(message) && !/token|credential|sql|stack|https?:/i.test(message)
     ? message : 'The game rejected this action. Inspect state before trying again.';
 }
+const SPECTATOR_CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Authorization' };
+
 function isAdmin(request: Request, env: Env) {
   const value = request.headers.get('Authorization')?.slice(7) ?? '';
   return !!env.ADMIN_TOKEN && request.headers.get('Authorization')?.startsWith('Bearer ')
@@ -114,17 +118,19 @@ export default {
       // The one query accepted: GET /state?map=1 (world.map in state, kept for one release).
       const mapQuery = request.method === 'GET' && url.pathname === `${PREFIX}/state` && url.search === '?map=1';
       if (url.search && !mapQuery && !isOAuthCallback(url.pathname)) throw new ApiError(404, 'not_found', 'Credentials belong in Authorization headers.');
-      if (request.headers.get('Origin') && request.headers.get('Origin') !== env.PUBLIC_ORIGIN) {
+      const spectator = url.pathname === SPECTATOR_PATH;
+      if (spectator && request.method === 'OPTIONS') return new Response(null, { status: 204, headers: SPECTATOR_CORS });
+      if (!spectator && request.headers.get('Origin') && request.headers.get('Origin') !== env.PUBLIC_ORIGIN) {
         throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       }
-      if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/world`, `${PREFIX}/sessions`, `${PREFIX}/renewals`, `${PREFIX}/session`, `${PREFIX}/state`, `${PREFIX}/danger`,
+      if (![PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/world`, `${PREFIX}/sessions`, `${PREFIX}/renewals`, `${PREFIX}/session`, `${PREFIX}/state`, `${PREFIX}/danger`, SPECTATOR_PATH,
         '/api/play/v1/sessions', '/api/play/v1/renewals', '/api/play/v1/recovery', '/api/play/v1/recover', `${PREFIX}/recovery`, `${PREFIX}/recover`, '/api/admin/invites', '/api/admin/revoke', '/api/admin/stats', '/api/admin/player'].includes(url.pathname)
         && !account && !Object.keys(ACTIONS).some(name => url.pathname === `${PREFIX}/actions/${name}`)) {
         throw new ApiError(404, 'not_found', 'Unknown endpoint. See /api/agent/v1/openapi.json.');
       }
       const publicRead = request.method === 'GET' && [PREFIX, `${PREFIX}/`, `${PREFIX}/openapi.json`, `${PREFIX}/world`].includes(url.pathname);
       if (url.pathname.startsWith('/api/admin/')) { if (!isAdmin(request, env)) throw unauthorized(); }
-      else if (!publicRead && !account && !(request.method === 'POST' && [ `${PREFIX}/sessions`, '/api/play/v1/sessions' ].includes(url.pathname))) bearer(request);
+      else if (!publicRead && !account && !(request.method === 'POST' && [ `${PREFIX}/sessions`, '/api/play/v1/sessions', SPECTATOR_PATH ].includes(url.pathname))) bearer(request);
       const ip = request.headers.get('CF-Connecting-IP') ?? 'local';
       // A shared network is not one player. Bearers are authenticated again in the coordinator.
       const credential = request.headers.get('Authorization');
@@ -133,11 +139,17 @@ export default {
         throw new ApiError(429, 'rate_limited', 'Slow down and honor Retry-After.', 60);
       }
       const target = gatewayFor(env, request, url.pathname);
-      return await target.stub.fetch(target.request);
+      const response = await target.stub.fetch(target.request);
+      if (!spectator) return response;
+      const open = new Response(response.body, response);
+      for (const [name, value] of Object.entries(SPECTATOR_CORS)) open.headers.set(name, value);
+      return open;
     } catch (error) {
       logUnexpected(new URL(request.url).pathname, error);
       const safe = admissionError(error) ?? unavailable();
-      return send(safe.status, errorBody(safe), safe.retryAfter);
+      const failed = send(safe.status, errorBody(safe), safe.retryAfter);
+      if (url.pathname === SPECTATOR_PATH) for (const [name, value] of Object.entries(SPECTATOR_CORS)) failed.headers.set(name, value);
+      return failed;
     }
   },
 };
@@ -662,6 +674,12 @@ export class AgentGateway extends DurableObject<Env> implements SessionHost {
       }
       if (path === `${PREFIX}/world` && request.method === 'GET') return send(200, worldAtlas());
       if (path === `${PREFIX}/openapi.json` && request.method === 'GET') return send(200, { ...openapi, paths: { ...openapi.paths, '/sessions': { post: { ...openapi.paths['/sessions'].post, summary: 'Join the open beta', security: [] } } } });
+      if (path === SPECTATOR_PATH && request.method === 'POST') {
+        this.take(`join:${ip}`, NETWORK_JOIN_BUDGET.burst, NETWORK_JOIN_BUDGET.perSecond, now);
+        if (!watchKeyAccepted(this.env.WATCH_KEY, request.headers.get('Authorization') ?? undefined)) throw new ApiError(401, 'invalid_watch_key', 'This world needs its watch key.');
+        const pass = await (await this.game()).spectate();
+        return send(201, { token: pass.token, uri: pass.uri, database: pass.database, expiresAt: pass.expiresAt });
+      }
       if ([`${PREFIX}/sessions`, '/api/play/v1/sessions'].includes(path) && request.method === 'POST') {
         this.take(`join:${ip}`, NETWORK_JOIN_BUDGET.burst, NETWORK_JOIN_BUDGET.perSecond, now);
         const token = request.headers.has('Authorization') ? bearer(request) : null;

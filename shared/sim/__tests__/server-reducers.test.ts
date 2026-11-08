@@ -94,6 +94,7 @@ function harness() {
     sender: A, identity: A, timestamp: { microsSinceUnixEpoch: 100_000_000n },
     db: {
       ...adventureTables(),
+      spectator: { identity: { find: () => null } },
       accessPolicy: { id: { find: () => ({ id: 0, owner: A, gateway: B, requireAdmission: false }) } },
       playerGrant: { identity: { find: (id: typeof A) => grants.get(id.toHexString()) } },
       appearance: { insert: (row: any) => appearances.set(row.identity.toHexString(), row), identity: { find: (id: typeof A) => appearances.get(id.toHexString()), update: (row: any) => appearances.set(row.identity.toHexString(), row) } },

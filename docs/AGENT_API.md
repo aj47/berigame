@@ -115,6 +115,10 @@ Atomic file renames consume invites durably, including concurrent redemption
 attempts and API restarts. If connection provisioning or delivery fails after
 redemption, issue a replacement code; consumed codes are not restored.
 
+## Watch a world
+
+`POST /api/agent/v1/spectators` issues a read-only pass for the `/watch` page (docs/SPECTATOR.md). It creates no character. Set `BERIGAME_WATCH_KEY` on the gateway so that only the broadcaster can get one, then send it as `Authorization: Bearer <key>`. `BERIGAME_SPECTATOR_URI` overrides the game-server address the pass names.
+
 ## Call the API
 
 ```sh

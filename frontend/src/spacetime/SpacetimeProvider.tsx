@@ -24,6 +24,8 @@ import BossSync from '../bosses/BossSync';
 import { isPlayerVisible } from '../bosses/selectors';
 import { useBossStore } from '../bosses/bossStore';
 import { playerView } from './playerView';
+import { Identity } from 'spacetimedb';
+import { WATCHING, viewerSubject } from './viewer';
 
 /**
  * Listen to one table of the connection's own world subscription. Unlike
@@ -54,7 +56,8 @@ function useRowListener(accessor: string, onInsert?: (row: any) => void, onUpdat
 function combatEventVisible(conn: any, row: CombatEvent): boolean {
   // Live positions (playerView.ts): the server moves only the player_pos row for a step.
   const players = conn?.db?.player ? playerView(conn).identity : undefined;
-  const myId = conn?.identity;
+  const subject = viewerSubject();
+  const myId = WATCHING ? (subject ? Identity.fromString(subject) : null) : conn?.identity;
   if (!players || !myId) return true;
   const viewer = players.find(myId) ?? null;
   const hexes = useBossStore.getState().myRunHexes;
@@ -79,7 +82,7 @@ const TableSync = () => {
   useRowListener('combatEvent', (row: CombatEvent) => {
     if (!combatEventVisible(connRef.current, row)) return;
     useCombatFxStore.getState().pushEvent(row);
-    useFirstDayStore.getState().onEvent(meRef.current, row);
+    if (!WATCHING) useFirstDayStore.getState().onEvent(meRef.current, row);
   });
   // Training dummy blows and emotes: event tables too.
   useRowListener('dummyEvent', (row) => useSocialStore.getState().pushDummyHit(row));
@@ -92,7 +95,7 @@ const TableSync = () => {
   useRowListener('giantEvent', (row) => useGiantStore.getState().pushEvent(row, meRef.current));
   // The server took your character offline on an open socket: an idle logout or an ended permit.
   useRowListener('player', undefined, (prev, row) => {
-    if (prev.online && !row.online && meRef.current && identityHex(row.identity) === meRef.current) reportSignedOut();
+    if (!WATCHING && prev.online && !row.online && meRef.current && identityHex(row.identity) === meRef.current) reportSignedOut();
   });
   // Clatterhorn and the Sunken Spire: rows, notices and swing cues into useBossStore.
   return <BossSync />;
@@ -100,6 +103,8 @@ const TableSync = () => {
 
 /** Test hooks: `?reconnectAttempts=2&reconnectMaxMs=1000` shortens the give-up path for browser checks. */
 function backoffOverrides(): Partial<BackoffOptions> {
+  // Nobody is at an OBS source to press Retry.
+  if (WATCHING) return { maxAttempts: Infinity };
   try {
     const q = new URLSearchParams(window.location.search);
     const out: Partial<BackoffOptions> = {};

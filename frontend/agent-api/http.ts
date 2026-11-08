@@ -1,4 +1,4 @@
-import { AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS } from './admissionPolicy';
+import { AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS, SPECTATOR_PATH, watchKeyAccepted } from './admissionPolicy';
 import { admissionError, unexpectedError } from './portable';
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage } from 'node:http';
@@ -12,7 +12,7 @@ const PREFIX = '/api/agent/v1';
 type Receipt = { fingerprint: string; status: number; body: unknown };
 type Session = { id: string; ip: string; game: GameSession; expiresAt: number; lastSeen: number; invite: Invite;
   reads: Budget; actions: Budget; busy: boolean; receipts: Map<string, Receipt> };
-type Options = { invites: InviteStore; game: GameService; publicOrigin?: string; trustedProxyIPs?: string[];
+type Options = { invites: InviteStore; game: GameService; publicOrigin?: string; trustedProxyIPs?: string[]; watchKey?: string; spectatorUri?: string;
   maxSessions?: number; maxSessionsPerIp?: number; idleMs?: number; now?: () => number; log?: (entry: object) => void };
 const canonicalIp = (value: string) => value.replace(/^::ffff:/, '');
 const errorBody = (error: ApiError) => ({ error: { code: error.code, message: error.message } });
@@ -97,7 +97,13 @@ export function createAgentServer(options: Options) {
       const hosts = [`127.0.0.1:${req.socket.localPort}`, `localhost:${req.socket.localPort}`, `[::1]:${req.socket.localPort}`];
       if (publicOrigin) hosts.push(new URL(publicOrigin).host);
       if (!req.headers.host || !hosts.includes(req.headers.host)) throw new ApiError(403, 'host_not_allowed', 'Host is not configured for this API.');
-      if (req.headers.origin && req.headers.origin !== publicOrigin) throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
+      const spectator = req.url === SPECTATOR_PATH;
+      if (spectator && req.headers.origin) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Headers', 'Authorization');
+      }
+      if (spectator && req.method === 'OPTIONS') { send(204); return; }
+      if (!spectator && req.headers.origin && req.headers.origin !== publicOrigin) throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       // The one query accepted: GET /state?map=1 (the full terrain map in state, kept for one release).
       const withMap = req.method === 'GET' && req.url === `${PREFIX}/state?map=1`;
       const url = withMap ? `${PREFIX}/state` : req.url;
@@ -108,6 +114,12 @@ export function createAgentServer(options: Options) {
           access: 'single-use invite', pollIntervalMs: AGENT_POLL_INTERVAL_MS, actionIntervalMs: AGENT_ACTION_INTERVAL_MS, idleTimeoutSeconds: idleMs / 1000 }); return;
       }
       if (route === '/openapi.json' && req.method === 'GET') { send(200, openapi); return; }
+      if (spectator && req.method === 'POST') {
+        if (!watchKeyAccepted(options.watchKey, req.headers.authorization)) throw new ApiError(401, 'invalid_watch_key', 'This world needs its watch key.');
+        const pass = await options.game.spectate();
+        send(201, { token: pass.token, uri: options.spectatorUri ?? pass.uri, database: pass.database, expiresAt: pass.expiresAt });
+        return;
+      }
       // Static world geometry, the same for everyone: no session, an ordinary request against the IP limit.
       if (route === '/world' && req.method === 'GET') { send(200, worldAtlas()); return; }
       if (!options.game.ready()) throw new ApiError(503, 'world_unavailable', 'The admitted game world is unavailable.');

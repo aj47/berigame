@@ -1,3 +1,4 @@
+import { WATCHING } from '../../spacetime/viewer';
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_APPEARANCE, normalizeAppearance, APPEARANCE_KEYS, PlayerState, RESPAWN_GRACE_TICKS, SPIRE_IFRAME_TICKS, type Appearance } from '@sim';
 import { useFrame } from '@react-three/fiber';
@@ -179,7 +180,7 @@ const PlayerAvatar = ({ row, isSelf, saved = DEFAULT_APPEARANCE, targeted = fals
   useAvatarDecal(groupRef, isSelf ? 'self' : targeted ? 'target' : 'other');
   useAvatarLabels(groupRef, {
     id: hex,
-    name: `${isSelf ? 'You' : row.name}${stackedHexes.length ? ` +${stackedHexes.length}` : ''}${targeted ? ' · Target' : ''}`,
+    name: `${isSelf && !WATCHING ? 'You' : row.name}${stackedHexes.length ? ` +${stackedHexes.length}` : ''}${targeted ? ' · Target' : ''}`,
     tone: isSelf ? 'self' : targeted ? 'targeted' : '',
     priority: isSelf ? 3 : targeted ? 2 : 1,
     health: !dead && healthShown ? row.hp / row.maxHp : null,

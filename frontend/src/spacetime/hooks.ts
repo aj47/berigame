@@ -5,6 +5,7 @@ import type { Player } from '../module_bindings/types';
 import { worldBlockedSet } from '@sim';
 import { identityHex } from './identity';
 import { playerView } from './playerView';
+import { WATCHING, useViewerStore } from './viewer';
 
 /*
  * Shared table snapshots. The connection already subscribes to what the client
@@ -122,7 +123,17 @@ function derived<T>(cache: WeakMap<readonly any[], T>, rows: readonly any[], bui
 
 export function useMyIdentityHex(): string | null {
   const { identity } = useSpacetimeDB<DbConnection>();
+  const subject = useViewerStore((s) => s.subject);
+  if (WATCHING) return subject;
   return identity ? identityHex(identity) : null;
+}
+
+/** Your identity's u256: on /watch, the watched character's (viewer.ts). */
+function useMyU256(): bigint | undefined {
+  const { identity } = useSpacetimeDB<DbConnection>();
+  const subject = useViewerStore((s) => s.subject);
+  if (WATCHING) return subject ? BigInt(`0x${subject}`) : undefined;
+  return identity?.__identity__;
 }
 
 export function useWorld() {
@@ -161,8 +172,7 @@ export function usePlayersByHex(): Map<string, Player> {
 
 /** Select a stable value from your row without rerendering for unrelated HP, movement, or action changes. */
 export function useMyPlayerSelector<T>(selectPlayer: (player: Player | null) => T): T {
-  const { identity } = useSpacetimeDB<DbConnection>();
-  const id = identity?.__identity__;
+  const id = useMyU256();
   // Identity.isEqual also formats both operands in SDK 2.10; compare its
   // public u256 value directly instead of allocating strings for every row.
   const select = useCallback((rows: readonly any[]): T => {
@@ -259,8 +269,7 @@ type CosmeticRow = import('../module_bindings/types').PlayerCosmetic;
 
 /** Your player_skill row (null until your first XP). Re-renders only when it changes. */
 export function useMySkills(): SkillRow | null {
-  const { identity } = useSpacetimeDB<DbConnection>();
-  const id = identity?.__identity__;
+  const id = useMyU256();
   const select = useCallback((rows: readonly any[]): SkillRow | null => {
     if (id === undefined) return null;
     for (const r of rows) if (r.identity.__identity__ === id) return r;
@@ -271,8 +280,7 @@ export function useMySkills(): SkillRow | null {
 
 /** Your player_cosmetic row (null until your first unlock). */
 export function useMyCosmetics(): CosmeticRow | null {
-  const { identity } = useSpacetimeDB<DbConnection>();
-  const id = identity?.__identity__;
+  const id = useMyU256();
   const select = useCallback((rows: readonly any[]): CosmeticRow | null => {
     if (id === undefined) return null;
     for (const r of rows) if (r.identity.__identity__ === id) return r;
