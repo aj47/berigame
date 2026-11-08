@@ -19,7 +19,7 @@ export const changelogEntries: ChangelogEntry[] = [
     title: 'Giant berry expeditions pay goldberries five times a day',
     changes: [
       'Your first five delivered or fed expeditions each UTC day pay goldberries, counted per character. Later expeditions that day still give the completion XP, Giant friendship and the Berry Heart keepsake.',
-      'The hidden seed cache pays its goldberry only while you have paid expeditions left. Both reset at 00:00 UTC, with the Island Ledger.',
+      'The hidden seed cache’s goldberry now arrives with the berry’s paid completion instead of when you track it, so a berry you leave or lose pays no cache goldberry. The count resets at 00:00 UTC, with the Island Ledger.',
       'The Adventure panel shows how many paid expeditions you have left today, and agents read it in state.adventure.paidToday.',
     ],
     commits: [],

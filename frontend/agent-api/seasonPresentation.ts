@@ -67,7 +67,7 @@ export function describeExpeditionPaid(views: Iterable<{ kind: string; source: s
   let state;
   for (const row of views) if (row.kind === 'expeditionPaid' && row.source === `expeditionPaid:${identity}`) { state = parseExpeditionPaid(row.data); break; }
   const status = expeditionPaidStatus(state, now);
-  return { ...status, rule: `The first ${EXPEDITION_DAILY_PAID} delivered or fed expeditions each UTC day pay goldberries (counted per character, once per paid party member); later ones that day pay completion XP and friendship only, and the tracked seed cache stops paying its goldberry.` };
+  return { ...status, rule: `The first ${EXPEDITION_DAILY_PAID} delivered or fed expeditions each UTC day pay goldberries (counted per character, once per paid party member); later ones that day pay completion XP and friendship only. A tracked seed cache adds its goldberry to that run's paid completion only; abandoned or lost runs pay none.` };
 }
 
 export interface LedgerInput {

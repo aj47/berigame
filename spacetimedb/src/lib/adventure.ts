@@ -48,10 +48,6 @@ interface ExpeditionPaidRepo {
 }
 const paidRepo = (ctx: Ctx) => frontierRepository(ctx) as unknown as ExpeditionPaidRepo;
 const today = (ctx: Ctx) => ledgerDay(Number(ctx.timestamp.microsSinceUnixEpoch / 1000n));
-/** Paid expedition completions `id` has left today. */
-export function paidExpeditionsLeft(ctx: Ctx, id: Identity): number {
-  return Math.max(0, EXPEDITION_DAILY_PAID - expeditionPaidToday(paidRepo(ctx).get('expeditionPaid', id.toHexString()), today(ctx)));
-}
 /** Use one of today's paid completions for `id` on `expeditionId`; false once they are all used (nothing is stored then). */
 export function claimPaidExpedition(ctx: Ctx, id: Identity, expeditionId: bigint): boolean {
   const repo = paidRepo(ctx), idHex = id.toHexString(), day = today(ctx);
@@ -88,7 +84,9 @@ export function finishExpedition(ctx: Ctx, e: ExpeditionRow, T: number, delivere
     ctx.db.expeditionCredit.key.update({ ...credit, rewarded: true });
     const p = loadPlayer(ctx, m.identity); if (!p) continue;
     const paid = claimPaidExpedition(ctx, p.identity, e.id);
-    const inBag = paid ? giveItem(ctx, p.identity, 'berry_goldberry', reward, p, T) : 0;
+    // The Read tracks seed cache pays here, with a paid completion only, so abandoned runs never pay it.
+    const cache = paid && credit.tracked ? 1 : 0, total = reward + cache;
+    const inBag = paid ? giveItem(ctx, p.identity, 'berry_goldberry', total, p, T) : 0;
     progress(ctx, p.identity, fed ? 4 : 2, EXPEDITION_COMPLETION_XP, fed ? Feat.Feed : Feat.Deliver);
     const pp = profile(ctx, p.identity);
     const giantTrust = pp.giantTrust + (fed ? 1 : 0);
@@ -96,9 +94,9 @@ export function finishExpedition(ctx: Ctx, e: ExpeditionRow, T: number, delivere
     const keepsake = fed && unlockCosmetic(ctx, p.identity, Cosmetic.BerryHeart);
     const friendship = giantFriendship(giantTrust);
     const xpNotice = `+${EXPEDITION_COMPLETION_XP} ${fed ? 'Befriending' : 'Exploring'} completion XP`;
-    const rewardNotice = paid ? `+${reward} goldberries · ${xpNotice}` : `${EXPEDITION_CAP_NOTICE} · ${xpNotice}`;
+    const rewardNotice = paid ? `+${total} goldberries${cache ? ' (1 from the seed cache)' : ''} · ${xpNotice}` : `${EXPEDITION_CAP_NOTICE} · ${xpNotice}`;
     const friendshipNotice = fed ? ` · ${friendship.label}: +${friendship.pauseSeconds}s head start` : '';
-    const overflowNotice = paid && inBag < reward ? ` · ${reward - inBag} goldberries on the ground beside you` : '';
+    const overflowNotice = paid && inBag < total ? ` · ${total - inBag} goldberries on the ground beside you` : '';
     notify(ctx, p.identity, e.leader, 0, `${rewardNotice}${friendshipNotice}${keepsake ? ' · Berry Heart unlocked' : ''}${overflowNotice}`);
   }
   if (delivered) {

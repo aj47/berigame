@@ -261,7 +261,9 @@ and remain in the expedition receive the surviving cargo value (1–8 goldberrie
 per helper, so cargo worth 4 pays 6. NPCs only threaten cargo. A disconnect puts cargo down for others.
 Only your first 5 delivered or fed expeditions each UTC day pay goldberries (a party completion counts
 once for each member it pays); later ones that day give the completion XP, friendship and keepsake
-progress only, and `track` stops paying its goldberry. `state.adventure.paidToday.left` shows how many
+progress only. `track` (Read tracks, the seed cache at (14,15)) gives 25 Exploring XP at once; its
+goldberry is added to that berry's reward when it is delivered or fed and that completion is paid, so
+an abandoned or lost run pays no cache goldberry. `state.adventure.paidToday.left` shows how many
 paid completions you have left; it resets at 00:00 UTC (`resetsInSeconds`).
 
 Your first rewarded feast unlocks the Berry Heart neck keepsake; it equips automatically only

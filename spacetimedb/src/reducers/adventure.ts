@@ -1,9 +1,9 @@
 import { SenderError, t } from 'spacetimedb/server';
 import spacetimedb from '../schema';
-import { ADVENTURE_CAMP, ADVENTURE_TICKS, BERRY_PATCH, BERRY_MARKET, GIANT_FEAST, EXPEDITION_ACTIONS, EXPEDITION_CAP_NOTICE, PlayerState, chebyshev, hasTechnique, giantFriendship, techniqueUnlocked, loadoutCount, Feat, rollDestination, worldBlockedSet, tileKey, inSafeRing, SWING_INTERVAL_TICKS } from '../../../shared/sim';
+import { ADVENTURE_CAMP, ADVENTURE_TICKS, BERRY_PATCH, BERRY_MARKET, GIANT_FEAST, EXPEDITION_ACTIONS, PlayerState, chebyshev, hasTechnique, giantFriendship, techniqueUnlocked, loadoutCount, Feat, rollDestination, worldBlockedSet, tileKey, inSafeRing, SWING_INTERVAL_TICKS } from '../../../shared/sim';
 import { requireAlivePlayer, currentTick, touchInput, savePlayer, clearInteractions, sameId } from '../lib/players';
 import { activityAction } from '../lib/activity';
-import { profile, saveProfile, progress, contribute, creditFor, carrying, spend, finishExpedition, syncShowcase, duelFor, paidExpeditionsLeft } from '../lib/adventure';
+import { profile, saveProfile, progress, contribute, creditFor, carrying, spend, finishExpedition, syncShowcase, duelFor } from '../lib/adventure';
 import { giveItem } from '../lib/inventory';
 import { requireCapability } from '../lib/access';
 import { onLanternFloor, onSpireFloor, refuseOnSpireFloor } from '../lib/spireGuards';
@@ -105,7 +105,7 @@ export const expeditionAction = spacetimedb.reducer({ action: t.string(), expedi
       contribute(ctx, p.identity, action === 'feed' ? 4 : 2, action === 'feed' ? Feat.Feed : Feat.Deliver);
       finishExpedition(ctx, e, T, true, action === 'feed'); savePlayer(ctx, p); return;
     }
-    case 'track': technique(6); if (m.tracked) throw new SenderError('You already found this expedition seed cache'); if (chebyshev(p, { x: 14, z: 15 }) > 2) throw new SenderError('Fresh tracks lead to the hidden seed cache at (14,15)'); if (paidExpeditionsLeft(ctx, p.identity) > 0) giveItem(ctx, p.identity, 'berry_goldberry', 1, p, T); else notify(ctx, p.identity, p.identity, 0, `${EXPEDITION_CAP_NOTICE} · +25 Exploring XP from the seed cache`); progress(ctx, p.identity, 2, 25, Feat.Explore); ctx.db.expeditionMember.identity.update({ ...m, tracked: true }); ctx.db.expeditionCredit.key.update({ ...creditFor(ctx, e.id, p.identity), tracked: true }); break;
+    case 'track': technique(6); if (m.tracked) throw new SenderError('You already found this expedition seed cache'); if (chebyshev(p, { x: 14, z: 15 }) > 2) throw new SenderError('Fresh tracks lead to the hidden seed cache at (14,15)'); progress(ctx, p.identity, 2, 25, Feat.Explore); ctx.db.expeditionMember.identity.update({ ...m, tracked: true }); ctx.db.expeditionCredit.key.update({ ...creditFor(ctx, e.id, p.identity), tracked: true }); notify(ctx, p.identity, p.identity, 0, '+25 Exploring XP · Seed cache found: +1 goldberry when this berry is delivered or fed (a paid expedition)'); break;
     case 'brace': technique(9); grounded(); e.guardUntil = T + 20; contribute(ctx, p.identity, 3, Feat.Protect); cooldown = 40; e.message = `${p.name} braces beside the cargo. The Giant cannot bite it for 12 seconds.`; break;
     case 'shove': technique(10); if (mine) throw new SenderError('Put down the berry first'); if (chebyshev(p, { x: e.pipX, z: e.pipZ }) > 3) throw new SenderError('Walk within three tiles of Pip'); e.pipX = 12; e.pipZ = 13; e.pipUntil = T + 40; contribute(ctx, p.identity, 3, Feat.Protect); cooldown = 40; e.message = 'Pip scampers away!'; break;
     case 'interrupt': technique(11); if (mine) throw new SenderError('Put down the berry first'); if (chebyshev(p, { x: e.giantX, z: e.giantZ }) > 3) throw new SenderError('Walk within three tiles of the Giant'); e.giantUntil = T + 15; contribute(ctx, p.identity, 3, Feat.Protect); cooldown = 50; e.message = 'The Giant is startled. You have nine seconds to escape.'; break;

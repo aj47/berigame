@@ -14,8 +14,9 @@ export const EXPEDITION_COMPLETION_XP = 35;
 /**
  * Goldberry-paying expedition completions per character per UTC day (the
  * Ledger's day, LEDGER_DAY_MS). Later completions that day still give the
- * completion XP, friendship and keepsake progress, but no goldberries, and the
- * tracked seed cache stops paying its goldberry too. Stored per character as a
+ * completion XP, friendship and keepsake progress, but no goldberries. The
+ * tracked seed cache's goldberry is paid with the run's completion, and only
+ * when that completion is paid; abandoned or lost runs pay none. Stored per character as a
  * private frontier record, kind 'expeditionPaid', `{ id, day, paid, lastPaid }`.
  */
 export const EXPEDITION_DAILY_PAID = 5;
@@ -62,7 +63,7 @@ export const TECHNIQUES = [
   { id: 3, key: 'basket', name: 'Berry basket', path: 1, level: 2, feat: 2, description: 'Splitting off emergency food preserves the delivery reward.' },
   { id: 4, key: 'decoy', name: 'Scent decoy', path: 1, level: 3, feat: 2, description: 'Turn one driftwood into a 30-second Giant distraction where you stand.' },
   { id: 5, key: 'quiet_cart', name: 'Quiet cart', path: 1, level: 4, feat: 32, description: 'Moss takes two steps at a time. He still drops cargo when the Giant comes close.' },
-  { id: 6, key: 'tracks', name: 'Read tracks', path: 2, level: 2, feat: 4, description: 'Track the hidden seed cache once per expedition for a goldberry and exploration XP.' },
+  { id: 6, key: 'tracks', name: 'Read tracks', path: 2, level: 2, feat: 4, description: 'Track the hidden seed cache once per expedition for exploration XP, and a goldberry if that berry is delivered or fed.' },
   { id: 7, key: 'hidden_routes', name: 'Hidden routes', path: 2, level: 3, feat: 4, description: 'Roll the berry up to six tiles instead of three, along clear ground.' },
   { id: 8, key: 'false_trail', name: 'False trail', path: 2, level: 4, feat: 32, description: 'Rolling leaves a 15-second false scent at its old position.' },
   { id: 9, key: 'brace', name: 'Brace', path: 3, level: 2, feat: 8, description: 'Protect nearby cargo from the Giant for 12 seconds. Put the berry down first.' },

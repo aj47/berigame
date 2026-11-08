@@ -291,19 +291,28 @@ describe('daily paid expedition cap', () => {
     expect(JSON.parse(paidView(h, A).data).paid).toBe(2);
     expect(notices(h).filter(t => t.includes('Daily expedition rewards used (5/5)'))).toHaveLength(1);
   });
-  it('stops the tracked seed cache paying a goldberry once the day is used up', () => {
+  it('pays nothing for a seed cache tracked on a run that is abandoned, however often it repeats', () => {
     const h = harness();
     saveProfile(h.ctx, { ...profile(h.ctx, A), loadout: 1 << 6 });
-    h.db.frontierPrivate.insert({ key: 'expeditionPaid:a', kind: 'expeditionPaid', data: JSON.stringify({ id: 'a', day: Math.floor(100_000 / LEDGER_DAY_MS), paid: 4 }) });
-    h.ripe(); h.at(14,15); h.action('track');
-    expect(goldberries(h)).toBe(1);
-    h.action('leave');
-    h.db.frontierPrivate.key.update({ key: 'expeditionPaid:a', kind: 'expeditionPaid', data: JSON.stringify({ id: 'a', day: Math.floor(100_000 / LEDGER_DAY_MS), paid: 5 }) });
-    h.at(22,18); h.ripe(); h.at(14,15);
     const xp = profile(h.ctx, A).exploringXp;
-    h.action('track');
-    expect(goldberries(h)).toBe(1);
+    for (let i = 0; i < 10; i++) { h.at(22,18); h.ripe(); h.at(14,15); h.action('track'); h.action('leave'); expect(h.e().stage).toBe('lost'); }
+    expect(goldberries(h)).toBe(0);
     expect(profile(h.ctx, A).exploringXp).toBeGreaterThan(xp);
+    expect(paidView(h)).toBeUndefined();
+  });
+  it('adds the tracked cache goldberry to a paid delivery and says so, but not to one past the cap', () => {
+    const h = harness();
+    saveProfile(h.ctx, { ...profile(h.ctx, A), loadout: 1 << 6 });
+    h.ripe('market'); h.at(14,15); h.action('track');
+    expect(goldberries(h)).toBe(0);
+    h.at(h.e().x, h.e().z); h.action('take'); h.at(35,37); h.action('deliver');
+    expect(goldberries(h)).toBe(expeditionPayout(4) + 1);
+    expect(notices(h).at(-1)).toContain(`+${expeditionPayout(4) + 1} goldberries (1 from the seed cache)`);
+    h.db.frontierPrivate.key.update({ key: 'expeditionPaid:a', kind: 'expeditionPaid', data: JSON.stringify({ id: 'a', day: Math.floor(100_000 / LEDGER_DAY_MS), paid: 5 }) });
+    const before = goldberries(h);
+    h.at(22,18); h.ripe('market'); h.at(14,15); h.action('track');
+    h.at(h.e().x, h.e().z); h.action('take'); h.at(35,37); h.action('deliver');
+    expect(goldberries(h)).toBe(before);
     expect(notices(h).at(-1)).toContain('Daily expedition rewards used (5/5); XP only until 00:00 UTC');
   });
 });
