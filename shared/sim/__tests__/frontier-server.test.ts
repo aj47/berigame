@@ -336,3 +336,26 @@ describe("frontier database boundary", () => {
     expect(p95).toBeLessThan(300);
   }, 30000);
 });
+
+describe("walk notices across the frontier boundary", () => {
+  const walkNotices = (h: ReturnType<typeof harness>) => [...h.db.socialEvent.iter()].filter((n: any) => n.kind === 8).map((n: any) => n.text);
+  function agentWalking(h: ReturnType<typeof harness>) {
+    // An agent's permit is issued by the world's gateway (lib/access.ts canPlay).
+    h.db.accessPolicy.id.update({ ...h.db.accessPolicy.id.find(0), gateway: id(3) });
+    h.db.playerGrant.insert({ identity: id(1), issuer: id(3), agent: true, expiresAtMicros: 1n << 62n, combat: true, chat: true });
+    const p = h.db.player.identity.find(id(1));
+    h.db.player.identity.update({ ...p, region: "bramblewild", x: 30, z: 25, targetX: 40, targetZ: 25 });
+  }
+  it("a frontier walk replaces a Bramblewild walk silently, like a move", () => {
+    const h = harness();
+    agentWalking(h);
+    (frontierAction as any)(h.ctx, { command: JSON.stringify({ action: "walk", id: "bramblewild", x: 35, z: 25 }) });
+    expect(walkNotices(h)).toEqual([]);
+  });
+  it("any other frontier action that cuts the walk short says so", () => {
+    const h = harness();
+    agentWalking(h);
+    try { (frontierAction as any)(h.ctx, { command: JSON.stringify({ action: "gather", id: "settlement-timber" }) }); } catch { /* refused after clearing */ }
+    expect(walkNotices(h)).toEqual(["Walk to 40,25 cancelled by frontier; stopped at 30,25"]);
+  });
+});

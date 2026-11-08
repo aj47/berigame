@@ -84,7 +84,8 @@ export const frontierAction = spacetimedb.reducer(
       throw new SenderError(
         "Leave your berry expedition before travelling to the Meadows",
       );
-    clearInteractions(ctx, player, true, 'frontier');
+    // A frontier walk replaces a Bramblewild walk the way a move does: not a cancellation (lib/walks.ts).
+    clearInteractions(ctx, player, true, (input as any)?.action === "walk" ? 'move' : 'frontier');
     savePlayer(ctx, player);
     actor.inputStamp = `${player.lastInputTick}:${player.inputsThisTick}`;
     try {

@@ -235,9 +235,12 @@ per cut. All current IDs and positions are in `frontier.resources`.
   `ended` is `arrived`, `no_path` (the server found no path any more, e.g. a
   node grew on the destination or you dropped a key, and stopped you at `at`)
   or `cancelled` (another action cut it short; `by` names it: `harvest`,
-  `stop`, `attack`, `pickup`, `trade`, `reconnect`, ...). A new `move` replaces
-  a walk without cancelling it. `player.action: "idle"` alone never means you
-  arrived: compare `lastWalk.to`. The two short endings are also notices:
+  `stop`, `attack`, `pickup`, `trade`, ...). A new `move` or `frontier walk`
+  replaces a walk without cancelling it. `lastWalk.to` is the tile the server
+  chose (the nearest reachable one, as in the `move` receipt's `destination`),
+  which can differ from the x,z you asked for: note `player.destination` right
+  after the move and compare `lastWalk.to` with that. `player.action: "idle"`
+  alone never means you arrived. The two short endings are also notices:
   "Cannot reach x,z: no path; stopped at a,b" and "Walk to x,z cancelled by
   <action>; stopped at a,b" (humans see the first as a toast).
 

@@ -10,7 +10,10 @@ import type { Tile } from './types';
  * - no_path: the tick found no path any more (a node grew on the route or the
  *   destination, a key was dropped): the walk stops where it is. Everyone.
  * - cancelled: another action cleared it (`by`, e.g. harvest, stop, attack,
- *   reconnect). Agents only, and never for a new move (that is the new walk).
+ *   pickup). Agents only, and never for a new move or frontier walk (that is the
+ *   new walk) nor for a disconnect (nobody is left to read it).
+ *
+ * `to` is the tile the server chose (nearest reachable), not the x,z asked for.
  */
 export type WalkEnd = 'arrived' | 'no_path' | 'cancelled';
 export interface WalkOutcome { to: Tile; ended: WalkEnd; at: Tile; by?: string; tick: number }
