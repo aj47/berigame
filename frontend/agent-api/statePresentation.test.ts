@@ -495,3 +495,40 @@ test('lantern rows with real identities and u64 ids serialize: /state blocks, /d
   const gate = { ...person(3, 47, 151), identity: idOf(3), pendingId: 4n } as any;
   assert.doesNotThrow(() => JSON.stringify(describeBosses(rows, gate, LS + 31, { players, keysHeld: 0, contribution: null, blocked: WORLD })));
 });
+
+test('every documented Lanternmaw /danger and state.lantern.run field exists in the real payload', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { openapi } = await import('./contract');
+  const runId = 81n;
+  // A run in its dive: the spring is published, so spring and swing are both present.
+  let fight = lfight(runId, LS);
+  for (let T = LS + 1; fight.stage !== LanternStage.Dive && T < LS + 200; T++) fight = { ...fight, ...lanternAdvance(fight, T, LS, LANTERN_SPAWNS.slice(0, 2)) };
+  const rows = lrows({ lanternRuns: [lrun(runId)], lanternMembers: [lmember(1, runId, 0), lmember(2, runId, 1)], lanternFights: [fight] });
+  const tick = fight.surfaceTick - 4;
+  const me = onFloor(1, LANTERN_SPAWNS[0]);
+  const players = [me, onFloor(2, LANTERN_SPAWNS[1])];
+  const feed = dangerFeed(rows, me, tick, { players, blocked: WORLD, ageMs: 10, tickMs: 600 }) as any;
+  const run = (describeBosses(rows, me, tick, { players, keysHeld: 0, contribution: null, blocked: WORLD }) as any).lantern.run;
+  assert.ok(feed.spring && run.spring, 'the dive publishes the spring');
+  const fields = (list: string) => list.split(',').map((s) => s.trim().split(/[\s:]/)[0]).filter((s) => /^[a-zA-Z]+$/.test(s));
+  const lists = (text: string, key: string) => [...text.matchAll(new RegExp('`?' + key + ' \\{([^}]*)\\}', 'g'))].map((m) => fields(m[1]));
+  const dangerDoc = (openapi as any).paths['/danger'].get.summary as string;
+  const md = readFileSync(new URL('../../docs/AGENT_API.md', import.meta.url), 'utf8');
+  const agentMd = readFileSync(new URL('../public/agent.md', import.meta.url), 'utf8');
+  const dangerSection = md.slice(md.indexOf('**`GET /danger` in the Hollow.**'), md.indexOf('**Notices and news.**'));
+  const runSection = md.slice(md.indexOf('**`state.lantern.run`**'), md.indexOf('**`GET /danger` in the Hollow.**'));
+  const agentDanger = agentMd.slice(agentMd.indexOf('Read GET `/api/agent/v1/danger` every tick inside'));
+  const check = (where: string, doc: string, key: string, payload: Record<string, unknown>) => {
+    const found = lists(doc, key);
+    assert.ok(found.length > 0, `${where} documents ${key}`);
+    for (const list of found) for (const f of list) assert.ok(f in payload, `${where}: ${key}.${f} is missing from the payload`);
+  };
+  check('openapi /danger', dangerDoc, 'spring', feed.spring);
+  check('openapi /danger', dangerDoc, 'swing', feed.swing);
+  check('AGENT_API /danger', dangerSection, 'spring', feed.spring);
+  check('AGENT_API /danger', dangerSection, 'swing', feed.swing);
+  check('agent.md /danger', agentDanger, 'spring', feed.spring);
+  check('AGENT_API state.lantern.run', runSection, 'spring', run.spring);
+  assert.deepEqual(feed.spring.tile, { x: feed.spring.x, z: feed.spring.z });
+  assert.deepEqual(feed.spring.tile, run.spring.tile);
+});

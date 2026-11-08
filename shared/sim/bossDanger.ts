@@ -137,7 +137,7 @@ export interface DangerFeed {
    * tick S caps it (a 6 HP bite; double damage, no heal and no pulses until `chokedUntilTick`). `capper`: you are the
    * party's lowest present slot, the one `path` walks onto the spring for S.
    */
-  spring?: { x: number; z: number; surfaceTick: number; surfacesInTicks: number; capped: boolean; chokedUntilTick: number | null; capper: boolean } | null;
+  spring?: { tile: Tile; x: number; z: number; surfaceTick: number; surfacesInTicks: number; capped: boolean; chokedUntilTick: number | null; capper: boolean } | null;
   /** Lanternmaw: your automatic swing (every 4th tick by slot) and where it reaches (null in the dive and the ebb). */
   swing?: { nextTick: number | null; nextInTicks: number | null; inReach: boolean; reach: { x: number; z: number; range: number } | null };
 }
@@ -739,7 +739,7 @@ function lanternFeed(feed: DangerFeed, input: DangerInput, ln: NonNullable<Dange
   if (lanternSpringShown(f) && f.surfaceTick + LANTERN_TIDE_TICKS > T1) {
     const t = lanternTile(LANTERN_SPRINGS[f.spring & 3]);
     feed.spring = {
-      x: t.x, z: t.z, surfaceTick: f.surfaceTick, surfacesInTicks: Math.max(0, f.surfaceTick - tick), capped: f.capped,
+      tile: { x: t.x, z: t.z }, x: t.x, z: t.z, surfaceTick: f.surfaceTick, surfacesInTicks: Math.max(0, f.surfaceTick - tick), capped: f.capped,
       chokedUntilTick: f.capped ? f.surfaceTick + LANTERN_CHOKE_TICKS - 1 : null, capper,
     };
   } else feed.spring = null;

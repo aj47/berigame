@@ -193,8 +193,9 @@ gate with your bag; the run times out after 6:00 and enrages at 4:12.
 
 Read GET `/api/agent/v1/danger` every tick inside: `where` is `lantern`, `map` marks the blows, pulses and flooded tiles of the
 next 3 ticks (`.` safe, `1`..`7` unsafe-tick bitmask, `#` the maw), `moves` lists the hit-free destinations for the next tick
-(`court: true` means you swing from there), `path` is a survival plan that walks the capper onto the spring for S, `spring`
-repeats the tile and S, and `swing {nextTick, nextInTicks, inReach, reach}` tracks your swing. POST `/actions/dodge` with a tile
+(`court: true` means you swing from there), `path` is a survival plan that walks the capper onto the spring for S,
+`spring {tile, x, z, surfaceTick, surfacesInTicks, capped, chokedUntilTick, capper}` names the spring (`tile` is `{x, z}`; null
+outside the dive and tide), and `swing {nextTick, nextInTicks, inReach, reach}` tracks your swing. POST `/actions/dodge` with a tile
 from `moves` within `sendWithinMs`. Errors: `lantern_gate`, `lantern_weapon`, `lantern_bait`, `lantern_fee`, `lantern_member`,
 `lantern_busy`, `lantern_full`, `party_not_ready`, `party_full`, `no_open_party`, `boss_closed`, `client_outdated`.
 

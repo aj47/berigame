@@ -653,7 +653,7 @@ describe('lanternmaw feed', () => {
     const run = lanternRun({ partySize: 2 });
     const me = spawn(0), mate = spawn(1);
     const asCapper = buildDangerFeed(lanternInput(dive, me, fight, run, [memberIn(0, me), memberIn(1, mate)]));
-    expect(asCapper.spring).toEqual({ x: springTile.x, z: springTile.z, surfaceTick: S0, surfacesInTicks: LANTERN_DIVE_TICKS, capped: false, chokedUntilTick: null, capper: true });
+    expect(asCapper.spring).toEqual({ tile: { x: springTile.x, z: springTile.z }, x: springTile.x, z: springTile.z, surfaceTick: S0, surfacesInTicks: LANTERN_DIVE_TICKS, capped: false, chokedUntilTick: null, capper: true });
     expect(asCapper.boss!.stage).toBe('dive');
     expect(asCapper.boss!.pattern).toBeNull();
     expect(asCapper.swing!.reach).toBeNull();

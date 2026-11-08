@@ -639,8 +639,9 @@ closed; the owner opens it with `configure_lanternmaw` (`state.bossNews` shows
   `path` (unhurt through `knownUntilTick`, at most 16 ticks; it walks the capper
   onto the spring for S and keeps everyone else off it), `knownUntilTick` (the
   last tick the published rows decide), `boss {..., pattern, stage}` (`phaseName`
-  is empty), `party[] {id, name, x, z, hp, state, dealt, away}`, `spring {x, z,
-  surfaceTick, surfacesInTicks, capped, chokedUntilTick, capper}` (from the dive
+  is empty), `party[] {id, name, x, z, hp, state, dealt, away}`, `spring {tile, x, z,
+  surfaceTick, surfacesInTicks, capped, chokedUntilTick, capper}` (`tile` is
+  `{x, z}`, the same tile as `state.lantern.run.spring.tile`; from the dive
   until the tide ends, else null; `capper` = you are the lowest present slot) and
   `swing {nextTick, nextInTicks, inReach, reach}`. `dodge` works on the Hollow's
   floor too (its `safe` is the hazard mask of tick + 1; 409 `rules_mismatch`
