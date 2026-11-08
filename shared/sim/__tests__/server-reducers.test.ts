@@ -2005,4 +2005,39 @@ describe('maximum health after a Bramblewild defeat', () => {
     // Empty bag: only Might counts. Today the row keeps maxHp 36 and the respawn heals to it.
     expect(h.me()).toMatchObject({ maxHp: 33, hp: 33 });
   });
+
+  it('without Might, a death that drops an equipped vest respawns at 30', () => {
+    outsideSafeRing();
+    frontierRepository(h.ctx as any).put('profile', { ...newProfile('a'), active: [], events: { vest: 1 } });
+    h.inventory.set(7000n, { id: 7000n, owner: A, slot: 5, itemId: 'padded_vest', quantity: 1 });
+    cancel(h.ctx);
+    expect(h.me().maxHp).toBe(33);
+
+    h.me().hp = PUNCH_DAMAGE;
+    as(B, () => attack(h.ctx, { target: A }));
+    run();
+    expect(h.me().state).toBe(PlayerState.Dead);
+    run(DEATH_TICKS + 1);
+    expect(h.me()).toMatchObject({ state: PlayerState.Alive, maxHp: 30, hp: 30 });
+  });
+
+  it('a Giant slam kill drops the vest and respawns without its bonus', () => {
+    const trigger = registeredTrigger as unknown as Reducer;
+    h.inventory.clear();
+    frontierRepository(h.ctx as any).put('profile', { ...newProfile('a'), active: [0], events: { vest: 1 } });
+    h.inventory.set(7000n, { id: 7000n, owner: A, slot: 5, itemId: 'padded_vest', quantity: 1 });
+    run(); trigger(h.ctx, { delaySeconds: 0 }); // seed the Giant, then the owner (A) wakes it
+    Object.assign(h.me(), { x: GIANT_TILE.x - GIANT_REACH, z: GIANT_TILE.z });
+    cancel(h.ctx);
+    expect(h.me().maxHp).toBe(36);
+
+    h.me().hp = GIANT_SLAM_DAMAGE;
+    run(); // A is the only player in the Boulders: the wind-up starts on A's tile
+    expect(h.giants.get(GIANT_ID).state).toBe(GiantState.Windup);
+    run(GIANT_SLAM_WINDUP_TICKS);
+    expect(h.me()).toMatchObject({ state: PlayerState.Dead, weapon: '' });
+    expect([...h.ground.values()].some((g) => g.itemId === 'padded_vest' && g.droppedOnDeath)).toBe(true);
+    run(DEATH_TICKS + 1);
+    expect(h.me()).toMatchObject({ state: PlayerState.Alive, maxHp: 33, hp: 33 });
+  });
 });

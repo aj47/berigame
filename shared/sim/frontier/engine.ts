@@ -949,8 +949,8 @@ export function perform(w: World, a: Actor, input: unknown): void {
         const slots = receive(c.slots, item, quantity, true);
         a.bag = bag;
         c.slots = slots;
-        // Banking the wielded weapon's last quick-bar copy puts it away (spacetimedb/src/lib/vault.ts).
-        if (a.weapon === item && !inHotbar(a.bag, item)) a.weapon = "";
+        // A wielded weapon no longer in the quick bar is put away, as in spacetimedb/src/lib/vault.ts.
+        if (a.weapon && !inHotbar(a.bag, a.weapon)) a.weapon = "";
         if (c.boat && (getItemDef(item)?.healthRestore ?? 0) > 0)
           event(p, "provisions");
       } else {

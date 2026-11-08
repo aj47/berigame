@@ -26,6 +26,9 @@ vi.mock('../../../spacetimedb/src/schema', () => ({
 vi.mock('../../../spacetimedb/src/tables', () => ({ tickSchedule: { rowType: {} } }));
 
 import * as clatter from '../../../spacetimedb/src/reducers/clatterhorn';
+import { frontierRepository } from '../../../spacetimedb/src/lib/frontier';
+import { newProfile } from '../frontier/model';
+import { DEATH_TICKS } from '../constants';
 import * as admin from '../../../spacetimedb/src/reducers/bossAdmin';
 import * as movement from '../../../spacetimedb/src/reducers/movement';
 import { tick as registeredTick } from '../../../spacetimedb/src/reducers/tick';
@@ -441,6 +444,18 @@ describe('attacks', () => {
     expect(hurt).toEqual([expect.objectContaining({ amount: 5, hp: 0, quantity: HurtSource.Runner })]);
     expect(h.p(A).hp).toBe(0);
     expect(h.p(A).state).toBe(PlayerState.Dead);
+  });
+
+  it('a Clatterhorn kill drops a carried vest and the respawn heals to Might only (33, not 36)', () => {
+    frontierRepository(h.ctx).put('profile', { ...newProfile(A.toHexString()), active: [0], events: { vest: 1 } });
+    h.give(A, 5, 'padded_vest', 1);
+    h.fight({ phase: 2, state: ClatterState.DrumWindup, attack: 3, swarmSide: 0, swarmFree: 0, stateUntilTick: h.now() + 1 });
+    h.place(A, 77, 100, { hp: 2, maxHp: 36 });
+    for (let i = 0; i < 12 && h.p(A).state !== PlayerState.Dead; i++) h.run(1);
+    expect(h.p(A).state).toBe(PlayerState.Dead);
+    expect(h.bag(A)).toEqual([]);
+    h.run(DEATH_TICKS + 1);
+    expect(h.p(A)).toMatchObject({ state: PlayerState.Alive, maxHp: 33, hp: 33 });
   });
 });
 
