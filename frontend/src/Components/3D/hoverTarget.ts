@@ -1,7 +1,7 @@
 import type { Object3D, Vector3 } from 'three';
 import {
   areaOf, canonicalMiddle, chebyshev, CLATTER_SWARM_TICKS, ClatterState, clatterHitsMove, clatterSwarmFreeLines, clatterSwarmHit,
-  clatterTelegraph, enterRule, inBounds, inClatterGlade, inSpireFloor, nearestReachableTile, tileEquals, tileKey, TILE_ORIGIN,
+  clatterTelegraph, enterRule, inBounds, inClatterGlade, inSealedFloor, nearestReachableTile, tileEquals, tileKey, TILE_ORIGIN,
   CLATTER_DAMAGE, type ClatterRowLike, type Tile,
 } from '@sim';
 import { HOME_JOIN, homeLand, homeLocation, homePath, homePoint } from '../../../../shared/sim/frontier/homeMap';
@@ -10,7 +10,7 @@ import { can } from '../../../../shared/sim/frontier/model';
 import { buildingBlocker, buildingCollisionKeys } from '../../../../shared/sim/frontier/building';
 import type { Location } from '../../../../shared/sim/frontier/catalog';
 import type { FrontierSnapshot } from '../../../../shared/sim/frontier/snapshot';
-import { isOpenGround } from '../../bosses/selectors';
+import { isOpenGround, sealedFloorOf } from '../../bosses/selectors';
 
 export interface HoverHint {
   title: string;
@@ -73,8 +73,8 @@ export function hoverTile(x: number, z: number): Tile {
   return { x: Math.round(x + TILE_ORIGIN), z: Math.round(z + TILE_ORIGIN) };
 }
 
-/** The hint for a tile across the Spire floor boundary (or the sea). */
-function unreachable(tile: Tile, meOnFloor: boolean): HoverHint {
+/** The hint for a tile across a sealed floor boundary (or the sea); `meOnFloor` is truthy on a floor. */
+function unreachable(tile: Tile, meOnFloor: boolean | string | null): HoverHint {
   return meOnFloor
     ? { title: 'Out of the arena', action: 'Choose a spot on the floor', tone: 'muted', tile }
     : { title: 'Water', action: 'Choose a spot on land', tone: 'muted', tile };
@@ -82,7 +82,7 @@ function unreachable(tile: Tile, meOnFloor: boolean): HoverHint {
 
 export function groundHover(tile: Tile, me: Tile, blocked: Set<number>, hasStick: boolean, hasClub: boolean): HoverHint {
   // From the overworld the Spire floor reads as water; from inside, the overworld is out of reach.
-  const meOnFloor = inSpireFloor(me);
+  const meOnFloor = sealedFloorOf(me);
   if (!inBounds(tile) || !isOpenGround(tile, meOnFloor)) return unreachable(tile, meOnFloor);
   const destination = nearestReachableTile(me, tile, blocked, enterRule(hasStick, hasClub));
   const fromArea = areaOf(me), toArea = areaOf(tile);
@@ -115,8 +115,8 @@ export function meadowBlockedTiles(state: Pick<FrontierSnapshot, 'buildings' | '
 export function connectedGroundHover(tile: Tile, me: Tile & { region?: string }, blocked: Set<number>, meadowBlocked: Set<string>, hasStick: boolean, hasClub: boolean): HoverHint {
   const region = me.region || 'bramblewild', target = homeLocation(tile);
   if (region === 'bramblewild' && target.region === 'bramblewild') return groundHover(tile, me, blocked, hasStick, hasClub);
-  if (region === 'bramblewild' && inSpireFloor(me)) return unreachable(tile, true);
-  if (!homeLand(tile) || (target.region === 'bramblewild' && inSpireFloor(target))) return { title: 'Water', action: 'Choose a spot on land', tone: 'muted', tile };
+  if (region === 'bramblewild' && inSealedFloor(me)) return unreachable(tile, true);
+  if (!homeLand(tile) || (target.region === 'bramblewild' && inSealedFloor(target))) return { title: 'Water', action: 'Choose a spot on land', tone: 'muted', tile };
   const rule = enterRule(hasStick, hasClub);
   const meadow = buildingBlocker(meadowBlocked);
   const obstacles = Object.assign((p: Location) => p.region === 'bramblewild' ? blocked.has(tileKey(p)) : meadow(p), {

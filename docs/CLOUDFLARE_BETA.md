@@ -235,6 +235,81 @@ it: live runs then fail with key refunds, and tabs on the old bundle are refused
 at the gate ("This client is out of date; reload the page to enter the Spire")
 until `beta:deploy` lands, so deploy straight after the module.
 
+### Lanternmaw release (the Drowned Hollow, Glimmerfen)
+
+An additive, non-breaking publish. Rules and numbers: [docs/design/BOSSES.md](design/BOSSES.md) section 9.
+
+- **Schema.** Six new tables (`lantern_config`, `lantern_run`, `lantern_member`,
+  `lantern_fight`, `lantern_readiness`, private `lantern_paid`) and six new reducers
+  (`lantern_open`, `lantern_join`, `lantern_ready`, `lantern_leave`, `lantern_start`,
+  `configure_lanternmaw`).
+  No column on an existing table changes, no RLS policy is added, and the column
+  types are ones the Worker codecs already handle. Rehearsed locally on top of the
+  live `main` module (ea40fbe, PR #113): the plan is exactly six "Created user
+  table" steps, nothing is flagged breaking, tree rows survive, and a client on
+  main's bundle stays connected through the publish.
+- **Terrain.** The Fen Gate at (47,152) is a new scenery blocker, the sealed floor
+  (x 56..70, z 129..143) joins the land mask and the maw joins the blocked set
+  (`TERRAIN_VERSION` `bramblewild-expanse-v4`). No resource node moves.
+- **Ships closed.** With no `lantern_config` row the Fen Gate stands on the map as a
+  sealed landmark (a blocker; the gate panel and `state.lantern` say "sealed"), but
+  nobody can open, join or start a party, and `craft` refuses Fen Bait and the
+  Lanternmaw Lure (both are hidden from the craft menu and `state.recipes`) until
+  the owner opens it. `configure_bosses` is unchanged.
+
+Release steps:
+
+1. **Rehearse locally** as for the boss fights release (publish the live `main`
+   module, then this build with `--delete-data=never --yes=migrate,skip-login`;
+   expect the six "Created user table" steps only).
+2. **Verify the live hashes** and build from a tree that contains everything live.
+3. **Publish the module** to the VM exactly as in the boss fights release.
+4. **`npm run beta:deploy` immediately afterwards** (new bindings, the Fen Gate,
+   the arena, `state.lantern`, the `lantern` agent action).
+5. **Staging playtest first** (a separate database or the closed beta world with
+   owner-seeded items): open it, play solo and in a party, then close it again.
+6. **Announce and open** (owner, over SSH on the VM):
+
+   ```sh
+   spacetime call --server http://127.0.0.1:3000 berigame-beta boss_debug lantern_soon 0 10   # T - 10 minutes
+   spacetime call --server http://127.0.0.1:3000 berigame-beta configure_lanternmaw true 12 810 970
+   spacetime sql --server http://127.0.0.1:3000 berigame-beta "SELECT * FROM lantern_config"
+   ```
+
+   Opening emits the world `boss_event` the cast reacts to. `boss_debug lantern_hp <runId> <percent>`
+   and `boss_debug lantern_fail_all 0 0` help a short live check.
+
+**Tuning HP live (no deploy).** The HP knobs are data in the `lantern_config` row, so
+`configure_lanternmaw` with `lanternOpen` still `true` changes them on the running module.
+Every run computes `maxHp = lanternHpBase + lanternHpPerMember * (members - 1)` when it
+starts, so a change applies to the **next** run started; runs already fighting keep
+their HP, and nothing is closed or refunded. Example: soften it to 600 solo and +700
+per extra member (duo 1,300, quad 2,700), then check the row:
+
+```sh
+spacetime call --server http://127.0.0.1:3000 berigame-beta configure_lanternmaw true 12 600 700
+spacetime sql --server http://127.0.0.1:3000 berigame-beta "SELECT * FROM lantern_config"
+```
+
+Back to the shipped values with `configure_lanternmaw true 12 810 970`. Ranges are
+50..20,000 for both knobs and 1..32 for `lanternMaxRuns`. Passing `false` instead
+closes it (below). Covered by `lantern-server.test.ts` and `frontend/scripts/lantern-smoke.ts`.
+
+**Rollback** is the kill switch, never a schema downgrade:
+
+```sh
+spacetime call --server http://127.0.0.1:3000 berigame-beta configure_lanternmaw false 12 810 970
+```
+
+Closing deletes open lobbies and fails every Active run with one Fen Bait and the
+5-coin fee refunded to each member still fighting. Calling it again while closed is
+harmless.
+
+**Lanternmaw rules version.** Every run stores `LANTERN_RULES_VERSION` (2). A
+publish that changes the pattern table must bump it (the validator test asks
+for it): live runs then reset with refunds, and old tabs are refused at the gate
+until `beta:deploy` lands.
+
 ### Admin panel release (`daily_activity` and the admin procedures)
 
 An additive, non-breaking publish: one private table (`daily_activity`) and two

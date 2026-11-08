@@ -82,3 +82,38 @@ export const FIRST_SPAWN_HP = 20;
 export const BOULDER_LINE = 50;
 /** The Boulders plateau starts at this x and z (an L past the old shoreline). */
 export const BOULDERS_MIN = 36;
+
+// ---- Lanternmaw (docs/design/BOSSES.md section 9; designed, not built) -------
+/** The capper's price: HP each member on the spring loses when it surfaces. */
+export const LANTERN_BITE_DAMAGE = 6;
+/** maxHp = LANTERN_HP_BASE + LANTERN_HP_PER_MEMBER * (members - 1). */
+export const LANTERN_HP_BASE = 810;
+export const LANTERN_HP_PER_MEMBER = 970;
+/** Coins each member pays at the start (coin sinks stage 1): a twelfth of the 60-coin daily order cap. */
+export const LANTERN_ENTRY_FEE = 5;
+/** Qualifying clears per character per UTC day that pay fenlight; later clears pay Fighting XP only. */
+export const LANTERN_DAILY_PAID_CLEARS = 4;
+/** Entry needs a weapon (wielded or in the bag) at least this strong: the floor the validator proves winnable solo. */
+export const LANTERN_MIN_WEAPON_DAMAGE = 8;
+/**
+ * One Fen Bait per member, spent at the start. Level-1 inputs only: today's
+ * gleamshell and obsidian surpluses and Coast driftwood (Glimmerfen has no
+ * level-1 node of its own).
+ */
+export const LANTERN_BAIT = {
+  itemId: 'fen_bait', name: 'Fen Bait',
+  inputs: [{ itemId: 'gleamshell', quantity: 1 }, { itemId: 'obsidian', quantity: 1 }, { itemId: 'driftwood', quantity: 2 }],
+  level: 1, xp: 30,
+} as const;
+/** Paid at a qualifying clear (fenlight only within the daily cap). No goldberries. Keepsake: cosmetic 30. */
+export const LANTERN_REWARD: { items: readonly { itemId: string; quantity: number }[]; fightingXp: 120; keepsake: 30 } = {
+  items: [{ itemId: 'fenlight', quantity: 2 }],
+  fightingXp: 120,
+  keepsake: 30,
+};
+/** Fenlight's sink at launch: the Lanternmaw Lure keepsake. The rest is reserved for the week-6 endgame item line. */
+export const LANTERN_KEEPSAKE_RECIPE = {
+  id: 'lanternmaw_lure', name: 'Lanternmaw Lure',
+  inputs: [{ itemId: 'fenlight', quantity: 3 }, { itemId: 'driftwood', quantity: 2 }],
+  cosmetic: 30, level: 10, xp: 60,
+} as const;

@@ -27,6 +27,7 @@ export * from './bossConfig';
 export * from './bossEvents';
 export * from './spire';
 export * from './clatterhorn';
+export * from './lanternmaw';
 export * from './bossDanger';
 export * from './bossPresentation';
 export * from './energy';

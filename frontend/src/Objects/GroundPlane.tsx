@@ -13,7 +13,7 @@ import {
   BOULDER_KEY_ITEM, BOULDER_MESSAGE, BRAMBLE_MESSAGE, GRID_SIZE, SAFE_RADIUS, STICK_ITEM_ID, areaOf, clatterSwarmFreeLines, clatterTelegraph,
   holdsItem, inClatterGlade, worldToTile, tileToWorld, type ClatterRowLike,
 } from '@sim';
-import { inSpire, isOpenGround } from '../bosses/selectors';
+import { isOpenGround, myFloor } from '../bosses/selectors';
 import { useBossStore } from '../bosses/bossStore';
 import { clatterHoverVerdict, hoverTile, isWorldSurface } from '../Components/3D/hoverTarget';
 import { useSettingsStore } from '../spacetime/stores/settingsStore';
@@ -190,7 +190,7 @@ const GroundPlane = () => {
     const { me, rows, setTarget, frontier } = groundClick;
     const tile = worldToTile(e.point.x, e.point.z);
     // From the overworld the Spire floor reads as water (no far-flood setTarget calls).
-    if (tile.x < 0 || tile.z < 0 || tile.x >= GRID_SIZE || tile.z >= GRID_SIZE || !isOpenGround(tile, inSpire(me))) return;
+    if (tile.x < 0 || tile.z < 0 || tile.x >= GRID_SIZE || tile.z >= GRID_SIZE || !isOpenGround(tile, myFloor(me))) return;
     const [x, , z] = tileToWorld(tile);
     marker.current.position.set(x, 0.045, z);
     clickedAt.current = performance.now();

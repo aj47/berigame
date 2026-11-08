@@ -12,6 +12,7 @@ import { giantRaid, mentee, mentorStat } from './tables';
 import { adventureProfile, expeditionCredit, expedition, expeditionMember, islandProject, gardenShowcase, friendlyDuel, gardenPlot } from './tables';
 import { bossConfig, clatterhorn, clatterhornCredit, spireRun, spireMember, spireFight, bossEvent, bossNotice } from './tables';
 import { pendingDeposit, dailyActivity, idleState, spectator } from './tables';
+import { lanternConfig, lanternRun, lanternMember, lanternFight, lanternPaid, lanternReadiness } from './tables';
 
 export const spacetimedb = schema({
   frontierObject, frontierPrivate, frontierView,
@@ -52,6 +53,8 @@ export const spacetimedb = schema({
   // Appended: a new table (lib/playerStore.ts) at the end.
   playerPos,
   spectator,
+  // Appended: Lanternmaw's tables (lib/lantern.ts), new tables only.
+  lanternConfig, lanternRun, lanternMember, lanternFight, lanternPaid, lanternReadiness,
 });
 
 /*

@@ -5,7 +5,7 @@ import './codecs';
 import { DurableObject } from 'cloudflare:workers';
 import { timingSafeEqual } from 'node:crypto';
 import { ACTIONS, openapi, validateAction, validateObject } from '../agent-api/contract';
-import { admissionError, ApiError, digest, secret, unexpectedError, watchKeyError, type Invite } from '../agent-api/portable';
+import { admissionError, ApiError, digest, secret, toJson, unexpectedError, watchKeyError, type Invite } from '../agent-api/portable';
 import { createGameService, deadline, type Credential, type GameSession } from '../agent-api/game';
 import { worldAtlas } from '../agent-api/worldAtlas';
 import { openCloudflareSocket } from './socket';
@@ -888,7 +888,7 @@ export class AgentGateway extends DurableObject<Env> implements SessionHost {
             status = safe.status; body = errorBody(safe);
             if ([401, 503].includes(status)) { await this.remove(row); return send(status, body); }
           }
-          this.ctx.storage.sql.exec('UPDATE receipts SET status = ?, body = ? WHERE session_key = ? AND key = ?', status, JSON.stringify(body), key, idempotencyKey);
+          this.ctx.storage.sql.exec('UPDATE receipts SET status = ?, body = ? WHERE session_key = ? AND key = ?', status, toJson(body), key, idempotencyKey);
           return send(status, body);
         } finally { this.busy.delete(key); }
       }

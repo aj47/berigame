@@ -2,7 +2,7 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Group, Mesh, Ray, Vector3 } from 'three';
-import { SPAWN_TILE, SPIRE_CENTRE, tileToWorld } from '@sim';
+import { LANTERN_CENTRE_TILE, LANTERN_EXIT, LANTERN_SPAWNS, SPAWN_TILE, SPIRE_CENTRE, lanternTile, tileToWorld } from '@sim';
 
 const mock = vi.hoisted(() => ({
   me: null as any,
@@ -53,17 +53,19 @@ vi.mock('../Components/3D/DebugBridge', () => ({ default: stub('debug') }));
 vi.mock('../fx/FxLayer', () => ({ default: stub('fx') }));
 vi.mock('../bosses/clatterhorn/ClatterGlade', () => ({ default: stub('clatter-glade') }));
 vi.mock('../bosses/spire/SpireGate', () => ({ default: stub('spire-gate') }));
+vi.mock('../bosses/lantern/LanternGate', () => ({ default: stub('lantern-gate') }));
+vi.mock('../bosses/lantern/loadLanternScene', () => ({ loadLanternScene: () => Promise.resolve({ default: () => <div data-testid="lantern-scene" /> }) }));
 vi.mock('../bosses/spire/loadSpireScene', () => ({ loadSpireScene: () => {
   mock.loads++;
   if (mock.failLoads > 0) { mock.failLoads--; return Promise.reject(new Error('chunk failed')); }
   return Promise.resolve({ default: () => <div data-testid="spire-scene" /> });
 } }));
 
-import GameComponent, { SPIRE_CAMERA, SPIRE_RETRY_MS } from '../Components/3D/GameComponent';
+import GameComponent, { LANTERN_CAMERA, SPIRE_CAMERA, SPIRE_RETRY_MS } from '../Components/3D/GameComponent';
 import { groundTileFromRay } from '../Components/3D/walkTarget';
 
 const player = (x: number, z: number) => ({ identity: { toHexString: () => 'me' }, name: 'Me', region: 'bramblewild', x, z });
-const OVERWORLD = ['alpha-island', 'tree', 'garden', 'adventure-world', 'clatter-glade', 'spire-gate'];
+const OVERWORLD = ['alpha-island', 'tree', 'garden', 'adventure-world', 'clatter-glade', 'spire-gate', 'lantern-gate'];
 const KEPT = ['avatars', 'player', 'camera', 'hold-to-walk', 'world-hover', 'debug', 'fx'];
 const down = (tile: { x: number; z: number }) => new Ray(new Vector3(...tileToWorld(tile)).add(new Vector3(0, 8, 0)), new Vector3(0, -1, 0));
 
@@ -146,6 +148,35 @@ describe('the Spire scene swap', () => {
     expect(focusDistance(SPIRE_CAMERA, 1280, 720)).toBe(24);
     expect(focusDistance(SPIRE_CAMERA, 390, 844)).toBe(30);
     expect(focusDistance({ ...SPIRE_CAMERA, distance: 40 }, 1280, 720)).toBe(34);
+  });
+});
+
+describe('the Lanternmaw scene swap', () => {
+  const spawn = lanternTile(LANTERN_SPAWNS[0]);
+
+  it('on the Drowned Hollow floor the overworld is unmounted and the lantern scene mounts, framed on the maw', async () => {
+    mock.me = player(spawn.x, spawn.z);
+    render(<GameComponent />);
+    expect(await screen.findByTestId('lantern-scene')).toBeInTheDocument();
+    expect(screen.queryByTestId('spire-scene')).not.toBeInTheDocument();
+    for (const id of OVERWORLD) expect(screen.queryByTestId(id)).not.toBeInTheDocument();
+    for (const id of KEPT) expect(screen.getByTestId(id)).toBeInTheDocument();
+    expect(mock.focus).toBe(LANTERN_CAMERA);
+    const [x, , z] = tileToWorld(LANTERN_CENTRE_TILE);
+    expect(LANTERN_CAMERA).toEqual({ target: [x, z], distance: 24, min: 18, max: 34 });
+    // Menus built from a click ray walk on this floor only: not the overworld, not the Spire's floor.
+    expect(groundTileFromRay(down({ x: spawn.x + 1, z: spawn.z }))).toEqual({ x: spawn.x + 1, z: spawn.z });
+    expect(groundTileFromRay(down(LANTERN_EXIT))).toBeNull();
+    expect(groundTileFromRay(down({ x: 73, z: 68 }))).toBeNull();
+  });
+
+  it('the Fen Gate stands in the overworld and the floor reads as water from outside', async () => {
+    mock.me = player(LANTERN_EXIT.x, LANTERN_EXIT.z);
+    render(<GameComponent />);
+    expect(screen.getByTestId('lantern-gate')).toBeInTheDocument();
+    expect(screen.queryByTestId('lantern-scene')).not.toBeInTheDocument();
+    expect(mock.focus).toBeUndefined();
+    expect(groundTileFromRay(down(spawn))).toBeNull();
   });
 });
 

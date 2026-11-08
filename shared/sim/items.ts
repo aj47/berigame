@@ -26,6 +26,8 @@ export const FLINT_KNIFE_ITEM_ID = 'flint_knife';
 export const GLEAMSHELL_ITEM_ID = 'gleamshell';
 export const SPIRE_KEY_ITEM_ID = 'spire_key';
 export const PRISM_SHARD_ITEM_ID = 'prism_shard';
+export const FEN_BAIT_ITEM_ID = 'fen_bait';
+export const FENLIGHT_ITEM_ID = 'fenlight';
 
 /**
  * Berries started as a copy of shared/itemDefinitions.js (the legacy CommonJS
@@ -51,6 +53,9 @@ export const ITEM_DEFS: Record<string, ItemDef> = {
   // The Long Season: tiered materials, crafted goods and the ledger seal (season.ts).
   ...Object.fromEntries(SEASON_ITEMS.map((m) => [m.id, { id: m.id, name: m.name, description: m.description, icon: `/items/season/${m.id}.png`, healthRestore: m.healthRestore ?? 0, weaponDamage: 0, maxStack: MAX_STACK, color: m.color }])),
   [PRISM_SHARD_ITEM_ID]: { id: PRISM_SHARD_ITEM_ID, description: 'A splinter of the Shardmother. Five make a Shard Circlet.', name: 'Prism Shard', icon: '/items/prism_shard.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#9FE7FF' },
+  // Lanternmaw (BOSSES.md section 9): the bait is spent at the Fen Gate; fenlight comes from clears (daily cap).
+  [FEN_BAIT_ITEM_ID]: { id: FEN_BAIT_ITEM_ID, description: "Lures Lanternmaw up from the Drowned Hollow for one attempt. Spent when your party starts at the Fen Gate.", name: 'Fen Bait', icon: '/items/fen_bait.png', healthRestore: 0, weaponDamage: 0, maxStack: 10, color: '#7A8F3A' },
+  [FENLIGHT_ITEM_ID]: { id: FENLIGHT_ITEM_ID, description: "A lure-bulb from Lanternmaw that still glows. Three make the Lanternmaw Lure keepsake.", name: 'Fenlight', icon: '/items/fenlight.png', healthRestore: 0, weaponDamage: 0, maxStack: MAX_STACK, color: '#C8F06A' },
 };
 
 export function getItemDef(itemId: string): ItemDef | undefined {

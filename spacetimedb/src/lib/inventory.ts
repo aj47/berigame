@@ -1,6 +1,6 @@
 import type { Identity } from 'spacetimedb';
 import { statsItem } from './stats';
-import { GROUND_ITEM_TTL_TICKS, INVENTORY_SIZE, SPIRE_EXIT, TICK_MS, addItem, emptySlots, inSpireFloor, type Slot, type Tile } from '../../../shared/sim';
+import { GROUND_ITEM_TTL_TICKS, INVENTORY_SIZE, LANTERN_EXIT, SPIRE_EXIT, TICK_MS, addItem, emptySlots, inLanternFloor, inSpireFloor, type Slot, type Tile } from '../../../shared/sim';
 import { nodeCell } from '../../../shared/sim/interest';
 import type { Ctx, GroundItemRow, InventorySlotRow } from './types';
 import { idKey } from './playerStore';
@@ -103,7 +103,7 @@ export function dropOnGround(
   }
   // Nothing can be picked up on the sealed Spire floor, and it is unreachable after the run: a pile that would
   // land there (a raid or Clatterhorn reward paid to a player inside, say) lands at the gate exit instead.
-  const spot = inSpireFloor(at) ? SPIRE_EXIT : at;
+  const spot = inSpireFloor(at) ? SPIRE_EXIT : inLanternFloor(at) ? LANTERN_EXIT : at;
   ctx.db.groundItem.insert({
     id: 0n,
     itemId,

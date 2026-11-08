@@ -1,11 +1,14 @@
 import { BOULDER_LINE, BOULDERS_MIN, GRID_SIZE, HEDGE_RING, RESPAWN_GRACE_TICKS, SAFE_RADIUS, SPAWN_TILE } from './constants';
 import { groveBoundary, inGiantHeadland, insideGrove } from './terrain';
 import { chebyshev, isLandTile } from './grid';
-import { inClatterGlade, inSpireFloor, inSpireGateZone } from './bossZones';
+import { inClatterGlade, inLanternFloor, inLanternGateZone, inSpireFloor, inSpireGateZone } from './bossZones';
 import { PlayerState, type Slot, type Tile } from './types';
 
-/** 'spire' is the Sunken Spire's sealed floor (walkable, reached only through the Spire Gate). */
-export type Area = 'grove' | 'hedge' | 'coast' | 'boulder-line' | 'boulders' | 'sea' | 'spire';
+/**
+ * 'spire' is the Sunken Spire's sealed floor (walkable, reached only through the Spire Gate);
+ * 'lantern' is Lanternmaw's Drowned Hollow (reached only through the Fen Gate).
+ */
+export type Area = 'grove' | 'hedge' | 'coast' | 'boulder-line' | 'boulders' | 'sea' | 'spire' | 'lantern';
 
 export const BRAMBLE_MESSAGE = 'Thorny brambles — you need a sturdy stick to push through';
 export const BRAMBLE_KEY_ITEM = 'stick';
@@ -35,6 +38,7 @@ export function inBoulders(t: Tile): boolean {
 export function areaOf(t: Tile): Area {
   if (!isLandTile(t)) return 'sea';
   if (inSpireFloor(t)) return 'spire';
+  if (inLanternFloor(t)) return 'lantern';
   if (inBoulders(t)) return 'boulders';
   if (isBoulderLine(t)) return 'boulder-line';
   return isBramble(t) ? 'hedge' : insideGrove(t) ? 'grove' : 'coast';
@@ -97,12 +101,15 @@ export function holdsItem(slots: readonly Slot[], weapon: string, itemId: string
 
 /**
  * Boss zones where players cannot fight each other (friendly duels aside):
- * Clatterhorn's Glade, the Spire Gate's lobby and the Spire's floor.
+ * Clatterhorn's Glade, the Spire Gate's lobby and the Spire's floor, the Fen
+ * Gate's lobby and the Drowned Hollow.
  */
-export function bossNoPvpZone(t: Tile): 'glade' | 'gate' | 'spire' | null {
+export function bossNoPvpZone(t: Tile): 'glade' | 'gate' | 'spire' | 'lantern' | 'fengate' | null {
   if (inSpireFloor(t)) return 'spire';
+  if (inLanternFloor(t)) return 'lantern';
   if (inClatterGlade(t)) return 'glade';
   if (inSpireGateZone(t)) return 'gate';
+  if (inLanternGateZone(t)) return 'fengate';
   return null;
 }
 

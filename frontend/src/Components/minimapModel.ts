@@ -19,10 +19,11 @@ import {
   type Facing,
   ClatterState,
   SPIRE_GATE,
+  LANTERN_GATE,
   SpireStage,
   TICK_MS,
   TIER_NODES,
-  inSpireFloor,
+  inSealedFloor,
 } from "@sim";
 
 /** Everything the minimap draws, in tile coordinates (x right, z down: north up). */
@@ -41,6 +42,8 @@ export interface MinimapModel {
   clatter?: { x: number; z: number; state: number; label: string };
   /** The Spire Gate: parties fighting inside and parties queued. */
   spire?: { x: number; z: number; active: number; queued: number };
+  /** The Fen Gate (Lanternmaw): parties fighting inside; `sealed` while lantern_config is closed. */
+  lantern?: { x: number; z: number; active: number; sealed: boolean };
   /** Where the goal chip leads (Bramblewild tiles), with a short label for the big map. */
   target?: { x: number; z: number; label?: string } | null;
 }
@@ -64,6 +67,13 @@ export function spireMarker(runs: Iterable<{ stage: number }> | undefined): Mini
     else if (r.stage === SpireStage.Queued) queued++;
   }
   return { x: SPIRE_GATE.x, z: SPIRE_GATE.z, active, queued };
+}
+
+/** The Fen Gate marker: Active run count, and whether Lanternmaw is closed. */
+export function lanternMarker(runs: Iterable<{ stage: number }> | undefined, sealed = true): MinimapModel["lantern"] {
+  let active = 0;
+  for (const r of runs ?? []) if (r.stage === SpireStage.Active) active++;
+  return { x: LANTERN_GATE.x, z: LANTERN_GATE.z, active, sealed };
 }
 
 interface Row { x: number; z: number }
@@ -96,6 +106,9 @@ export function minimapModel(input: {
   clatter?: { x: number; z: number; state: number; stateUntilTick: number } | null;
   /** Spire runs (boss store), for the gate's count. */
   spireRuns?: Iterable<{ stage: number }>;
+  /** Lanternmaw runs and whether it is closed (boss store), for the Fen Gate. */
+  lanternRuns?: Iterable<{ stage: number }>;
+  lanternSealed?: boolean;
   target?: MinimapModel["target"];
 }): MinimapModel {
   const { meHex, tick } = input;
@@ -103,8 +116,8 @@ export function minimapModel(input: {
   const others: MinimapModel["others"] = [];
   for (const p of input.players) {
     if (!isHomeRegion(p.region || "bramblewild")) continue;
-    // The Spire's floor is a sealed instance: nobody standing on it shows on the map.
-    if ((p.region || "bramblewild") === "bramblewild" && inSpireFloor(p) && p.identity.toHexString() !== meHex) continue;
+    // The boss floors are sealed instances: nobody standing on one shows on the map.
+    if ((p.region || "bramblewild") === "bramblewild" && inSealedFloor(p) && p.identity.toHexString() !== meHex) continue;
     const point = input.home ? homePoint(p, p.region || "bramblewild") : p;
     const hex = p.identity.toHexString();
     if (hex === meHex) me = { x: point.x, z: point.z, yaw: facingToYaw(p.facing as Facing) };
@@ -139,6 +152,7 @@ export function minimapModel(input: {
   return {
     home: input.home, me, others, nodes, resources, bags, giant, garden: { x: GARDEN_CENTER.x - 0.5, z: GARDEN_CENTER.z - 0.5, ripe: input.gardenRipe ?? 0 },
     clatter: clatterMarker(input.clatter, tick), spire: spireMarker(input.spireRuns),
+    lantern: lanternMarker(input.lanternRuns, input.lanternSealed ?? true),
     target: input.target ?? null,
   };
 }
@@ -148,7 +162,7 @@ const hexRgb = (hex: string): [number, number, number] => [parseInt(hex.slice(1,
 export function legacyTileRgb(x: number, z: number): readonly [number, number, number] | null {
   const t = { x, z }, a = areaOf(t), d = terrainField(x, z);
   // The Spire's sealed floor is not land you can walk to: draw it as the sea around it.
-  if (a === 'sea' || a === 'spire') return d > -1.3 ? hexRgb('#7ac7c4') : null;
+  if (a === 'sea' || a === 'spire' || a === 'lantern') return d > -1.3 ? hexRgb('#7ac7c4') : null;
   if (isBridge(t)) return hexRgb('#b89562');
   if (a === 'hedge') return hexRgb('#344f2d');
   if (a === 'boulder-line') return hexRgb('#625c54');
@@ -324,9 +338,10 @@ export function mapAccessLabel(access: 'grove' | 'coast' | 'boulders', keys: { s
 }
 
 /** A short note on what a landmark holds on the journey (null for the rest). */
-export function landmarkJourneyNote(id: string, sealed: { glade: boolean; spire: boolean }): string | null {
+export function landmarkJourneyNote(id: string, sealed: { glade: boolean; spire: boolean; lantern?: boolean }): string | null {
   if (id === 'giant') return 'Obsidian';
   if (id === 'glade') return sealed.glade ? 'Clatterhorn · not open yet' : 'Clatterhorn · gleamshell';
   if (id === 'spire') return sealed.spire ? 'Sealed for now' : 'Needs a Spire Key';
+  if (id === 'fengate') return sealed.lantern ?? true ? 'Lanternmaw · sealed for now' : 'Lanternmaw · needs Fen Bait';
   return null;
 }

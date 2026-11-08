@@ -5,7 +5,7 @@ import { HOME_MAP_VIEWS, homeMapProjection, mapDestinationAt, type HomeMapView }
 import { createPortal } from "react-dom";
 import React, { useEffect, useRef, useState } from "react";
 import { useGardenPlots, useGiantRaid, useGiants, useGroundItems, useInventoryRows, useMyCosmetics, useMyIdentityHex, usePlayers, useTick, useTrees } from "../spacetime/hooks";
-import { areaOf, bossConfigOr, countRipe, getItemDef, journeySteps, LANDMARKS, ISLAND_NAME, GRID_SIZE, PlayerState } from "@sim";
+import { areaOf, bossConfigOr, countRipe, lanternConfigOr, getItemDef, journeySteps, LANDMARKS, ISLAND_NAME, GRID_SIZE, PlayerState } from "@sim";
 import { useFirstDayStore } from "../spacetime/stores/firstDayStore";
 import { useGameActions } from "../spacetime/actions";
 import { useToastStore } from "../spacetime/stores/toastStore";
@@ -53,14 +53,15 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
   const busy = useRef(false), mapSession = useRef(0), pointerStart = useRef<{ x: number; y: number } | null>(null);
   const close = () => { mapSession.current++; setExpanded(false); };
   const clatter = useBossStore(s => s.clatter), spireRuns = useBossStore(s => s.runs), bossConfig = useBossStore(s => s.config);
+  const lanternRuns = useBossStore(s => s.lanternRuns), lanternOpen = lanternConfigOr(useBossStore(s => s.lanternConfig)).lanternOpen;
   const goal = useFirstDayStore(s => s.goal), lastChapter = useFirstDayStore(s => s.chapter), cosmetics = useMyCosmetics();
   const bosses = bossConfigOr(bossConfig);
   const journey = journeySteps({ goalId: goal?.id, fallback: lastChapter, cosmetics: cosmetics?.unlocked ?? 0, bosses });
   const chapter = journey.find(c => c.status === 'current');
   // The marker follows the chip's goal; for an in-place step (make, eat, wield) it rests on the chapter's landmark.
   const target = goal?.target ? { ...goal.target, label: chapter ? chapter.title : 'Next' } : chapter && goal ? { ...chapter.place, label: chapter.title } : null;
-  const sealed = { glade: !bosses.clatterhornOpen, spire: !bosses.spireOpen };
-  const model = () => minimapModel({ home, meHex, players, trees, groundItems, tick, giants, raid, gardenRipe, resources: settlements.resources, nowMs: Date.now(), clatter, spireRuns: spireRuns.values(), target });
+  const sealed = { glade: !bosses.clatterhornOpen, spire: !bosses.spireOpen, lantern: !lanternOpen };
+  const model = () => minimapModel({ home, meHex, players, trees, groundItems, tick, giants, raid, gardenRipe, resources: settlements.resources, nowMs: Date.now(), clatter, spireRuns: spireRuns.values(), lanternRuns: lanternRuns.values(), lanternSealed: !lanternOpen, target });
   const latest = useRef(model);
   latest.current = model;
   const small = useMapCanvas(120, latest), big = useMapCanvas(expanded ? 480 : 0, latest, view);
@@ -169,7 +170,7 @@ const Minimap = ({ hidden }: { hidden?: boolean }) => {
               {home && view !== 'bramblewild' && settlements.plots.filter(p => p.region === 'settlement' && p.claim?.owner === meHex).map(p => <button key={p.id} onClick={() => walk('settlement', p.marker.x, p.marker.z)}><span className="map-place-number">⚑</span><span>Your homestead<small>Plot {p.id.split('-').pop()}</small></span></button>)}
             </div>
             {home && view === 'settlement' && <section className="map-resources"><h3>Gather nearby</h3><div className="map-places">{resourceKinds.map(item => <button key={item} onClick={() => { const n = nearestResource(item); if (n) walk('settlement', n.x - 1, n.z); }}><span className="map-resource-swatch" style={{ background: MATERIALS[item]?.color ?? getItemDef(item)?.color }} aria-hidden="true">{item === 'timber' ? '♠' : ''}</span><span>{MATERIALS[item]?.name ?? getItemDef(item)?.name ?? item}<small>Walk to nearest {item === 'timber' ? 'tree' : 'spot'}</small></span></button>)}</div></section>}
-            <details className="map-more-key"><summary>More map symbols</summary><ul className="minimap-legend"><li><i className="lg-berry" />Berry trees</li><li><i className="lg-coast" />Gathering spots</li><li><i className="lg-boulders" />The Giant</li><li><i style={{ background: "#e3b65c", border: "2px solid #3a2c1d", borderRadius: 2 }} />Drop box · deposit to your vault</li><li><i style={{ background: "#e8ecef", border: "1px solid #2b3a48", transform: "rotate(45deg)", borderRadius: 1 }} />Waystone · you return to the nearest</li><li><i style={{ background: "#f6ecd0", border: "2px solid #4a3622", borderRadius: 1 }} />Ledger clerk · hand in commissions</li><li><i className="lg-bag" />Dropped bag</li><li><i className="lg-garden" />Garden · gold when ripe</li><li><i style={{ background: "#2e7d6f", borderRadius: "50%" }} />Clatterhorn</li><li><i style={{ background: "#3b2f55", borderRadius: "40% 40% 0 0" }} />Spire Gate · parties inside</li><li><i style={{ background: "transparent", border: "2px solid #e0b52f", borderRadius: "50%" }} />Your next goal</li></ul></details>
+            <details className="map-more-key"><summary>More map symbols</summary><ul className="minimap-legend"><li><i className="lg-berry" />Berry trees</li><li><i className="lg-coast" />Gathering spots</li><li><i className="lg-boulders" />The Giant</li><li><i style={{ background: "#e3b65c", border: "2px solid #3a2c1d", borderRadius: 2 }} />Drop box · deposit to your vault</li><li><i style={{ background: "#e8ecef", border: "1px solid #2b3a48", transform: "rotate(45deg)", borderRadius: 1 }} />Waystone · you return to the nearest</li><li><i style={{ background: "#f6ecd0", border: "2px solid #4a3622", borderRadius: 1 }} />Ledger clerk · hand in commissions</li><li><i className="lg-bag" />Dropped bag</li><li><i className="lg-garden" />Garden · gold when ripe</li><li><i style={{ background: "#2e7d6f", borderRadius: "50%" }} />Clatterhorn</li><li><i style={{ background: "#3b2f55", borderRadius: "40% 40% 0 0" }} />Spire Gate · parties inside</li><li><i style={{ background: "#ffe28a", border: "2px solid #5a4a2e", borderRadius: "50%" }} />Fen Gate · Lanternmaw</li><li><i style={{ background: "transparent", border: "2px solid #e0b52f", borderRadius: "50%" }} />Your next goal</li></ul></details>
           </div>
         </div>
       </div>

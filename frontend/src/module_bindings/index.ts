@@ -47,6 +47,7 @@ import ClearSpectatorsReducer from "./clear_spectators_reducer";
 import ConfigureAccessReducer from "./configure_access_reducer";
 import ConfigureBossesReducer from "./configure_bosses_reducer";
 import ConfigureExpansionReducer from "./configure_expansion_reducer";
+import ConfigureLanternmawReducer from "./configure_lanternmaw_reducer";
 import ConfirmTradeReducer from "./confirm_trade_reducer";
 import ConfirmTradeCoinsReducer from "./confirm_trade_coins_reducer";
 import ContributeProjectReducer from "./contribute_project_reducer";
@@ -67,6 +68,11 @@ import GrantAgentReducer from "./grant_agent_reducer";
 import GrantPlayerReducer from "./grant_player_reducer";
 import GrantSpectatorReducer from "./grant_spectator_reducer";
 import HarvestGardenReducer from "./harvest_garden_reducer";
+import LanternJoinReducer from "./lantern_join_reducer";
+import LanternLeaveReducer from "./lantern_leave_reducer";
+import LanternOpenReducer from "./lantern_open_reducer";
+import LanternReadyReducer from "./lantern_ready_reducer";
+import LanternStartReducer from "./lantern_start_reducer";
 import MoveItemReducer from "./move_item_reducer";
 import PickupItemReducer from "./pickup_item_reducer";
 import PlantGardenReducer from "./plant_garden_reducer";
@@ -128,6 +134,11 @@ import GroundItemRow from "./ground_item_table";
 import InventorySlotRow from "./inventory_slot_table";
 import InviteCodeRow from "./invite_code_table";
 import IslandProjectRow from "./island_project_table";
+import LanternConfigRow from "./lantern_config_table";
+import LanternFightRow from "./lantern_fight_table";
+import LanternMemberRow from "./lantern_member_table";
+import LanternReadinessRow from "./lantern_readiness_table";
+import LanternRunRow from "./lantern_run_table";
 import MentorStatRow from "./mentor_stat_table";
 import PlayerRow from "./player_table";
 import PlayerCosmeticRow from "./player_cosmetic_table";
@@ -451,6 +462,67 @@ const tablesSchema = __schema({
       { name: 'island_project_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, IslandProjectRow),
+  lanternConfig: __table({
+    name: 'lantern_config',
+    indexes: [
+      { accessor: 'id', name: 'lantern_config_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'lantern_config_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, LanternConfigRow),
+  lanternFight: __table({
+    name: 'lantern_fight',
+    indexes: [
+      { accessor: 'runId', name: 'lantern_fight_run_id_idx_btree', algorithm: 'btree', columns: [
+        'runId',
+      ] },
+    ],
+    constraints: [
+      { name: 'lantern_fight_run_id_key', constraint: 'unique', columns: ['runId'] },
+    ],
+  }, LanternFightRow),
+  lanternMember: __table({
+    name: 'lantern_member',
+    indexes: [
+      { accessor: 'identity', name: 'lantern_member_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'runId', name: 'lantern_member_run_id_idx_btree', algorithm: 'btree', columns: [
+        'runId',
+      ] },
+    ],
+    constraints: [
+      { name: 'lantern_member_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, LanternMemberRow),
+  lanternReadiness: __table({
+    name: 'lantern_readiness',
+    indexes: [
+      { accessor: 'identity', name: 'lantern_readiness_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'runId', name: 'lantern_readiness_run_id_idx_btree', algorithm: 'btree', columns: [
+        'runId',
+      ] },
+    ],
+    constraints: [
+      { name: 'lantern_readiness_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, LanternReadinessRow),
+  lanternRun: __table({
+    name: 'lantern_run',
+    indexes: [
+      { accessor: 'id', name: 'lantern_run_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'lantern_run_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, LanternRunRow),
   mentorStat: __table({
     name: 'mentor_stat',
     indexes: [
@@ -633,6 +705,7 @@ const reducersSchema = __reducers(
   __reducerSchema("configure_access", ConfigureAccessReducer),
   __reducerSchema("configure_bosses", ConfigureBossesReducer),
   __reducerSchema("configure_expansion", ConfigureExpansionReducer),
+  __reducerSchema("configure_lanternmaw", ConfigureLanternmawReducer),
   __reducerSchema("confirm_trade", ConfirmTradeReducer),
   __reducerSchema("confirm_trade_coins", ConfirmTradeCoinsReducer),
   __reducerSchema("contribute_project", ContributeProjectReducer),
@@ -653,6 +726,11 @@ const reducersSchema = __reducers(
   __reducerSchema("grant_player", GrantPlayerReducer),
   __reducerSchema("grant_spectator", GrantSpectatorReducer),
   __reducerSchema("harvest_garden", HarvestGardenReducer),
+  __reducerSchema("lantern_join", LanternJoinReducer),
+  __reducerSchema("lantern_leave", LanternLeaveReducer),
+  __reducerSchema("lantern_open", LanternOpenReducer),
+  __reducerSchema("lantern_ready", LanternReadyReducer),
+  __reducerSchema("lantern_start", LanternStartReducer),
   __reducerSchema("move_item", MoveItemReducer),
   __reducerSchema("pickup_item", PickupItemReducer),
   __reducerSchema("plant_garden", PlantGardenReducer),

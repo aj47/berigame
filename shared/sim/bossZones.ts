@@ -33,6 +33,44 @@ export const SPIRE_EXIT: Tile = { x: 61, z: 45 };
 /** The lobby: Chebyshev distance from the gate within which parties form and start. */
 export const SPIRE_GATE_RANGE = 3;
 
+// ---- The Drowned Hollow (Lanternmaw, Glimmerfen) ------------------------------
+/**
+ * Lanternmaw's sealed 15 x 15 floor (area 'lantern') in the strait off
+ * Glimmerfen's north shore, 7+ tiles from any land: walkable land in the mask
+ * (terrain.ts) but reached only by the Drowned Hollow's reducers and the tick.
+ * The shared simulation (lanternmaw.ts) works in local tiles.
+ */
+export const LANTERN_FLOOR: BossRect = { x0: 56, z0: 129, x1: 70, z1: 143 };
+/** The maw's centre (local (7,7)). */
+export const LANTERN_CENTRE_TILE: Tile = { x: 63, z: 136 };
+/** The blocked 3 x 3 maw (in worldBlockedSet like the Spire's dais). */
+export const LANTERN_MAW: readonly Tile[] = [135, 136, 137].flatMap((z) => [62, 63, 64].map((x) => ({ x, z })));
+/** The Fen Gate on Glimmerfen's north shore: a static scenery blocker. */
+export const LANTERN_GATE: Tile = { x: 47, z: 152 };
+/** Where members are ejected (knockout, clear, timeout, forfeit, stranded). */
+export const LANTERN_EXIT: Tile = { x: 47, z: 153 };
+/** The lobby: Chebyshev distance from the gate within which parties form and start. */
+export const LANTERN_GATE_RANGE = 3;
+
+export function inLanternFloor(t: Tile): boolean {
+  return Number.isInteger(t.x) && Number.isInteger(t.z) && inBossRect(t, LANTERN_FLOOR);
+}
+
+/** A floor tile a player can stand on: the floor minus the maw (216 tiles). */
+export function lanternStandable(t: Tile): boolean {
+  return inLanternFloor(t) && !(Math.abs(t.x - LANTERN_CENTRE_TILE.x) <= 1 && Math.abs(t.z - LANTERN_CENTRE_TILE.z) <= 1);
+}
+
+/** The Fen Gate zone: lobby tiles, no PvP. */
+export function inLanternGateZone(t: Tile): boolean {
+  return Math.max(Math.abs(t.x - LANTERN_GATE.x), Math.abs(t.z - LANTERN_GATE.z)) <= LANTERN_GATE_RANGE;
+}
+
+/** Either sealed boss floor (the Sunken Spire or the Drowned Hollow). */
+export function inSealedFloor(t: Tile): boolean {
+  return inSpireFloor(t) || inLanternFloor(t);
+}
+
 export function inBossRect(t: Tile, r: BossRect): boolean {
   return t.x >= r.x0 && t.x <= r.x1 && t.z >= r.z0 && t.z <= r.z1;
 }
@@ -58,14 +96,15 @@ export function inSpireGateZone(t: Tile): boolean {
 
 /**
  * One visibility rule for every surface (avatars, chat bubbles, combat FX,
- * /state.players, WebMCP): a player on the floor is seen only by members of
+ * /state.players, WebMCP), for both sealed floors: a player on a floor is seen only by members of
  * the same run who are also on the floor; an overworld viewer never sees floor
  * players; a viewer on the floor sees only its own run. `sameRun` = both
- * identities belong to the same spire_run. Both tiles are Bramblewild tiles
+ * identities belong to the same spire_run or the same lantern_run. Both tiles are Bramblewild tiles
  * (callers skip players in other regions).
  */
 export function spireSeesPlayer(viewer: Tile, other: Tile, sameRun: boolean): boolean {
-  const viewerInside = inSpireFloor(viewer);
-  if (inSpireFloor(other)) return viewerInside && sameRun;
+  // Both sealed floors (the Spire and the Drowned Hollow) follow the same rule; `sameRun` covers either run table.
+  const viewerInside = inSealedFloor(viewer);
+  if (inSealedFloor(other)) return viewerInside && sameRun && inSpireFloor(viewer) === inSpireFloor(other);
   return !viewerInside;
 }

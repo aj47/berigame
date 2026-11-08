@@ -19,7 +19,7 @@ import {
 } from "../lib/frontier";
 import { readSlots } from "../lib/inventory";
 import { activityAction } from "../lib/activity";
-import { SPIRE_LOBBY_TRAVEL, inSpireLobby, leavesBramblewild, refuseOnSpireFloor } from "../lib/spireGuards";
+import { LANTERN_LOBBY_TRAVEL, SPIRE_LOBBY_TRAVEL, inLanternLobby, inSpireLobby, leavesBramblewild, refuseOnSpireFloor } from "../lib/spireGuards";
 import { loadPlayer } from '../lib/playerStore';
 /** Region actions whose rules look at offline characters too (engine.ts placement, permit, invite_contest, boat_permit). */
 const ALL_ACTOR_ACTIONS = new Set(["build", "move_building", "permit", "invite_contest", "boat_permit"]);
@@ -59,10 +59,11 @@ export const frontierAction = spacetimedb.reducer(
       : { scope: "active", extra: [cmd?.target, cmd?.id].filter((v): v is string => typeof v === "string") });
     // A Spire lobby member must stay in Bramblewild until the start checks run: refuse any
     // save that moves them out now (boat, region) or later (a queued cross-district walk).
-    if (inSpireLobby(ctx, ctx.sender)) {
+    const lobbyTravel = inSpireLobby(ctx, ctx.sender) ? SPIRE_LOBBY_TRAVEL : inLanternLobby(ctx, ctx.sender) ? LANTERN_LOBBY_TRAVEL : '';
+    if (lobbyTravel) {
       const save = w.save, me = ctx.sender.toHexString();
       w.save = (a) => {
-        if (a.id === me && leavesBramblewild(a)) throw new SenderError(SPIRE_LOBBY_TRAVEL);
+        if (a.id === me && leavesBramblewild(a)) throw new SenderError(lobbyTravel);
         save.call(w, a);
       };
     }

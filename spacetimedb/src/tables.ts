@@ -805,3 +805,77 @@ export const spectator = table({ name: 'spectator' }, {
    *  socket that was open when it stopped, so a restart brings this back to 0. */
   connections: t.u8(),
 });
+
+// ---- Lanternmaw, the Drowned Hollow (docs/design/BOSSES.md section 9) -------------------
+// New tables only (a pure "Creating table" publish: connected clients stay connected). No
+// visibility filters: a row-level-security policy is a client-breaking migration in 2.10, so
+// clients and the gateway subscribe per run or keep only their own rows, like the Spire's.
+
+/** Owner switch and live HP knobs (one row, id 0). An absent row means closed (bossConfig.ts lanternConfigOr). */
+export const lanternConfig = table({ name: 'lantern_config', public: true }, {
+  id: t.u8().primaryKey(),
+  lanternOpen: t.bool(),
+  lanternMaxRuns: t.u8(),               // 1..32 concurrent Active runs (default 12)
+  lanternHpBase: t.u32(),               // default 810
+  lanternHpPerMember: t.u32(),          // default 970
+});
+
+/** One row per Lanternmaw party: lobby, run, result (SpireStage / SpireOutcome codes). Transition-only writes. */
+export const lanternRun = table({ name: 'lantern_run', public: true }, {
+  id: t.u64().primaryKey().autoInc(),
+  leader: t.identity(),
+  stage: t.u8(),                        // SpireStage: Lobby 0, Active 2, Cleared 3, Failed 4
+  outcome: t.u8(),                      // SpireOutcome
+  rules: t.u32(),                       // LANTERN_RULES_VERSION at open
+  partySize: t.u8(),
+  createdTick: t.u32(),
+  startTick: t.u32(),                   // first fight tick (start + 5); 0 before the start
+  endTick: t.u32(),                     // Lobby: expiry; Active: time limit; Cleared/Failed: cleanup tick
+  phase: t.u8(),                        // mirror of lantern_fight.phase (written on a change)
+  clearTicks: t.u32(),
+});
+
+/** One row per party member (one Lanternmaw party at a time). Transition-only writes. */
+export const lanternMember = table({ name: 'lantern_member', public: true }, {
+  identity: t.identity().primaryKey(),
+  runId: t.u64().index('btree'),
+  slot: t.u8(),                         // 0..3: spawn tile, swing cadence, per-slot columns of lantern_fight
+  state: t.u8(),                        // SpireMemberState: Lobby, In, Out, Left, Done
+  joinedTick: t.u32(),
+  awaySinceTick: t.u32(),               // 0 = present
+  awayCount: t.u8(),
+  meals: t.u8(),
+});
+
+/** Fight state of one Active run (PK = run id): shared/sim/lanternmaw.ts LanternFightLike plus per-slot columns. Per-run subscription. */
+export const lanternFight = table({ name: 'lantern_fight', public: true }, {
+  runId: t.u64().primaryKey(),
+  seed: t.u32(), hp: t.u32(), maxHp: t.u32(), phase: t.u8(), partySize: t.u8(),
+  stage: t.u8(),                        // LanternStage: Den 0, Dive 1, Tide 2, Ebb 3
+  cycle: t.u32(), denCount: t.u8(), patternCount: t.u32(),
+  curKind: t.u8(), curStart: t.u32(), curSeed: t.u8(), curAim: t.u8(),   // curKind 255 = none; curAim a local tile 0..224
+  surfaceTick: t.u32(), spring: t.u8(), pulseSeed: t.u8(), capped: t.bool(),
+  hitTick0: t.u32(), hitTick1: t.u32(), hitTick2: t.u32(), hitTick3: t.u32(),   // last blow or pulse hit per slot (i-frames)
+  hits0: t.u8(), hits1: t.u8(), hits2: t.u8(), hits3: t.u8(),                   // saturating at 255
+  dmg0: t.u32(), dmg1: t.u32(), dmg2: t.u32(), dmg3: t.u32(),                   // damage dealt
+  drowned0: t.u8(), drowned1: t.u8(), drowned2: t.u8(), drowned3: t.u8(),       // ticks ended on a flooded tile
+  caps0: t.u8(), caps1: t.u8(), caps2: t.u8(), caps3: t.u8(),                   // springs capped (bites taken)
+});
+
+/** Private: fenlight-paying clears per character per UTC day (the daily cap, LANTERN_DAILY_PAID_CLEARS). */
+export const lanternPaid = table({ name: 'lantern_paid' }, {
+  identity: t.identity().primaryKey(),
+  day: t.u32(),                         // lanternUtcDay of the clear
+  paid: t.u8(),
+});
+
+/**
+ * Lobby ready checks: a member's last `lantern_ready` reducer call (lantern_start needs every other member of a party
+ * ready; a ready lasts until you leave or the run starts). Its own table so the publish only creates tables. Public, no RLS; rows are
+ * deleted at the start, on leave and when a lobby breaks up.
+ */
+export const lanternReadiness = table({ name: 'lantern_readiness', public: true }, {
+  identity: t.identity().primaryKey(),
+  runId: t.u64().index('btree'),
+  tick: t.u32(),
+});

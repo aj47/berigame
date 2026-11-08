@@ -266,7 +266,7 @@ export function goalAdjacentTo(target: Tile, blocked: Set<number>, range = 1): (
 export function nearestReachableTile(start: Tile, goal: Tile, blocked: Set<number>, enter: EnterRule = allowAll, onPath?: (path: Tile[]) => void): Tile {
   if (!blocked.has(tileKey(goal))) {
     const path = bfsPath(start, goalIsTile(goal), blocked, enter);
-    if (path) { onPath?.(path); return goal; }
+    if (path) { onPath?.(path); return { x: goal.x, z: goal.z }; }
   }
   const seen = new Set<number>([tileKey(start)]);
   const queue: Tile[] = [start];
@@ -289,7 +289,8 @@ export function nearestReachableTile(start: Tile, goal: Tile, blocked: Set<numbe
       queue.push(next);
     }
   }
-  return best;
+  // A fresh tile: `start` may be a whole player row (identity, u64 ids) that must not leak into a JSON reply.
+  return { x: best.x, z: best.z };
 }
 
 /** Every tile reachable from `start` (inclusive), for tests and tools. `within` limits the flood. */

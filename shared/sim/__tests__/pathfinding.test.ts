@@ -63,3 +63,15 @@ describe('pathfinding', () => {
     expect(near).toEqual({ x: 21, z: 20 });
   });
 });
+
+describe('nearestReachableTile returns a plain tile', () => {
+  it('never hands back the start object (a player row with u64 and identity fields) when nothing is nearer', () => {
+    // A player row standing on a closed-in tile: every neighbour blocked, the goal across them.
+    const start = { x: 10, z: 10, identity: { __identity__: 7n }, pendingId: 3n, name: 'p' };
+    const walls = blockedSetFromTiles([-1, 0, 1].flatMap((dx) => [-1, 0, 1].map((dz) => ({ x: 10 + dx, z: 10 + dz }))).filter((t) => t.x !== 10 || t.z !== 10));
+    const near = nearestReachableTile(start, { x: 20, z: 10 }, walls);
+    expect(near).not.toBe(start);
+    expect(near).toEqual({ x: 10, z: 10 });
+    expect(() => JSON.stringify(near)).not.toThrow();
+  });
+});

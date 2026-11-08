@@ -10,7 +10,7 @@ import { bfsPath, goalAdjacentTo, goalIsTile, reachableTiles } from '../pathfind
 import { worldBlockedSet } from '../social';
 import { BRIDGES, FOREST_TREES, GLADE_CLEARING, isBridge, LANDMARKS, SCENERY_BLOCKERS, TERRAIN_MAP, nearestDryTile } from '../terrain';
 import { testTable } from './adventureHarness';
-import { CLATTER_GLADE, inBossRect, inSpireFloor, spireStandable } from '../bossZones';
+import { CLATTER_GLADE, inBossRect, inSealedFloor, inSpireFloor, spireStandable } from '../bossZones';
 vi.mock('../../../spacetimedb/node_modules/spacetimedb/dist/server/index.mjs', () => ({ SenderError: class SenderError extends Error {} }));
 import { reconcileTerrain } from '../../../spacetimedb/src/lib/terrain';
 import { seedMissingNodes } from '../../../spacetimedb/src/lib/nodes';
@@ -19,8 +19,8 @@ const blocked=worldBlockedSet([...TREE_SEEDS,...NODE_SEEDS]);
 describe('Bramblewild exploration',()=>{
   it('connects all dry land with no inaccessible islands or stranded resources',()=>{
     const seen=reachableTiles(SPAWN_TILE,blocked,enterRule(true,true));
-    // The Sunken Spire's floor is sealed land: reached only through the Spire Gate (reducers teleport).
-    for(let z=0;z<GRID_SIZE;z++)for(let x=0;x<GRID_SIZE;x++)if(isLandTile({x,z})&&!blocked.has(tileKey({x,z}))&&!inSpireFloor({x,z}))expect(seen.has(tileKey({x,z})),`${x},${z}`).toBe(true);
+    // The sealed boss floors are land reached only through their gates (reducers teleport).
+    for(let z=0;z<GRID_SIZE;z++)for(let x=0;x<GRID_SIZE;x++)if(isLandTile({x,z})&&!blocked.has(tileKey({x,z}))&&!inSealedFloor({x,z}))expect(seen.has(tileKey({x,z})),`${x},${z}`).toBe(true);
     for(const n of [...TREE_SEEDS,...NODE_SEEDS]){
       expect(isLandTile(n),`node ${n.id}`).toBe(true);
       expect(neighbors8(n).some(t=>seen.has(tileKey(t)))).toBe(true);

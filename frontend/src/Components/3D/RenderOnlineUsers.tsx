@@ -15,7 +15,7 @@ import CrowdFigures from './CrowdFigures';
 import { QUALITY, useGraphicsTier } from './renderQuality';
 import Clatterhorn from '../../bosses/clatterhorn/Clatterhorn';
 import { useBossStore } from '../../bosses/bossStore';
-import { inSpire, isPlayerVisible } from '../../bosses/selectors';
+import { isPlayerVisible, myFloor } from '../../bosses/selectors';
 import { WATCHING } from '../../spacetime/viewer';
 import { homePoint } from '../../../../shared/sim/frontier/homeMap';
 
@@ -83,12 +83,13 @@ const RenderOnlineUsers = ({ frontierBlocked, frontier }: { frontierBlocked?: Se
   const giants = useGiants();
   const tick = useTick();
   const runHexes = useBossStore((s) => s.myRunHexes);
+  const lanternHexes = useBossStore((s) => s.myLanternHexes);
   const meRow = useMemo(() => (me ? players.find((p) => identityHex(p.identity) === me) ?? null : null), [players, me]);
-  const inside = inSpire(meRow);
+  const inside = myFloor(meRow) !== null;
   // The Spire's logical instancing: inside you see only your own run; outside, nobody on the floor.
   // Chat bubbles and stacks follow, since both are drawn only for these avatars.
   const visible = useMemo(() => players.filter(p => p.online && (!p.region || p.region === 'bramblewild' || p.region === 'settlement')
-    && isPlayerVisible(p, meRow, runHexes) && inWatchView(p, meRow)), [players, meRow, runHexes]);
+    && isPlayerVisible(p, meRow, runHexes, lanternHexes) && inWatchView(p, meRow)), [players, meRow, runHexes, lanternHexes]);
   const shown = useStackedAvatars(visible, me, target, tick);
   // A crowd past the budget: the nearest (plus your target and anyone fighting you) stay full avatars, the rest are figures.
   const budget = QUALITY[useGraphicsTier()].fullAvatars;

@@ -15,7 +15,7 @@ import { firstDayGoal } from '../../shared/sim/goals';
 import { emptySlots } from '../../shared/sim/inventory';
 import { PlayerState, Pending } from '../../shared/sim/types';
 
-async function fixture(options: { watchKey?: string; spectatorUri?: string; maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean; link?: { stalled: boolean; alive: boolean }; state?: () => Record<string, any> } = {}) {
+async function fixture(options: { result?: () => unknown; watchKey?: string; spectatorUri?: string; maxSessions?: number; maxSessionsPerIp?: number; delayed?: boolean; link?: { stalled: boolean; alive: boolean }; state?: () => Record<string, any> } = {}) {
   const directory = await mkdtemp(join(tmpdir(), 'berigame-agent-api-'));
   let now = Date.now();
   const calls: string[] = [];
@@ -39,7 +39,7 @@ async function fixture(options: { watchKey?: string; spectatorUri?: string; maxS
           return { v: 1, tick: ++dangerReads, where: null, moves: [], best: null, path: [] } as any;
         },
         ...(options.link ? { alive: () => options.link!.alive } : {}),
-        async action(name: string, input: Record<string, unknown>) { calls.push(name); inputs.push(input); }, async close() { closed.push(identity); } };
+        async action(name: string, input: Record<string, unknown>) { calls.push(name); inputs.push(input); return options.result?.() as any; }, async close() { closed.push(identity); } };
     },
   } });
   await new Promise<void>(r => api.server.listen(0, '127.0.0.1', r));
@@ -112,7 +112,7 @@ test('the dropped-bag goal reaches /state after a death and its id is what picku
 });
 
 test('an unexpected exception logs the real error and tells the client nothing', async () => {
-  const f = await fixture({ state: () => ({ leaked: 1n }) });
+  const f = await fixture({ state: () => ({ leaked: { toJSON() { throw new TypeError('Do not know how to serialize this value'); } } }) });
   try {
     const { token } = await f.enter();
     const response = await f.request('/state', token);
@@ -122,7 +122,7 @@ test('an unexpected exception logs the real error and tells the client nothing',
     const entry = f.logs.find(e => e.event === 'unexpected_error');
     assert.ok(entry, 'the exception must reach the server log');
     assert.equal(entry.method, 'GET'); assert.equal(entry.path, '/api/agent/v1/state');
-    assert.match(entry.error.message, /serialize a BigInt/);
+    assert.match(entry.error.message, /serialize this value/);
     assert.match(entry.error.stack, /http\.ts/);
   } finally { await f.close(); }
 });
@@ -153,7 +153,7 @@ test('wield and unwield reach the game with the documented quick-slot range', as
     assert.equal((await f.request('/actions/unwield', token, {}, { 'Idempotency-Key': randomUUID() })).status, 200);
     assert.deepEqual(f.calls, ['wield', 'unwield']);
     const spec = await (await f.request('/openapi.json')).json() as any;
-    assert.equal(spec.info.version, '1.10.0');
+    assert.equal(spec.info.version, '1.11.0');
     assert.equal(spec.paths['/actions/stance'], undefined);
     assert.deepEqual(spec.paths['/actions/wield'].post.requestBody.content['application/json'].schema.properties.slot, { type: 'integer', minimum: 0, maximum: 2 });
   } finally { await f.close(); }
@@ -327,6 +327,9 @@ test('boss actions validate their documented fields before reaching the game', a
       ['spire', { op: 'join', runId: '18446744073709551616' }, 400], ['spire', { op: 'leave', playerId: '0'.repeat(64) }, 400],
       ['dodge', { x: 1 }, 400], ['dodge', { x: GRID_SIZE, z: 1 }, 400], ['dodge', { x: 1.5, z: 1 }, 400], ['dodge', { x: 1, z: 1, y: 0 }, 400],
       ['attack_clatterhorn', { id: 1 }, 400],
+      ['lantern', {}, 400], ['lantern', { op: 'cap' }, 400], ['lantern', { op: 'open', runId: '4' }, 400], ['lantern', { op: 'start', runId: '4' }, 400],
+      ['lantern', { op: 'leave', runId: '4' }, 400], ['lantern', { op: 'join', runId: '-1' }, 400], ['lantern', { op: 'join', runId: 7 }, 400],
+      ['lantern', { op: 'open', clientRules: 2 }, 400], ['lantern', { op: 'join', runId: '18446744073709551616' }, 400],
     ];
     for (const [name, body, status] of cases) {
       f.advance(1100);
@@ -338,35 +341,45 @@ test('boss actions validate their documented fields before reaching the game', a
     assert.equal((await big.json() as any).error.code, 'invalid_id');
     assert.deepEqual(f.calls, []);
     const ok: [string, object][] = [['spire', { op: 'open' }], ['spire', { op: 'join' }], ['spire', { op: 'join', runId: '41' }], ['spire', { op: 'start' }],
-      ['spire', { op: 'leave' }], ['dodge', { x: 76, z: 60 }], ['attack_clatterhorn', {}]];
+      ['spire', { op: 'leave' }], ['dodge', { x: 76, z: 60 }], ['attack_clatterhorn', {}],
+      ['lantern', { op: 'open' }], ['lantern', { op: 'join' }], ['lantern', { op: 'join', runId: '52' }], ['lantern', { op: 'ready' }], ['lantern', { op: 'start' }], ['lantern', { op: 'leave' }]];
     for (const [name, body] of ok) {
       f.advance(1100);
       assert.equal((await f.request(`/actions/${name}`, token, body, { 'Idempotency-Key': randomUUID() })).status, 200, name);
     }
-    assert.deepEqual(f.calls, ['spire', 'spire', 'spire', 'spire', 'spire', 'dodge', 'attack_clatterhorn']);
+    assert.deepEqual(f.calls, ['spire', 'spire', 'spire', 'spire', 'spire', 'dodge', 'attack_clatterhorn', 'lantern', 'lantern', 'lantern', 'lantern', 'lantern', 'lantern']);
     assert.deepEqual(f.inputs[2], { op: 'join', runId: '41' });
+    assert.deepEqual(f.inputs[9], { op: 'join', runId: '52' });
   } finally { await f.close(); }
 });
 
-test('OpenAPI 1.10.0 documents /danger and the boss actions without a capability', async () => {
+test('OpenAPI 1.11.0 documents /danger and the boss actions without a capability', async () => {
   const f = await fixture();
   try {
     const spec = await (await f.request('/openapi.json')).json() as any;
-    assert.equal(spec.info.version, '1.10.0');
+    assert.equal(spec.info.version, '1.11.0');
     assert.equal(spec.paths['/danger'].get.operationId, 'inspect_danger');
     assert.equal(spec.paths['/danger/next/{afterTick}'], undefined);
-    for (const name of ['attack_clatterhorn', 'spire', 'dodge']) {
+    for (const name of ['attack_clatterhorn', 'spire', 'lantern', 'dodge']) {
       assert.equal(spec.paths[`/actions/${name}`].post.operationId, name);
       assert.equal(spec.paths[`/actions/${name}`].post['x-required-capability'], undefined);
     }
     const spire = spec.paths['/actions/spire'].post.requestBody.content['application/json'].schema;
     assert.deepEqual(spire.properties.op.enum, ['open', 'join', 'start', 'leave']);
     assert.deepEqual(Object.keys(spire.properties).sort(), ['op', 'runId']);
+    const lantern = spec.paths['/actions/lantern'].post;
+    assert.deepEqual(lantern.requestBody.content['application/json'].schema.properties.op.enum, ['open', 'join', 'ready', 'start', 'leave']);
+    assert.deepEqual(Object.keys(lantern.requestBody.content['application/json'].schema.properties).sort(), ['op', 'runId']);
+    assert.deepEqual(lantern.requestBody.content['application/json'].schema.required, ['op']);
+    assert.match(lantern.summary, /Fen Gate \(47,152\)/);
+    assert.match(lantern.summary, /1 gleamshell \+ 1 obsidian \+ 2 driftwood, Crafting 1\) and 5 coins/);
+    assert.match(lantern.summary, /lantern_weapon, lantern_bait, lantern_fee/);
+    assert.match(spec.paths['/danger'].get.summary, /Drowned Hollow/);
     assert.deepEqual(spec.paths['/actions/dodge'].post.requestBody.content['application/json'].schema.required, ['x', 'z']);
   } finally { await f.close(); }
 });
 
-test('OpenAPI 1.10.0 documents deliver_commission and the tiered node kinds', async () => {
+test('OpenAPI 1.11.0 documents deliver_commission and the tiered node kinds', async () => {
   const f = await fixture();
   try {
     const spec = await (await f.request('/openapi.json')).json() as any;
@@ -456,5 +469,18 @@ test('passes have their own per-address lane, charged only after the key is acce
     await f.enter();
     f.advance(Math.ceil(1000 / WATCH_PASS_BUDGET.perSecond));
     assert.equal((await f.request('/spectators', 'secret-key', undefined, {}, 'POST')).status, 201);
+  } finally { await f.close(); }
+});
+
+test('a BigInt anywhere in /state or an action receipt is sent as a decimal string, never a 500', async () => {
+  const f = await fixture({ state: () => ({ player: { id: 'x', pendingId: 5n }, lantern: { run: { runId: 71n } } }), result: () => ({ destination: { x: 3, z: 4, pendingId: 12n } }) });
+  try {
+    const { token } = await f.enter();
+    const state = await f.request('/state', token);
+    assert.equal(state.status, 200);
+    assert.equal((await state.json() as any).lantern.run.runId, '71');
+    const moved = await f.request('/actions/move', token, { x: 3, z: 4 }, { 'Idempotency-Key': randomUUID() });
+    assert.equal(moved.status, 200);
+    assert.equal((await moved.json() as any).destination.pendingId, '12');
   } finally { await f.close(); }
 });

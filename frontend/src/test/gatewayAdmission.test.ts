@@ -225,14 +225,22 @@ describe('agent session shards', () => {
   it('logs the real error behind an unexpected /state failure and keeps the reply generic', async () => {
     const f = fixture('0'), player = await f.join('agent');
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    (await f.service.resume.mock.results[0].value as any).state = () => ({ leaked: 1n });
+    (await f.service.resume.mock.results[0].value as any).state = () => ({ leaked: { toJSON() { throw new TypeError('Do not know how to serialize this value'); } } });
     const response = await f.request('/api/agent/v1/state', player.token, '192.0.2.1', 'GET');
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ error: { code: 'world_unavailable', message: 'The island is unavailable. Retry shortly.' } });
     const logged = spy.mock.calls.map((call) => call.join(' ')).join('\n');
     expect(logged).toContain('/api/agent/v1/state');
-    expect(logged).toContain('serialize a BigInt');
+    expect(logged).toContain('serialize this value');
     spy.mockRestore();
+  });
+
+  it('sends a stray BigInt in /state as a decimal string instead of failing', async () => {
+    const f = fixture('0'), player = await f.join('agent');
+    (await f.service.resume.mock.results[0].value as any).state = () => ({ lantern: { run: { runId: 71n } }, player: { pendingId: 3n } });
+    const response = await f.request('/api/agent/v1/state', player.token, '192.0.2.1', 'GET');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ lantern: { run: { runId: '71' } }, player: { pendingId: '3' } });
   });
 
   it('keeps every agent session in the coordinator when AGENT_SHARDS is 0', async () => {

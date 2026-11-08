@@ -28,5 +28,6 @@ export * from './reducers/frontier';
 
 export * from './reducers/clatterhorn';
 export * from './reducers/spire';
+export * from './reducers/lantern';
 export * from './reducers/bossAdmin';
 export * from './reducers/admin';

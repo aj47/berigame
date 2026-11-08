@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { subscribeSpire } from '../bosses/spireSubscription';
+import { subscribeLantern } from '../bosses/lanternSubscription';
 import { loadSpireScene } from '../bosses/spire/loadSpireScene';
 
 function fakeConnection(rows: any[] = []) {
@@ -9,6 +10,12 @@ function fakeConnection(rows: any[] = []) {
   const conn: any = {
     db: {
       spireMember: {
+        iter: () => rows.values(),
+        onInsert: (f: any) => listeners.insert.add(f), removeOnInsert: (f: any) => listeners.insert.delete(f),
+        onUpdate: (f: any) => listeners.update.add(f), removeOnUpdate: (f: any) => listeners.update.delete(f),
+        onDelete: (f: any) => listeners.delete.add(f), removeOnDelete: (f: any) => listeners.delete.delete(f),
+      },
+      lanternMember: {
         iter: () => rows.values(),
         onInsert: (f: any) => listeners.insert.add(f), removeOnInsert: (f: any) => listeners.insert.delete(f),
         onUpdate: (f: any) => listeners.update.add(f), removeOnUpdate: (f: any) => listeners.update.delete(f),
@@ -67,6 +74,14 @@ describe('the per-run spire_fight subscription', () => {
     dispose();
     expect(f.log.at(-1)).toBe('unsubscribe SELECT * FROM spire_fight WHERE run_id = 9');
     expect(f.listeners.insert.size + f.listeners.update.size + f.listeners.delete.size).toBe(0);
+  });
+
+  it('follows your lantern_member row the same way for lantern_fight', () => {
+    const f = fakeConnection([{ identity: { toHexString: () => 'me' }, runId: 3n }]);
+    const dispose = subscribeLantern(f.conn, 'me', () => {});
+    expect(f.log).toEqual(['subscribe SELECT * FROM lantern_fight WHERE run_id = 3']);
+    dispose();
+    expect(f.log.at(-1)).toBe('unsubscribe SELECT * FROM lantern_fight WHERE run_id = 3');
   });
 
   it('loads the Spire scene chunk once', () => {

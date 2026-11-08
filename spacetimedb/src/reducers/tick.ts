@@ -47,9 +47,10 @@ import { completeTrade, stopSwapOnHit } from '../lib/tradeSwap';
 import { grantXp, harvestTicksForPlayer, skillLevel, unlockCosmetic } from '../lib/progress';
 import type { Ctx, GiantRow, PlayerPosRow, PlayerRow, TrainingDummyRow, TreeRow } from '../lib/types';
 import { MentorMilestone, bossNoPvpZone } from '../../../shared/sim';
-import { onSpireFloor } from '../lib/spireGuards';
+import { onSealedFloor } from '../lib/spireGuards';
 import { phaseClatterhorn } from '../lib/clatterhorn';
 import { phaseSpire } from '../lib/spire';
+import { phaseLantern } from '../lib/lantern';
 import type { BossTick } from '../lib/bossTick';
 
 interface TickState {
@@ -626,8 +627,8 @@ function phaseDeath(s: TickState): void {
   let targeting: Map<string, PlayerRow[]> | undefined;
   for (const h of s.order) {
     const p = s.players.get(h)!;
-    // Safety net: nobody dies (or drops a bag) on the Spire floor; phaseSpire knocks out and ejects instead.
-    if (onSpireFloor(p)) continue;
+    // Safety net: nobody dies (or drops a bag) on a sealed floor; phaseSpire / phaseLantern knock out and eject instead.
+    if (onSealedFloor(p)) continue;
     if (!alive(p) || p.hp > 0) continue;
 
     // Drop everything around the body.
@@ -909,6 +910,7 @@ export const tick = spacetimedb.reducer(
     phaseGiant(s);
     phaseClatterhorn(api);   // after the Giant, before death: lethal blows resolve this tick
     phaseSpire(api);         // lobbies, runs (swings, stars, bullets, knockouts), cleanup, the stranded sweep
+    phaseLantern(api);       // the same for the Drowned Hollow, on the shared lanternResolveTick
     phaseDeposits(s);        // after every damage phase: a blow on the last tick stops the deposit
     phaseDeath(s);
     phaseTrades(s);

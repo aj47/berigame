@@ -1,7 +1,8 @@
-# Bosses: Clatterhorn and the Sunken Spire
+# Bosses: Clatterhorn, the Sunken Spire and Lanternmaw
 
-The shipped rules and numbers for the two boss fights. This file is the single
-reference for their numbers. When it disagrees with the code, the code wins and
+The shipped rules and numbers for the two boss fights, and the design of the
+third (Lanternmaw, section 9: built, ships closed until its staging playtest).
+This file is the single reference for their numbers. When it disagrees with the code, the code wins and
 this file is wrong: fix it. The constants live in:
 
 | Area | File |
@@ -11,8 +12,9 @@ this file is wrong: fix it. The constants live in:
 | Clatterhorn's AI, lanes, swarm, telegraph, rewards | `shared/sim/clatterhorn.ts` |
 | The Spire's patterns, scheduler, stars, damage, safety table | `shared/sim/spire.ts`, `shared/sim/spireValidate.ts` |
 | Owner switches and live HP knobs | `shared/sim/bossConfig.ts` |
+| Lanternmaw's floor, patterns, tide, fight and validator (section 9) | `shared/sim/lanternmaw.ts`, `shared/sim/lanternmawValidate.ts`, `LANTERN_FLOOR` in `bossZones.ts`, the Lanternmaw tunables in `constants.ts` |
 | Items, recipes, keepsakes | `shared/sim/items.ts`, `shared/sim/nodes.ts` (`RECIPES`), `shared/sim/skills.ts` (`COSMETICS`) |
-| Server | `spacetimedb/src/lib/clatterhorn.ts`, `lib/spire.ts`, `lib/spireGuards.ts`, `reducers/clatterhorn.ts`, `reducers/spire.ts`, `reducers/bossAdmin.ts` |
+| Server | `spacetimedb/src/lib/clatterhorn.ts`, `lib/spire.ts`, `lib/spireGuards.ts`, `lib/lantern.ts`, `reducers/clatterhorn.ts`, `reducers/spire.ts`, `reducers/lantern.ts`, `reducers/bossAdmin.ts` |
 | Agent feeds | `shared/sim/bossDanger.ts` (`/danger`), `shared/sim/bossPresentation.ts` (`/state` blocks) |
 
 The design history (three candidate specs, judge verdicts, the full decision log)
@@ -26,6 +28,9 @@ is 600 ms.
   `spireMaxRuns` 12, `spireHpBase` 1000, `spireHpPerMember` 700, `clatterHpBase` 300,
   `clatterHpPerChallenger` 200. The world owner opens them with
   `configure_bosses` (section 5).
+- **Lanternmaw** (section 9) is built and ships closed: with no `lantern_config`
+  row `lanternConfigOr` reads it as closed. The owner opens it with
+  `configure_lanternmaw` after the staging playtest (9.11).
 - **Cut from this release** (columns and enum values are kept, nothing reads or
   writes them beyond their defaults): practice runs (`mode` is always Normal,
   `spirePracticeOpen` is stored but unused), private lobbies, kick and the run
@@ -546,6 +551,13 @@ Revived 4 reserved), KnockedOut 5, Reward 6, Keepsake 7, RunResult 8; `HurtSourc
 Charge 1, Spin 2, Runner 3, Bullet 4; `SpirePhase` Bloom 1 .. Nightfall 4;
 `SpirePatternKind` 0..10 with `SPIRE_NONE` 255; cosmetics 12-15; area `'spire'`.
 
+Lanternmaw appends six tables (`lantern_config`, `lantern_run`, `lantern_member`,
+`lantern_fight`, `lantern_readiness`, private `lantern_paid`; 9.12) and the codes `BossId.Lanternmaw` 3,
+`BossEventKind` LanternRunStart 6, LanternClear 7, LanternOpened 8, LanternSoon 9,
+`HurtSource` Blow 5, Pulse 6, Drown 7, Bite 8, cosmetic 30 (Lanternmaw Lure), area
+`'lantern'` and the no-PvP zones `'lantern'` and `'fengate'`; items `fen_bait`
+(stack 10) and `fenlight` (99).
+
 | Item | Stack | Source | Use |
 |---|---|---|---|
 | `gleamshell` | 99 | Clatterhorn, 2 per qualifying helper | Spire keys |
@@ -619,6 +631,9 @@ floor boundary or into another run.
 | `boss-guards-server.test.ts` | No-PvP zones, floor refusals, owner reducers |
 | `bossDanger.test.ts`, `bossPresentation.test.ts` | The danger feed against brute force; `/state` shapes and size caps |
 | `frontend/src/test/*` (bullets, overlay, scene, HUD, lobby, telegraph, Clatterhorn, integration) | Client behaviour |
+| `lantern-server.test.ts`, `lantern-perf.test.ts` | Lanternmaw's reducers and tick through the real tick: closed by default, the owner switch and refunds, entry order, start effects, a field-for-field comparison with `lanternResolveTick` over a scripted run, blows, bites, the flood, knockouts, abandon, timeout, forfeit, rewards and the daily cap, floor guards, the rules reset, the gate's reachability and the floor's visibility; 12 runs x 4 members tick cost |
+| `lanternmaw.test.ts`, `lanternmaw-entry.test.ts`, `lanternmaw-patterns.test.ts`, `lanternmaw-bots.test.ts` | Lanternmaw's geometry, patterns, tide, reference tick; entry (weapon, bait, fee), rewards and the daily cap; the full 15,808-instance validator, unwinnable-state checks and hash history; the scripted-player difficulty estimate (`LANTERN_BOTS=full` for 400 runs per point and parties) |
+| `frontend/scripts/lantern-smoke.ts` | End to end against a local server: sealed by default, the owner switch and announcement, crafting Fen Bait, entry refusals, a quick-joined lobby, the start (bait and fee, spawns, HP), a fight played on the shared hazard tiles (cap, swings, dodges, meals), the clear (fenlight, XP, eject) and the owner close refund. Seeds items, coins and positions through owner SQL: never against a shared world |
 | `frontend/scripts/boss-smoke.ts` | End to end against a local server: closed by default, wake, telegraph, blows, defeat, payout, respawn; keys, lobby, start, bullets, i-frames, stars, knockout, clear rewards, the owner close refund. Needs the publisher's token (`BOSS_OWNER_TOKEN` or `BOSS_CLI_CONFIG`); seeds its test items through owner SQL, so never run it against a shared world |
 
 ## 8. Deviations from FINAL_SPEC
@@ -649,3 +664,449 @@ The code is the source of truth; these differ from the spec text.
   on the floor.
 - **Client:** banners sit in the HUD; there is no camera shake on a flip and no
   Clatterhorn dodge-assist hover.
+
+## 9. Lanternmaw (the Drowned Hollow, Glimmerfen)
+
+**Status: built, ships closed.** The shared simulation, validator and bots
+(`shared/sim/lanternmaw.ts`, `lanternmawValidate.ts`, `LANTERN_FLOOR` in
+`bossZones.ts`), the server (`spacetimedb/src/lib/lantern.ts`,
+`reducers/lantern.ts`, 9.12), the agent API and the browser client exist. It
+opens in week 2, after a staging playtest with copies of the cast.
+
+A bog-angler the size of a barge lies in a drowned hollow under Glimmerfen,
+its glowing lure swaying over a ring of boardwalk. Every few attacks it dives
+and the tide floods everything but the planks, then it surfaces at one of four
+glow springs to feed, and whoever stands on that spring when it rises takes a
+bite but chokes it for double damage and no healing. In the den, its Maw
+Bellow clears everything but the outer edge, so the only tiles you can swing
+from are exactly the tiles you need all three ticks of warning to escape.
+
+### 9.1 Why Glimmerfen
+
+| | Frostpine | Hearthvale | Glimmerfen | Dunes | Starfall |
+|---|---|---|---|---|---|
+| Landmarks (`EXPANSE_LANDMARKS`) | 3 | 2 (Crossroads market) | **1** (Fenhold) | 2 | 1 |
+| Tier nodes of its own (`TIER_BIOMES`) | tier 4 | tier 2, shared | **tier 2, shared with Hearthvale** | tier 3 | tier 5 |
+| Recipe inputs only it grows | starpetal, moonstone | none | **none** | sunpeach, amber | dreamplum, star iron |
+
+- **Thinnest content.** One landmark, no node kind or recipe input of its own,
+  no boss. Starfall's crater ("Bring friends") is left for the world boss.
+- **Material hook.** Glowcaps "glow on every hummock". The boss is a
+  lantern-lured angler and its drop, fenlight, is the glow the fen is known
+  for. Glimmerfen has no level-1 node, so the bait is made from common goods
+  and today's boss surpluses instead (9.2).
+- **Terrain.** A drowned marsh of reed beds and boardwalks (the fen's two
+  boardwalk bridges, four lakes, the Glimmer Water). The arena is boardwalk
+  over shallows that flood. Glimmerfen is also the nearest biome to the island
+  (the Fenway from Mossvale), so this is the first Expanse boss on the road out.
+
+### 9.2 Architecture, gate and entry
+
+- **Instanced like the Spire**: one sealed 15 x 15 floor shared by every run
+  (logical instancing), `LANTERN_FLOOR` x 56..70, z 129..143, in the strait
+  between the island's south shore and Glimmerfen's north shore, 7+ tiles from
+  any land. It is not yet joined to the land mask (`terrainLand`).
+- **Fen Gate** (`LANTERN_GATE`, a scenery blocker and the landmark `fengate`):
+  (47,152) on Glimmerfen's north shore, 9 tiles from the floor, about 10 from
+  the Fenway trail; the exit (`LANTERN_EXIT`) is (47,153) and the lobby is
+  Chebyshev 3 of the gate (a no-PvP zone, `'fengate'`). The floor (area
+  `'lantern'`) joins the land mask like the Spire's and the maw joins the
+  blocked set; `TERRAIN_VERSION` is `bramblewild-expanse-v4`. No node moved:
+  all 1,105 node seeds, tier nodes included, are identical before and after,
+  and none lies within 3 of the gate. The server reuses the Spire's lobby, run
+  and member machinery on its own tables: open, join, leave, start, knockouts
+  that never kill (eject with 10 HP and 10 ticks of grace, bag untouched),
+  50-tick away grace, 6 meals, refunds and the rules version. A Spire party
+  and a Lanternmaw party exclude each other.
+- **Party** 1-4 (`LANTERN_MAX_PARTY`).
+- **Weapon to enter.** Every member must have a weapon of at least 8 damage
+  (`LANTERN_MIN_WEAPON_DAMAGE`: a Stone Club, 1 driftwood + 2 flint at
+  Crafting 1) wielded or in the bag (`lanternEntryRejection`: "Bring a weapon
+  to the Drowned Hollow: a stone club or better"). Bare fists (3) and the
+  stick or knife (6) almost never beat the clock even played perfectly (a
+  perfect solo stick clears 5 of 100), so this removes the unwinnable starts.
+- **Entry cost per member per attempt**, spent at the start and refunded only on
+  an owner close, a rules reset, or a whole-party abandon by a party that was
+  away since before the fight began (an abandon after the start is a loss):
+  - one **Fen Bait** (`LANTERN_BAIT`: 1 `gleamshell` + 1 `obsidian` + 2
+    `driftwood`, Crafting 1, 30 XP). Level-1 inputs only: no tier material, so
+    Foraging levels never gate access;
+  - **5 coins** (`LANTERN_ENTRY_FEE`, coin sinks stage 1), debited through
+    `money()` with the reason `fee:lanternmaw`.
+
+### 9.3 Arena
+
+Local tiles `i = v * 15 + u` (u = x - 56, v = z - 129); the centre is (7,7).
+
+```
+. . . . . . . = . . . . . . .      M  the maw (blocked 3 x 3, like the Spire's dais)
+. . . . . . . = . . . . . . .      c  court: ring 2, swing reach in the den (16 tiles)
+. . . . . . . = . . . . . . .      +  court tile that is also a plank
+. . . O = = = = = = = O . . .      =  boardwalk plank (dry at high tide)
+. . . = . . . = . . . = . . .      O  glow spring (on the plank ring)
+. . . = . c c + c c . = . . .      .  shallows (flood at high tide)
+. . . = . c M M M c . = . . .      S  spawns by slot (south boardwalk)
+= = = = = + M M M + = = = = =
+. . . = . c M M M c . = . . .
+. . . = . c c + c c . = . . .
+. . . = . . . = . . . = . . .
+. . . O = = = = = = = O . . .
+. . . . . . . S . . . . . . .
+. . . . . S . S . S . . . . .
+. . . . . . . = . . . . . . .
+```
+
+| Item | Value |
+|---|---|
+| Standable | 216 tiles (all but the maw) |
+| Boardwalk | 52 planks: ring 4 (32) and the four axis spokes (20) |
+| Springs | ring 4's corners (3,3) NW, (11,3) NE, (11,11) SE, (3,11) SW |
+| Den reach | Chebyshev <= 2 of the centre (`LANTERN_COURT_RANGE`): ring 2 only |
+| Spring reach | Chebyshev <= 2 of the spring (`LANTERN_SPRING_RANGE`): 5 planks, the rest shallows |
+| Movement | ordinary: up to 2 steps per tick, the maw blocks, diagonals need both corners |
+| Hit rule | blows land on **end-of-movement tiles** (the Clatterhorn rule). No bullets, no swept test |
+
+### 9.4 States and the cycle
+
+`LanternStage`: Den 0, Dive 1, Tide 2, Ebb 3. A run: a 15-tick start grace ("the water stills": nothing attacks; rules 3, was a 5-tick intro), then the
+fight from `startTick` to `startTick + 600` (`LANTERN_TIME_LIMIT`, 6:00), enrage
+at 420 (`LANTERN_ENRAGE_TICKS`, 4:12).
+
+| Stage | Length | Boss | Hazards | Swings |
+|---|---|---|---|---|
+| Den | 3 patterns (`LANTERN_DEN_PATTERNS`), back to back | in the maw | den blows | from ring 2 |
+| Dive | 8 ticks (`LANTERN_DIVE_TICKS`) from the end of the third pattern to S | under the mud | none | none |
+| Tide | 15 ticks, S .. S + 14 (`LANTERN_TIDE_TICKS`) | at the spring: chokes or feeds | flood, lure pulses | within 2 of the spring |
+| Ebb | 3 ticks (`LANTERN_EBB_TICKS`) | swimming home | none | none |
+
+Transitions happen at the end of a tick (`lanternAdvance`). A den pattern is
+published on the tick the previous one's last blow lands, with its own first
+blow 3 ticks later. The third pattern's end publishes the dive: the spring
+(`mix32(seed, 0x5000 + cycle) & 3`), the pulse seed and the flood, 8 ticks
+before S. The ebb's last tick publishes the next den pattern.
+
+### 9.5 HP and phases
+
+```
+maxHp = 810 + 970 * (members - 1)      // 810 / 1780 / 2750 / 3720
+```
+
+Phases, evaluated when a pattern or a dive is published and never going back:
+P1 above 2/3 HP, P2 at or below 2/3, P3 at or below 1/3 or once enraged. The
+`lantern_config` knobs are `lanternHpBase` 810 and `lanternHpPerMember`
+970. Their defaults, the bite, the fee, the bait, the weapon floor and the
+daily cap live in `shared/sim/constants.ts` (Lanternmaw section).
+
+### 9.6 Attacks
+
+**Den patterns** (`LANTERN_PATTERNS`, offsets from publication P; every blow
+lands at P + 3 or later):
+
+| Kind | Key | Pools | Blows | Duration |
+|---|---|---|---|---|
+| 0 | `lure_sweep` | P1 | the four quarters (E, S, W, N; diagonals in both), one per tick @3..6, seeded start and direction | 6 |
+| 1 | `mud_geysers` | P2 | six 3 x 3 geysers @3..8 at seeded tiles | 8 |
+| 2 | `tail_lash` | P1, P2 | rings 2-3 and rings 4-5 alternating @3, 6, 9 (seed picks which first) | 9 |
+| 3 | `ripple` | P2, P3 | a ring 1 tile thick expanding 1 tile per tick from the maw (rings 2..7 @3..8) or a spring (0..11 @3..14); odd seeds send a second ring 3 ticks behind. Step through it inward | 8-17 |
+| 4 | `mire_marks` | P2, P3 | aimed: a 3 x 3 on the target's tile @3, then two seeded 2-tile hops @4, @5 | 5 |
+| 5 | `drowning_cross` | P3 | 3-wide axis bands and diagonal bands alternating @3, 5, 7 | 7 |
+| 6 | `lantern_storm` | P3 | ten 3 x 3 geysers, two per tick @3..7 | 7 |
+| 7 | `maw_bellow` | P1, P2, P3 | rings 2-6 @4 (only the outer edge is safe: 5 steps from the court; rules 3 gives it 4 ticks of notice so a player a tick late still escapes), then rings 5-7 @7 or @8 (straight back in) | 7-8 |
+
+Pools: P1 sweep, lash, bellow; P2 geysers, lash, ripple, marks, bellow; P3
+ripple, marks, cross, storm, bellow. Pattern k is `pool[mix32(seed, 2k) % len]`,
+moved to the next entry if it repeats the current kind, with
+`seed6 = mix32(seed, 2k + 1) & 63`; Mire Marks aims at `targets[k mod n]`
+(present members' end tiles by slot).
+
+**The tide.** From S to S + 14 every non-plank tile is flooded: ending a tick on
+one costs 3 HP (`LANTERN_DROWN_DAMAGE`; rules 3, was 4), with no i-frames either way.
+
+**Surfacing.** On tick S, before swings, every present member on the spring
+**caps** it: each capper is bitten for 6 (`LANTERN_BITE_DAMAGE`) and the boss
+**chokes** for S .. S + 8 (`LANTERN_CHOKE_TICKS`): swings deal double damage, it
+does not heal and does not pulse. An **uncapped** spring feeds it 1 / 2 / 3 / 4
+HP per tide tick by party size (`LANTERN_FEED_HEAL`): 15 / 30 / 45 / 60 per tide.
+
+**Lure pulses** at S + 3, 6, 9, 12 (P1-P2) or S + 3, 4, 7, 8, 11, 12 (P3),
+alternating A (the spring and its neighbours, Chebyshev <= 1) and B (the tiles
+exactly 2 away), starting from the pulse seed's parity. Skipped while it chokes.
+
+| Damage | P1 | P2 | P3 | Enraged |
+|---|---|---|---|---|
+| Den blow (`LANTERN_BLOW_DAMAGE`) | 10 | 13 | 15 | +1 |
+| Lure pulse | 7 | 7 | 7 | +1 |
+| Flooded tile, per tick | 3 | 3 | 3 | |
+| Bite (capping) | 6 | 6 | 6 | |
+
+Blows and pulses give 2 ticks of i-frames (`LANTERN_IFRAME_TICKS`). With 30 HP
+and 4 goldberries (`LANTERN_MEALS`; rules 3, was 6) a member has 70 HP of budget; a perfect solo run spends about
+60 of it on 10 bites and nothing else.
+
+### 9.7 What is new about it
+
+- **Clatterhorn** is a moving beetle whose own charges create its weakness (a
+  stone flips it). **The Shardmother** is bullets you weave through and stars you
+  walk onto.
+- **Lanternmaw changes the floor and makes you pay for its weakness.** High tide
+  shrinks the arena to the boardwalk. The double-damage window needs a body on
+  the spring at the surfacing tick, and that body is bitten. Solo, that is an
+  HP-for-damage trade every cycle; in a party it is a role (one capper, the rest
+  swing).
+- **Reach is the risk.** Den swings land only from ring 2, and the Maw Bellow
+  needs all 3 ticks of notice from ring 2. A learned player steps into ring 2 on
+  their own swing tick (every 4th) and waits on ring 3 otherwise; a greedy one
+  eats bellows.
+- **No bullets.** Every hazard is a telegraphed set of tiles (the Clatterhorn
+  rule), so the danger feed is a list of tiles per tick.
+
+### 9.8 Fairness (validated)
+
+`lanternmawValidate.ts` runs backward induction over (tile, tick) from every one
+of the 216 standable tiles, for every instance: 7 unaimed den kinds x 64 seeds,
+Mire Marks x 64 seeds x all 216 aim tiles, and 4 springs x 64 pulse seeds x 3
+phases x capped or not: **15,808 instances, all passing**, about 1 s, so the
+default test always runs the full sweep. Each instance must:
+
+- give notice: first contact at P + 3 or later for den patterns, S = P + 8 for the tide;
+- start winning: every standable tile can dodge every blow, pulse and flooded
+  tick to the end (capped instances: every tile can reach the spring by S and
+  then survive);
+- leave a free tile on every tick (`minFree` >= 1);
+- end its danger by the tick the next instance is published (den: last danger <=
+  duration; tide: S + 14, before the ebb). The next den pattern cannot land
+  before 3 ticks later and the dive and ebb have no hazards, so instances never
+  overlap and a perfect player survives any chain.
+
+| Group | n | First | Last | minFree | pinch | reach | still |
+|---|---|---|---|---|---|---|---|
+| lure_sweep | 64 | 3 | 6 | 156 | 0.64 | 0.63 | 1.00 |
+| mud_geysers | 64 | 3 | 8 | 207 | 0.95 | 0.75 | 0.15 |
+| tail_lash | 64 | 3 | 9 | 144 | 0.67 | 0 | 0.52 |
+| ripple | 64 | 3 | 17 | 128 | 0.59 | 0 | 1.00 |
+| mire_marks | 13,824 | 3 | 5 | 207 | 0.95 | 0.69 | 0.02 |
+| drowning_cross | 64 | 3 | 7 | 144 | 0.67 | 0.25 | 0.63 |
+| lantern_storm | 64 | 3 | 7 | 198 | 0.91 | 0.56 | 0.25 |
+| maw_bellow | 64 | 4 | 8 | 56 | 0.26 | 0 | 1.00 |
+| tide | 768 | 8 | 22 | 49 | 0.23 | 0.08 | 0.78 |
+| tide, capped | 768 | 8 | 22 | 49 | 0.12 | 0.08 | 0.78 |
+
+*pinch* = the smallest share of the 216 tiles still winning mid-instance;
+*reach* = the same over the tiles in swing reach (the court; the spring's
+reach for the tide), 0 when a pattern clears the court; *still* = the share of
+tiles where standing still gets you hit.
+
+**Unwinnable states** (`lanternmaw-patterns.test.ts`):
+
+- **Heal bound.** Feeding heals less than one stick swing (6) per member per
+  swing interval for every party size (`lanternHealProblem`), so it can never
+  out-heal a party that keeps swinging.
+- **Swing room.** On every tide tick at least 2 winning tiles are in the
+  spring's reach, capped or not.
+- **The cap walk.** Every standable tile reaches every spring within the dive
+  (worst case 8 ticks around the maw; the first draft gave 6 and the validator
+  caught it).
+- **Entry precondition.** Every member holds a weapon of at least 8
+  (`LANTERN_PRECONDITION_WEAPON`, enforced by `lanternEntryRejection`); the
+  clock check below is proved for that floor.
+- **Clock.** A perfect solo player with the weakest admitted weapon (a Stone
+  Club) clears every sampled run before the time limit (24 seeds in the test,
+  400 in the bots, about 500 ticks of 600).
+
+**Pattern edits.** `lanternPatternTableHash` covers the floor, planks, springs,
+spawns, pattern definitions, pools, timings, damages, heal, HP defaults, every
+blow of every kind for all 64 seeds (Mire Marks at two aims) and every pulse
+mask. A change fails the test with the line to append to
+`shared/sim/__tests__/lanternmawValidated.ts` and asks for a
+`LANTERN_RULES_VERSION` bump (now 3, hash `91c36734`, after the staging playtest (9.14); rules 2 was `b52934ff`, rules 1 the first
+draft's numbers).
+
+### 9.9 Difficulty estimate (scripted players)
+
+`lanternmawBots.ts` drives the reference tick with players that see the fight
+`react` ticks late, plan by backward induction over what is published, slip into
+a random step with some chance per tick, cap with some chance per dive and eat a
+goldberry at low HP. Solo, Stone Club, 30 HP, 4 meals (rules 3; 400 runs each):
+
+| Player | React | Plan | Slips | Caps | Den reach | Win rate |
+|---|---|---|---|---|---|---|
+| Perfect | 0 ticks | full | 0 | always | always ring 2 | **99.75%** (399 of 400; the one loss caps a twelfth spring on its last meal), clears in about 500 ticks (5:00) |
+| Careful (learned) | 1 tick | full | 2% | always | ring 2 on its swing tick, ring 3 otherwise | **31%** (rules 2: 28%) |
+| Sloppy | 2 ticks | this tick and the next | 6% | 30% | always ring 2 | **0%** |
+
+Careful runs are lost to attrition (bites, den hits and flood ticks against 70 HP), not to the clock.
+
+**Attempts to a first clear.** A learner plays sloppy on its first attempt and
+blends linearly to careful over K attempts. Measured win rates (400 runs each)
+at skill 0, 1/4, 1/2, 3/4 and 1 are 0, 0, 0.05, 0.18 and 0.28 (rules 3), so:
+
+| Learns over | Median attempts | Mean | 90% by |
+|---|---|---|---|
+| 10 attempts | 10 | 10.4 | 15 |
+| 30 attempts | 21 | 21.3 | 28 |
+
+The 10-50 target holds if the best seat needs about 10 or more attempts to
+learn the cap and the ring 2 rhythm. A seat that plays carefully from its first
+attempt would clear in about 3.2 attempts (1 / 0.31). The first staging playtest
+(9.14) measured agents far below the careful bot.
+
+**Parties** (100 runs each, rules 3): careful duo 49%, careful quad 65%, perfect quad
+100%, sloppy quad 0%. One capper takes every bite while the rest swing; the HP
+per member is set so a careful party of four lands in 55-65%.
+
+### 9.10 Rewards and economy
+
+**Rewards** at a clear, for every member with at least 40 damage dealt in the run
+(`LANTERN_MIN_DAMAGE`), Done or Out, and online (`lanternClearReward`):
+
+- 2 `fenlight` (new biome material, stack 99: a lure-bulb that still glows),
+  **only for the character's first 4 qualifying clears each UTC day**
+  (`LANTERN_DAILY_PAID_CLEARS`, CONTENT_ROADMAP's boss loot cap). Later clears
+  that day pay XP only;
+- 120 Fighting XP (path 3, `Feat.Protect`) on every qualifying clear;
+- no goldberries (CONTENT_ROADMAP: no new drop pays goldberries or heals).
+
+**Fenlight's uses.** At launch it feeds one keepsake: the **Lanternmaw Lure**
+(head, cosmetic 30, a dangling light), 3 fenlight + 2 driftwood at Crafting 10
+(`LANTERN_KEEPSAKE_RECIPE`, like the Shard Circlet). Everything else is
+reserved for the week-6 endgame item line (CONTENT_ROADMAP.md), whose items add
+max HP or damage reduction, one axis each, and never weapon damage over 9. No
+fenlight recipe makes a weapon (ROADMAP section 1.4: power comes from
+preparation, never time played; LONG_SEASON: no season item is a weapon).
+
+**Per attempt, per member:** 1 gleamshell + 1 obsidian + 2 driftwood (the bait),
+5 coins, and up to 4 meals of your own food.
+
+| Flow | Amount | Math |
+|---|---|---|
+| **Sink:** coins | 5 per member per attempt | Orders mint at most 60 coins a character a day (`FRONTIER.repeatCap`), so a day of orders pays 12 attempts. At the careful 31% a clear costs about 3.2 attempts (16 coins); a learner's first clear costs 10-21 attempts (50-105 coins, one to two days of orders). A seat attempting nonstop (about 8 an hour) would burn about 40 coins an hour, far past its income, so the fee also paces attempts. Six seats at 12 attempts a day burn 360 coins a day, against at most 360 minted by their orders. |
+| **Sink:** gleamshell | 1 per member per attempt | Clatterhorn mints 2 per qualifier per defeat and the Spire burns 1 per run (CONTENT_ROADMAP section 3: mints 2 for every 1 burned); this is its second repeatable sink |
+| **Sink:** obsidian | 1 per member per attempt | beside the Spire key's 3 |
+| **Sink:** driftwood | 2 per member per attempt, 2 per keepsake | common Coast node |
+| **Sink:** meals | up to 4 food per member per attempt | perfect and careful runs eat all 4 |
+| **Faucet:** fenlight | 2 per qualifying member per paid clear, at most 4 paid clears a UTC day | at most 8 a character a day; with 6 seats and active humans, roughly 50-100 a day. Sink at launch: 3 per keepsake, once; the stockpile waits for week 6 |
+| **Faucet:** Fighting XP | 120 per qualifying clear | capped Might, as with the other bosses |
+
+### 9.11 Ships closed, opens as an event
+
+- **Its own config row.** `lantern_config` (id 0: `lanternOpen` false,
+  `lanternMaxRuns` 12, `lanternHpBase` 810, `lanternHpPerMember` 970) instead of
+  new `boss_config` columns: appending columns to an existing table is
+  `AddColumns`, which in SpacetimeDB 2.10 disconnects every client and leaves
+  old bundles unable to decode the row. `lanternConfigOr` reads a missing row
+  as closed.
+- **Closed means closed for crafting.** While closed, `craft` refuses `fen_bait`
+  and `lanternmaw_lure` ("Fen Bait can only be made while the Drowned Hollow is
+  open"; `lanternRecipeSealed`), and `recipeStatus` hides them from the craft
+  menu and `state.recipes`. The Fen Gate stays on the map as a sealed landmark,
+  and `state.lantern` is the compact `{open: false, gate}` away from the gate.
+- **Its own owner reducer.** `configure_lanternmaw lanternOpen lanternMaxRuns lanternHpBase lanternHpPerMember`
+  (owner only, ranges by `lanternConfigProblem`: runs 1..32, HP 50..20,000), so
+  `configure_bosses` and its eight-argument kill switch are unchanged. Opening
+  (a closed-to-open transition) emits the world `boss_event` `LanternOpened`;
+  closing deletes lobbies and fails Active runs with Closed, bait and fee
+  refunded, every time it is called.
+- **The announcement.** `boss_debug lantern_soon 0 <minutes>` emits
+  `LanternSoon` (value = minutes) for the T - 10 notice; `lantern_hp` (an Active
+  run's id, a percent) and `lantern_fail_all` (refunds) help the live check.
+- Every run stores `LANTERN_RULES_VERSION` (3); clients send theirs as
+  `clientRules`. A mismatch refuses open, join and start, and a live run from
+  older rules resets with refunds.
+- Release steps: [docs/CLOUDFLARE_BETA.md](../CLOUDFLARE_BETA.md) ("Lanternmaw release").
+
+### 9.12 Server (built)
+
+- **Tables** (new tables only; a pure "Creating table" publish, rehearsed:
+  the plan is exactly the six steps below and nothing is flagged breaking):
+  `lantern_config` (public, one row), `lantern_run` (public: id, leader,
+  stage, outcome, rules, partySize, createdTick, startTick, endTick, phase,
+  clearTicks), `lantern_member` (public: identity, runId (btree), slot, state,
+  joinedTick, awaySinceTick, awayCount, meals), `lantern_fight` (public, per
+  run: the `LanternFightLike` fields with `curAim` a local tile, plus
+  `hitTick`, `hits`, `dmg`, `drowned` and `caps` per slot 0..3) and the private
+  `lantern_paid {identity, day, paid}` for the daily cap (`lanternUtcDay` of the
+  reducer timestamp), and `lantern_readiness {identity, runId, tick}` (public) for
+  the lobby ready check: in a party, `lantern_start` needs every other member's
+  `lantern_ready`, which lasts until they leave the lobby or the run starts. No RLS anywhere. Runs, members and outcomes use the
+  Spire's codes (`SpireStage`, `SpireOutcome`, `SpireMemberState`).
+- **Reducers.** `lantern_open {clientRules}`, `lantern_join {runId, clientRules}`
+  (0 = the newest open lobby), `lantern_leave`, `lantern_start {clientRules}`
+  (the leader; every member checked in order: online, in Bramblewild, within 3
+  of the gate, `lanternEntryRejection` (weapon, bait, coins), the giant berry,
+  a duel, an expedition; then the run cap). The start spends one Fen Bait per
+  member and debits 5 coins through the frontier ledger (`fee:lanternmaw`;
+  refunds are `refund:lanternmaw`).
+- **The tick.** `phaseLantern` runs after `phaseSpire`. For each Active run it
+  does the Spire's presence step (away bookkeeping, Left, Abandoned after 50
+  ticks: refunded only if everyone was away since before `startTick`), then builds a `LanternRunSim` from the rows (present
+  members on their end tiles, weapon damage from the wielded item, i-frames
+  and counters from the slot columns) and calls `lanternResolveTick`, writing
+  back HP, knockouts, `Hurt` notices (`Bite`, `Blow`, `Pulse`, `Drown`), the
+  slot columns and one `lantern_fight` row. `lantern-server.test.ts` compares
+  the stored fight and HP to the reference tick by tick. Then the stranded
+  sweep. Cost: 0.23 ms median, 0.70 ms p95 for 12 runs x 4 members
+  (`lantern-perf.test.ts`; `phaseSpire` measures 0.43 ms on the same machine),
+  25 microseconds idle with 250 loaded players.
+- **Deviations from the reference.** Away (offline) members are not in the
+  simulation: they take no hits and deal none (the Spire hits a frozen tile).
+  They still count against a wipe: when the reference reports a wipe with an
+  away member still In, the server runs `lanternAdvance` itself and the run
+  goes on. Clearing pays no keepsake (the Lure is crafted).
+- **Guards.** The floor is a no-PvP zone; trade, duel challenges, drop,
+  pickup, harvest, the Giant, garden, ledger, vault and region actions are
+  refused ("inside the Drowned Hollow"); `follow` cannot cross the floor or
+  into another run; eating counts toward 4 meals; nobody dies on the floor;
+  invites never pull a member out of a run; a lobby member cannot leave
+  Bramblewild; ground items that would land on the floor land at the exit.
+- Agents: `state.lantern`, the `lantern` action and `/danger` on the floor
+  (docs/AGENT_API.md, `frontend/public/agent.md`).
+
+### 9.14 Staging playtest and rules 3 (2026-11-08)
+
+Three Sonnet 5.5 seats on the HTTP API made 22 attempts in 1 h 53 min with no clears and no learning trend; the best
+run left the boss at 562/810. Den blows caused 17 of 25 knockouts, bites 5, the flood 3, and agents ran out of meals
+around tick 150-240 with the boss at 70-90%. The write-up is in the agent-studio staging notes. Changes:
+
+- **Reaction room.** Only the Maw Bellow trapped a player who sees a pattern one tick late on ring 2 (all 64 seeds x 16
+  court tiles; every other pattern 0%). It now lands its first blow at P + 4 and its second at P + 7 or P + 8.
+  `lanternReactionSafe` (lanternmawValidate.ts) checks every den instance: from every ring 2 tile, a player one tick late
+  can still dodge every blow.
+- **Retune** (bite 6 and HP 810 + 970 kept): the extra tick took the careful bot from 28% to 72%, so meals go from 6 to 4
+  and the flood from 4 to 3 HP a tick. The choke stays 9 ticks (7 made perfect solo runs time out). Careful solo 31%,
+  careful quad 65%.
+- **Start grace.** 15 ticks of "the water stills" before the fight clock (was a 5-tick intro), so a member whose loop
+  starts late is not knocked out by tick 11-19. `fightStage` and `/danger` `boss.stage` read `still`.
+- **The start draws your weapon.** Entry accepts a club in the bag, but the fight swings only the wielded weapon: the
+  start wields each member's best 8+ weapon (moving it into the quick bar) with a `Wielded` boss notice.
+- **Agent fixes.** `/danger` `spring.tile` (the docs named it; the feed had only x and z, so no phase-1 script capped), a
+  contract test of every documented field, and the BigInt crash in `/actions/move`. agent.md now states the HP formula,
+  the ring 3 rhythm, wielding and starting your loop before the leader starts.
+- `LANTERN_RULES_VERSION` 3, hash `91c36734`; the full 15,808-instance sweep passes.
+
+### 9.13 Decisions and open questions
+
+Decided by the overseer (2026-11-07):
+
+1. **No weapon from fenlight.** It feeds the Lanternmaw Lure keepsake and is
+   reserved for the week-6 endgame line (max HP or damage reduction, never weapon
+   damage over 9). The Fenlight Hook is gone.
+2. **Bait from level-1 inputs only**: 1 gleamshell + 1 obsidian + 2 driftwood.
+3. **A weapon to enter**: at least a Stone Club, wielded or in the bag (a stick
+   cannot win in time, 9.8).
+4. **Coin fee**: 5 coins per member per attempt (coin sinks stage 1).
+5. **Tuning**: bite 6, HP 810 + 970 per member: careful solo 28%, careful quad
+   61%, sloppy solo 0%, perfect solo and quad 100%.
+6. **Daily cap**: fenlight from at most 4 qualifying clears per character per
+   UTC day, then XP only. No goldberries.
+
+Still open:
+
+- **No repeatable fenlight sink until week 6.** CONTENT_ROADMAP asks every new
+  material to ship with a repeatable sink; at launch fenlight has only the
+  one-off keepsake. The daily cap holds the stockpile to at most 8 a character a
+  day (about 40 by week 6 for a daily player). Ship as is, or add a small
+  repeatable sink (for example fenlight in the bait) at launch?
+- **The fee as a pace limit.** 5 coins makes nonstop attempts outspend order
+  income about eightfold. That paces the best seat toward the 2+ day runway, but
+  a seat with no coins cannot try at all. Keep it, or let the first attempt of
+  each UTC day go free?

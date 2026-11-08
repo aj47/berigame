@@ -88,3 +88,20 @@ export class AddressLimits {
     if (joining) entry.joins.take(now);
   }
 }
+
+/**
+ * JSON for every gateway reply and stored receipt: a stray BigInt (a u64 row id, an Identity's
+ * __identity__) becomes its decimal string instead of throwing, so one unconverted field can
+ * never turn a read or an action into an unexpected 500.
+ */
+export function toJson(body: unknown): string {
+  // Plain stringify first: it is ~2.5x cheaper on large /state bodies, and replies are hot.
+  try {
+    return JSON.stringify(body);
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+    // A BigInt leaked into a reply: log it so the leak is found and fixed, then send it as a string.
+    console.warn('bigint_leak', error.message);
+    return JSON.stringify(body, (_key, value) => (typeof value === 'bigint' ? value.toString() : value));
+  }
+}

@@ -15,7 +15,7 @@ import { playerView } from './playerView';
  * (CellSubscriptions). On top of that it keeps a few small identity-keyed
  * queries for rows it needs wherever they are: its own row (`identity =
  * :sender`), its combat or follow target and duel and trade partners, its
- * friends (online status, mentor badge), its expedition crew and Spire party,
+ * friends (online status, mentor badge), its expedition crew and Spire or Lanternmaw party,
  * and one-shot name lookups for chat senders it has never seen, each with its
  * player_pos row (its live position). Your own rows are in
  * worldSubscription.ts. (A join on the RLS-narrowed trade table is refused:
@@ -241,8 +241,8 @@ export function identityQueries(hexes: Iterable<string>, extra: readonly string[
   return out;
 }
 
-/** Your expedition crew's and Spire party's player rows and positions, wherever they are. */
-export function partyQueries(expeditionId: bigint | null, spireRunId: bigint | null): string[] {
+/** Your expedition crew's, Spire party's and Lanternmaw party's player rows and positions, wherever they are. */
+export function partyQueries(expeditionId: bigint | null, spireRunId: bigint | null, lanternRunId: bigint | null = null): string[] {
   const out: string[] = [];
   const both = (table: string, where: string) => {
     out.push(`SELECT p.* FROM player p JOIN ${table} m ON p.identity = m.identity WHERE ${where}`);
@@ -250,6 +250,7 @@ export function partyQueries(expeditionId: bigint | null, spireRunId: bigint | n
   };
   if (expeditionId !== null) both('expedition_member', `m.expedition_id = ${expeditionId.toString()}`);
   if (spireRunId !== null) both('spire_member', `m.run_id = ${spireRunId.toString()}`);
+  if (lanternRunId !== null) both('lantern_member', `m.run_id = ${lanternRunId.toString()}`);
   return out;
 }
 
@@ -353,10 +354,11 @@ export function startInterest(conn: InterestConn, myHex: string, onError: (queri
     friends.set(identityQueries(hexes, ['mentor_stat']));
   };
   const updateParty = () => {
-    let expedition: bigint | null = null, run: bigint | null = null;
+    let expedition: bigint | null = null, run: bigint | null = null, lantern: bigint | null = null;
     for (const m of db.expeditionMember?.iter() ?? []) if (mine(m.identity)) { expedition = m.expeditionId; break; }
     for (const m of db.spireMember?.iter() ?? []) if (mine(m.identity)) { run = m.runId; break; }
-    party.set(partyQueries(expedition, run));
+    for (const m of db.lanternMember?.iter() ?? []) if (mine(m.identity)) { lantern = m.runId; break; }
+    party.set(partyQueries(expedition, run, lantern));
   };
 
   const findMe = () => {
@@ -406,6 +408,7 @@ export function startInterest(conn: InterestConn, myHex: string, onError: (queri
   any(db.trade, updateFocus);
   any(db.expeditionMember, updateParty);
   any(db.spireMember, updateParty);
+  any(db.lanternMember, updateParty);
 
   for (const p of db.player?.iter() ?? []) notePlayer(p);
   const self = findMe();

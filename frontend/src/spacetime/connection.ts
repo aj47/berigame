@@ -1,5 +1,6 @@
 import { subscribeFrontier } from './frontierSubscription';
 import { subscribeSpire } from '../bosses/spireSubscription';
+import { subscribeLantern } from '../bosses/lanternSubscription';
 import { DbConnection, tables } from '../module_bindings';
 import { useLoadingStore } from '../store';
 import { startInterest, type InterestConn, type InterestManager } from './interestSubscription';
@@ -137,6 +138,8 @@ function connectionBuilder(seq: number, savedToken: string | undefined) {
       subscribeFrontier(conn, identity.toHexString(), () => useLoadingStore.getState().setGameDataLoaded(false));
       // Your Spire run's fight row only (a per-run SQL subscription that follows your spire_member row).
       subscribeSpire(conn, identity.toHexString(), () => console.error('Spire fight subscription failed'));
+      // ...and your Lanternmaw run's, the same way (lantern_member drives lantern_fight).
+      subscribeLantern(conn, identity.toHexString(), () => console.error('Lanternmaw fight subscription failed'));
       // Nearby players, nodes and ground items, plus your target, friends, crew and party (interestSubscription.ts).
       const interest = startInterest(conn as unknown as InterestConn, identity.toHexString(), () => console.error('Nearby world subscription failed'));
       interests.set(conn, interest);

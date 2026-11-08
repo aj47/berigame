@@ -150,10 +150,12 @@ export const Cosmetic = {
   StrawHat: 0, CoastScarf: 1, FlowerCrown: 2, ShellNecklace: 3, DriftwoodCrown: 4, WovenSash: 5,
   WelcomedRibbon: 6, MentorPin: 7, MentorPinSilver: 8, MentorPinGold: 9, GiantsTooth: 10, BerryHeart: 11,
   ClatterhornHorn: 12, PrismCrown: 13, ShardPendant: 14, ShardCirclet: 15,
-  // The Long Season. Bits 30 and 31 stay free.
+  // The Long Season.
   GlowcapCap: 16, CoralCirclet: 17, ArtisansKerchief: 18, StarpetalGarland: 19, MoonstoneTorc: 20, ArtisansGoggles: 21,
   DreamvineCrown: 22, StarfallDiadem: 23, MastersLaurel: 24, PearlStrand: 25, AmberAmulet: 26, StarIronHelm: 27,
   TidewrightsMedallion: 28, ParagonSash: 29,
+  // Lanternmaw's keepsake (bit 30). Bit 31 stays free.
+  LanternmawLure: 30,
 } as const;
 
 export const COSMETICS: readonly CosmeticDef[] = [
@@ -187,6 +189,7 @@ export const COSMETICS: readonly CosmeticDef[] = [
   { id: Cosmetic.StarIronHelm, key: 'star_iron_helm', name: 'Star Iron Helm', slot: CosmeticSlot.Head, how: 'Make it with ledger seals (Crafting level 85)' },
   { id: Cosmetic.TidewrightsMedallion, key: 'tidewrights_medallion', name: "Tidewright's Medallion", slot: CosmeticSlot.Neck, how: 'Make it with ledger seals (Crafting level 95)' },
   { id: Cosmetic.ParagonSash, key: 'paragon_sash', name: 'Paragon Sash', slot: CosmeticSlot.Neck, how: 'Level 99 in every skill', allSkills: 99 },
+  { id: Cosmetic.LanternmawLure, key: 'lanternmaw_lure', name: 'Lanternmaw Lure', slot: CosmeticSlot.Head, how: 'Make it from fenlight (Crafting level 10)' },
 ];
 
 /** Mentor's Pin variants by tier (shared/sim/mentor.ts MENTOR_PIN_TIERS). */

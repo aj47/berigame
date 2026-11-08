@@ -88,7 +88,7 @@ const REACHED = new WeakMap<object, Map<bigint | string, 'hedge' | 'coast'>>();
 export function statsPosition(ctx: Ctx, id: Identity, at: Tile): void {
   const area = areaOf(at);
   // The Spire floor has no milestone: skip the PK read on every dodge step.
-  if (area === 'grove' || area === 'spire') return;
+  if (area === 'grove' || area === 'spire' || area === 'lantern') return;
   let reached = REACHED.get(ctx.db);
   if (!reached) REACHED.set(ctx.db, (reached = new Map()));
   const k = idKey(id), known = reached.get(k);

@@ -8,7 +8,9 @@ export function testTable(primary = 'id', auto = false) {
 }
 export function adventureTables() { return { frontierObject: testTable('key'), frontierPrivate: testTable('key'), frontierView: testTable('key'), expeditionCredit: testTable('key'), adventureProfile: testTable('identity'), expedition: testTable('id', true), expeditionMember: testTable('identity'), islandProject: testTable(), gardenShowcase: testTable('identity'), friendlyDuel: testTable('id', true), playerSkill: testTable('identity'), playerCosmetic: testTable('identity'),
   // Bosses (FINAL_SPEC 4.1): config and Clatterhorn rows by id, credit by identity, Spire runs autoInc, events autoInc.
-  bossConfig: testTable(), clatterhorn: testTable(), clatterhornCredit: testTable('identity'), spireRun: testTable('id', true), spireMember: testTable('identity'), spireFight: testTable('runId'), bossEvent: testTable('id', true), bossNotice: testTable('id', true) }; }
+  bossConfig: testTable(), clatterhorn: testTable(), clatterhornCredit: testTable('identity'), spireRun: testTable('id', true), spireMember: testTable('identity'), spireFight: testTable('runId'), bossEvent: testTable('id', true), bossNotice: testTable('id', true),
+  // Lanternmaw (BOSSES.md section 9): config by id, runs autoInc, members and the daily cap by identity, fights by run.
+  lanternConfig: testTable(), lanternRun: testTable('id', true), lanternMember: testTable('identity'), lanternFight: testTable('runId'), lanternPaid: testTable('identity'), lanternReadiness: testTable('identity') }; }
 
 /**
  * `player` and `player_pos` (spacetimedb/src/lib/playerStore.ts) for the real-tick harnesses.

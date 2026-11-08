@@ -497,3 +497,216 @@ describe('clatterhorn feed', () => {
     expect(feed).toMatchObject({ moves: [], best: null, telegraph: null });
   });
 });
+
+// ---- Lanternmaw ----------------------------------------------------------------------------------------------------
+
+import {
+  LANTERN_CELLS, LANTERN_DIVE_TICKS, LANTERN_MEALS, LANTERN_RULES_VERSION, LANTERN_SPAWNS, LANTERN_SPRINGS, LANTERN_STANDABLE,
+  LANTERN_TIDE_TICKS, LanternStage, lanternAdvance, lanternEmptySlots, lanternFreshFight, lanternHazardMask, lanternInReach,
+  lanternLocal, lanternMoves, lanternTile,
+} from '../lanternmaw';
+import { LANTERN_FLOOR } from '../bossZones';
+import { lanternKnownUntil, lanternNextSwingTick, type LanternFightRowLike, type LanternRunLike } from '../bossDanger';
+
+describe('lanternmaw feed', () => {
+  const L = 2000; // fight start tick
+  let lanternRunId = 7001n;
+  const lanternRun = (over: Partial<LanternRunLike> = {}): LanternRunLike => ({
+    id: lanternRunId++, stage: SpireStage.Active, outcome: 0, rules: LANTERN_RULES_VERSION, partySize: 1,
+    createdTick: L - 40, startTick: L, endTick: L + 600, phase: 1, clearTicks: 0, ...over,
+  });
+  /** The row as the server holds it after tick `t`: the fresh fight advanced at the end of every tick L..t (memoized per seed). */
+  const rowMemo = new Map<string, LanternFightRowLike[]>();
+  function rowAfter(t: number, seed = 31337, party = 1): LanternFightRowLike {
+    const targets = LANTERN_SPAWNS.slice(0, party);
+    const k = `${seed}:${party}`;
+    let rows = rowMemo.get(k);
+    if (!rows) { rows = [{ ...lanternFreshFight(seed, party, L, targets), ...lanternEmptySlots() }]; rowMemo.set(k, rows); }
+    // rows[n] = the row after tick L + n - 1 (rows[0]: before any advance).
+    while (rows.length <= t - L + 1) {
+      const T = L + rows.length - 1;
+      rows.push({ ...lanternAdvance(rows[rows.length - 1], T, L, targets), ...lanternEmptySlots() });
+    }
+    return rows[Math.max(0, t - L + 1)];
+  }
+  const spawn = (slot: number) => lanternTile(LANTERN_SPAWNS[slot]);
+  function lanternInput(tick: number, me: Tile, fight: LanternFightRowLike, run = lanternRun(), members?: DangerMemberInput[], over: Partial<DangerInput> = {}): DangerInput {
+    return {
+      tick, tickMs: 600, ageMs: 140, rulesVersion: SPIRE_RULES_VERSION,
+      me: { identity: ME, x: me.x, z: me.z, hp: 30, maxHp: 30, eatCooldownUntilTick: 0 },
+      blocked: BLOCKED, spire: null, clatter: null,
+      lantern: { run, fight, members: members ?? [memberIn(0, me)], mySlot: 0 },
+      ...over,
+    };
+  }
+  /** Ticks where the row is in each stage, for a run long enough to hold two cycles. */
+  function stageTicks(seed = 31337) {
+    const found = new Map<number, number>();
+    for (let t = L; t < L + 200; t++) { const s = rowAfter(t, seed).stage; if (!found.has(s)) found.set(s, t); }
+    return found;
+  }
+
+  it('on the floor: every documented field', () => {
+    const me = spawn(0);
+    const fight = { ...rowAfter(L + 1), hitTick0: L + 1, dmg1: 24 };
+    const run = lanternRun({ partySize: 2 });
+    const feed = buildDangerFeed(lanternInput(L + 2, me, fight, run, [memberIn(0, me, { meals: 2 }), memberIn(1, spawn(1))]));
+    expect(feed.where).toBe('lantern');
+    expect(feed.rulesVersion).toBe(LANTERN_RULES_VERSION);
+    expect(feed.rulesMismatch).toBe(false);
+    expect(feed.you).toEqual({ x: me.x, z: me.z, hp: 30, maxHp: 30, state: 'in', immuneTicks: 1, eatReadyInTicks: 0, mealsLeft: LANTERN_MEALS - 2 });
+    expect(feed.grid).toEqual({ x0: LANTERN_FLOOR.x0, z0: LANTERN_FLOOR.z0, w: 15, h: 15 });
+    expect(feed.map).toHaveLength(15);
+    for (const line of feed.map!) expect(line).toMatch(/^[.1-7#]{15}$/);
+    expect(feed.map!.join('').split('#').length - 1).toBe(9);
+    expect(feed.boss).toMatchObject({ name: 'Lanternmaw', hp: fight.hp, maxHp: fight.maxHp, phase: 1, phaseName: '', stage: 'den',
+      enraged: false, enrageInTicks: 418, timeoutInTicks: 598 });
+    expect(feed.boss!.pattern).toMatch(/^(lure_sweep|tail_lash|maw_bellow)$/);
+    expect(feed.party).toEqual([{ id: hex(2), name: 'member1', x: spawn(1).x, z: spawn(1).z, hp: 30, state: 'in', dealt: 24, away: false }]);
+    expect(feed.spring).toBeNull();
+    expect(feed.swing).toEqual({ nextTick: L + 4, nextInTicks: 2, inReach: false, reach: { x: 63, z: 136, range: 2 } });
+    expect(feed.knownUntilTick).toBe(lanternKnownUntil(fight, run.endTick));
+    expect(feed.moves.length).toBeGreaterThan(0);
+    expect(feed.best).toEqual({ to: feed.moves[0].to, via: feed.moves[0].via });
+    expect(feed.path.length).toBeGreaterThan(0);
+    expect(feed.telegraph).toBeNull();
+    expect(JSON.stringify(feed)).not.toMatch(/stars|downed|practice/);
+  });
+
+  it('the map, moves, horizon and reach match lanternHazardMask and lanternMoves by brute force over two cycles', () => {
+    const run = lanternRun({ startTick: L });
+    let checked = 0, unsafeTiles = 0, flooded = 0;
+    const tiles = [LANTERN_SPAWNS[0], LANTERN_SPAWNS[3], 2 * 15 + 7, 5 * 15 + 5, LANTERN_SPRINGS[0], LANTERN_SPRINGS[2], 7 * 15 + 1];
+    for (let tick = L - 3; tick < L + 160; tick++) {
+      const fight = rowAfter(Math.max(L - 1, tick));
+      const masks = [1, 2, 3].map((k) => (tick + k >= L ? lanternHazardMask(fight, tick + k, L) : new Uint8Array(LANTERN_CELLS)));
+      // The map: every standable tile's bits are exactly the three masks.
+      const expected: string[] = [];
+      for (let v = 0; v < 15; v++) {
+        let line = '';
+        for (let u = 0; u < 15; u++) {
+          const i = v * 15 + u;
+          if (!LANTERN_STANDABLE[i]) { line += '#'; continue; }
+          const bits = (masks[0][i] ? 1 : 0) | (masks[1][i] ? 2 : 0) | (masks[2][i] ? 4 : 0);
+          line += bits ? String(bits) : '.';
+          if (bits) unsafeTiles++;
+        }
+        expected.push(line);
+      }
+      for (const local of tiles) {
+        const me = lanternTile(local);
+        const feed = buildDangerFeed(lanternInput(tick, me, fight, run));
+        expect(feed.where).toBe('lantern');
+        expect(feed.map).toEqual(expected);
+        // Moves: exactly the unhurt end tiles of lanternMoves (truncated to 12), each with the brute-force horizon.
+        const free = lanternMoves(local).filter((j) => !masks[0][j]);
+        const listed = feed.moves.map((m) => lanternLocal({ x: m.to[0], z: m.to[1] }));
+        expect(listed.length).toBe(Math.min(DANGER_MAX_MOVES, free.length));
+        for (const m of feed.moves) {
+          const j = lanternLocal({ x: m.to[0], z: m.to[1] });
+          expect(free).toContain(j);
+          const h3 = lanternMoves(j).some((a) => !masks[1][a] && lanternMoves(a).some((b) => !masks[2][b]));
+          const h2 = lanternMoves(j).some((a) => !masks[1][a]);
+          expect(m.horizon).toBe(h3 ? 3 : h2 ? 2 : 1);
+          expect(m.court).toBe(lanternInReach(fight, tick + 1, j));
+          expect(m.star).toBe(false);
+          expect(Math.max(Math.abs(m.via[0] - me.x), Math.abs(m.via[1] - me.z))).toBeLessThanOrEqual(1);
+          checked++;
+        }
+        if (fight.stage === LanternStage.Tide && tick + 1 >= fight.surfaceTick && tick + 1 < fight.surfaceTick + LANTERN_TIDE_TICKS) flooded++;
+      }
+    }
+    expect(checked).toBeGreaterThan(5000);
+    expect(unsafeTiles).toBeGreaterThan(300);
+    expect(flooded).toBeGreaterThan(20);
+  });
+
+  it('the path is a chain of one-tick moves that stays unhurt from a winning start through the known window', () => {
+    const run = lanternRun();
+    let paths = 0;
+    for (const seed of [1, 77, 4242, 90001]) for (let tick = L; tick < L + 120; tick += 3) {
+      const fight = rowAfter(tick, seed);
+      for (const local of [LANTERN_SPAWNS[0], 3 * 15 + 7, 7 * 15 + 3]) {
+        const feed = buildDangerFeed(lanternInput(tick, lanternTile(local), fight, run));
+        if (!feed.moves.some((m) => m.winning)) continue;
+        let at = local;
+        feed.path.forEach(([x, z], k) => {
+          const j = lanternLocal({ x, z });
+          expect(lanternMoves(at)).toContain(j);
+          expect(lanternHazardMask(fight, tick + k + 1, L)[j]).toBe(0);
+          at = j;
+        });
+        expect(feed.path.length).toBe(Math.min(16, feed.knownUntilTick! - tick));
+        paths++;
+      }
+    }
+    expect(paths).toBeGreaterThan(300);
+  });
+
+  it('from the dive: the spring tile and S; the capper walks onto it for S, the others keep off', () => {
+    const dive = stageTicks().get(LanternStage.Dive)!;
+    const fight = rowAfter(dive);
+    expect(fight.stage).toBe(LanternStage.Dive);
+    const S0 = fight.surfaceTick;
+    expect(S0 - dive).toBe(LANTERN_DIVE_TICKS);
+    const springTile = lanternTile(LANTERN_SPRINGS[fight.spring]);
+    const run = lanternRun({ partySize: 2 });
+    const me = spawn(0), mate = spawn(1);
+    const asCapper = buildDangerFeed(lanternInput(dive, me, fight, run, [memberIn(0, me), memberIn(1, mate)]));
+    expect(asCapper.spring).toEqual({ tile: { x: springTile.x, z: springTile.z }, x: springTile.x, z: springTile.z, surfaceTick: S0, surfacesInTicks: LANTERN_DIVE_TICKS, capped: false, chokedUntilTick: null, capper: true });
+    expect(asCapper.boss!.stage).toBe('dive');
+    expect(asCapper.boss!.pattern).toBeNull();
+    expect(asCapper.swing!.reach).toBeNull();
+    expect(asCapper.path[S0 - dive - 1]).toEqual([springTile.x, springTile.z]);
+    // Slot 1 with slot 0 present is not the capper; alone it would be.
+    const other = buildDangerFeed({ ...lanternInput(dive, mate, fight, run, [memberIn(0, me), memberIn(1, mate)]), lantern: { run, fight, members: [memberIn(0, me), memberIn(1, mate)], mySlot: 1 } });
+    expect(other.spring!.capper).toBe(false);
+    expect(other.path[S0 - dive - 1]).not.toEqual([springTile.x, springTile.z]);
+    // Capped at S: choked through S + 8, and the tide reach is the spring.
+    const tide = { ...rowAfter(S0), capped: true };
+    const capped = buildDangerFeed(lanternInput(S0, springTile, tide, run));
+    expect(capped.spring).toMatchObject({ capped: true, chokedUntilTick: S0 + 8, surfacesInTicks: 0 });
+    expect(capped.swing!.reach).toEqual({ ...springTile, range: 2 });
+    expect(capped.swing!.inReach).toBe(true);
+    // The ebb hides the spring again.
+    const ebb = rowAfter(S0 + LANTERN_TIDE_TICKS);
+    expect(ebb.stage).toBe(LanternStage.Ebb);
+    expect(buildDangerFeed(lanternInput(S0 + LANTERN_TIDE_TICKS, me, ebb, run)).spring).toBeNull();
+  });
+
+  it('swing cadence: slot s swings on (T - startTick) mod 4 == s', () => {
+    for (let slot = 0; slot < 4; slot++) for (let from = L - 3; from < L + 12; from++) {
+      const T = lanternNextSwingTick(L, from, slot);
+      expect(T).toBeGreaterThanOrEqual(Math.max(from, L));
+      expect((T - L) % 4).toBe(slot);
+      expect(T - Math.max(from, L)).toBeLessThan(4);
+    }
+  });
+
+  it('a rules mismatch omits map, moves and path; Out members and lobbies get no moves', () => {
+    const me = spawn(0);
+    const fight = rowAfter(L);
+    const bad = buildDangerFeed(lanternInput(L + 1, me, fight, lanternRun({ rules: LANTERN_RULES_VERSION + 1 })));
+    expect(bad).toMatchObject({ where: 'lantern', rulesMismatch: true, moves: [], best: null, path: [] });
+    expect(bad.map).toBeUndefined();
+    const exit = { x: 47, z: 153 };
+    const out = buildDangerFeed(lanternInput(L + 1, exit, fight, lanternRun(), [memberIn(0, exit, { state: SpireMemberState.Out })]));
+    expect(out).toMatchObject({ where: 'lantern', moves: [], best: null, path: [] });
+    expect(out.you.state).toBe('out');
+    const lobby = buildDangerFeed(lanternInput(L + 1, { x: 47, z: 150 }, fight, lanternRun({ stage: SpireStage.Lobby })));
+    expect(lobby.where).toBeNull();
+  });
+
+  it('stays under 4 KB for a 4-party with long names in every stage', () => {
+    const run = lanternRun({ partySize: 4 });
+    let biggest = 0;
+    for (let tick = L; tick < L + 120; tick++) {
+      const fight = rowAfter(tick, 555, 4);
+      const members = [0, 1, 2, 3].map((s) => memberIn(s, spawn(s), { name: 'W'.repeat(16), meals: 3 }));
+      const feed = buildDangerFeed(lanternInput(tick, spawn(0), fight, run, members));
+      biggest = Math.max(biggest, dangerFeedBytes(feed));
+    }
+    expect(biggest).toBeLessThanOrEqual(DANGER_FEED_MAX_BYTES);
+    expect(biggest).toBeGreaterThan(1000);
+  });
+});

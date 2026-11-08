@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { Pending } from '@sim';
-import type { BossConfig, BossEvent, BossNotice, Clatterhorn, SpireFight, SpireMember, SpireRun } from '../module_bindings/types';
+import type {
+  BossConfig, BossEvent, BossNotice, Clatterhorn, LanternConfig, LanternFight, LanternMember, LanternReadiness, LanternRun, SpireFight, SpireMember, SpireRun,
+} from '../module_bindings/types';
 
 /**
  * Boss data for the client (FINAL_SPEC 7.1): a zustand store fed by BossSync
@@ -15,10 +17,18 @@ export type SpireMemberRow = SpireMember;
 export type SpireFightRow = SpireFight;
 export type BossEventRow = BossEvent;
 export type BossNoticeRow = BossNotice;
+export type LanternConfigRow = LanternConfig;
+export type LanternRunRow = LanternRun;
+export type LanternMemberRow = LanternMember;
+export type LanternFightRow = LanternFight;
+export type LanternReadinessRow = LanternReadiness;
 
-export type BossTable = 'bossConfig' | 'clatterhorn' | 'spireRun' | 'spireMember' | 'spireFight';
+export type BossTable = 'bossConfig' | 'clatterhorn' | 'spireRun' | 'spireMember' | 'spireFight'
+  | 'lanternConfig' | 'lanternRun' | 'lanternMember' | 'lanternFight' | 'lanternReadiness';
 type RowOf<T extends BossTable> = {
   bossConfig: BossConfigRow; clatterhorn: ClatterhornRow; spireRun: SpireRunRow; spireMember: SpireMemberRow; spireFight: SpireFightRow;
+  lanternConfig: LanternConfigRow; lanternRun: LanternRunRow; lanternMember: LanternMemberRow; lanternFight: LanternFightRow;
+  lanternReadiness: LanternReadinessRow;
 }[T];
 /** A row's key: config/clatterhorn id, run id, member identity hex, fight run id (bigints and numbers as strings). */
 export type BossRowKey = string | number | bigint;
@@ -54,6 +64,23 @@ export interface BossState {
   swingCues: readonly SwingCue[];
   /** UI: the Spire lobby panel is open (SpireGate sets it, SpireLobbyPanel reads it). */
   lobbyOpen: boolean;
+
+  // Lanternmaw (BOSSES.md 9): the same shape as the Spire's, in its own lantern_* tables.
+  /** The lantern_config row (absent = closed: lanternConfigOr). */
+  lanternConfig: LanternConfigRow | null;
+  lanternRuns: Map<string, LanternRunRow>;
+  lanternMembers: Map<string, LanternMemberRow>;
+  /** Fight rows in the cache (only your run's is subscribed), keyed by run id. */
+  lanternFights: Map<string, LanternFightRow>;
+  /** lantern_readiness rows by identity hex (the lobby ready check). */
+  lanternReadiness: Map<string, LanternReadinessRow>;
+  lanternFight: LanternFightRow | null;
+  myLanternMember: LanternMemberRow | null;
+  myLanternRun: LanternRunRow | null;
+  /** Identity hexes of every member of your lantern run (you included). */
+  myLanternHexes: ReadonlySet<string>;
+  /** UI: the Fen Gate's lobby panel is open. */
+  lanternLobbyOpen: boolean;
   seq: number;
 
   setMe: (hex: string | null) => void;
@@ -65,6 +92,7 @@ export interface BossState {
   /** A player row update: pushes a swing cue when it shows a landed Clatterhorn swing. */
   onPlayerUpdate: (prev: SwingRow, row: SwingRow & { identity: { toHexString(): string } }) => void;
   setLobbyOpen: (open: boolean) => void;
+  setLanternLobbyOpen: (open: boolean) => void;
   reset: () => void;
 }
 
@@ -88,23 +116,36 @@ export function swingCueTick(prev: SwingRow, row: SwingRow): number | null {
 const keyOf = (k: BossRowKey) => String(k);
 const EMPTY_HEXES: ReadonlySet<string> = new Set();
 
-type Data = Pick<BossState, 'config' | 'clatter' | 'runs' | 'members' | 'fights' | 'meHex'>;
+type Data = Pick<BossState, 'config' | 'clatter' | 'runs' | 'members' | 'fights' | 'meHex'
+  | 'lanternConfig' | 'lanternRuns' | 'lanternMembers' | 'lanternFights'>;
 
-/** The fields derived from your membership. */
-function derive(s: Data): Pick<BossState, 'myMember' | 'myRun' | 'myRunHexes' | 'fight'> {
-  const myMember = (s.meHex && s.members.get(s.meHex)) || null;
-  if (!myMember) return { myMember: null, myRun: null, myRunHexes: EMPTY_HEXES, fight: null };
-  const runKey = keyOf(myMember.runId);
+/** Your membership in one run table: the member row, its run, every member's hex and the run's fight row. */
+function membership<M extends { runId: bigint }, R, F>(meHex: string | null, members: Map<string, M>, runs: Map<string, R>, fights: Map<string, F>) {
+  const member = (meHex && members.get(meHex)) || null;
+  if (!member) return { member: null, run: null, hexes: EMPTY_HEXES, fight: null };
+  const runKey = keyOf(member.runId);
   const hexes = new Set<string>();
-  for (const [hex, m] of s.members) if (m.runId === myMember.runId) hexes.add(hex);
-  return { myMember, myRun: s.runs.get(runKey) ?? null, myRunHexes: hexes, fight: s.fights.get(runKey) ?? null };
+  for (const [hex, m] of members) if (m.runId === member.runId) hexes.add(hex);
+  return { member, run: runs.get(runKey) ?? null, hexes: hexes as ReadonlySet<string>, fight: fights.get(runKey) ?? null };
 }
 
-function initial(): Omit<BossState, 'setMe' | 'setRow' | 'deleteRow' | 'pushNotice' | 'pushEvent' | 'pushSwingCue' | 'onPlayerUpdate' | 'setLobbyOpen' | 'reset'> {
+/** The fields derived from your memberships. */
+function derive(s: Data): Pick<BossState, 'myMember' | 'myRun' | 'myRunHexes' | 'fight' | 'myLanternMember' | 'myLanternRun' | 'myLanternHexes' | 'lanternFight'> {
+  const sp = membership(s.meHex, s.members, s.runs, s.fights);
+  const ln = membership(s.meHex, s.lanternMembers, s.lanternRuns, s.lanternFights);
+  return {
+    myMember: sp.member, myRun: sp.run, myRunHexes: sp.hexes, fight: sp.fight,
+    myLanternMember: ln.member, myLanternRun: ln.run, myLanternHexes: ln.hexes, lanternFight: ln.fight,
+  };
+}
+
+function initial(): Omit<BossState, 'setMe' | 'setRow' | 'deleteRow' | 'pushNotice' | 'pushEvent' | 'pushSwingCue' | 'onPlayerUpdate' | 'setLobbyOpen' | 'setLanternLobbyOpen' | 'reset'> {
   return {
     config: null, clatter: null, runs: new Map(), members: new Map(), fights: new Map(), fight: null,
     meHex: null, myMember: null, myRun: null, myRunHexes: EMPTY_HEXES,
     notices: [], events: [], swingCues: [], lobbyOpen: false, seq: 0,
+    lanternConfig: null, lanternRuns: new Map(), lanternMembers: new Map(), lanternFights: new Map(), lanternReadiness: new Map(), lanternFight: null,
+    myLanternMember: null, myLanternRun: null, myLanternHexes: EMPTY_HEXES, lanternLobbyOpen: false,
   };
 }
 
@@ -127,6 +168,11 @@ export const useBossStore = create<BossState>((set, get) => {
         case 'spireRun': { const r = row as SpireRunRow; update({ runs: new Map(s.runs).set(keyOf(r.id), r) }); break; }
         case 'spireMember': { const m = row as SpireMemberRow & { identity: { toHexString(): string } }; update({ members: new Map(s.members).set(m.identity.toHexString(), m) }); break; }
         case 'spireFight': { const f = row as SpireFightRow; update({ fights: new Map(s.fights).set(keyOf(f.runId), f) }); break; }
+        case 'lanternConfig': update({ lanternConfig: row as LanternConfigRow }); break;
+        case 'lanternRun': { const r = row as LanternRunRow; update({ lanternRuns: new Map(s.lanternRuns).set(keyOf(r.id), r) }); break; }
+        case 'lanternMember': { const m = row as LanternMemberRow & { identity: { toHexString(): string } }; update({ lanternMembers: new Map(s.lanternMembers).set(m.identity.toHexString(), m) }); break; }
+        case 'lanternFight': { const f = row as LanternFightRow; update({ lanternFights: new Map(s.lanternFights).set(keyOf(f.runId), f) }); break; }
+        case 'lanternReadiness': { const r = row as LanternReadinessRow; set({ lanternReadiness: new Map(s.lanternReadiness).set(r.identity.toHexString(), r) }); break; }
       }
     },
 
@@ -139,6 +185,11 @@ export const useBossStore = create<BossState>((set, get) => {
         case 'spireRun': if (s.runs.has(k)) update({ runs: without(s.runs) }); break;
         case 'spireMember': if (s.members.has(k)) update({ members: without(s.members) }); break;
         case 'spireFight': if (s.fights.has(k)) update({ fights: without(s.fights) }); break;
+        case 'lanternConfig': if (s.lanternConfig && keyOf(s.lanternConfig.id) === k) update({ lanternConfig: null }); break;
+        case 'lanternRun': if (s.lanternRuns.has(k)) update({ lanternRuns: without(s.lanternRuns) }); break;
+        case 'lanternMember': if (s.lanternMembers.has(k)) update({ lanternMembers: without(s.lanternMembers) }); break;
+        case 'lanternFight': if (s.lanternFights.has(k)) update({ lanternFights: without(s.lanternFights) }); break;
+        case 'lanternReadiness': if (s.lanternReadiness.has(k)) set({ lanternReadiness: without(s.lanternReadiness) }); break;
       }
     },
 
@@ -163,6 +214,7 @@ export const useBossStore = create<BossState>((set, get) => {
     },
 
     setLobbyOpen: (open) => { if (get().lobbyOpen !== open) set({ lobbyOpen: open }); },
+    setLanternLobbyOpen: (open) => { if (get().lanternLobbyOpen !== open) set({ lanternLobbyOpen: open }); },
 
     reset: () => set(initial()),
   };
