@@ -301,7 +301,12 @@ function stepRun(t: BossTick, io: PlayerIo, run0: LanternRunRow, inside: Set<str
   const away = live.filter((m) => !here.has(hex(m.identity)));
   if (live.length > 0 && away.length === live.length) {
     const latest = Math.max(...away.map((m) => m.awaySinceTick));
-    if (T - latest >= LANTERN_AWAY_TICKS) { failRun(ctx, T, io, run, row, SpireOutcome.Abandoned, true); return; }
+    // Refunded only when nobody was present once the fight began (everyone away since before startTick): after the
+    // start an abandon is a loss. The owner close and the rules reset still refund.
+    if (T - latest >= LANTERN_AWAY_TICKS) {
+      failRun(ctx, T, io, run, row, SpireOutcome.Abandoned, away.every((m) => m.awaySinceTick <= run.startTick));
+      return;
+    }
   }
   if (here.size > 0) {
     for (const m of away) {
