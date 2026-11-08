@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  LANTERN_BAIT, LANTERN_ENTRY_FEE, LANTERN_GATE, LANTERN_GATE_RANGE, LANTERN_MAX_PARTY, LANTERN_READY_TICKS, SpireMemberState, SpireStage, TICK_MS,
+  LANTERN_BAIT, LANTERN_ENTRY_FEE, LANTERN_GATE, LANTERN_GATE_RANGE, LANTERN_MAX_PARTY, SpireMemberState, SpireStage, TICK_MS,
   chebyshev, lanternConfigOr, lanternEntryRejection,
 } from '@sim';
 import { useInventoryRows, useMyPlayer, usePlayersByHex, useTick } from '../../spacetime/hooks';
@@ -125,15 +125,12 @@ function JoinById({ disabled, onJoin }: { disabled: boolean; onJoin: (id: bigint
   </form>;
 }
 
-/** Whether `hex` passes the ready check (the leader and a solo party always do; others need lantern_ready within 20 ticks). */
-export function lanternMemberReady(run: LanternRunRow, hex: string, partySize: number, readiness: ReadonlyMap<string, LanternReadinessRow>, tick: number): boolean {
+/** Whether `hex` passes the ready check: the leader and a solo party always do; others once they sent ready in this lobby. */
+export function lanternMemberReady(run: LanternRunRow, hex: string, partySize: number, readiness: ReadonlyMap<string, LanternReadinessRow>): boolean {
   if (partySize <= 1 || run.leader.toHexString() === hex) return true;
   const r = readiness.get(hex);
-  return !!r && r.runId === run.id && tick - r.tick <= LANTERN_READY_TICKS;
+  return !!r && r.runId === run.id;
 }
-
-/** How often the panel re-sends a member's ready while it is on (well inside LANTERN_READY_TICKS). */
-const READY_RESEND_MS = 6000;
 
 function YourParty({ run, tick, leader, meHex, ready, players, members, full, readiness, onReady, onStart, onLeave }: {
   run: LanternRunRow; tick: number; leader: boolean; meHex: string | null; ready: boolean; full: boolean;
@@ -142,14 +139,7 @@ function YourParty({ run, tick, leader, meHex, ready, players, members, full, re
   onReady: () => void; onStart: () => void; onLeave: () => void;
 }) {
   const left = ((run.endTick - tick) * TICK_MS) / 1000;
-  const [readyOn, setReadyOn] = useState(false);
-  // The ready check expires after 20 ticks: while it is on, keep it fresh.
-  useEffect(() => {
-    if (!readyOn || leader) return;
-    const id = setInterval(onReady, READY_RESEND_MS);
-    return () => clearInterval(id);
-  }, [readyOn, leader]);
-  const isReady = (hex: string) => lanternMemberReady(run, hex, members.length, readiness, tick);
+  const isReady = (hex: string) => lanternMemberReady(run, hex, members.length, readiness);
   const waiting = members.filter(([hex]) => !isReady(hex)).map(([hex]) => players.get(hex)?.name || 'Someone');
   return <>
     <h3>Your party <small data-testid="lantern-party-id">#{String(run.id)}</small></h3>
@@ -168,12 +158,12 @@ function YourParty({ run, tick, leader, meHex, ready, players, members, full, re
     <p className="spire-note">Breaks up in {clock(left)}</p>
     <div className="spire-actions">
       {leader && <button type="button" className="is-primary" disabled={full || waiting.length > 0} onClick={onStart}>Start</button>}
-      {!leader && members.length > 1 && <button type="button" className={readyOn ? 'is-primary' : undefined} aria-pressed={readyOn}
-        onClick={() => { const on = !readyOn; setReadyOn(on); if (on) onReady(); }}>Ready</button>}
+      {!leader && members.length > 1 && <button type="button" className={meHex && isReady(meHex) ? 'is-primary' : undefined}
+        disabled={!!meHex && isReady(meHex)} onClick={onReady}>Ready</button>}
       <button type="button" onClick={onLeave}>Leave</button>
     </div>
     {leader && full && <p className="spire-reason">{LANTERN_FULL_MESSAGE}</p>}
     {leader && waiting.length > 0 && <p className="spire-note" data-testid="lantern-waiting-ready">Waiting for {waiting.join(', ')} to ready</p>}
-    {!leader && <p className="spire-note">Press Ready when you are at the gate and set to dodge; the leader starts once everyone is ready.</p>}
+    {!leader && <p className="spire-note">Press Ready when you are at the gate and set to dodge; it lasts until you leave. The leader starts once everyone is ready.</p>}
   </>;
 }

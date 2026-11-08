@@ -19,7 +19,7 @@ import {
   GIANT_REACH, GiantAttack, GiantState, attackDamage, attackRadius, giantHpAt, isLandTile,
   COSMETICS, CosmeticSlot, SKILLS, SKILL_MAX_LEVEL, Skill, harvestTickBonus, hasCosmetic, levelForXp, levelProgress,
   RAID_INTERVAL_MS, RAID_MIN_CONTRIBUTION, RAID_REWARD, RAID_WINDOW_MS, raidMaxHp, MENTOR_RANGE, MENTOR_PIN_TIERS,
-  bossNoPvpZone, inSafeRing, nearestLedgerClerk, LANTERN_READY_TICKS, LANTERN_RULES_VERSION, SPIRE_KEY_ITEM_ID, SPIRE_RULES_VERSION, type DangerFeed,
+  bossNoPvpZone, inSafeRing, nearestLedgerClerk, LANTERN_RULES_VERSION, SPIRE_KEY_ITEM_ID, SPIRE_RULES_VERSION, type DangerFeed,
   goalBosses, goalTarget, journeyChapterOf, nearestBag,
 } from '../../shared/sim';
 import { GARDEN_EXTRA_PLOT_LEVEL, GARDEN_PLOT_TILES, GARDEN_STAGE_NAMES, gardenPlotCountForXp, gardenRemainingMs, gardenStage, getGardenCrop, inGardenReach } from '../../shared/sim';
@@ -699,7 +699,7 @@ export async function createGameService(credential: Credential, options: Service
               if (input.op === 'open') { await r.lanternOpen({ clientRules }); const runId = runOf(); return runId === undefined ? undefined : { runId: String(runId) }; }
               if (input.op === 'join') { await r.lanternJoin({ runId: BigInt(input.runId ?? 0), clientRules }); const runId = runOf(); return runId === undefined ? undefined : { runId: String(runId) }; }
               if (input.op === 'start') { await r.lanternStart({ clientRules }); return { stage: 'active' }; }
-              if (input.op === 'ready') { await r.lanternReady({}); return { ready: true, withinTicks: LANTERN_READY_TICKS }; }
+              if (input.op === 'ready') { await r.lanternReady({}); return { ready: true }; }
               await r.lanternLeave({});
               break;
             }

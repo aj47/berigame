@@ -145,28 +145,23 @@ describe('LanternLobbyPanel', () => {
     expect(useBossStore.getState().lobbyOpen).toBe(true);
   });
 
-  it('the ready check: a member sends ready (and keeps it fresh); the leader waits for every other member', () => {
-    vi.useFakeTimers();
-    try {
-      const s = useBossStore.getState();
-      // Bo leads; you joined.
-      act(() => {
-        s.setRow('lanternRun', lanternRun({ id: 9n, leader: identity('bo'), stage: SpireStage.Lobby, partySize: 2, startTick: 0, endTick: 200 }));
-        s.setRow('lanternMember', lanternMember('bo', { runId: 9n, slot: 0, state: SpireMemberState.Lobby }));
-        s.setRow('lanternMember', lanternMember('me', { runId: 9n, slot: 1, state: SpireMemberState.Lobby }));
-      });
-      render(<LanternLobbyPanel />);
-      expect(screen.getByTestId('lantern-ready-me')).toHaveTextContent('not ready');
-      fireEvent.click(screen.getByRole('button', { name: 'Ready' }));
-      expect(mock.ready).toHaveBeenCalledTimes(1);
-      act(() => { vi.advanceTimersByTime(6100); });
-      expect(mock.ready).toHaveBeenCalledTimes(2);
-      act(() => s.setRow('lanternReadiness', { identity: identity('me'), runId: 9n, tick: 99 } as any));
-      expect(screen.getByTestId('lantern-ready-me')).toHaveTextContent('ready to start');
-    } finally { vi.useRealTimers(); }
+  it('the ready check: a member presses Ready once; it stays until they leave or the run starts', () => {
+    const s = useBossStore.getState();
+    act(() => {
+      s.setRow('lanternRun', lanternRun({ id: 9n, leader: identity('bo'), stage: SpireStage.Lobby, partySize: 2, startTick: 0, endTick: 200 }));
+      s.setRow('lanternMember', lanternMember('bo', { runId: 9n, slot: 0, state: SpireMemberState.Lobby }));
+      s.setRow('lanternMember', lanternMember('me', { runId: 9n, slot: 1, state: SpireMemberState.Lobby }));
+    });
+    render(<LanternLobbyPanel />);
+    expect(screen.getByTestId('lantern-ready-me')).toHaveTextContent('not ready');
+    fireEvent.click(screen.getByRole('button', { name: 'Ready' }));
+    expect(mock.ready).toHaveBeenCalledTimes(1);
+    act(() => s.setRow('lanternReadiness', { identity: identity('me'), runId: 9n, tick: 1 } as any));
+    expect(screen.getByTestId('lantern-ready-me')).toHaveTextContent('ready to start');
+    expect(screen.getByRole('button', { name: 'Ready' })).toBeDisabled();
   });
 
-  it('the leader cannot start until every other member is ready (within 20 ticks)', () => {
+  it('the leader cannot start until every other member is ready', () => {
     const s = useBossStore.getState();
     act(() => {
       s.setRow('lanternRun', lanternRun({ id: 9n, leader: identity('me'), stage: SpireStage.Lobby, partySize: 2, startTick: 0, endTick: 200 }));
@@ -178,7 +173,7 @@ describe('LanternLobbyPanel', () => {
     expect(screen.getByTestId('lantern-waiting-ready')).toHaveTextContent('Waiting for Bo to ready');
     act(() => s.setRow('lanternReadiness', { identity: identity('bo'), runId: 9n, tick: 95 } as any));
     expect(screen.getByRole('button', { name: 'Start' })).not.toBeDisabled();
-    act(() => s.setRow('lanternReadiness', { identity: identity('bo'), runId: 9n, tick: 70 } as any));
+    act(() => s.setRow('lanternReadiness', { identity: identity('bo'), runId: 8n, tick: 99 } as any));
     expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
   });
 });

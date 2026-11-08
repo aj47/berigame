@@ -871,7 +871,7 @@ export const lanternPaid = table({ name: 'lantern_paid' }, {
 
 /**
  * Lobby ready checks: a member's last `lantern_ready` reducer call (lantern_start needs every other member of a party
- * ready within LANTERN_READY_TICKS). Its own table so the publish only creates tables. Public, no RLS; rows are
+ * ready; a ready lasts until you leave or the run starts). Its own table so the publish only creates tables. Public, no RLS; rows are
  * deleted at the start, on leave and when a lobby breaks up.
  */
 export const lanternReadiness = table({ name: 'lantern_readiness', public: true }, {

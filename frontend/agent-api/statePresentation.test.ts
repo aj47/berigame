@@ -558,7 +558,10 @@ test('state.lantern.you shows the lobby ready check from lantern_readiness rows'
   const you = (p: BossPlayer) => (describeBosses(rows, p, LS, { players: [lead, mate], keysHeld: 0, contribution: null, blocked: WORLD }) as any).lantern.you;
   assert.deepEqual(you(lead).members.map((m: any) => m.ready), [true, true]);
   assert.equal(you(lead).startReady, true);
-  assert.equal(you(mate).sendReady, true);
-  const stale = { ...rows, lanternReadiness: [{ identity: hexId(2), runId, tick: LS - 25 }] };
-  assert.equal((describeBosses(stale, lead, LS, { players: [lead, mate], keysHeld: 0, contribution: null, blocked: WORLD }) as any).lantern.you.startReady, false);
+  assert.equal(you(mate).ready, true);
+  assert.equal(you(mate).sendReady, false);
+  const old = { ...rows, lanternReadiness: [{ identity: hexId(2), runId, tick: LS - 500 }] };
+  assert.equal((describeBosses(old, lead, LS, { players: [lead, mate], keysHeld: 0, contribution: null, blocked: WORLD }) as any).lantern.you.startReady, true);
+  const other = { ...rows, lanternReadiness: [{ identity: hexId(2), runId: runId + 1n, tick: LS - 1 }] };
+  assert.equal((describeBosses(other, lead, LS, { players: [lead, mate], keysHeld: 0, contribution: null, blocked: WORLD }) as any).lantern.you.startReady, false);
 });

@@ -331,12 +331,13 @@ describe('describeLantern', () => {
     expect(d.run).toBeNull();
   });
 
-  it('in a lobby: ready per member within 20 ticks; the leader needs none; a solo party needs none', () => {
+  it('in a lobby: ready per member (valid until leave or start); the leader needs none; a solo party needs none', () => {
     const runs = [lrun(9n, { leader: ME, partySize: 3 })];
     const members = [lmember(ME, 9n, 0), lmember(hex(2), 9n, 1), lmember(hex(3), 9n, 2)];
-    const ready = [{ identity: hex(2), runId: 9n, tick: L - 5 }, { identity: hex(3), runId: 9n, tick: L - 21 }];
+    // hex(2) readied long ago (still valid); hex(3)'s row belongs to another lobby.
+    const ready = [{ identity: hex(2), runId: 9n, tick: L - 500 }, { identity: hex(3), runId: 7n, tick: L - 1 }];
     const lead = describeLantern({ ...base, runs, members, ready, me: gate });
-    expect((lead.you as any).readyWithinTicks).toBe(20);
+    expect((lead.you as any).readyWithinTicks).toBeUndefined();
     expect((lead.you as any).members).toEqual([
       { playerId: ME, name: names(ME), slot: 0, leader: true, ready: true },
       { playerId: hex(2), name: names(hex(2)), slot: 1, leader: false, ready: true },

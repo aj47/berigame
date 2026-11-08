@@ -132,6 +132,24 @@ describe('closed by default and the owner switch', () => {
     }
   });
 
+  it('configure_lanternmaw changes the HP knobs live: an Active run keeps its HP, the next run uses the new values', () => {
+    configure(h.as(OWNER), { lanternOpen: true, lanternMaxRuns: 12, lanternHpBase: 810, lanternHpPerMember: 970 });
+    const runId = fighting([A]);
+    expect(fight(runId)).toMatchObject({ hp: 810, maxHp: 810 });
+    configure(h.as(OWNER), { lanternOpen: true, lanternMaxRuns: 12, lanternHpBase: 600, lanternHpPerMember: 700 });
+    expect(h.db.lanternConfig.id.find(0)).toMatchObject({ lanternOpen: true, lanternHpBase: 600, lanternHpPerMember: 700 });
+    // Still open: nothing closed or refunded, the fighting run is untouched.
+    expect(lanternRow(runId).stage).toBe(SpireStage.Active);
+    expect(fight(runId).maxHp).toBe(810);
+    h.run(1);
+    expect(fight(runId).maxHp).toBe(810);
+    const solo = begin([B]);
+    expect(fight(solo)).toMatchObject({ hp: 600, maxHp: 600 });
+    const duo = begin([C, D]);
+    expect(fight(duo)).toMatchObject({ hp: 1300, maxHp: 1300 });
+    expect(h.events(BossEventKind.LanternOpened)).toHaveLength(1);
+  });
+
   it('boss_debug lantern_soon announces an opening; lantern_hp sets a percent; lantern_fail_all refunds', () => {
     config();
     debug(h.as(OWNER), { op: 'lantern_soon', runId: 0n, value: 10 });
@@ -297,7 +315,7 @@ function pickMove(f: LanternFightLike, startTick: number, T: number, from: numbe
 }
 
 describe('the ready check', () => {
-  it('a party start waits for every other member to send ready within 20 ticks; solo needs none', () => {
+  it('a party start waits for every other member to send ready once; it stays valid until they leave or the run starts', () => {
     const runId = lobby([A, B, C]);
     expect(() => start(h.as(A), RULES)).toThrow('This party is waiting for Bo: send ready once your dodge loop is running');
     fresh(B); readyUp(h.as(B));
@@ -305,14 +323,24 @@ describe('the ready check', () => {
     fresh(A);
     expect(() => start(h.as(A), RULES)).toThrow('This party is waiting for Cy: send ready');
     fresh(C); readyUp(h.as(C));
-    h.run(21);
-    fresh(A);
-    expect(() => start(h.as(A), RULES)).toThrow('This party is waiting for Bo: send ready');
-    readyAll([A, B, C]);
+    // AI turns can be far apart: a ready sent long ago still counts.
+    h.run(120);
     fresh(A);
     start(h.as(A), RULES);
     expect(lanternRow(runId).stage).toBe(SpireStage.Active);
     expect([...h.db.lanternReadiness.iter()]).toHaveLength(0);
+  });
+
+  it('a ready from an earlier lobby does not carry over', () => {
+    const first = lobby([A, B]);
+    fresh(B); readyUp(h.as(B));
+    fresh(A); leave(h.as(A));
+    fresh(B); leave(h.as(B));
+    expect(h.db.lanternRun.id.find(first)).toBeUndefined();
+    const runId = lobby([A, B]);
+    fresh(A);
+    expect(() => start(h.as(A), RULES)).toThrow('This party is waiting for Bo: send ready');
+    expect(lanternRow(runId).stage).toBe(SpireStage.Lobby);
   });
 
   it('ready is refused outside a lobby; leaving drops your ready; a solo leader starts without it', () => {

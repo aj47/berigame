@@ -3,7 +3,7 @@ import type { Identity } from 'spacetimedb';
 import spacetimedb from '../schema';
 import {
   BossEventKind, BossId, LANTERN_CONFIG_ID, LANTERN_GATE, LANTERN_GATE_RANGE, LANTERN_LOBBY_TICKS, LANTERN_MAX_LOBBIES,
-  LANTERN_MAX_PARTY, LANTERN_READY_TICKS, LANTERN_RULES_VERSION, PlayerState, SpireMemberState, SpireOutcome, SpireStage, chebyshev,
+  LANTERN_MAX_PARTY, LANTERN_RULES_VERSION, PlayerState, SpireMemberState, SpireOutcome, SpireStage, chebyshev,
   lanternConfigProblem, type LanternConfigLike,
 } from '../../../shared/sim';
 import { requireOwner } from '../lib/access';
@@ -120,8 +120,8 @@ export const lanternJoin = spacetimedb.reducer(
 );
 
 /**
- * Ready (a lobby member, not needed solo): your dodge loop is running. The leader's start needs every other member
- * ready within LANTERN_READY_TICKS (20 ticks, 12 s), so loops send it again while they wait.
+ * Ready (a lobby member, not needed solo): your dodge loop is running. It stays valid until you leave the lobby or
+ * the run starts (AI turns are often far apart), and the leader's start needs every other member ready.
  */
 export const lanternReady = spacetimedb.reducer((ctx) => {
   const p = requireAlivePlayer(ctx);
@@ -174,7 +174,7 @@ export const lanternStart = spacetimedb.reducer(
       // The ready check (a party only): every other member says its dodge loop is running.
       if (members.length > 1 && !sameId(m.identity, p.identity)) {
         const r = ctx.db.lanternReadiness.identity.find(m.identity);
-        if (!r || r.runId !== run.id || T - r.tick > LANTERN_READY_TICKS) throw waiting('send ready once your dodge loop is running');
+        if (!r || r.runId !== run.id) throw waiting('send ready once your dodge loop is running');
       }
     }
     let active = 0;
