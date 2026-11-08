@@ -21,7 +21,7 @@ import { DbConnection, tables } from '../src/module_bindings';
 import { playerView } from '../src/spacetime/playerView';
 import type { BossEvent, BossNotice, Player } from '../src/module_bindings/types';
 import {
-  BossEventKind, BossId, BossNoticeKind, HOTBAR_SIZE, HurtSource, LANTERN_BAIT, LANTERN_ENTRY_FEE, LANTERN_EXIT, LANTERN_GATE,
+  BossEventKind, BossId, BossNoticeKind, HOTBAR_SIZE, HurtSource, LANTERN_BAIT, LANTERN_MEALS, LANTERN_ENTRY_FEE, LANTERN_EXIT, LANTERN_GATE,
   LANTERN_RULES_VERSION, LANTERN_SPAWNS, LANTERN_SPRINGS, LanternStage, STONE_CLUB_ITEM_ID, SpireMemberState, SpireOutcome, SpireStage,
   TICK_MS, lanternHazardMask, lanternInCourt, lanternLocal, lanternMoves, lanternNearSpring, lanternTile, nodeCell, playerCell,
   type LanternFightLike, type Tile,
@@ -253,7 +253,7 @@ async function main() {
       if (member(c)?.state !== SpireMemberState.In) continue;
       const p = me(c), from = lanternLocal(p);
       if (from < 0) continue;
-      if (p.hp < 16 && (member(c)?.meals ?? 0) < 6 && p.eatCooldownUntilTick <= last) {
+      if (p.hp < 16 && (member(c)?.meals ?? 0) < LANTERN_MEALS && p.eatCooldownUntilTick <= last) {
         const berry = inv(c).find((x) => x.itemId === 'berry_goldberry');
         if (berry) c.r.eatBerry({ slot: berry.slot }).catch(() => {});
       }
