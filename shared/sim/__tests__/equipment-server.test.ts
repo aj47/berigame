@@ -102,7 +102,7 @@ describe('banking one of two wielded weapons', () => {
     for (const row of [...h.db.inventorySlot.iter()]) h.db.inventorySlot.id.delete(row.id);
     h.db.inventorySlot.insert({ id: 0n, owner: h.identity, slot: 0, itemId: 'iron_club', quantity: 1 }); // quick slot 1, wielded
     h.db.inventorySlot.insert({ id: 0n, owner: h.identity, slot: 5, itemId: 'iron_club', quantity: 1 }); // spare in the bag
-    const bag = () => readSlots(h.ctx, h.identity).slots;
+    const bag = () => readSlots(h.ctx, h.identity as any).slots;
     return { ...h, bag };
   }
 
