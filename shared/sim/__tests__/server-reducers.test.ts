@@ -1978,3 +1978,30 @@ describe('economy rules on the server', () => {
     });
   });
 });
+
+// ---- Sol's report (2026-11-07 17:56): 36 maximum health after respawning with an empty bag ----
+import { newProfile } from '../frontier/model';
+import { DEATH_TICKS } from '../constants';
+
+describe('maximum health after a Bramblewild defeat', () => {
+  it('a respawn does not keep the padded vest bonus once the vest dropped with the bag', () => {
+    outsideSafeRing();
+    // Might active (+3) and an equipped padded vest in the bag (+3): 36, the settlement cap.
+    frontierRepository(h.ctx as any).put('profile', { ...newProfile('a'), active: [0], events: { vest: 1 } });
+    h.inventory.set(7000n, { id: 7000n, owner: A, slot: 5, itemId: 'padded_vest', quantity: 1 });
+    cancel(h.ctx); // any input saves the row and derives maxHp from the bag (lib/players.ts savePlayer)
+    expect(h.me().maxHp).toBe(36);
+
+    h.me().hp = PUNCH_DAMAGE;
+    as(B, () => attack(h.ctx, { target: A }));
+    run();
+    expect(h.me()).toMatchObject({ state: PlayerState.Dead, weapon: '' });
+    expect([...h.inventory.values()].some((row) => row.owner === A)).toBe(false);
+    expect([...h.ground.values()].some((g) => g.itemId === 'padded_vest' && g.droppedOnDeath)).toBe(true);
+
+    run(DEATH_TICKS + 1);
+    expect(h.me().state).toBe(PlayerState.Alive);
+    // Empty bag: only Might counts. Today the row keeps maxHp 36 and the respawn heals to it.
+    expect(h.me()).toMatchObject({ maxHp: 33, hp: 33 });
+  });
+});
