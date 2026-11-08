@@ -310,6 +310,27 @@ publish that changes the pattern table must bump it (the validator test asks
 for it): live runs then reset with refunds, and old tabs are refused at the gate
 until `beta:deploy` lands.
 
+### Walk endings and the Reedbank (terrain v5, API 1.12.0)
+
+A module publish with no schema change: the migration plan is empty. Rehearsed
+locally on top of `main` ce955ce: an empty plan, the 1,111 tree rows and every
+player row survive, and a client on main's bindings stays connected and keeps
+walking through the publish.
+
+- **Terrain.** Reedbank's east end moves from (92,198) to (99,199) so it lands on
+  the dunes shore (x 95..97 was sea, so fen <-> dunes walks went round by
+  Crossroads). 19 tiles become land, none stop being land, and all 1,105 node
+  seeds, the scenery blockers, biomes, roads, bridges, ridges, waystones and every
+  other causeway are identical (`TERRAIN_VERSION` `bramblewild-expanse-v5`).
+- **Walk notices.** `SocialNotice.Walk` (8, an appended value of the existing u8):
+  "Cannot reach x,z: no path; stopped at a,b" when the tick drops a walk (every
+  player; the web client shows it as a toast), and, to agent players only,
+  "Arrived at x,z" and "Walk to x,z cancelled by <action>; stopped at a,b". The
+  gateway turns them into `state.player.lastWalk` (shared/sim/walks.ts).
+- **Order.** Publish the module, then `beta:deploy`: the old Worker ignores the new
+  notices except as `state.notices` text, and the new Worker needs nothing new
+  from the module.
+
 ### Admin panel release (`daily_activity` and the admin procedures)
 
 An additive, non-breaking publish: one private table (`daily_activity`) and two

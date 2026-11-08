@@ -51,8 +51,8 @@ describe('the Expanse', () => {
   });
 
   it('lands each causeway on both shores, so a walk across it goes straight over', () => {
-    // From open ground 8+ tiles beyond each end, outward along the causeway. Reedbank's east end (92,198)
-    // stops three tiles short of the dunes (x 95..97 is sea), so dunes <-> fen walks go round by Crossroads.
+    // From open ground 8+ tiles beyond each end, outward along the causeway. Reedbank once ended at (92,198),
+    // three tiles short of the dunes (x 95..97 was sea), so dunes <-> fen walks went round by Crossroads.
     const open = (t: Tile) => isLandTile(t) && !blocked.has(tileKey(t));
     for (const c of CAUSEWAYS) {
       const len = Math.hypot(c.to.x - c.from.x, c.to.z - c.from.z), ux = (c.to.x - c.from.x) / len, uz = (c.to.z - c.from.z) / len;

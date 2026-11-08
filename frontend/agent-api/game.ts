@@ -23,6 +23,7 @@ import {
   goalBosses, goalTarget, journeyChapterOf, nearestBag,
 } from '../../shared/sim';
 import { GARDEN_EXTRA_PLOT_LEVEL, GARDEN_PLOT_TILES, GARDEN_STAGE_NAMES, gardenPlotCountForXp, gardenRemainingMs, gardenStage, getGardenCrop, inGardenReach } from '../../shared/sim';
+import { parseWalkNotice, SocialNotice, type WalkOutcome } from '../../shared/sim';
 import * as appearance from '../../shared/sim/appearance';
 import { admissionError, ApiError, type Invite } from './portable';
 import { deliveryProblem, describeExpeditionPaid, describeLedger, describeNodeKinds, levelError, NODE_KIND_NAMES, nodeKindOf, nodeLevelInfo, nodeLockReason } from './seasonPresentation';
@@ -273,8 +274,13 @@ export async function createGameService(credential: Credential, options: Service
       me();
       // Notices addressed to you (trade requests and results, invite results): the last 10.
       const notices: { tick: number; kind: number; from: string; text: string }[] = [];
+      // How your last walk ended (shared/sim/walks.ts): arrivals only set this, they do not crowd the notices.
+      let lastWalk: WalkOutcome | null = null;
       conn.db.socialEvent.onInsert((_ctx, row) => {
         if (row.to.toHexString() !== player.identity) return;
+        const walk = row.kind === SocialNotice.Walk ? parseWalkNotice(row.text, row.tick) : null;
+        if (walk) lastWalk = walk;
+        if (walk?.ended === 'arrived') return;
         notices.push({ tick: row.tick, kind: row.kind, from: row.from.toHexString(), text: row.text });
         if (notices.length > 10) notices.shift();
       });
@@ -397,7 +403,7 @@ export async function createGameService(credential: Credential, options: Service
           const raid = db.giantRaid.id.find(GIANT_ID);
           const mentees = (hex: string) => [...db.mentorStat.iter()].find(r => r.identity.toHexString() === hex)?.mentees ?? 0;
           return {
-            tick, tickMs: TICK_MS, gridSize: self.region && self.region !== 'bramblewild' ? 128 : GRID_SIZE, player: describePlayer(self, frontier, now),
+            tick, tickMs: TICK_MS, gridSize: self.region && self.region !== 'bramblewild' ? 128 : GRID_SIZE, player: { ...describePlayer(self, frontier, now), lastWalk },
             frontier,
             economy: describeEconomy({ self, slots: slotsOf(), views: conn.db.frontierView.iter(), identity: player.identity, now }),
             me: { area: home ? areaOf(self) : self.region, biome: home ? biomeAt(self) : null, safe: home && isSafe(self, tick), graceTicks: inGrace(self, tick) ? Math.max(0, self.respawnTick + RESPAWN_GRACE_TICKS - tick) : 0,

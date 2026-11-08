@@ -5,6 +5,7 @@ import type { Ctx, PlayerRow } from './types';
 import { requireAdmission } from './access';
 import { maxHealth } from '../../../shared/sim/frontier/engine';
 import { loadPlayer, storePlayer } from './playerStore';
+import { walkEnded } from './walks';
 
 export function hex(id: Identity): string {
   return id.toHexString();
@@ -72,8 +73,15 @@ export function releaseTree(ctx: Ctx, p: PlayerRow): void {
   p.harvestEndTick = 0;
 }
 
-/** Stop walking, fighting, following, harvesting and any queued interaction. Mutates `p`. */
-export function clearInteractions(ctx: Ctx, p: PlayerRow, preserveFrontierGather = false): void {
+/**
+ * Stop walking, fighting, following, harvesting and any queued interaction. Mutates `p`.
+ * `by` names the action that cut a plain walk short (an agent hears "Walk to x,z cancelled by <by>");
+ * a new move is the walk's replacement, not a cancellation, so it says nothing.
+ */
+export function clearInteractions(ctx: Ctx, p: PlayerRow, preserveFrontierGather = false, by = 'another action'): void {
+  if (by !== 'move' && p.targetX !== undefined && p.targetZ !== undefined && !p.combatTarget && p.pending === Pending.None) {
+    walkEnded(ctx, currentTick(ctx), p, { x: p.targetX, z: p.targetZ }, 'cancelled', by);
+  }
   p.targetX = undefined;
   p.targetZ = undefined;
   p.combatTarget = undefined;

@@ -122,7 +122,7 @@ export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
   const p = { ...existing, lastSeenAt: ctx.timestamp, connections: Math.max(0, existing.connections - 1) };
   if (p.connections === 0) {
     p.online = false;
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'reconnect');
     statsSessionEnd(ctx, p.identity);
     settleEnergyFor(ctx, p.identity, true);
     // Nobody can keep fighting or following someone who left.

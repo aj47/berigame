@@ -36,7 +36,7 @@ export const requestTrade = spacetimedb.reducer(
     const other = findPlayer(ctx, target);
     const problem = tradePartnerProblem(ctx, p, other);
     if (problem) throw new SenderError(problem);
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'trade');
     if (chebyshev(p, other!) > TRADE_RANGE) {
       // Keep a reciprocal request while approaching, but withdraw trades with anyone else.
       for (const row of tradesOf(ctx, p.identity)) {
@@ -65,7 +65,7 @@ export const respondTrade = spacetimedb.reducer(
     const partner = requirePartner(ctx, p, row.a, TRADE_RANGE);
     const problem = tradePartnerProblem(ctx, p, partner);
     if (problem) throw new SenderError(problem);
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'trade');
     savePlayer(ctx, p);
     for (const r of tradesOf(ctx, p.identity)) if (r.id !== row.id) cancelTrade(ctx, r, 'Trade cancelled');
     for (const r of tradesOf(ctx, row.a)) if (r.id !== row.id) cancelTrade(ctx, r, 'Trade cancelled');

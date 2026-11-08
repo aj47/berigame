@@ -55,7 +55,7 @@ export const expeditionAction = spacetimedb.reducer({ action: t.string(), expedi
     const m = { identity: p.identity, expeditionId: id, contributions: action === 'start' ? Feat.Grow : credit.contributions, cooldown: 0, tracked: credit.tracked };
     if (previous) ctx.db.expeditionMember.identity.update(m); else ctx.db.expeditionMember.insert(m);
     if (action === 'start' && !(pp.feats & Feat.Grow)) progress(ctx, p.identity, 0, 8, Feat.Grow);
-    clearInteractions(ctx, p); savePlayer(ctx, p); return;
+    clearInteractions(ctx, p, false, 'expedition'); savePlayer(ctx, p); return;
   }
   const m = ctx.db.expeditionMember.identity.find(p.identity);
   if (!m || !old || old.id !== expeditionId) throw new SenderError('Join that expedition first');
@@ -76,13 +76,13 @@ export const expeditionAction = spacetimedb.reducer({ action: t.string(), expedi
   const technique = (id: number) => { if (!hasTechnique(pp, id)) throw new SenderError('Equip that technique at camp first'); };
   let cooldown = 2;
   switch (action) {
-    case 'take': grounded(); clearInteractions(ctx, p); p.weapon = ''; e.carrier = p.identity; e.hiddenUntil = 0; contribute(ctx, p.identity, 2, Feat.Explore); e.message = `${p.name} carries the berry with both hands. Move, pass, or put it down.`; break;
+    case 'take': grounded(); clearInteractions(ctx, p, false, 'expedition'); p.weapon = ''; e.carrier = p.identity; e.hiddenUntil = 0; contribute(ctx, p.identity, 2, Feat.Explore); e.message = `${p.name} carries the berry with both hands. Move, pass, or put it down.`; break;
     case 'put_down': if (!mine) throw new SenderError('You are not carrying the berry'); e.carrier = undefined; e.message = `${p.name} put the berry down.`; break;
     case 'pass': {
       if (!mine) throw new SenderError('Pick up the berry before passing it');
       const to = target && loadPlayer(ctx, target), tm = target && ctx.db.expeditionMember.identity.find(target);
       if (!to?.online || to.state !== PlayerState.Alive || sameId(to.identity, p.identity) || !tm || tm.expeditionId !== e.id || chebyshev(p, to) > 2 || to.hostile || duelFor(ctx, to.identity)) throw new SenderError('Pass to a nearby, free teammate in this expedition');
-      const next = { ...to }; clearInteractions(ctx, next); next.weapon = ''; savePlayer(ctx, next);
+      const next = { ...to }; clearInteractions(ctx, next, false, 'expedition'); next.weapon = ''; savePlayer(ctx, next);
       e.carrier = next.identity; e.x = next.x; e.z = next.z; contribute(ctx, p.identity, 4, Feat.Befriend); contribute(ctx, next.identity, 2, Feat.Explore); e.message = `${p.name} passed the berry to ${next.name}.`; break;
     }
     case 'roll': {
@@ -151,7 +151,7 @@ export const duelAction = spacetimedb.reducer({ action: t.string(), target: t.id
   if (duelFor(ctx, p.identity) || duelFor(ctx, target)) throw new SenderError('One player already has a duel');
   if (action === 'accept') {
     if (!existing || existing.stage !== 'requested' || !sameId(existing.b, p.identity) || existing.expiresTick <= T) throw new SenderError('No incoming challenge from that player');
-    clearInteractions(ctx, p); const o = { ...other }; clearInteractions(ctx, o); savePlayer(ctx, o);
+    clearInteractions(ctx, p, false, 'duel'); const o = { ...other }; clearInteractions(ctx, o, false, 'duel'); savePlayer(ctx, o);
     ctx.db.friendlyDuel.id.update({ ...existing, stage: 'countdown', startsTick: T + 5, expiresTick: T + 200, nextSwingTick: T + 5, aHp: 30, bHp: 30, result: 'Ready… friendly duel starts in 3 seconds.' });
   } else {
     if ([...ctx.db.friendlyDuel.iter()].some(d => d.stage !== 'complete' && (sameId(d.a, p.identity) || sameId(d.b, p.identity) || sameId(d.a, target) || sameId(d.b, target)))) throw new SenderError('Finish the pending challenge first');

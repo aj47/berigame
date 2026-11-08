@@ -155,7 +155,7 @@ export function tickExpeditions(ctx: Ctx, T: number, worldBlocked?: Set<number>)
       const target = T < e.baitUntil ? { x: e.baitX, z: e.baitZ } : e;
       const giant = step({ x: e.giantX, z: e.giantZ }, target, present.length >= 4 ? 2 : 1); e.giantX = giant.x; e.giantZ = giant.z;
       if (chebyshev(giant, e) <= 1 && T >= e.guardUntil && T >= e.baitUntil) {
-        if (e.carrier) { const row = loadPlayer(ctx, e.carrier); if (row) { const p = { ...row }; clearInteractions(ctx, p); storePlayer(ctx, p); } }
+        if (e.carrier) { const row = loadPlayer(ctx, e.carrier); if (row) { const p = { ...row }; clearInteractions(ctx, p, false, 'expedition'); storePlayer(ctx, p); } }
         e.value = Math.max(0, e.value - 1); e.carrier = undefined; e.mossCarrying = false; e.giantUntil = T + 30;
         e.message = 'The Giant took a bite and paused to chew. Grab the rest and run!';
       }

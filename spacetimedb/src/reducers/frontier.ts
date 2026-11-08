@@ -84,7 +84,7 @@ export const frontierAction = spacetimedb.reducer(
       throw new SenderError(
         "Leave your berry expedition before travelling to the Meadows",
       );
-    clearInteractions(ctx, player, true);
+    clearInteractions(ctx, player, true, 'frontier');
     savePlayer(ctx, player);
     actor.inputStamp = `${player.lastInputTick}:${player.inputsThisTick}`;
     try {

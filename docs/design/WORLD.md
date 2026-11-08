@@ -65,7 +65,7 @@ detour, if any, is more than three times the direct walk.
 | Fenway (26, 118)–(32, 148) | Island ↔ Glimmerfen | Mossvale's road south. The second way to tier 2. |
 | Stonepass (196, 66)–(192, 100) | Frostpine ↔ Hearthvale | Closes the north loop, so Frostpine is not a dead end. |
 | Dune Road (162, 150)–(140, 170) | Hearthvale ↔ Dunes | Crossroads to tier 3. |
-| Reedbank (78, 196)–(92, 198) | Glimmerfen ↔ Dunes | Closes the south-west loop. |
+| Reedbank (78, 196)–(99, 199) | Glimmerfen ↔ Dunes | Closes the south-west loop. |
 | Ashway (156, 214)–(180, 210) | Dunes ↔ Starfall | One of two ways into tier 5. |
 | Emberstair (214, 146)–(214, 172) | Hearthvale ↔ Starfall | The other way into tier 5, from the orchards. |
 

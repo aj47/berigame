@@ -32,7 +32,7 @@ export const startHarvest = spacetimedb.reducer(
       savePlayer(ctx, p);
       return;
     }
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'harvest');
     p.pending = Pending.Harvest;
     p.pendingId = BigInt(tree.id);
     if (chebyshev(p, tree) > MELEE_RANGE) {

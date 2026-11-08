@@ -61,7 +61,7 @@ export const attack = spacetimedb.reducer(
       ensureFrontierProfile(ctx, w.repo);
       const profile = w.repo.get('profile', a.id)!;
       profile.nextAttack = Math.max(profile.nextAttack, w.now + Math.max(1, (p.nextSwingTick ?? 0) - T) * TICK_MS);
-      clearInteractions(ctx, p);
+      clearInteractions(ctx, p, false, 'attack');
       p.combatTarget = target;
       p.hostile = true;
       p.nextSwingTick = T + Math.ceil((profile.nextAttack - w.now) / TICK_MS);
@@ -90,7 +90,7 @@ export const attack = spacetimedb.reducer(
       return;
     }
     const readyAt = p.nextSwingTick;
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'attack');
     p.combatTarget = target;
     p.hostile = true;
     // Cooldowns belong to the attacker, not the target. Preserve a swing or
@@ -120,7 +120,7 @@ export const follow = spacetimedb.reducer(
     const sealed = spireFollowProblem(ctx, p, tgt);
     if (sealed) throw new SenderError(sealed);
     touchInput(p, currentTick(ctx));
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'follow');
     p.combatTarget = target;
     p.hostile = false;
     savePlayer(ctx, p);

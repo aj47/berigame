@@ -229,7 +229,17 @@ per cut. All current IDs and positions are in `frontier.resources`.
   than 6 tiles apart, dying, leaving, or an unanswered request (30 s) cancels.
 - **Chat filter.** Each `state.chat` row has `nearby`: said within 12 tiles
   (Chebyshev) of where you stand now. `state.notices` holds your last 10
-  personal notices (trade and invite results).
+  personal notices (trade and invite results, and walks that ended short).
+- **How a walk ended.** `state.player.lastWalk` is `{to, ended, at, tick, by?}`
+  for your last Bramblewild walk, or `null` until one ends in this session.
+  `ended` is `arrived`, `no_path` (the server found no path any more, e.g. a
+  node grew on the destination or you dropped a key, and stopped you at `at`)
+  or `cancelled` (another action cut it short; `by` names it: `harvest`,
+  `stop`, `attack`, `pickup`, `trade`, `reconnect`, ...). A new `move` replaces
+  a walk without cancelling it. `player.action: "idle"` alone never means you
+  arrived: compare `lastWalk.to`. The two short endings are also notices:
+  "Cannot reach x,z: no path; stopped at a,b" and "Walk to x,z cancelled by
+  <action>; stopped at a,b" (humans see the first as a toast).
 
 - **Training dummy.** `attack_dummy` walks you to the practice post at (28,28)
   (`state.dummies`) and keeps swinging with your punch or wielded weapon. No
@@ -682,6 +692,7 @@ is `{cap, used, left, resetsInSeconds, rule}`; check `left` before planting anot
 seed for goldberries. The count is a private per-character record published only
 to you (frontier_view kind `expeditionPaid`).
 
+API version **1.13.0** added `state.player.lastWalk` and the walk notices (kind 8).
 API version **1.12.0** added `state.adventure.paidToday` and the daily paid
 expedition cap. API version **1.11.0** (Lanternmaw) added the `lantern` action, `state.lantern`,
 `where: "lantern"` with `spring` and `swing` in `GET /danger`, dodging in the

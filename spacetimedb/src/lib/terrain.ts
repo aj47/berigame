@@ -16,7 +16,7 @@ export function reconcileTerrain(ctx: Ctx): void {
     if (row.region && row.region !== 'bramblewild') continue;
     if (isLandTile(row) && !scenery.has(tileKey(row))) continue;
     const p = { ...row, ...landing(row) };
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'terrain_repair');
     storePlayer(ctx, p);
   }
   for (const row of ctx.db.groundItem.iter()) {

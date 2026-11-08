@@ -31,7 +31,7 @@ export const attackDummy = spacetimedb.reducer(
       return;
     }
     const readyAt = p.nextSwingTick;
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'attack_dummy');
     if (chebyshev(p, dummy) > MELEE_RANGE) {
       const dest = interactionTile(ctx, p, dummy, blockedTiles(ctx), MELEE_RANGE);
       p.targetX = dest.x;

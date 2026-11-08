@@ -94,6 +94,8 @@ function harness() {
     sender: A, identity: A, timestamp: { microsSinceUnixEpoch: 100_000_000n },
     db: {
       ...adventureTables(),
+      // Personal notices (walk endings in every movement test); suites that read them install a fresh one.
+      socialEvent: testTable('id', true),
       spectator: { identity: { find: () => null } },
       accessPolicy: { id: { find: () => ({ id: 0, owner: A, gateway: B, requireAdmission: false }) } },
       playerGrant: { identity: { find: (id: typeof A) => grants.get(id.toHexString()) } },
@@ -2042,6 +2044,9 @@ describe('maximum health after a Bramblewild defeat', () => {
   });
 });
 
+import { parseWalkNotice } from '../walks';
+import { SocialNotice } from '../friends';
+
 describe('long walks on the Expanse (Sol, 2026-11-08)', () => {
   const notices = () => [...(h.ctx.db as any).socialEvent.iter()].map((n: any) => n.text as string);
   beforeEach(() => {
@@ -2066,7 +2071,38 @@ describe('long walks on the Expanse (Sol, 2026-11-08)', () => {
     h.trees.set(99_999, { id: 99_999, x: 172, z: 124, itemId: 'berry_blueberry', kind: 0, cooldownUntilTick: 0, harvester: undefined });
     run(1);
     expect(h.me()).toMatchObject({ ...stoppedAt, targetX: undefined });
-    // Today the target is cleared with no notice: /state reads "idle" exactly as on arrival.
-    expect(notices().some((t) => /can(no|')t reach|no path/i.test(t))).toBe(true);
+    // Not a silent clear (/state would read "idle" exactly as on arrival): humans see it too.
+    expect(notices()).toEqual([`Cannot reach 172,124: no path; stopped at ${stoppedAt.x},${stoppedAt.z}`]);
+    expect(parseWalkNotice(notices()[0], 0)).toMatchObject({ ended: 'no_path', to: { x: 172, z: 124 }, at: stoppedAt });
+  });
+
+  const asAgent = () => h.grants.set('a', { identity: A, issuer: B, agent: true, expiresAtMicros: 200_000_000n, combat: true, chat: true });
+  const walkNotices = () => [...(h.ctx.db as any).socialEvent.iter()].filter((n: any) => n.kind === SocialNotice.Walk).map((n: any) => n.text as string);
+
+  it('tells an agent it arrived, and when another action cut its walk short', () => {
+    asAgent();
+    Object.assign(h.me(), { x: 172, z: 120 });
+    move(h.ctx, { x: 172, z: 124 });
+    run(2);
+    expect(h.me()).toMatchObject({ x: 172, z: 124, targetX: undefined });
+    expect(walkNotices()).toEqual(['Arrived at 172,124']);
+    move(h.ctx, { x: 172, z: 110 });
+    run(1);
+    cancel(h.ctx);
+    expect(walkNotices()[1]).toBe(`Walk to 172,110 cancelled by stop; stopped at ${h.me().x},${h.me().z}`);
+    expect(parseWalkNotice(walkNotices()[1], 0)).toMatchObject({ ended: 'cancelled', by: 'stop', to: { x: 172, z: 110 } });
+  });
+
+  it('says nothing when a new move replaces the walk, and tells humans only about no path', () => {
+    asAgent();
+    move(h.ctx, { x: 172, z: 124 });
+    move(h.ctx, { x: 200, z: 70 });
+    expect(walkNotices()).toEqual([]);
+    h.grants.delete('a');
+    Object.assign(h.me(), { x: 172, z: 120 });
+    move(h.ctx, { x: 172, z: 124 });
+    run(2);
+    cancel(h.ctx);
+    expect(walkNotices()).toEqual([]);
   });
 });

@@ -105,7 +105,7 @@ export const pickupItem = spacetimedb.reducer(
     refuseOnSpireFloor(p, 'You cannot pick that up inside the Sunken Spire');
     const T = currentTick(ctx);
     touchInput(p, T);
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'pickup');
     if (chebyshev(p, item) <= MELEE_RANGE) {
       const taken = takeGroundItem(ctx, p.identity, item);
       // A stick ends first-spawn grace: 10 more ticks to wield it and step back.

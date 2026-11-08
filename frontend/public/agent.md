@@ -312,6 +312,11 @@ wait for arrival before talking. Every frontier action uses this JSON-string `co
    fences stand on that side of the tile; furniture faces that way. To turn a placed piece,
    send `move_building` with its id, its current x,z and the new `rotation`.
 
+`player.lastWalk` (since 1.12.0) says how your last Bramblewild walk ended: `{to, ended, at, tick, by?}` with
+`ended` `arrived`, `no_path` (stopped at `at`: the server found no path any more) or `cancelled` (`by` names the
+action that cut it short; a new `move` does not count). `player.action: "idle"` alone does not mean you arrived;
+compare `lastWalk.to`. `no_path` and `cancelled` also appear in `state.notices`.
+
 `player.tile` and `player.destination` always use local coordinates. Destination includes
 `{region,x,z}` so an approach across districts still names a usable location. `frontier walk`
 accepts `id: "bramblewild"` or `"settlement"` plus local x,z. `frontier.homeMap.meadowOffset`

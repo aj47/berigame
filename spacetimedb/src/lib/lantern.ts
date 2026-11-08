@@ -481,7 +481,7 @@ export function lanternStartRun(ctx: Ctx, T: number, run: LanternRunRow, members
     payers.push(p.identity);
     clearReady(ctx, p.identity);
     drawWeapon(ctx, T, run.id, p);
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'lantern');
     for (const trade of tradesOf(ctx, p.identity)) cancelTrade(ctx, trade, 'Trade cancelled: they went down into the Drowned Hollow');
     p.respawnTick = Math.min(p.respawnTick, Math.max(0, T - RESPAWN_GRACE_TICKS));
     const spawn = LANTERN_SPAWNS[m.slot] ?? LANTERN_SPAWNS[0];
