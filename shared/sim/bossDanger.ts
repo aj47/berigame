@@ -4,10 +4,12 @@
  * inspect_danger and the browser overlay share it.
  *
  * Pure: everything comes from the persistent rows (`spire_run`, `spire_fight`,
- * `spire_member`, `clatterhorn`) and the reader's own player. The Spire's
- * survival table is built once per pattern rotation (`spireSafetyCached`).
+ * `spire_member`, `clatterhorn`, `lantern_run`, `lantern_fight`,
+ * `lantern_member`) and the reader's own player. The Spire's survival table is
+ * built once per pattern rotation (`spireSafetyCached`), Lanternmaw's once per
+ * published den pattern or tide (`lanternSafetyCached`).
  */
-import { CLATTER_GLADE, CLATTER_STONES, SPIRE_FLOOR, inSpireFloor, spireStandable } from './bossZones';
+import { CLATTER_GLADE, CLATTER_STONES, LANTERN_FLOOR, SPIRE_FLOOR, inLanternFloor, inSealedFloor, inSpireFloor, lanternStandable, spireStandable } from './bossZones';
 import { BulletGrid, movesWithin, type BulletMove } from './bullets';
 import {
   CLATTER_REACH, ClatterState, clatterHitsMove, clatterSwarmFreeLines, clatterTelegraph,
@@ -15,6 +17,13 @@ import {
 } from './clatterhorn';
 import { GRID_SIZE } from './constants';
 import { LAND_MASK } from './grid';
+import {
+  LANTERN_BOSS_NAME, LANTERN_CELLS, LANTERN_CENTRE, LANTERN_CHOKE_TICKS, LANTERN_DEN_PATTERNS, LANTERN_DIVE_TICKS, LANTERN_EBB_TICKS, LANTERN_ENRAGE_TICKS,
+  LANTERN_IFRAME_TICKS, LANTERN_LEAD, LANTERN_MEALS, LANTERN_NONE, LANTERN_PATTERNS, LANTERN_RULES_VERSION, LANTERN_SPRINGS, LANTERN_STANDABLE,
+  LANTERN_STAGE_NAMES, LANTERN_SWING_TICKS, LANTERN_TIDE_TICKS, LanternStage, lanternBuildPattern, lanternCheb, lanternEnraged,
+  lanternHazardMask, lanternInCourt, lanternLocal, lanternMoves, lanternNearSpring, lanternPatternDuration, lanternSlot, lanternTile,
+  type LanternFightLike, type LanternSlotColumns,
+} from './lanternmaw';
 import {
   SPIRE_BOSS_NAME, SPIRE_BOX, SPIRE_ENRAGE_TICKS, SPIRE_IFRAME_TICKS, SPIRE_INTRO_TICKS, SPIRE_MAX_PARTY, SPIRE_MEALS,
   SPIRE_PATTERNS, SPIRE_PHASE_NAMES, SPIRE_STAR_PERIOD, SpireMemberState, SpireStage, inSpireCourt, spireEnraged,
@@ -51,7 +60,23 @@ export interface DangerInput {
   spire?: { run: SpireRunLike; fight: SpireFightLike; members: readonly DangerMemberInput[]; mySlot: number; safety: SpireSafety | null } | null;
   /** The Clatterhorn row (null outside Bramblewild). */
   clatter?: ClatterRowLike | null;
+  /** Your Lanternmaw run (any stage) while you have a lantern_member row and its fight row; null otherwise. */
+  lantern?: { run: LanternRunLike; fight: LanternFightRowLike; members: readonly DangerMemberInput[]; mySlot: number } | null;
+  /** LANTERN_RULES_VERSION of the reader's bundle (default: this module's). */
+  lanternRulesVersion?: number;
 }
+
+/** A `lantern_run` row (SpireStage / SpireOutcome codes; every lobby is public). */
+export interface LanternRunLike {
+  id: bigint; stage: number; outcome: number; rules: number; partySize: number;
+  createdTick: number; startTick: number; endTick: number; phase: number; clearTicks: number;
+}
+/** A `lantern_member` row (SpireMemberState codes) without its identity. */
+export interface LanternMemberLike {
+  runId: bigint; slot: number; state: number; joinedTick: number; awaySinceTick: number; awayCount: number; meals: number;
+}
+/** A `lantern_fight` row without its run id: the shared fight fields plus the per-slot columns. */
+export type LanternFightRowLike = LanternFightLike & LanternSlotColumns;
 
 export type DangerXZ = [number, number];
 
@@ -90,7 +115,7 @@ export interface DangerFeed {
   rulesVersion: number;
   /** Your run's rules differ from this reader's bundle: map, moves and path are omitted. */
   rulesMismatch: boolean;
-  where: 'spire' | 'clatterhorn' | null;
+  where: 'spire' | 'clatterhorn' | 'lantern' | null;
   you: { x: number; z: number; hp: number; maxHp: number; state: string | null; immuneTicks: number; eatReadyInTicks: number; mealsLeft: number | null };
   grid?: { x0: number; z0: number; w: number; h: number };
   /** h strings of w chars: '.' safe at +1..+3, '1'..'7' bitmask of unsafe ticks, '#' not standable, '*' a live star on a safe tile. */
@@ -102,9 +127,19 @@ export interface DangerFeed {
   knownUntilTick: number | null;
   stars?: { x: number; z: number; ticksLeft: number }[];
   nextStars?: { inTicks: number };
-  boss?: { name: string; hp: number; maxHp: number; phase: number; phaseName: string; pattern: string | null; enraged: boolean; enrageInTicks: number; timeoutInTicks: number };
-  party?: { id: string; name: string; x: number | null; z: number | null; hp: number | null; state: string; stars: number; away: boolean }[];
+  /** Lanternmaw adds `stage` (den, dive, tide or ebb); its phases have no names (phaseName ''). */
+  boss?: { name: string; hp: number; maxHp: number; phase: number; phaseName: string; pattern: string | null; enraged: boolean; enrageInTicks: number; timeoutInTicks: number; stage?: string };
+  /** Spire members carry `stars`, Lanternmaw members `dealt` (damage this run). */
+  party?: { id: string; name: string; x: number | null; z: number | null; hp: number | null; state: string; stars?: number; dealt?: number; away: boolean }[];
   telegraph: DangerTelegraph | null;
+  /**
+   * Lanternmaw, from the dive on: the glow spring it surfaces at on `surfaceTick` (S). Standing on it at the end of
+   * tick S caps it (a 6 HP bite; double damage, no heal and no pulses until `chokedUntilTick`). `capper`: you are the
+   * party's lowest present slot, the one `path` walks onto the spring for S.
+   */
+  spring?: { x: number; z: number; surfaceTick: number; surfacesInTicks: number; capped: boolean; chokedUntilTick: number | null; capper: boolean } | null;
+  /** Lanternmaw: your automatic swing (every 4th tick by slot) and where it reaches (null in the dive and the ebb). */
+  swing?: { nextTick: number | null; nextInTicks: number | null; inReach: boolean; reach: { x: number; z: number; range: number } | null };
 }
 
 /** `moves` is truncated first, then `path`. */
@@ -197,11 +232,20 @@ function spireMoves(blocked: Set<number>): MoveTable {
   return m;
 }
 
+const lanternTables = new WeakMap<Set<number>, MoveTable>();
+
+/** The Drowned Hollow's floor minus the maw (and anything in `blocked`): the end tiles of `lanternMoves`. */
+function lanternMoveTable(blocked: Set<number>): MoveTable {
+  let m = lanternTables.get(blocked);
+  if (!m) { m = moveTable((t) => lanternStandable(t) && !blocked.has(key(t.x, t.z))); lanternTables.set(blocked, m); }
+  return m;
+}
+
 const G = CLATTER_GLADE;
 const STONE_KEYS: ReadonlySet<number> = new Set(CLATTER_STONES.map((t) => key(t.x, t.z)));
 const inGladeXZ = (x: number, z: number) => x >= G.x0 && x <= G.x1 && z >= G.z0 && z <= G.z1;
 
-/** Glade tiles minus the stones; outside it plain land (never the Spire floor). Moves of at most `maxSteps`. */
+/** Glade tiles minus the stones; outside it plain land (never a sealed floor). Moves of at most `maxSteps`. */
 function gladeMoves(blocked: Set<number>, maxSteps: 1 | 2 = 2): MoveTable {
   const tables = maxSteps === 1 ? gladeTables1 : gladeTables;
   let m = tables.get(blocked);
@@ -210,7 +254,7 @@ function gladeMoves(blocked: Set<number>, maxSteps: 1 | 2 = 2): MoveTable {
       if (!Number.isInteger(t.x) || !Number.isInteger(t.z) || t.x < 0 || t.z < 0 || t.x >= GRID_SIZE || t.z >= GRID_SIZE) return false;
       const k = key(t.x, t.z);
       if (blocked.has(k) || STONE_KEYS.has(k)) return false;
-      return inGladeXZ(t.x, t.z) || (LAND_MASK[k] === 1 && !inSpireFloor(t));
+      return inGladeXZ(t.x, t.z) || (LAND_MASK[k] === 1 && !inSealedFloor(t));
     }, maxSteps);
     tables.set(blocked, m);
   }
@@ -221,8 +265,8 @@ function gladeMoves(blocked: Set<number>, maxSteps: 1 | 2 = 2): MoveTable {
  * The move from `from` that ends on `to` (BFS order, so its `mid` is the canonical middle), using the same
  * standable rule and step cap as the /danger move tables; null when `to` cannot be reached within one tick.
  */
-export function dangerMoveTo(where: 'spire' | 'clatterhorn', from: Tile, to: Tile, blocked: Set<number>, maxSteps: 1 | 2 = 2): BulletMove | null {
-  const table = where === 'spire' ? spireMoves(blocked) : gladeMoves(blocked, maxSteps);
+export function dangerMoveTo(where: 'spire' | 'clatterhorn' | 'lantern', from: Tile, to: Tile, blocked: Set<number>, maxSteps: 1 | 2 = 2): BulletMove | null {
+  const table = where === 'spire' ? spireMoves(blocked) : where === 'lantern' ? lanternMoveTable(blocked) : gladeMoves(blocked, maxSteps);
   const ms = table.standable(from) ? table.at(from) : movesWithin(from, table.standable).filter((m) => m.steps <= maxSteps);
   return ms.find((m) => m.end.x === to.x && m.end.z === to.z && m.steps <= maxSteps) ?? null;
 }
@@ -382,7 +426,8 @@ function fit(feed: DangerFeed): DangerFeed {
 }
 
 /** The feed of GET /api/agent/v1/danger (section 8.3). Pure; `where` is chosen in this order: on the Spire floor,
- * at Clatterhorn (in or within 2 of the glade, beetle not Closed), in a started Spire run, else null. */
+ * on Lanternmaw's floor, at Clatterhorn (in or within 2 of the glade, beetle not Closed), in a started Spire run,
+ * in a started Lanternmaw run, else null. */
 export function buildDangerFeed(input: DangerInput): DangerFeed {
   const { tick, me } = input;
   const feed: DangerFeed = {
@@ -396,10 +441,12 @@ export function buildDangerFeed(input: DangerInput): DangerFeed {
     moves: [], best: null, path: [], knownUntilTick: null, telegraph: null,
   };
   const meTile = { x: me.x, z: me.z };
-  const sp = input.spire ?? null, row = input.clatter ?? null;
+  const sp = input.spire ?? null, row = input.clatter ?? null, ln = input.lantern ?? null;
   if (sp && inSpireFloor(meTile)) spireFeed(feed, input, sp);
+  else if (ln && inLanternFloor(meTile)) lanternFeed(feed, input, ln);
   else if (row && row.state !== ClatterState.Closed && atClatterhorn(meTile)) clatterFeed(feed, input, row);
   else if (sp && sp.run.stage >= SpireStage.Active) spireFeed(feed, input, sp);
+  else if (ln && ln.run.stage >= SpireStage.Active) lanternFeed(feed, input, ln);
   return fit(feed);
 }
 
@@ -536,4 +583,241 @@ function clatterFeed(feed: DangerFeed, input: DangerInput, row: ClatterRowLike):
   moves.sort(byPreference);
   feed.moves = moves.slice(0, DANGER_MAX_MOVES);
   feed.best = feed.moves.length ? { to: feed.moves[0].to, via: feed.moves[0].via } : null;
+}
+
+// ---- Lanternmaw ----------------------------------------------------------------------------------------------------
+// Every hazard is a published set of end tiles (lanternHazardMask): no bullets, no swept test. What the fight row
+// shows is complete for at least LANTERN_LEAD ticks (a new den pattern lands no sooner; the tide is published with
+// the dive, 8 ticks ahead), so the 3-tick map is always exact.
+
+/** Tick of the current den pattern's last blow (its publication tick without a pattern). */
+function lanternDenEnd(f: LanternFightLike): number {
+  return f.curKind === LANTERN_NONE ? f.curStart : f.curStart + lanternPatternDuration(f.curKind, f.curSeed);
+}
+
+/** The ebb's last tick: the next den pattern is published at its end. */
+const lanternEbbEnd = (f: LanternFightLike) => f.surfaceTick + LANTERN_TIDE_TICKS + LANTERN_EBB_TICKS - 1;
+
+/**
+ * The last tick whose hazards the row already decides: a den pattern's end plus the 2 quiet ticks before any next
+ * pattern can land (the dive's 7 before S after the third), or the ebb's end plus 2. Capped at the run's end.
+ */
+export function lanternKnownUntil(f: LanternFightLike, endTick: number): number {
+  let until: number;
+  if (f.stage === LanternStage.Den) until = lanternDenEnd(f) + (f.denCount >= LANTERN_DEN_PATTERNS ? LANTERN_DIVE_TICKS : LANTERN_LEAD) - 1;
+  else until = lanternEbbEnd(f) + LANTERN_LEAD - 1;
+  return Math.min(until, endTick);
+}
+
+/** The spring is published (the dive or the tide); null in the den and the ebb. */
+export function lanternSpringShown(f: LanternFightLike): boolean {
+  return f.stage === LanternStage.Dive || f.stage === LanternStage.Tide;
+}
+
+/**
+ * Whether a member ending tick T on local tile `i` swings at the boss (ring 2 of the maw in the den, within 2 of
+ * the spring at high tide), projecting the row's own stage changes forward (the server's row is a tick ahead).
+ */
+export function lanternReachAt(f: LanternFightLike, T: number, i: number): boolean {
+  if (i < 0) return false;
+  if (f.stage === LanternStage.Den) return (T <= lanternDenEnd(f) || f.denCount < LANTERN_DEN_PATTERNS) && lanternInCourt(i);
+  if (T > lanternEbbEnd(f)) return lanternInCourt(i);
+  if (f.stage === LanternStage.Ebb) return false;
+  return T >= f.surfaceTick && T < f.surfaceTick + LANTERN_TIDE_TICKS && lanternNearSpring(i, f.spring);
+}
+
+/** The centre and range of swing reach at T (null while nothing can be hit: the dive and the ebb). */
+export function lanternReachCentre(f: LanternFightLike, T: number): { local: number; range: number } | null {
+  const court = { local: LANTERN_CENTRE, range: 2 };
+  if (f.stage === LanternStage.Den) return T <= lanternDenEnd(f) || f.denCount < LANTERN_DEN_PATTERNS ? court : null;
+  if (T > lanternEbbEnd(f)) return court;
+  if (f.stage === LanternStage.Ebb) return null;
+  return T >= f.surfaceTick && T < f.surfaceTick + LANTERN_TIDE_TICKS ? { local: LANTERN_SPRINGS[f.spring & 3], range: 2 } : null;
+}
+
+/** Slot `slot`'s first swing tick at or after `from`: (T - startTick) mod 4 == slot. */
+export function lanternNextSwingTick(startTick: number, from: number, slot: number): number {
+  const T0 = Math.max(from, startTick);
+  const r = (((T0 - startTick) % LANTERN_SWING_TICKS) + LANTERN_SWING_TICKS) % LANTERN_SWING_TICKS;
+  return T0 + ((slot - r + LANTERN_SWING_TICKS) % LANTERN_SWING_TICKS);
+}
+
+/** The den pattern's distinct blow ticks (absolute), or [] outside the den. */
+export function lanternBlowTicks(f: LanternFightLike): number[] {
+  if (f.stage !== LanternStage.Den || f.curKind === LANTERN_NONE) return [];
+  return [...new Set(lanternBuildPattern(f.curKind, f.curSeed, f.curAim).map((b) => f.curStart + b.at))].sort((a, b) => a - b);
+}
+
+/** Backward induction over what the row publishes: win(T, i) = ending T on i is unhurt and some move survives to `until`. */
+export interface LanternSafety {
+  from: number;
+  until: number;
+  winning(T: number, i: number): boolean;
+  hazard(T: number): Uint8Array;
+}
+
+const LANTERN_EMPTY = new Uint8Array(LANTERN_CELLS);
+const lanternStandableLocal = (i: number) => i >= 0 && i < LANTERN_CELLS && LANTERN_STANDABLE[i] === 1;
+
+export function lanternSafety(f: LanternFightLike, startTick: number, from: number, until: number): LanternSafety {
+  const n = Math.max(0, until - from + 1);
+  const masks: Uint8Array[] = [];
+  for (let k = 0; k < n; k++) masks.push(lanternHazardMask(f, from + k, startTick));
+  const win: Uint8Array[] = new Array(n);
+  for (let k = n - 1; k >= 0; k--) {
+    const w = new Uint8Array(LANTERN_CELLS), hz = masks[k], next = k + 1 < n ? win[k + 1] : null;
+    for (let i = 0; i < LANTERN_CELLS; i++) {
+      if (hz[i] || !lanternStandableLocal(i)) continue;
+      if (!next) { w[i] = 1; continue; }
+      for (const j of lanternMoves(i)) if (next[j]) { w[i] = 1; break; }
+    }
+    win[k] = w;
+  }
+  return {
+    from, until,
+    winning: (T, i) => (T > until ? i >= 0 && lanternStandableLocal(i) : T < from ? true : win[T - from][i] === 1),
+    hazard: (T) => (T >= from && T <= until ? masks[T - from] : T > until ? lanternHazardMask(f, T, startTick) : LANTERN_EMPTY),
+  };
+}
+
+const LANTERN_SAFETY_CAP = 64;
+const lanternMemo = new Map<string, LanternSafety>();
+
+/**
+ * Module-level memo (at most 64 entries), one build per published den pattern or tide per process, shared by every
+ * gateway session and WebMCP. A cached table is reused while it starts at or before `from`.
+ */
+export function lanternSafetyCached(runId: string, f: LanternFightLike, startTick: number, endTick: number, from: number): LanternSafety {
+  const k = `${runId}:${f.stage}:${f.cycle}:${f.denCount}:${f.curStart}:${f.curKind}:${f.curSeed}:${f.curAim}:${f.surfaceTick}:${f.spring}:${f.pulseSeed}:${f.capped}:${f.phase}:${startTick}:${endTick}`;
+  const until = lanternKnownUntil(f, endTick);
+  const hit = lanternMemo.get(k);
+  if (hit && hit.from <= from && hit.until === until) return hit;
+  if (lanternMemo.size >= LANTERN_SAFETY_CAP) lanternMemo.delete(lanternMemo.keys().next().value as string);
+  const s = lanternSafety(f, startTick, from, until);
+  lanternMemo.set(k, s);
+  return s;
+}
+
+/** The party's capper for this tide: the lowest slot of a present In member. */
+function lanternCapperSlot(members: readonly DangerMemberInput[]): number {
+  let best = -1;
+  for (const m of members) {
+    if (m.state !== SpireMemberState.In || m.awaySinceTick > 0 || !m.player || m.player.hp <= 0) continue;
+    if (best < 0 || m.slot < best) best = m.slot;
+  }
+  return best;
+}
+
+function lanternFeed(feed: DangerFeed, input: DangerInput, ln: NonNullable<DangerInput['lantern']>): void {
+  const { tick, me, blocked } = input;
+  const { run, fight: f, members, mySlot } = ln;
+  const mine = members.find((m) => m.slot === mySlot) ?? null;
+  const active = run.stage === SpireStage.Active;
+  const T1 = tick + 1;
+  const rules = input.lanternRulesVersion ?? LANTERN_RULES_VERSION;
+  feed.where = 'lantern';
+  feed.rulesVersion = rules;
+  feed.rulesMismatch = run.rules !== rules;
+  feed.you.state = mine ? SPIRE_MEMBER_STATE_NAMES[mine.state] ?? null : null;
+  const hitTick = lanternSlot(f, 'hitTick', mySlot);
+  feed.you.immuneTicks = hitTick > 0 ? Math.max(0, hitTick + LANTERN_IFRAME_TICKS - tick) : 0;
+  feed.you.mealsLeft = mine ? Math.max(0, LANTERN_MEALS - mine.meals) : null;
+  feed.boss = {
+    name: LANTERN_BOSS_NAME, hp: f.hp, maxHp: f.maxHp, phase: f.phase, phaseName: '',
+    pattern: f.stage === LanternStage.Den ? LANTERN_PATTERNS[f.curKind]?.key ?? null : null,
+    enraged: active && lanternEnraged(run.startTick, tick),
+    enrageInTicks: active ? Math.max(0, run.startTick + LANTERN_ENRAGE_TICKS - tick) : 0,
+    timeoutInTicks: active ? Math.max(0, run.endTick - tick) : 0,
+    stage: LANTERN_STAGE_NAMES[f.stage] ?? 'den',
+  };
+  feed.party = members.filter((m) => m.slot !== mySlot).sort((a, b) => a.slot - b.slot).map((m) => ({
+    id: m.player?.identity ?? '', name: m.name,
+    x: m.player ? m.player.x : null, z: m.player ? m.player.z : null, hp: m.player ? m.player.hp : null,
+    state: SPIRE_MEMBER_STATE_NAMES[m.state] ?? 'unknown', dealt: lanternSlot(f, 'dmg', m.slot), away: m.awaySinceTick > 0,
+  }));
+  const capper = lanternCapperSlot(members) === mySlot;
+  if (lanternSpringShown(f) && f.surfaceTick + LANTERN_TIDE_TICKS > T1) {
+    const t = lanternTile(LANTERN_SPRINGS[f.spring & 3]);
+    feed.spring = {
+      x: t.x, z: t.z, surfaceTick: f.surfaceTick, surfacesInTicks: Math.max(0, f.surfaceTick - tick), capped: f.capped,
+      chokedUntilTick: f.capped ? f.surfaceTick + LANTERN_CHOKE_TICKS - 1 : null, capper,
+    };
+  } else feed.spring = null;
+  const here = { x: me.x, z: me.z };
+  const local = lanternLocal(here);
+  const reach = lanternReachCentre(f, T1);
+  const next = active && T1 <= run.endTick ? lanternNextSwingTick(run.startTick, T1, mySlot) : null;
+  const nextOk = next !== null && next <= run.endTick ? next : null;
+  feed.swing = {
+    nextTick: nextOk, nextInTicks: nextOk === null ? null : nextOk - tick,
+    inReach: active && lanternReachAt(f, T1, local),
+    reach: reach ? { ...lanternTile(reach.local), range: reach.range } : null,
+  };
+  const until = active ? lanternKnownUntil(f, run.endTick) : tick + DANGER_HORIZON;
+  feed.knownUntilTick = until;
+  if (feed.rulesMismatch) return;
+
+  const table = lanternMoveTable(blocked);
+  const safety = lanternSafetyCached(String(run.id), f, run.startTick, run.endTick, T1);
+  const hz = (T: number) => (active && T >= run.startTick && T <= run.endTick ? safety.hazard(T) : LANTERN_EMPTY);
+  const grid = { x0: LANTERN_FLOOR.x0, z0: LANTERN_FLOOR.z0, w: LANTERN_FLOOR.x1 - LANTERN_FLOOR.x0 + 1, h: LANTERN_FLOOR.z1 - LANTERN_FLOOR.z0 + 1 };
+  feed.grid = grid;
+  feed.map = [];
+  const masks = [hz(tick + 1), hz(tick + 2), hz(tick + 3)];
+  for (let z = LANTERN_FLOOR.z0; z <= LANTERN_FLOOR.z1; z++) {
+    let line = '';
+    for (let x = LANTERN_FLOOR.x0; x <= LANTERN_FLOOR.x1; x++) {
+      if (!table.standable({ x, z })) { line += '#'; continue; }
+      const i = lanternLocal({ x, z });
+      const bits = (masks[0][i] ? 1 : 0) | (masks[1][i] ? 2 : 0) | (masks[2][i] ? 4 : 0);
+      line += bits ? String(bits) : '.';
+    }
+    feed.map.push(line);
+  }
+
+  const canMove = active && mine !== null && mine.state === SpireMemberState.In && mine.awaySinceTick === 0 && me.hp > 0
+    && T1 <= run.endTick && table.standable(here);
+  if (!canMove) return;
+  const hit: HitFn = (k, _p0, _p1, p2) => (k <= DANGER_HORIZON ? masks[k - 1] : hz(tick + k))[lanternLocal(p2)] ? 1 : 0;
+  const scored = horizonMoves(here, table, hit);
+  const moves = scored.map(({ m, horizon }): DangerMove => ({
+    to: xz(m.end), via: xz(m.mid), steps: m.steps, horizon,
+    winning: safety.winning(T1, lanternLocal(m.end)), star: false,
+    court: lanternReachAt(f, T1, lanternLocal(m.end)),
+  }));
+  moves.sort(byPreference);
+  feed.moves = moves.slice(0, DANGER_MAX_MOVES);
+  feed.best = feed.moves.length ? { to: feed.moves[0].to, via: feed.moves[0].via } : null;
+  feed.path = lanternPlan(local, tick, Math.min(DANGER_MAX_PATH, Math.max(0, until - tick)), safety, f, capper);
+}
+
+/**
+ * The survival plan from local tile `start` at the end of `tick`: one end tile per tick, keeping to winning moves
+ * (else unhurt ones, else anything), preferring swing reach, then nearness to the maw or the spring. Only the
+ * capper ends tick S on the spring; everyone else keeps off it then. Ties keep BFS order (stay first).
+ */
+function lanternPlan(start: number, tick: number, len: number, safety: LanternSafety, f: LanternFightLike, capper: boolean): DangerXZ[] {
+  const out: DangerXZ[] = [];
+  const spring = lanternSpringShown(f) ? LANTERN_SPRINGS[f.spring & 3] : -1;
+  let at = start;
+  for (let k = 1; k <= len; k++) {
+    const T = tick + k;
+    const ms = lanternMoves(at);
+    if (!ms.length) break;
+    const hz = safety.hazard(T);
+    const winning = ms.filter((j) => safety.winning(T, j));
+    const unhurt = ms.filter((j) => !hz[j]);
+    const pool = winning.length ? winning : unhurt.length ? unhurt : ms;
+    const centre = lanternReachCentre(f, T)?.local ?? (spring >= 0 && T < f.surfaceTick ? spring : LANTERN_CENTRE);
+    let best = pool[0], bestScore = Infinity;
+    for (const j of pool) {
+      let score = (lanternReachAt(f, T, j) ? 0 : 1000) + lanternCheb(j, centre);
+      if (j === spring && T === f.surfaceTick) score = capper ? -1 : score + 500;
+      if (score < bestScore) { bestScore = score; best = j; }
+    }
+    at = best;
+    const t = lanternTile(at);
+    out.push([t.x, t.z]);
+  }
+  return out;
 }

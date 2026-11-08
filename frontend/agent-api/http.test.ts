@@ -153,7 +153,7 @@ test('wield and unwield reach the game with the documented quick-slot range', as
     assert.equal((await f.request('/actions/unwield', token, {}, { 'Idempotency-Key': randomUUID() })).status, 200);
     assert.deepEqual(f.calls, ['wield', 'unwield']);
     const spec = await (await f.request('/openapi.json')).json() as any;
-    assert.equal(spec.info.version, '1.10.0');
+    assert.equal(spec.info.version, '1.11.0');
     assert.equal(spec.paths['/actions/stance'], undefined);
     assert.deepEqual(spec.paths['/actions/wield'].post.requestBody.content['application/json'].schema.properties.slot, { type: 'integer', minimum: 0, maximum: 2 });
   } finally { await f.close(); }
@@ -327,6 +327,9 @@ test('boss actions validate their documented fields before reaching the game', a
       ['spire', { op: 'join', runId: '18446744073709551616' }, 400], ['spire', { op: 'leave', playerId: '0'.repeat(64) }, 400],
       ['dodge', { x: 1 }, 400], ['dodge', { x: GRID_SIZE, z: 1 }, 400], ['dodge', { x: 1.5, z: 1 }, 400], ['dodge', { x: 1, z: 1, y: 0 }, 400],
       ['attack_clatterhorn', { id: 1 }, 400],
+      ['lantern', {}, 400], ['lantern', { op: 'cap' }, 400], ['lantern', { op: 'open', runId: '4' }, 400], ['lantern', { op: 'start', runId: '4' }, 400],
+      ['lantern', { op: 'leave', runId: '4' }, 400], ['lantern', { op: 'join', runId: '-1' }, 400], ['lantern', { op: 'join', runId: 7 }, 400],
+      ['lantern', { op: 'open', clientRules: 2 }, 400], ['lantern', { op: 'join', runId: '18446744073709551616' }, 400],
     ];
     for (const [name, body, status] of cases) {
       f.advance(1100);
@@ -338,35 +341,45 @@ test('boss actions validate their documented fields before reaching the game', a
     assert.equal((await big.json() as any).error.code, 'invalid_id');
     assert.deepEqual(f.calls, []);
     const ok: [string, object][] = [['spire', { op: 'open' }], ['spire', { op: 'join' }], ['spire', { op: 'join', runId: '41' }], ['spire', { op: 'start' }],
-      ['spire', { op: 'leave' }], ['dodge', { x: 76, z: 60 }], ['attack_clatterhorn', {}]];
+      ['spire', { op: 'leave' }], ['dodge', { x: 76, z: 60 }], ['attack_clatterhorn', {}],
+      ['lantern', { op: 'open' }], ['lantern', { op: 'join' }], ['lantern', { op: 'join', runId: '52' }], ['lantern', { op: 'start' }], ['lantern', { op: 'leave' }]];
     for (const [name, body] of ok) {
       f.advance(1100);
       assert.equal((await f.request(`/actions/${name}`, token, body, { 'Idempotency-Key': randomUUID() })).status, 200, name);
     }
-    assert.deepEqual(f.calls, ['spire', 'spire', 'spire', 'spire', 'spire', 'dodge', 'attack_clatterhorn']);
+    assert.deepEqual(f.calls, ['spire', 'spire', 'spire', 'spire', 'spire', 'dodge', 'attack_clatterhorn', 'lantern', 'lantern', 'lantern', 'lantern', 'lantern']);
     assert.deepEqual(f.inputs[2], { op: 'join', runId: '41' });
+    assert.deepEqual(f.inputs[9], { op: 'join', runId: '52' });
   } finally { await f.close(); }
 });
 
-test('OpenAPI 1.10.0 documents /danger and the boss actions without a capability', async () => {
+test('OpenAPI 1.11.0 documents /danger and the boss actions without a capability', async () => {
   const f = await fixture();
   try {
     const spec = await (await f.request('/openapi.json')).json() as any;
-    assert.equal(spec.info.version, '1.10.0');
+    assert.equal(spec.info.version, '1.11.0');
     assert.equal(spec.paths['/danger'].get.operationId, 'inspect_danger');
     assert.equal(spec.paths['/danger/next/{afterTick}'], undefined);
-    for (const name of ['attack_clatterhorn', 'spire', 'dodge']) {
+    for (const name of ['attack_clatterhorn', 'spire', 'lantern', 'dodge']) {
       assert.equal(spec.paths[`/actions/${name}`].post.operationId, name);
       assert.equal(spec.paths[`/actions/${name}`].post['x-required-capability'], undefined);
     }
     const spire = spec.paths['/actions/spire'].post.requestBody.content['application/json'].schema;
     assert.deepEqual(spire.properties.op.enum, ['open', 'join', 'start', 'leave']);
     assert.deepEqual(Object.keys(spire.properties).sort(), ['op', 'runId']);
+    const lantern = spec.paths['/actions/lantern'].post;
+    assert.deepEqual(lantern.requestBody.content['application/json'].schema.properties.op.enum, ['open', 'join', 'start', 'leave']);
+    assert.deepEqual(Object.keys(lantern.requestBody.content['application/json'].schema.properties).sort(), ['op', 'runId']);
+    assert.deepEqual(lantern.requestBody.content['application/json'].schema.required, ['op']);
+    assert.match(lantern.summary, /Fen Gate \(47,152\)/);
+    assert.match(lantern.summary, /1 gleamshell \+ 1 obsidian \+ 2 driftwood, Crafting 1\) and 5 coins/);
+    assert.match(lantern.summary, /lantern_weapon, lantern_bait, lantern_fee/);
+    assert.match(spec.paths['/danger'].get.summary, /Drowned Hollow/);
     assert.deepEqual(spec.paths['/actions/dodge'].post.requestBody.content['application/json'].schema.required, ['x', 'z']);
   } finally { await f.close(); }
 });
 
-test('OpenAPI 1.10.0 documents deliver_commission and the tiered node kinds', async () => {
+test('OpenAPI 1.11.0 documents deliver_commission and the tiered node kinds', async () => {
   const f = await fixture();
   try {
     const spec = await (await f.request('/openapi.json')).json() as any;

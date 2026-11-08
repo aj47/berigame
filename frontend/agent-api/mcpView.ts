@@ -50,6 +50,12 @@ export function summarizeState(state: State): StateSummary {
     ...(giant.asleep ? { nextWakeInSeconds: giant.nextWakeInSeconds } : {}), ...(giant.telegraph ? { telegraph: giant.telegraph } : {}) };
   if (state.clatterhorn) bosses.clatterhorn = pick(state.clatterhorn, ['state', 'health', 'maxHealth', 'telegraph', 'contribution', 'open']);
   if (state.spire && (state.spire.run || state.spire.member)) bosses.spire = pick(state.spire, ['run', 'member', 'stars', 'stage']);
+  // Lanternmaw: your lobby or run, and at the Fen Gate whether you can enter and how many lobbies wait.
+  const lantern = state.lantern;
+  if (lantern && (lantern.you || lantern.run || lantern.atGate)) bosses.lantern = {
+    ...pick(lantern, ['open', 'you', 'run']),
+    ...(lantern.atGate ? { atGate: true, entry: pick(lantern.entry ?? {}, ['ready', 'problem']), lobbies: Array.isArray(lantern.lobbies) ? lantern.lobbies.length : 0 } : {}),
+  };
   const skills: Record<string, number> = {};
   for (const s of Array.isArray(state.skills) ? state.skills : []) if (s?.id) skills[s.id] = s.level;
   return {

@@ -231,3 +231,176 @@ describe('describeSpire', () => {
     expect(bytes(d)).toBeLessThanOrEqual(4096);
   });
 });
+
+// ---- Lanternmaw --------------------------------------------------------------------------------------------------
+
+import { LANTERN_CONFIG_DEFAULTS } from '../bossConfig';
+import { LANTERN_LOBBY_LIST_MAX, describeLantern } from '../bossPresentation';
+import type { LanternFightRowLike, LanternMemberLike, LanternRunLike } from '../bossDanger';
+import {
+  LANTERN_RULES_VERSION, LANTERN_SPAWNS, LANTERN_SPRINGS, LANTERN_STAGE_NAMES, LanternStage, lanternAdvance, lanternBuildPattern,
+  lanternEmptySlots, lanternFreshFight, lanternTile,
+} from '../lanternmaw';
+import { emptySlots } from '../inventory';
+
+describe('describeLantern', () => {
+  const L = 8000;
+  const lcfg = { ...LANTERN_CONFIG_DEFAULTS, lanternOpen: true };
+  type LMember = LanternMemberLike & { identity: string };
+  const lrun = (id: bigint, over: Partial<LanternRunLike> & { leader?: unknown } = {}): LanternRunLike => ({
+    id, stage: SpireStage.Lobby, outcome: 0, rules: LANTERN_RULES_VERSION, partySize: 1,
+    createdTick: L - 10, startTick: 0, endTick: L + 140, phase: 1, clearTicks: 0, ...over,
+  } as LanternRunLike);
+  const lmember = (identity: string, runId: bigint, slot: number, over: Partial<LMember> = {}): LMember => ({
+    identity, runId, slot, state: SpireMemberState.Lobby, joinedTick: L - 10, awaySinceTick: 0, awayCount: 0, meals: 0, ...over,
+  });
+  /** The fight row after tick t of a run that started at L. */
+  function rowAfter(t: number, party = 1, seed = 31337): LanternFightRowLike {
+    const targets = LANTERN_SPAWNS.slice(0, party);
+    let f = lanternFreshFight(seed, party, L, targets);
+    for (let T = L; T <= t; T++) f = lanternAdvance(f, T, L, targets);
+    return { ...f, ...lanternEmptySlots() };
+  }
+  const bag = (...items: [string, number][]) => {
+    const slots = emptySlots();
+    items.forEach(([itemId, quantity], i) => { slots[i] = { itemId, quantity }; });
+    return slots;
+  };
+  const base = { cfg: lcfg, fight: null, tick: L, entry: null, name: names, player: (_: string) => null as { x: number; z: number; hp: number } | null };
+  const gate = { identity: ME, x: 47, z: 150 };
+
+  it('outside a run: gate, entry needs, capacity, lobbies newest first, reward and the daily cap', () => {
+    const runs = [
+      lrun(1n, { createdTick: L - 30, leader: hex(1) }),
+      lrun(2n, { createdTick: L - 5, partySize: 2, leader: { toHexString: () => hex(2) } }),
+      lrun(3n, { stage: SpireStage.Active, startTick: L - 50, endTick: L + 550, partySize: 2 }),
+      lrun(4n, { createdTick: L - 1, rules: LANTERN_RULES_VERSION - 1, leader: hex(8) }),
+    ];
+    const members = [lmember(hex(1), 1n, 0), lmember(hex(2), 2n, 0), lmember(hex(3), 2n, 1),
+      lmember(hex(4), 3n, 0, { state: SpireMemberState.In }), lmember(hex(5), 3n, 1, { state: SpireMemberState.Out }), lmember(hex(8), 4n, 0)];
+    const at: Record<string, { x: number; z: number; hp: number }> = { [hex(4)]: { x: 60, z: 140, hp: 20 }, [hex(5)]: { x: 47, z: 153, hp: 10 } };
+    const d = describeLantern({ ...base, runs, members, me: gate, player: (h) => at[h] ?? null,
+      entry: { slots: bag(['stone_club', 1], ['fen_bait', 2]), coins: 12, wielded: '' } });
+    expect(d).toMatchObject({
+      open: true, rulesVersion: LANTERN_RULES_VERSION, gate: { x: 47, z: 152 }, exit: { x: 47, z: 153 }, joinRange: 3, atGate: true,
+      floor: { x0: 56, z0: 129, x1: 70, z1: 143 },
+      entry: {
+        weapon: { minDamage: 8, best: 8, ok: true },
+        bait: { itemId: 'fen_bait', held: 2, recipe: 'fen_bait', craftingLevel: 1,
+          inputs: [{ itemId: 'gleamshell', quantity: 1 }, { itemId: 'obsidian', quantity: 1 }, { itemId: 'driftwood', quantity: 2 }] },
+        fee: { coins: 5, held: 12 }, ready: true, problem: null,
+      },
+      capacity: { active: 1, max: 12, lobbies: 3, inside: 1 },
+      you: null, run: null,
+      reward: { items: [{ itemId: 'fenlight', quantity: 2, name: 'Fenlight' }], fightingXp: 120, minDamage: 40, keepsake: 'lanternmaw_lure', dailyPaidClears: 4 },
+    });
+    expect(String((d.reward as any).dailyCap)).toMatch(/first 4 qualifying clears each UTC day/);
+    expect(d.lobbies).toEqual([
+      { runId: '4', leader: hex(8), leaderName: names(hex(8)), members: 1, closesInTicks: 140, outdated: true },
+      { runId: '2', leader: hex(2), leaderName: names(hex(2)), members: 2, closesInTicks: 140 },
+      { runId: '1', leader: hex(1), leaderName: names(hex(1)), members: 1, closesInTicks: 140 },
+    ]);
+    expect(String(d.rule)).toMatch(/1 fen_bait \(craft: 1 gleamshell \+ 1 obsidian \+ 2 driftwood, Crafting 1\) and 5 coins/);
+    expect(bytes(d)).toBeLessThan(3072);
+  });
+
+  it('entry problems: no weapon, no bait, no coins; unknown entry reads null', () => {
+    const one = (slots: ReturnType<typeof bag>, coins: number, wielded = '') =>
+      (describeLantern({ ...base, runs: [], members: [], me: gate, entry: { slots, coins, wielded } }).entry as any);
+    expect(one(bag(['stick', 1], ['fen_bait', 1]), 9)).toMatchObject({ weapon: { best: 6, ok: false }, ready: false,
+      problem: 'Bring a weapon to the Drowned Hollow: a stone club or better' });
+    expect(one(bag(['fen_bait', 1]), 9, 'stone_club').weapon).toMatchObject({ best: 8, ok: true });
+    expect(one(bag(['stone_club', 1]), 9).problem).toBe('You need a Fen Bait');
+    expect(one(bag(['stone_club', 1], ['fen_bait', 1]), 4).problem).toBe('You need 5 coins');
+    const unknown = describeLantern({ ...base, runs: [], members: [], me: { identity: ME, x: 10, z: 10 } });
+    expect(unknown).toMatchObject({ atGate: false, entry: { weapon: { best: null, ok: null }, bait: { held: null }, fee: { held: null }, ready: null, problem: null } });
+    expect(describeLantern({ ...base, cfg: LANTERN_CONFIG_DEFAULTS, runs: [], members: [], me: gate }).open).toBe(false);
+  });
+
+  it('in a lobby: you without a run block', () => {
+    const d = describeLantern({ ...base, runs: [lrun(9n, { leader: ME, partySize: 2 })], members: [lmember(ME, 9n, 0), lmember(hex(2), 9n, 1)], me: gate });
+    expect(d.you).toEqual({ runId: '9', stage: 'lobby', state: 'lobby', slot: 0, leader: true, party: 2 });
+    expect(d.run).toBeNull();
+  });
+
+  it('in the den: boss, pattern and blow ticks, reach, swing cadence, meals and members', () => {
+    const r = lrun(12n, { stage: SpireStage.Active, startTick: L, endTick: L + 600, partySize: 2, leader: ME });
+    const fight = { ...rowAfter(L + 1, 2), dmg0: 44, hits0: 1, caps1: 2, dmg1: 7 };
+    const ids = [ME, hex(2)];
+    const members = ids.map((id, slot) => lmember(id, 12n, slot, { state: SpireMemberState.In, meals: slot + 1 }));
+    const courtTile = { x: 63, z: 134 }; // ring 2, north of the maw
+    const at = (h: string) => (h === ME ? { ...courtTile, hp: 24 } : { ...lanternTile(LANTERN_SPAWNS[1]), hp: 30 });
+    const d = describeLantern({ ...base, tick: L + 2, runs: [r], members, fight, me: { identity: ME, ...courtTile }, player: at });
+    expect(d.capacity).toMatchObject({ active: 1, inside: 2 });
+    expect(d.you).toEqual({ runId: '12', stage: 'active', state: 'in', slot: 0, leader: true, party: 2 });
+    const rb = d.run as Record<string, any>;
+    expect(rb).toMatchObject({
+      runId: '12', stage: 'active', outcome: null, fightStage: 'den', cycle: 0, spring: null,
+      boss: { name: 'Lanternmaw', health: fight.hp, maxHealth: fight.maxHp, phase: 1, enraged: false },
+      startsInTicks: 0, timeLeftTicks: 598, enrageInTicks: 418,
+      damage: { blow: 10, pulse: 7, flood: 4, bite: 6 },
+      reach: { x: 63, z: 136, range: 2 },
+      you: { slot: 0, inReach: true, nextSwingTick: L + 4, nextSwingInTicks: 2, dealt: 44, qualified: true, mealsLeft: 5, hits: 1, drowned: 0, caps: 0 },
+      danger: '/api/agent/v1/danger',
+    });
+    const blows = [...new Set(lanternBuildPattern(fight.curKind, fight.curSeed, fight.curAim).map((b) => fight.curStart + b.at))];
+    expect(rb.den).toMatchObject({ blowTicks: blows, nextBlowInTicks: blows.find((t) => t > L + 2)! - (L + 2), patternsBeforeDive: 2 });
+    expect(['lure_sweep', 'tail_lash', 'maw_bellow']).toContain(rb.den.pattern);
+    expect(rb.members).toEqual([
+      { playerId: ME, name: names(ME), slot: 0, state: 'in', health: 24, tile: courtTile, dealt: 44, caps: 0, meals: 1, away: false },
+      { playerId: hex(2), name: names(hex(2)), slot: 1, state: 'in', health: 30, tile: lanternTile(LANTERN_SPAWNS[1]), dealt: 7, caps: 2, meals: 2, away: false },
+    ]);
+    expect(bytes(d)).toBeLessThanOrEqual(4096);
+  });
+
+  it('the dive publishes the spring and S; capped at S it chokes; the ebb hides it again', () => {
+    const r = lrun(13n, { stage: SpireStage.Active, startTick: L, endTick: L + 600 });
+    const members = [lmember(ME, 13n, 0, { state: SpireMemberState.In })];
+    let dive = L;
+    while (rowAfter(dive).stage !== LanternStage.Dive) dive++;
+    const f = rowAfter(dive);
+    const S = f.surfaceTick;
+    const spring = lanternTile(LANTERN_SPRINGS[f.spring]);
+    const at = (tick: number, fight: LanternFightRowLike, me = spring) =>
+      describeLantern({ ...base, tick, runs: [r], members, fight, me: { identity: ME, ...me } }).run as Record<string, any>;
+    const d = at(dive, f);
+    expect(d.fightStage).toBe(LANTERN_STAGE_NAMES[LanternStage.Dive]);
+    expect(d.den).toBeNull();
+    expect(d.reach).toBeNull();
+    expect(d.you.inReach).toBe(false);
+    expect(d.spring).toEqual({ tile: spring, surfaceTick: S, surfacesInTicks: 8, floodUntilTick: S + 14, capped: false, choked: false, chokedUntilTick: null, feeding: false });
+    const capped = at(S, { ...rowAfter(S), capped: true });
+    expect(capped.fightStage).toBe('tide');
+    expect(capped.spring).toMatchObject({ capped: true, choked: true, chokedUntilTick: S + 8, feeding: false });
+    expect(capped.reach).toEqual({ ...spring, range: 2 });
+    expect(capped.you.inReach).toBe(true);
+    const fed = at(S + 2, rowAfter(S + 2));
+    expect(fed.spring).toMatchObject({ capped: false, choked: false, feeding: true });
+    expect(at(S + 15, rowAfter(S + 15)).spring).toBeNull();
+  });
+
+  it('a cleared run, and under 4 KB with 10 lobbies and a full party with long names', () => {
+    const cleared = describeLantern({ ...base, runs: [lrun(14n, { stage: SpireStage.Cleared, outcome: SpireOutcome.Cleared, startTick: L - 400, endTick: L + 15, clearTicks: 380 })],
+      members: [lmember(ME, 14n, 0, { state: SpireMemberState.Done })], fight: { ...rowAfter(L), hp: 0 }, me: { identity: ME, x: 47, z: 153 } });
+    expect(cleared.run).toMatchObject({ stage: 'cleared', outcome: 'cleared', clearTicks: 380, timeLeftTicks: 0, you: { nextSwingTick: null, inReach: false } });
+    const runs: LanternRunLike[] = [lrun(100n, { stage: SpireStage.Active, startTick: L - 10, endTick: L + 590, partySize: 4, leader: ME })];
+    const members: LMember[] = [0, 1, 2, 3].map((slot) => lmember(slot ? hex(900 + slot) : ME, 100n, slot, { state: SpireMemberState.In }));
+    for (let i = 0; i < 48; i++) {
+      runs.push(lrun(BigInt(200 + i), { createdTick: L - i, partySize: 3, leader: hex(1000 + i) }));
+      members.push(lmember(hex(1000 + i), BigInt(200 + i), 0));
+    }
+    let biggest = 0;
+    for (let t = L - 10; t < L + 150; t += 3) {
+      const d = describeLantern({ ...base, tick: t, runs, members, fight: { ...rowAfter(t, 4), dmg0: 4000000000 }, me: { identity: ME, x: 60, z: 140 },
+        entry: { slots: bag(['stone_club', 1], ['fen_bait', 10]), coins: 1000000000, wielded: 'stone_club' },
+        name: () => 'W'.repeat(16), player: () => ({ x: 60, z: 140, hp: 30 }) });
+      expect(d.lobbies).toEqual([]); // omitted inside a started run
+      biggest = Math.max(biggest, bytes(d));
+    }
+    expect(biggest).toBeLessThanOrEqual(4096);
+    const outside = describeLantern({ ...base, runs, members: members.slice(4), me: { identity: ME, x: 47, z: 150 },
+      entry: { slots: bag(['stone_club', 1]), coins: 3, wielded: '' }, name: () => 'W'.repeat(16) });
+    expect((outside.lobbies as unknown[]).length).toBe(LANTERN_LOBBY_LIST_MAX);
+    expect(bytes(outside)).toBeLessThanOrEqual(4096);
+  });
+});

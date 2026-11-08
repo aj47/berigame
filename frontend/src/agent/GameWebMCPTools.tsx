@@ -77,7 +77,8 @@ import { useBossStore } from "../bosses/bossStore";
 import { tickClock } from "../spacetime/tickClock";
 import { BossId, BossNoticeKind, TICK_MS, SPIRE_KEY_ITEM_ID } from "@sim";
 import {
-  clatterContributionOf, crossesSpireFloor, dangerFeed, describeBosses, dodgeCheck, moveStepsOf, onSpireFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows,
+  clatterContributionOf, crossesLanternFloor, crossesSpireFloor, dangerFeed, describeBosses, dodgeCheck, LANTERN_FLOOR_MOVE, moveStepsOf, onSealedFloor, SPIRE_FLOOR_MOVE,
+  visiblePlayers, type BossRows,
 } from "../../agent-api/statePresentation";
 import { deliveryProblem, describeLedger, describeNodeKinds, NODE_KIND_NAMES, nodeKindOf, nodeLevelInfo, nodeLockReason } from "../../agent-api/seasonPresentation";
 import { LEDGER_CLERKS, LEDGER_SLOTS, SKILL_MAX_LEVEL, nearestLedgerClerk, nodeKindDef } from "@sim";
@@ -95,7 +96,8 @@ const describeWeapon = (weapon: string) => ({
 /** The boss rows of the browser cache (useBossStore), in the shape the shared presenters read. */
 const bossRows = (): BossRows => {
   const s = useBossStore.getState();
-  return { config: s.config, clatter: s.clatter, runs: [...s.runs.values()], members: [...s.members.values()], fights: [...s.fights.values()] };
+  return { config: s.config, clatter: s.clatter, runs: [...s.runs.values()], members: [...s.members.values()], fights: [...s.fights.values()],
+    lanternConfig: s.lanternConfig, lanternRuns: [...s.lanternRuns.values()], lanternMembers: [...s.lanternMembers.values()], lanternFights: [...s.lanternFights.values()] };
 };
 
 /** Your Clatterhorn damage this fight: the latest YouHit total since the beetle woke (the gateway's rule). */
@@ -267,7 +269,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
           const memory = useFirstDayStore.getState();
           // Floor players are invisible from outside; inside you see only your run (the /state.players rule).
           const rows = bossRows();
-          const inside = !!player && onSpireFloor(player);
+          const inside = !!player && onSealedFloor(player);
           const visible: any[] = player ? visiblePlayers(player, state.players, rows) : state.players;
           const bag = player ? nearestBag(player, identityHex(player.identity), state.groundItems ?? []) : null;
           const goal = player && home && !inside
@@ -276,7 +278,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
             : null;
           const keysHeld = slots.reduce((n: number, s: any) => n + (s?.itemId === SPIRE_KEY_ITEM_ID ? s.quantity : 0), 0);
           const bosses = player ? describeBosses(rows, player, state.tick, { players: state.players, keysHeld, contribution: clatterContribution(),
-            blocked: stableBlocked(state.trees), maxSteps: moveStepsOf(identityHex(player.identity), state.expeditions) }) : { clatterhorn: null, spire: null };
+            blocked: stableBlocked(state.trees), maxSteps: moveStepsOf(identityHex(player.identity), state.expeditions),
+            entry: { slots, coins: frontier?.profile?.coins ?? 0, wielded: player.weapon ?? "" } }) : { clatterhorn: null, spire: null, lantern: null };
           return JSON.stringify({
             goal: goal ? { id: goal.id, text: goal.text, hint: goal.hint, action: goal.action,
               target: goalTarget(goal, { trees: state.trees, giant: state.giants?.[0] ?? null, clatter: rows.clatter ?? null, bag }), chapter: journeyChapterOf(goal.id) } : null,
@@ -311,6 +314,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
             })(),
             clatterhorn: bosses.clatterhorn,
             spire: bosses.spire,
+            lantern: bosses.lantern,
             connection: {
               online: typeof navigator === "undefined" ? true : navigator.onLine,
               connected: state.websocketConnected && state.gameDataLoaded && !state.worldUpdatesStalled,
@@ -387,7 +391,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
       ),
       tool(
         "move_to_tile",
-        `Walk your character to a tile. Coordinates are integer tile positions from 0 through ${GRID_SIZE - 1}: world.map.rows describes dry land, water and bridges; the Boulders lie in the south-east headlands. Water is impassable and routes use the bridges. The Sunken Spire floor is sealed: only the Spire Gate (spire_party) takes you in, and from inside you stay on the floor. This changes your live character position over time.`,
+        `Walk your character to a tile. Coordinates are integer tile positions from 0 through ${GRID_SIZE - 1}: world.map.rows describes dry land, water and bridges; the Boulders lie in the south-east headlands. Water is impassable and routes use the bridges. The Sunken Spire floor is sealed: only the Spire Gate (spire_party) takes you in, and from inside you stay on the floor. Lanternmaw's Drowned Hollow is sealed the same way: only the Fen Gate (lantern_party) takes you in. This changes your live character position over time.`,
         {
           x: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: `Horizontal tile coordinate, 0–${GRID_SIZE - 1}.` },
           z: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: `Vertical tile coordinate, 0–${GRID_SIZE - 1}.` },
@@ -400,6 +404,8 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
             return `Choose integer tile coordinates from 0 through ${GRID_SIZE - 1}.`;
           if (crossesSpireFloor(player, { x, z }))
             return reportAction(await live.current.actions.setTarget(x, z), `${SPIRE_FLOOR_MOVE}; you stop at its edge (blockedBy: spire).`);
+          if (crossesLanternFloor(player, { x, z }))
+            return reportAction(await live.current.actions.setTarget(x, z), `${LANTERN_FLOOR_MOVE}; you stop at its edge (blockedBy: lantern).`);
           const blocked = worldBlockedSet(live.current.trees);
           const slots = slotsFromRows(live.current.inventory);
           const hasStick = holdsItem(slots, player.weapon ?? "", STICK_ITEM_ID);
@@ -643,8 +649,29 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
         },
       ),
       tool(
+        "lantern_party",
+        "Lanternmaw, the bog-angler of the Drowned Hollow under Glimmerfen, for 1-4 players (inspect_game_state lantern). Stand within 3 tiles of the Fen Gate (47,152) on Glimmerfen's north shore. op open: start a public lobby you lead. op join: runId from lantern.lobbies, or no runId to quick-join the newest lobby. op start (leader): every member needs a stone club or better (wielded or in the bag), 1 fen_bait (craft: 1 gleamshell + 1 obsidian + 2 driftwood, Crafting 1) and 5 coins, spent at the start (lantern.entry shows yours). op leave: leave a lobby, or forfeit a run (no rewards). Inside, call inspect_danger every tick and dodge_to_tile one of its moves; swings are automatic from ring 2 of the maw (or within 2 of the spring at high tide); end the surfacing tick on the spring (lantern.run.spring) to cap it for double damage at the cost of a 6 HP bite; at most 6 meals per run.",
+        {
+          op: { type: "string", enum: ["open", "join", "start", "leave"], description: "What to do." },
+          runId: { type: "string", pattern: "^[0-9]{1,20}$", description: "join only: the lobby's runId (omit to quick-join)." },
+        },
+        ["op"],
+        async ({ op, runId }) => {
+          const { error } = requirePlayer() as any;
+          if (error) return error;
+          if (!["open", "join", "start", "leave"].includes(op)) return "Choose op open, join, start or leave.";
+          if (runId !== undefined && (op !== "join" || !/^[0-9]{1,20}$/.test(String(runId)) || BigInt(runId) > 18446744073709551615n))
+            return "Only join takes a runId: a listed lantern.lobbies runId.";
+          const a = live.current.actions;
+          if (op === "open") return reportAction(await a.lanternOpen(), "Lobby open at the Fen Gate. Others can join; start when your party is ready.");
+          if (op === "join") return reportAction(await a.lanternJoin(BigInt(runId ?? 0)), "Joined the party. Wait at the Fen Gate for the leader to start.");
+          if (op === "start") return reportAction(await a.lanternStart(), "The run has started. Call inspect_danger every tick and dodge; cap the spring when it surfaces.");
+          return reportAction(await a.lanternLeave(), "You left the Lanternmaw party.");
+        },
+      ),
+      tool(
         "inspect_danger",
-        "The compact boss danger feed (the same JSON as GET /api/agent/v1/danger, free here): on the Sunken Spire floor or at Clatterhorn, a map of the next 3 ticks (. safe, 1-7 bitmask of unsafe ticks +1/+2/+3, # blocked, * star), the hit-free moves for the next tick (best first), a survival path, stars, boss, party and telegraph. where is null elsewhere.",
+        "The compact boss danger feed (the same JSON as GET /api/agent/v1/danger, free here): on the Sunken Spire floor, in the Drowned Hollow (where lantern: also spring and swing) or at Clatterhorn, a map of the next 3 ticks (. safe, 1-7 bitmask of unsafe ticks +1/+2/+3, # blocked, * star), the hit-free moves for the next tick (best first), a survival path, stars, boss, party and telegraph. where is null elsewhere.",
         {},
         [],
         () => {
@@ -658,7 +685,7 @@ export default function GameWebMCPTools({ onStatusChange }: Props) {
       ),
       tool(
         "dodge_to_tile",
-        "Step to a tile at most 2 tiles away (1 while you carry the giant berry) for the next tick, without the path search of move_to_tile. Only on the Sunken Spire floor or at Clatterhorn's glade, to a standable tile you reach in that tick; pick one from inspect_danger moves.",
+        "Step to a tile at most 2 tiles away (1 while you carry the giant berry) for the next tick, without the path search of move_to_tile. Only on the Sunken Spire floor, in the Drowned Hollow or at Clatterhorn's glade, to a standable tile you reach in that tick; pick one from inspect_danger moves.",
         {
           x: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: "Destination tile x." },
           z: { type: "integer", minimum: 0, maximum: GRID_SIZE - 1, description: "Destination tile z." },

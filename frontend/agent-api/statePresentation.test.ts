@@ -267,7 +267,7 @@ test('state.clatterhorn and state.spire come from the shared presenters, null ou
   assert.equal(blocks.spire.lobbies[0].runId, '89');
   assert.equal(blocks.spire.run.runId, '88');
   assert.equal(blocks.spire.run.members[1].tile, null);
-  assert.deepEqual(describeBosses(rows, person(1, 74, 60, { region: 'settlement' }), 1010, { players, keysHeld: 0, contribution: null, blocked: WORLD }), { clatterhorn: null, spire: null });
+  assert.deepEqual(describeBosses(rows, person(1, 74, 60, { region: 'settlement' }), 1010, { players, keysHeld: 0, contribution: null, blocked: WORLD }), { clatterhorn: null, spire: null, lantern: null });
 });
 
 test('the danger feed: where follows the reader, other regions read null', () => {
@@ -303,4 +303,169 @@ test('boss notices, world news and the Clatterhorn contribution', () => {
   assert.equal(c.read(row), 18);
   assert.equal(c.read({ ...row, engagedTick: 6 }), null); // the beetle woke again: a new fight
   assert.equal(c.read(null), null);
+});
+
+// ---- Lanternmaw (BOSSES.md section 9) ------------------------------------------------------------------------------
+import {
+  HurtSource, LANTERN_CONFIG_DEFAULTS, LANTERN_RULES_VERSION, LANTERN_SPAWNS, LANTERN_SPRINGS, LanternStage, lanternAdvance, lanternEmptySlots,
+  lanternFreshFight, lanternHazardMask, lanternLocal, lanternTile, emptySlots,
+} from '../../shared/sim';
+import { crossesLanternFloor, type LanternBossFight, type LanternBossMember, type LanternBossRun } from './statePresentation';
+
+const LS = 3000;
+const lrun = (id: bigint, over: Partial<LanternBossRun> = {}): LanternBossRun => ({ id, leader: hexId(1), stage: SpireStage.Active, outcome: 0,
+  rules: LANTERN_RULES_VERSION, partySize: 2, createdTick: LS - 40, startTick: LS, endTick: LS + 600, phase: 1, clearTicks: 0, ...over });
+const lmember = (i: number, runId: bigint, slot: number, state: number = SpireMemberState.In): LanternBossMember => ({ identity: hexId(i), runId, slot, state,
+  joinedTick: LS - 40, awaySinceTick: 0, awayCount: 0, meals: 1 });
+function lfight(runId: bigint, after: number): LanternBossFight {
+  let f = lanternFreshFight(4242, 2, LS, LANTERN_SPAWNS.slice(0, 2));
+  for (let T = LS; T <= after; T++) f = lanternAdvance(f, T, LS, LANTERN_SPAWNS.slice(0, 2));
+  return { runId, ...f, ...lanternEmptySlots() };
+}
+const lrows = (over: Partial<BossRows> = {}) => rowsOf({ lanternConfig: { ...LANTERN_CONFIG_DEFAULTS, lanternOpen: true }, ...over });
+const onFloor = (i: number, local: number, over: Partial<BossPlayer> = {}) => { const t = lanternTile(local); return person(i, t.x, t.z, over); };
+
+test('Lanternmaw refusals map to their codes; the lantern action reads its own entry and membership refusals', () => {
+  const cases: [string, string | null][] = [
+    ['The Drowned Hollow is sealed', 'boss_closed'],
+    ['This client is out of date; reload the page to enter the Drowned Hollow', 'client_outdated'],
+    ['This party is from an older Drowned Hollow; open a new one', 'client_outdated'],
+    ['Walk to the Fen Gate (47,152) first', 'lantern_gate'],
+    ['You are already in a Lanternmaw party', 'lantern_member'], ['You are waiting in a Lanternmaw party; leave it first', 'lantern_member'],
+    ['You are in a Lanternmaw party; leave it first', 'lantern_member'], ['You are in a Spire party; leave it first', 'spire_member'],
+    ['You are not in a Lanternmaw party', 'not_in_party'], ['You are not leading a Lanternmaw party', 'not_leader'],
+    ['No open Lanternmaw party is waiting; open one instead', 'no_open_party'],
+    ['The Fen Gate is crowded; join an open party instead', 'lantern_busy'],
+    ['The Drowned Hollow is full right now. Try again in a minute', 'lantern_full'],
+    ['No fighting inside the Drowned Hollow', 'no_pvp_zone'],
+    ['You cannot trade inside the Drowned Hollow', 'lantern_inside'], ['You cannot follow players into or out of the Drowned Hollow', 'lantern_inside'],
+    ['You have eaten your fill in the Drowned Hollow (6/6)', 'meal_limit'],
+    ['You cannot enter the Drowned Hollow during a duel', 'in_duel'],
+    // Entry problems are Lanternmaw's only: other actions keep them generic.
+    ['You need 5 coins', null], ['You need a Fen Bait', null],
+  ];
+  for (const [message, code] of cases) assert.equal(bossError(new Error(message))?.code ?? null, code, message);
+  const lantern: [string, string][] = [
+    ['Bring a weapon to the Drowned Hollow: a stone club or better', 'lantern_weapon'], ['You need a Fen Bait', 'lantern_bait'],
+    ['You need 5 coins', 'lantern_fee'], ['This party is waiting for Ada: You need a Fen Bait', 'party_not_ready'],
+    ['You still belong to a party that is fighting (40 s left); leave it to give up its reward', 'lantern_member'],
+    ['The Drowned Hollow is sealed', 'boss_closed'],
+  ];
+  for (const [message, code] of lantern) assert.equal(bossError(new Error(message), 'lantern')?.code, code, message);
+  assert.equal(bossError(new Error('You still belong to a party that is fighting (40 s left); leave it to give up its reward'), 'spire')?.code, 'spire_member');
+});
+
+test('state.lantern comes from the shared presenter: entry, lobbies and your run; null outside Bramblewild', () => {
+  const runId = 61n;
+  const rows = lrows({ lanternRuns: [lrun(runId), lrun(62n, { stage: SpireStage.Lobby, endTick: LS + 100, partySize: 1, leader: hexId(3) })],
+    lanternMembers: [lmember(1, runId, 0), lmember(2, runId, 1), lmember(3, 62n, 0, SpireMemberState.Lobby)], lanternFights: [lfight(runId, LS + 1)] });
+  const me = onFloor(1, LANTERN_SPAWNS[0]);
+  const players = [me, onFloor(2, LANTERN_SPAWNS[1]), person(3, 47, 151)];
+  const slots = emptySlots();
+  slots[0] = { itemId: 'stone_club', quantity: 1 };
+  const blocks = describeBosses(rows, me, LS + 2, { players, keysHeld: 0, contribution: null, blocked: WORLD, entry: { slots, coins: 3, wielded: '' } }) as any;
+  assert.doesNotThrow(() => JSON.stringify(blocks));
+  assert.equal(blocks.lantern.open, true);
+  assert.deepEqual(blocks.lantern.gate, { x: 47, z: 152 });
+  assert.equal(blocks.lantern.entry.problem, 'You need a Fen Bait');
+  assert.deepEqual(blocks.lantern.capacity, { active: 1, max: 12, lobbies: 1, inside: 2 });
+  assert.deepEqual(blocks.lantern.lobbies, []); // inside a started run
+  assert.equal(blocks.lantern.run.runId, '61');
+  assert.equal(blocks.lantern.run.fightStage, 'den');
+  assert.equal(blocks.lantern.run.you.mealsLeft, 5);
+  assert.equal(blocks.lantern.run.members[1].name, 'p2');
+  const atGate = describeBosses(rows, players[2], LS + 2, { players, keysHeld: 0, contribution: null, blocked: WORLD }) as any;
+  assert.equal(atGate.lantern.atGate, true);
+  assert.equal(atGate.lantern.lobbies[0].runId, '62');
+  assert.equal(atGate.lantern.you.stage, 'lobby');
+  assert.equal(atGate.lantern.entry.ready, null);
+  // No lantern rows at all (an older module): closed, empty.
+  assert.equal((describeBosses(rowsOf(), players[2], LS, { players, keysHeld: 0, contribution: null, blocked: WORLD }) as any).lantern.open, false);
+  assert.deepEqual(describeBosses(rows, onFloor(1, LANTERN_SPAWNS[0], { region: 'settlement' }), LS, { players, keysHeld: 0, contribution: null, blocked: WORLD }),
+    { clatterhorn: null, spire: null, lantern: null });
+});
+
+test('the danger feed reads lantern in the Drowned Hollow, with the spring from the dive on', () => {
+  const runId = 63n;
+  let dive = LS;
+  while (lfight(runId, dive).stage !== LanternStage.Dive) dive++;
+  const fight = lfight(runId, dive);
+  const rows = lrows({ lanternRuns: [lrun(runId)], lanternMembers: [lmember(1, runId, 0), lmember(2, runId, 1)], lanternFights: [fight] });
+  const me = onFloor(1, LANTERN_SPAWNS[0]);
+  const feed = dangerFeed(rows, me, dive, { players: [me, onFloor(2, LANTERN_SPAWNS[1])], blocked: WORLD, ageMs: 0, tickMs: 600 });
+  assert.equal(feed.where, 'lantern');
+  assert.equal(feed.rulesVersion, LANTERN_RULES_VERSION);
+  assert.equal(feed.map?.length, 15);
+  assert.equal(feed.boss?.stage, 'dive');
+  const spring = lanternTile(LANTERN_SPRINGS[fight.spring]);
+  assert.deepEqual([feed.spring?.x, feed.spring?.z, feed.spring?.surfaceTick, feed.spring?.capper], [spring.x, spring.z, fight.surfaceTick, true]);
+  assert.equal(feed.party?.[0].name, 'p2');
+  assert.ok(feed.moves.length > 0 && feed.path.length > 0);
+  assert.doesNotThrow(() => JSON.stringify(feed));
+  // Elsewhere in a started run the feed still reads lantern (no moves off the floor).
+  const away = dangerFeed(rows, person(1, 47, 153), dive, { players: [], blocked: WORLD, ageMs: 0, tickMs: 600 });
+  assert.equal(away.where, 'lantern');
+  assert.deepEqual(away.moves, []);
+  assert.equal(dangerFeed(rows, person(1, 47, 153, { region: 'settlement' }), dive, { players: [], blocked: WORLD, ageMs: 0, tickMs: 600 }).where, null);
+});
+
+test('dodge in the Drowned Hollow: standable floor tiles only, never into other rules, safe is the server rule in tick + 1', () => {
+  const runId = 64n;
+  const err = (r: ReturnType<typeof dodgeCheck>) => ('problem' in r ? r.problem.code : null);
+  const me = onFloor(1, LANTERN_SPAWNS[0]);
+  assert.equal(err(dodgeCheck(lrows(), onFloor(1, 7 * 15 + 5), { x: 62, z: 136 }, LS, WORLD)), 'dodge_target'); // the maw
+  assert.equal(err(dodgeCheck(lrows(), onFloor(1, 7 * 15), { x: 55, z: 136 }, LS, WORLD)), 'dodge_target'); // off the floor
+  assert.equal(err(dodgeCheck(lrows(), me, { x: me.x + 3, z: me.z }, LS, WORLD)), 'dodge_too_far');
+  const outdated = lrows({ lanternRuns: [lrun(runId, { rules: LANTERN_RULES_VERSION + 1 })], lanternMembers: [lmember(1, runId, 0)] });
+  const mismatch = dodgeCheck(outdated, me, { x: me.x + 1, z: me.z }, LS, WORLD);
+  assert.ok('problem' in mismatch && mismatch.problem.status === 409 && mismatch.problem.code === 'rules_mismatch');
+  assert.deepEqual((dodgeCheck(lrows(), me, { x: me.x, z: me.z - 1 }, LS, WORLD) as any).safe, null); // no run: nothing threatens
+  let checked = 0, unsafe = 0;
+  for (let tick = LS; tick < LS + 80; tick++) {
+    const fight = lfight(runId, tick);
+    const rows = lrows({ lanternRuns: [lrun(runId)], lanternMembers: [lmember(1, runId, 0)], lanternFights: [fight] });
+    for (const local of [LANTERN_SPAWNS[0], 2 * 15 + 7, 5 * 15 + 5]) {
+      const from = onFloor(1, local);
+      for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++) {
+        const to = { x: from.x + dx, z: from.z + dz };
+        const r = dodgeCheck(rows, from, to, tick, WORLD);
+        if ('problem' in r) continue;
+        assert.equal(r.safe, lanternHazardMask(fight, tick + 1, LS)[lanternLocal(to)] === 0);
+        checked++; if (!r.safe) unsafe++;
+      }
+    }
+  }
+  assert.ok(checked > 3000 && unsafe > 100, `${checked} ${unsafe}`);
+});
+
+test('Drowned Hollow players are invisible from outside and from the Spire; inside you see only your own run', () => {
+  const rows = lrows({ lanternRuns: [lrun(71n), lrun(72n)], lanternMembers: [lmember(1, 71n, 0), lmember(2, 71n, 1), lmember(3, 72n, 0)],
+    runs: [run(73n)], members: [member(4, 73n, 0)] });
+  const players = [onFloor(1, LANTERN_SPAWNS[0]), onFloor(2, LANTERN_SPAWNS[1]), onFloor(3, LANTERN_SPAWNS[2]), person(4, 74, 60), person(5, 30, 30)];
+  const ids = (list: BossPlayer[]) => list.map((p) => p.name);
+  assert.deepEqual(ids(visiblePlayers(players[0], players, rows)), ['p1', 'p2']);
+  assert.deepEqual(ids(visiblePlayers(players[2], players, rows)), ['p3']);
+  assert.deepEqual(ids(visiblePlayers(players[3], players, rows)), ['p4']);
+  assert.deepEqual(ids(visiblePlayers(players[4], players, rows)), ['p5']);
+  assert.equal(crossesLanternFloor(person(5, 47, 150), { x: 60, z: 140 }), true);
+  assert.equal(crossesLanternFloor(players[0], { x: 47, z: 150 }), true);
+  assert.equal(crossesLanternFloor(players[0], { x: 60, z: 140 }), false);
+  assert.equal(crossesLanternFloor(person(5, 47, 150, { region: 'settlement' }), { x: 60, z: 140 }), false);
+});
+
+test('Lanternmaw notices and news', () => {
+  const note = { tick: 5, boss: BossId.Lanternmaw, kind: BossNoticeKind.Hurt, runId: 61n, amount: 4, total: 0, hp: 20, half: 0, quantity: HurtSource.Drown, itemId: '' };
+  assert.equal(describeBossNotice(note).boss, 'lanternmaw');
+  assert.match(describeBossNotice(note).text, /flood cost you 4 HP/);
+  assert.match(describeBossNotice({ ...note, quantity: HurtSource.Bite, amount: 6 }).text, /bit you for 6/);
+  assert.equal(describeBossNotice({ ...note, quantity: HurtSource.Blow, amount: 13 }).text, 'A blow hit you for 13 (20 HP left)');
+  assert.equal(describeBossNotice({ ...note, quantity: HurtSource.Pulse, amount: 7 }).text, 'A lure pulse hit you for 7 (20 HP left)');
+  assert.match(describeBossNotice({ ...note, kind: BossNoticeKind.KnockedOut }).text, /Drowned Hollow/);
+  assert.equal(describeBossNotice({ ...note, kind: BossNoticeKind.RunResult, quantity: 1, amount: 140 }).text, 'Lanternmaw run cleared (140 damage)');
+  assert.equal(describeBossNotice({ ...note, kind: BossNoticeKind.Reward, itemId: 'fenlight', quantity: 2 }).text, 'Reward: 2 Fenlight');
+  for (const [kind, name] of [[BossEventKind.LanternRunStart, 'lantern_run_start'], [BossEventKind.LanternClear, 'lantern_clear'],
+    [BossEventKind.LanternOpened, 'lantern_opened'], [BossEventKind.LanternSoon, 'lantern_soon']] as const) {
+    assert.deepEqual(describeBossEvent({ tick: 9, boss: BossId.Lanternmaw, kind, runId: 0n, x: 47, z: 152, quantity: 0, value: 10, text: '' }),
+      { tick: 9, boss: 'lanternmaw', kind: name, runId: null, x: 47, z: 152, quantity: 0, value: 10, text: '' });
+  }
 });

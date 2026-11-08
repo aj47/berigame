@@ -88,3 +88,14 @@ test('biomeAt names the biome of island and mainland tiles', async () => {
   assert.equal(biomeAt({ x: 172, z: 124 }), 'hearthvale');
   assert.equal(biomeAt({ x: 196, z: 220 }), 'starfall');
 });
+
+test('the MCP summary shows Lanternmaw at the Fen Gate and in a run, and nothing elsewhere', () => {
+  const lantern = { open: true, atGate: true, you: null, run: null, entry: { ready: false, problem: 'You need a Fen Bait', bait: { held: 0 } },
+    lobbies: [{ runId: '5' }, { runId: '6' }] };
+  const gate = summarizeState({ player: { id: identity, tile: { x: 47, z: 150 } }, lantern });
+  assert.deepEqual(gate.bosses.lantern, { open: true, atGate: true, entry: { ready: false, problem: 'You need a Fen Bait' }, lobbies: 2 });
+  const inRun = summarizeState({ player: { id: identity, tile: { x: 60, z: 140 } },
+    lantern: { ...lantern, atGate: false, you: { runId: '5', stage: 'active' }, run: { runId: '5', fightStage: 'tide' } } });
+  assert.deepEqual(inRun.bosses.lantern, { open: true, you: { runId: '5', stage: 'active' }, run: { runId: '5', fightStage: 'tide' } });
+  assert.equal(summarizeState({ player: { id: identity, tile: { x: 10, z: 10 } }, lantern: { ...lantern, atGate: false } }).bosses.lantern, undefined);
+});

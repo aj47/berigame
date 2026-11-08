@@ -518,7 +518,8 @@ rows, so `/state` and `GET /danger` always agree with what the server resolves.
   `/state`); there is no long poll. Fields: `v`, `tick`, `tickMs`, `ageMs` (since the
   tick reached the gateway), `sendWithinMs` (send a dodge by then to land in tick +
   1), `rulesVersion`, `rulesMismatch`, `where` (`spire` on the floor or in your
-  started run, `clatterhorn` within 2 tiles of the glade, else null), `you {x, z, hp,
+  started run, `lantern` in the Drowned Hollow or your started Lanternmaw run (see
+  below), `clatterhorn` within 2 tiles of the glade, else null), `you {x, z, hp,
   maxHp, state, immuneTicks, eatReadyInTicks, mealsLeft}`, `grid {x0, z0, w, h}`,
   `map` (rows of `.` safe for ticks +1..+3, `1`..`7` the bitmask of unsafe ticks,
   `#` not standable, `*` a star on a safe tile), `moves[] {to, via, steps, horizon,
@@ -558,6 +559,102 @@ rows, so `/state` and `GET /danger` always agree with what the server resolves.
   `not_leader`, `party_full`, `party_gone`, `no_open_party`, `spire_busy`,
   `spire_full`, `no_pvp_zone`, `spire_inside`, `meal_limit`, `clatterhorn_burrowed`,
   `on_expedition`, `in_duel`. Anything else stays `action_rejected`.
+
+### Lanternmaw: the Drowned Hollow (1.11.0)
+
+Lanternmaw (docs/design/BOSSES.md section 9) is the Spire's machinery on its own
+`lantern_*` tables: public lobbies at a gate, 1-4 members, the leader starts, a
+sealed 15 x 15 floor shared by every run, knockouts that never kill. It ships
+closed; the owner opens it with `configure_lanternmaw` (`state.bossNews` shows
+`lantern_soon` and `lantern_opened`).
+
+- **`state.lantern`** (null outside Bramblewild; always present there, `open:
+  false` while closed or when the module has no lantern tables): `open`,
+  `rulesVersion`, `gate` (47,152, Glimmerfen's north shore), `exit` (47,153),
+  `joinRange` (3), `atGate`, `floor {x0: 56, z0: 129, x1: 70, z1: 143}`, `entry
+  {weapon {minDamage: 8, best, ok, hint}, bait {itemId: fen_bait, held, recipe,
+  inputs, craftingLevel: 1}, fee {coins: 5, held}, ready, problem}` (`problem` is
+  the exact refusal the start would give you; the `held`, `ok` and `ready` fields
+  are null when the reader cannot see your bag), `capacity {active, max, lobbies,
+  inside}`, `lobbies[]` (newest first, at most 10: `runId, leader, leaderName,
+  members, closesInTicks, outdated?`; empty while you are in a started run), `you
+  {runId, stage, state, slot, leader, party}`, `run`, `reward {items: 2 fenlight,
+  fightingXp: 120, minDamage: 40, keepsake: lanternmaw_lure, dailyPaidClears: 4,
+  dailyCap}` and `rule`. At most 4 KiB.
+- **`state.lantern.run`** (while your run has started and its rows exist):
+  `runId` (a string), `stage` (`active`, `cleared`, `failed`), `outcome`, `boss
+  {name, health, maxHealth, phase, enraged}`, `fightStage` (`den`, `dive`, `tide`,
+  `ebb`), `cycle`, `den {pattern, name, aim, blowTicks, nextBlowInTicks,
+  patternsBeforeDive}` (den only; `blowTicks` are absolute ticks; `aim` only for
+  `mire_marks`), `spring {tile, surfaceTick, surfacesInTicks, floodUntilTick,
+  capped, choked, chokedUntilTick, feeding}` (from the dive until the tide ends),
+  `startsInTicks`, `timeLeftTicks`, `enrageInTicks`, `clearTicks` (cleared only),
+  `damage {blow, pulse, flood: 4, bite: 6}`, `reach {x, z, range}` (the maw centre
+  in the den, the spring at high tide, null in the dive and ebb), `you {slot,
+  inReach, nextSwingTick, nextSwingInTicks, dealt, qualified, mealsLeft, hits,
+  drowned, caps}`, `members[] {playerId, name, slot, state, health, tile, dealt,
+  caps, meals, away}` and `danger`.
+- **`POST /actions/lantern {"op": "open" | "join" | "start" | "leave", "runId"?}`**
+  within 3 tiles of the Fen Gate, validated like `spire`: only `join` accepts a
+  `runId` (a decimal string up to 2^64 - 1; `runId` absent quick-joins the newest
+  open lobby); any other field is 400 `invalid_arguments`, an oversized id 400
+  `invalid_id`. The gateway sends its `LANTERN_RULES_VERSION` as `clientRules`.
+  Receipts: `open` and `join` return `{runId}`, `start` returns `{stage:
+  "active"}`. `start` checks every member (online, in Bramblewild, at the gate, a
+  weapon of 8+ damage wielded or in the bag, one `fen_bait`, 5 coins, not carrying
+  the giant berry, in a duel or on an expedition), then spends the bait and the fee
+  and teleports the party onto the south boardwalk. `leave` leaves a lobby or
+  forfeits a run (no rewards).
+- **Errors** (422 unless noted): `boss_closed` (sealed), `client_outdated`,
+  `lantern_gate` (walk to the gate), `lantern_weapon`, `lantern_bait`,
+  `lantern_fee` (your own entry problem), `party_not_ready` (another member's,
+  "waiting for <name>: ..."), `lantern_member` (already in a Lanternmaw party, or
+  still in a fighting one), `spire_member` (in a Spire party), `not_in_party`,
+  `not_leader`, `party_full`, `party_gone`, `no_open_party`, `lantern_busy` (48
+  lobbies), `lantern_full` (`lanternMaxRuns` active runs: retry in a minute),
+  `on_expedition`, `in_duel`; inside, `no_pvp_zone`, `lantern_inside` (trading,
+  following, dropping and the like), `meal_limit` (6 meals).
+- **Inside.** The floor is sealed like the Spire's: a `move` across its edge
+  returns `blockedBy: "lantern"`, `state` is slim and `players` lists only your
+  run; from outside nobody on the floor is listed. Blows, lure pulses and the flood
+  hit the tile you end a tick on (no swept paths). Swings are automatic: slot s
+  swings on ticks with `(tick - startTick) % 4 == s` while in reach (ring 2 of the
+  maw in the den, Chebyshev 2 of the spring at high tide). The tide floods every
+  tile but the 52 boardwalk planks from S through S + 14 (4 HP per tick, no
+  i-frames). Ending tick S on the spring caps it (a 6 HP bite per capper; double
+  damage, no heal and no pulses through S + 8). Blows and pulses give 2 ticks of
+  i-frames (`you.immuneTicks` in `/danger`). At 0 HP you are ejected to the exit
+  with 10 HP and your bag. The run lasts 600 ticks after a 5-tick intro and
+  enrages at 420 (+1 blow and pulse damage).
+- **`GET /danger` in the Hollow.** `where: "lantern"`, `rulesVersion` is the
+  gateway's `LANTERN_RULES_VERSION`, `grid {x0: 56, z0: 129, w: 15, h: 15}`, `map`
+  (the same digits, from `lanternHazardMask`: blows, pulses and flooded tiles for
+  ticks +1..+3; `#` is the maw; no stars), `moves[]` (every hit-free end tile of a
+  one-tick move, `court` = you swing from there next tick, `star` always false,
+  `winning` = some continuation stays unhurt through `knownUntilTick`), `best`,
+  `path` (unhurt through `knownUntilTick`, at most 16 ticks; it walks the capper
+  onto the spring for S and keeps everyone else off it), `knownUntilTick` (the
+  last tick the published rows decide), `boss {..., pattern, stage}` (`phaseName`
+  is empty), `party[] {id, name, x, z, hp, state, dealt, away}`, `spring {x, z,
+  surfaceTick, surfacesInTicks, capped, chokedUntilTick, capper}` (from the dive
+  until the tide ends, else null; `capper` = you are the lowest present slot) and
+  `swing {nextTick, nextInTicks, inReach, reach}`. `dodge` works on the Hollow's
+  floor too (its `safe` is the hazard mask of tick + 1; 409 `rules_mismatch`
+  when your run uses other Lanternmaw rules than the gateway).
+- **Notices and news.** Boss notices carry `boss: "lanternmaw"`: `hurt` with
+  `quantity` 5 blow, 6 pulse, 7 flood, 8 bite; `knocked_out`; `reward`;
+  `run_result` (`amount` = damage you dealt). `state.bossNews` adds
+  `lantern_run_start`, `lantern_clear`, `lantern_opened` and `lantern_soon`.
+- **Limits.** One Lanternmaw or Spire party at a time; at most 6 meals per run;
+  fenlight from at most 4 qualifying clears per character per UTC day (later clears
+  pay XP only). `/danger` and `/state` share the 4 reads/second budget.
+
+API version **1.11.0** (Lanternmaw) added the `lantern` action, `state.lantern`,
+`where: "lantern"` with `spring` and `swing` in `GET /danger`, dodging in the
+Drowned Hollow, `blockedBy: "lantern"`, the `lantern_*` error codes, boss
+`lanternmaw` notices and news, and `party[].dealt` (Spire `party[].stars` is
+unchanged). API version **1.10.0** made `/state` compact (`world.map` only on
+`?map=1`; nearby `players`, `nodes`, `trees` and `groundItems`).
 
 API version **1.9.0** (the Expanse) grew the grid to 256x256 and added `GET /world`, `state.world.atlas`, `state.me.biome`, `state.nodes[].biome` and `state.nodeKinds[].biomes` (replacing the unreleased `distanceFromSpawn`). API version **1.8.0** (the Long Season) added the tiered node kinds, `skill`/`minLevel`/`xp`/`locked` on `state.nodes`, `state.nodeKinds`, `state.ledger`, `deliver_commission` and the `level_required` error. API version **1.7.0** (bosses) added `attack_clatterhorn`, `spire`, `dodge`, `GET /danger`, `state.clatterhorn`, `state.spire`, `state.bossNews`, `me.noPvp`, boss notices and the slim in-Spire state. API version **1.5.0** (personal garden) added `plant`, `harvest_garden` and `state.garden`. API version **1.4.0** (scheduled raids, mentors) added `state.giant.asleep`/`nextWakeAt`/`nextWakeInSeconds`/`raid`, the `asleep` giant state, `state.mentor` and `friends[].mentees`, and new cosmetics (`welcomed_ribbon`, `mentor_pin`, `mentor_pin_silver`, `mentor_pin_gold`, `giants_tooth`); `respawnInTicks` is gone (the Giant sleeps instead). API version **1.3.0** (F2, social, M3/F3) added `wear`, the social actions and `state.invite`/`friends`/`trade`/`notices`, `attack_giant` and `state.giant`, `state.skills`, `state.cosmetics` and the recipe
 fields `output`, `cosmetic`, `level`, `locked` and `xp`. API version **1.2.0** (M2) added `craft`, `harvest {nodeId | kind}`,

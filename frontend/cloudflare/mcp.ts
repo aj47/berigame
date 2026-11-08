@@ -70,7 +70,7 @@ export function toolList(iconSvg: string) {
       inputSchema: { type: 'object', properties: { player_key: playerKey, action: { type: 'string', enum: Object.keys(ACTIONS) }, args: { type: 'object', description: 'Arguments for the action, for example {"x": 30, "z": 22} for move. {} when it takes none.' }, wait_seconds: waitSeconds }, required: ['player_key', 'action'], additionalProperties: false },
       annotations: { title: 'Take an action', ...inWorld }, icons },
     { name: 'check_danger', title: 'Check danger',
-      description: 'During a boss fight (the Sunken Spire floor or Clatterhorn\'s glade): the compact danger feed with the safe tiles you can dodge to this tick. Then act with action "dodge" and a tile from moves.',
+      description: 'During a boss fight (the Sunken Spire floor, Lanternmaw\'s Drowned Hollow or Clatterhorn\'s glade): the compact danger feed with the safe tiles you can dodge to this tick (in the Hollow also the glow spring and its surfacing tick). Then act with action "dodge" and a tile from moves.',
       inputSchema: { type: 'object', properties: { player_key: playerKey }, required: ['player_key'], additionalProperties: false },
       annotations: { title: 'Check danger', ...readOnly }, icons },
     { name: 'game_guide', title: 'Game guide',
