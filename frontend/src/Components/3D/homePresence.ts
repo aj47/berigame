@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { inSpireFloor } from '@sim';
+import { inLanternFloor, inSpireFloor } from '@sim';
 import { MEADOW_OFFSET, isHomeRegion } from '../../../../shared/sim/frontier/homeMap';
 import { useMyPlayerSelector } from '../../spacetime/hooks';
 
@@ -34,6 +34,16 @@ export function isOnSpireFloor(me: HomePresence | null | undefined): boolean {
   return !!me && (me.region || 'bramblewild') === 'bramblewild' && inSpireFloor(me);
 }
 
+/** On Lanternmaw's floor (the Drowned Hollow): position-based like the Spire's. */
+export function isOnLanternFloor(me: HomePresence | null | undefined): boolean {
+  return !!me && (me.region || 'bramblewild') === 'bramblewild' && inLanternFloor(me);
+}
+
+/** The sealed boss floor you stand on, or null for the overworld. */
+export function sealedFloorAt(me: HomePresence | null | undefined): 'spire' | 'lantern' | null {
+  return isOnSpireFloor(me) ? 'spire' : isOnLanternFloor(me) ? 'lantern' : null;
+}
+
 /**
  * Mount Meadows only when you are in it, drafting on it, or close enough that
  * the camera can see the seam. Same rule as the Spire: an unmounted scene
@@ -61,6 +71,7 @@ export function internHomePresence(me: { region?: string; x: number; z: number }
 
 const selectRegion = (me: { region?: string } | null) => me?.region || 'bramblewild';
 const selectOnFloor = (me: { region?: string; x: number; z: number } | null) => isOnSpireFloor(internHomePresence(me));
+const selectSealedFloor = (me: { region?: string; x: number; z: number } | null) => sealedFloorAt(internHomePresence(me));
 const selectPresent = (me: unknown) => !!me;
 
 export function useMyRegion(): string {
@@ -69,6 +80,11 @@ export function useMyRegion(): string {
 
 export function useOnSpireFloor(): boolean {
   return useMyPlayerSelector(selectOnFloor);
+}
+
+/** 'spire', 'lantern' or null: which sealed floor you stand on (stable until you cross a boundary). */
+export function useSealedFloor(): 'spire' | 'lantern' | null {
+  return useMyPlayerSelector(selectSealedFloor);
 }
 
 export function useHasPlayer(): boolean {

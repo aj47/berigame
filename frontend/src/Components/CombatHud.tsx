@@ -7,7 +7,7 @@ import {
   STICK_ITEM_ID,
   chebyshev,
   getItemDef,
-  inSpireFloor,
+  inSealedFloor,
   isSafe,
   isWeapon,
 } from "@sim";
@@ -131,8 +131,8 @@ const CombatHud = ({ quickKeysEnabled = true, onOpenBag, onOpenVault, frontier }
     ? players.get(me.combatTarget.toHexString())
     : undefined;
   const hostile = me.hostile && !dead;
-  // No PvP on the Spire floor: the opponent block steps aside for the Spire HUD.
-  const onFloor = inBramblewild && inSpireFloor(me);
+  // No PvP on a sealed boss floor: the opponent block steps aside for the boss HUD.
+  const onFloor = inBramblewild && inSealedFloor(me);
   const targetAvailable =
     target && target.online && target.state !== PlayerState.Dead
       && (target.region || 'bramblewild') === (me.region || 'bramblewild');

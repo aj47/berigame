@@ -1,4 +1,4 @@
-import { BRIDGES, ClatterState, DROP_BOXES, FOREST_TREES, GRID_SIZE, LANDMARKS, RIDGE_TILES, TRAILS, inGiantHeadland, inSpireFloor, isBridge, terrainField } from '@sim';
+import { BRIDGES, ClatterState, DROP_BOXES, FOREST_TREES, GRID_SIZE, LANDMARKS, RIDGE_TILES, TRAILS, inGiantHeadland, inSealedFloor, isBridge, terrainField } from '@sim';
 import { BIOMES, CAUSEWAYS, EXPANSE_BRIDGES, EXPANSE_TRAILS, LEDGER_CLERKS, WAYSTONES, biomeOf, type BiomeId } from '@sim';
 import { PLOTS, REGIONS, type Location } from '../../../shared/sim/frontier/catalog';
 import { HOME_GRID, homeLand, homeLocation, homePoint, MEADOW_OFFSET } from '../../../shared/sim/frontier/homeMap';
@@ -52,7 +52,7 @@ export function mapDestinationAt(x: number, y: number, size: number, view: HomeM
   const point = (connected ? homeMapProjection(size, view) : legacyMapProjection(size)).pointAt(x, y);
   const tile = { x: Math.round(point.x), z: Math.round(point.z) };
   const destination: Location = connected ? homeLocation(tile) : { region: 'bramblewild', ...tile };
-  if (destination.region === 'bramblewild' && inSpireFloor(destination)) return null;
+  if (destination.region === 'bramblewild' && inSealedFloor(destination)) return null;
   return regionLand(destination.region, destination) ? destination : null;
 }
 const plots = PLOTS.filter(p => p.region === 'settlement');
@@ -126,7 +126,7 @@ function homeGeography(): Geography {
     const depth = field[i];
     let rgb: Rgb | null;
     // The Spire's sealed floor is drawn as the sea it sits in (it is not reachable land).
-    if (!homeLand({ x, z }) || (!meadow && inSpireFloor({ x, z }))) rgb = waterRgb(depth);
+    if (!homeLand({ x, z }) || (!meadow && inSealedFloor({ x, z }))) rgb = waterRgb(depth);
     else if (!meadow && isBridge({ x, z })) rgb = [201, 168, 120];
     else if (!meadow && ridge.has(z * GRID_SIZE + x)) rgb = mixRgb(RIDGE_ROCK, [140, 131, 116], patchAt(x, z));
     else {
@@ -431,7 +431,7 @@ export function drawHomeMap(ctx: CanvasRenderingContext2D, m: MinimapModel, size
  * the Spire Gate (an obsidian arch with the parties inside). Drawn at every
  * map size, so both show on the small map too.
  */
-export function drawBossMarkers(ctx: CanvasRenderingContext2D, m: Pick<MinimapModel, 'clatter' | 'spire'>, px: (v: number) => number, scale: number, size: number, pz: (v: number) => number = px): void {
+export function drawBossMarkers(ctx: CanvasRenderingContext2D, m: Pick<MinimapModel, 'clatter' | 'spire' | 'lantern'>, px: (v: number) => number, scale: number, size: number, pz: (v: number) => number = px): void {
   const font = Math.min(12, Math.max(8, Math.round(size / 13)));
   const tag = (text: string, x: number, y: number, color: string) => {
     ctx.font = `700 ${font}px system-ui, sans-serif`;
@@ -455,6 +455,25 @@ export function drawBossMarkers(ctx: CanvasRenderingContext2D, m: Pick<MinimapMo
     ctx.stroke();
     const count = m.spire.active + m.spire.queued;
     if (count > 0) tag(m.spire.queued ? `${m.spire.active}+${m.spire.queued}` : String(m.spire.active), x, Math.max(font + 1, y - k * 1.3), '#e9e3ff');
+  }
+  if (m.lantern) {
+    // The Fen Gate: a jetty post with a hanging lantern, lit while parties are inside, dim while sealed.
+    const x = px(m.lantern.x), y = pz(m.lantern.z), k = Math.max(3.5, scale * 1.6);
+    ctx.globalAlpha = m.lantern.sealed ? 0.6 : 1;
+    ctx.fillStyle = '#5a4a2e';
+    ctx.strokeStyle = '#1f1a10';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.rect(x - k * 0.9, y + k * 0.35, k * 1.8, k * 0.5);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = m.lantern.active > 0 ? '#ffe28a' : '#c9b26a';
+    ctx.beginPath();
+    ctx.arc(x, y - k * 0.2, k * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    if (m.lantern.active > 0) tag(String(m.lantern.active), x, Math.max(font + 1, y - k * 1.1), '#fff1c2');
   }
   if (m.clatter) {
     const x = px(m.clatter.x), y = pz(m.clatter.z), k = Math.max(3.5, scale * 1.8);

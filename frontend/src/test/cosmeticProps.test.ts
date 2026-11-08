@@ -33,7 +33,7 @@ describe('keepsake models', () => {
   });
 
   it('builds a distinct model for each Long Season keepsake, sized to its bone', () => {
-    const season = COSMETICS.filter((c) => c.id >= Cosmetic.GlowcapCap);
+    const season = COSMETICS.filter((c) => c.id >= Cosmetic.GlowcapCap && c.id < Cosmetic.LanternmawLure);
     expect(season).toHaveLength(14);
     const shapes = new Set<string>();
     for (const cosmetic of season) {

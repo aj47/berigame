@@ -81,3 +81,27 @@
 @media (hover: hover) and (pointer: fine) { .spire-pad, .spire-side { opacity: 0.8; } }
 
 .spire-hover-hit { color: #ff8a8a; font-weight: 800; font-size: 13px; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+
+/* ---- Lanternmaw (the Fen Gate and the Drowned Hollow): the Spire's layout in bog green and lantern gold ---- */
+.lantern-hud { color: #eef6e4; }
+.lantern-boss-bar { border-color: #8aa45a; background: #101a12e6; }
+.lantern-boss-bar .spire-boss-fill { background: linear-gradient(90deg, #8fbf4a, #ffe48a); }
+.lantern-boss-bar[data-phase="2"] .spire-boss-fill { background: linear-gradient(90deg, #4f9f7a, #c8f06a); }
+.lantern-boss-bar[data-phase="3"] .spire-boss-fill { background: linear-gradient(90deg, #c0392b, #ffb547); }
+.lantern-stage { justify-self: center; font-size: 12px; text-shadow: 0 1px 3px #000c; }
+.lantern-hurt { justify-self: center; color: #ff9a8a; font-weight: 700; text-shadow: 0 1px 3px #000c; animation: spire-fade-in 0.2s ease-out; }
+.lantern-hud .spire-banner { background: #122016e6; border-color: #8aa45a; }
+.lantern-hud .lantern-choked { border-color: #ff8a4a; color: #ffe0c8; }
+.lantern-hud .lantern-flood { border-color: #5fb8a0; color: #d8fff2; font-weight: 600; }
+.lantern-hud .spire-party li, .lantern-hud .spire-bottom { background: #101a12d9; }
+.lantern-hud .spire-bottom { border-color: #5a6e3a; }
+.lantern-hud .lantern-eat { border-color: #8aa45a; background: #1d2e18; color: #eef6e4; }
+.lantern-hud .lantern-eat:disabled { opacity: 0.5; }
+.lantern-chip { background: #101a12e6; border-color: #8aa45a; color: #eef6e4; }
+.lantern-lobby { border-color: #6b7f3e; }
+.lantern-lobby button { border-color: #6b7f3e; background: #eef4dc; color: #2a3318; }
+.lantern-lobby button.is-primary { background: #5a6e3a; color: #fff; }
+.lantern-lobby input { min-height: 30px; padding: 0 8px; border-radius: 7px; border: 1px solid #6b7f3e; }
+.lantern-result { background: #122016f2; border-color: #8aa45a; color: #eef6e4; }
+.lantern-result .spire-close { border-color: #8aa45a; background: #24361c; color: #eef6e4; }
+.lantern-spring-label { padding: 2px 8px; border-radius: 999px; background: #0b1410d9; border: 1px solid #7dffd0; color: #d8fff2; font-weight: 700; font-size: 12px; white-space: nowrap; }

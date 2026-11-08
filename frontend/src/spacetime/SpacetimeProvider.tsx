@@ -60,10 +60,10 @@ function combatEventVisible(conn: any, row: CombatEvent): boolean {
   const myId = WATCHING ? (subject ? Identity.fromString(subject) : null) : conn?.identity;
   if (!players || !myId) return true;
   const viewer = players.find(myId) ?? null;
-  const hexes = useBossStore.getState().myRunHexes;
+  const { myRunHexes: hexes, myLanternHexes: lanternHexes } = useBossStore.getState();
   for (const id of [row.attacker, row.defender]) {
     const p = players.find(id);
-    if (p && !isPlayerVisible(p, viewer, hexes)) return false;
+    if (p && !isPlayerVisible(p, viewer, hexes, lanternHexes)) return false;
   }
   return true;
 }

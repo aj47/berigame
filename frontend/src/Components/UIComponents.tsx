@@ -30,11 +30,12 @@ import { useSettingsStore } from "../spacetime/stores/settingsStore";
 import { PLAYER_VIEW_TILES, SpireMemberState, SpireStage } from "@sim";
 import { useBossStore } from "../bosses/bossStore";
 import { useFrontier, useFrontierCoins } from "../frontier/useFrontier";
-import { isAwayDistrict, isHomeScene, useMyRegion, useOnSpireFloor } from "./3D/homePresence";
+import { isAwayDistrict, isHomeScene, useMyRegion, useSealedFloor } from "./3D/homePresence";
 import SpireHud from "../bosses/spire/SpireHud";
 import SpireControls from "../bosses/spire/SpireControls";
 import SpireLobbyPanel from "../bosses/spire/SpireLobbyPanel";
 import SpireResult from "../bosses/spire/SpireResult";
+import LanternLayer from "../bosses/lantern/LanternLayer";
 import { BossAreaTip } from "./OnboardingTip";
 
 import FrontierPanel, { type BuildDraft } from "../frontier/FrontierPanel";
@@ -108,8 +109,9 @@ const UIComponents = memo(({ frontierEnabled = false, draft = null, onDraft = ()
   const frontierCoins = useFrontierCoins();
   const oneClickAttack = useSettingsStore(s => s.oneClickAttack);
   const inFrontier = isAwayDistrict(region);
-  // Inside the Spire the overworld HUD (map, goals, adventure, duels, milestones) steps aside.
-  const inside = useOnSpireFloor();
+  // Inside a sealed boss floor the overworld HUD (map, goals, adventure, duels, milestones) steps aside.
+  const floor = useSealedFloor();
+  const inside = floor !== null;
   const showMinimap = isHomeScene(region, frontierEnabled) && !inside;
   const regionRef = useRef(inFrontier);
   regionRef.current = inFrontier;
@@ -315,7 +317,8 @@ const UIComponents = memo(({ frontierEnabled = false, draft = null, onDraft = ()
       <FriendSync />
       <Toast />
       {!inFrontier && !inside && <MilestoneBanner />}
-      <SpireLayer inside={inside} />
+      <SpireLayer inside={floor === 'spire'} />
+      <LanternLayer inside={floor === 'lantern'} />
       {!inFrontier && panel === null && <BossAreaTip me={me} />}
       {import.meta.env.DEV && <TickDebug />}
     </div>

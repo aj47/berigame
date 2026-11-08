@@ -10,7 +10,15 @@ type Handle = { unsubscribe(): void };
  * clients therefore never receive other runs' fight rows. Returns a disposer.
  */
 export function subscribeSpire(conn: DbConnection, identityHex: string, onError: () => void): () => void {
-  const members = (conn.db as any).spireMember;
+  return subscribeRunFight(conn, identityHex, 'spireMember', 'spire_fight', onError);
+}
+
+/**
+ * The same per-run rule for any sealed floor: follows your row in `memberTable` (a db accessor) and keeps
+ * `SELECT * FROM <fightTable> WHERE run_id = <id>` subscribed for its run (lanternSubscription.ts uses it too).
+ */
+export function subscribeRunFight(conn: DbConnection, identityHex: string, memberTable: string, fightTable: string, onError: () => void): () => void {
+  const members = (conn.db as any)[memberTable];
   let runId: bigint | null = null;
   let handle: Handle | undefined;
 
@@ -23,7 +31,7 @@ export function subscribeSpire(conn: DbConnection, identityHex: string, onError:
     handle = next === null ? undefined : conn
       .subscriptionBuilder()
       .onError(onError)
-      .subscribe([`SELECT * FROM spire_fight WHERE run_id = ${next.toString()}`]);
+      .subscribe([`SELECT * FROM ${fightTable} WHERE run_id = ${next.toString()}`]);
     drop(previous);
   };
   const current = (): bigint | null => {

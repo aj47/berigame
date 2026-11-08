@@ -1,6 +1,6 @@
 import { recordDiagnostic } from './diagnostics';
 import { PLAYER_ACTION } from '../frontier/worldInteraction';
-import { normalizeAppearance, SPIRE_RULES_VERSION, type Appearance } from '@sim';
+import { LANTERN_RULES_VERSION, normalizeAppearance, SPIRE_RULES_VERSION, type Appearance } from '@sim';
 import { useCallback } from 'react';
 import { useSpacetimeDB } from 'spacetimedb/react';
 import type { Identity } from 'spacetimedb';
@@ -118,5 +118,14 @@ export function useGameActions() {
     spireLeave: () => run('spireLeave', (c) => c.reducers.spireLeave({})),
     /** Leader: start the run (every member's spire key is spent). */
     spireStart: () => run('spireStart', (c) => c.reducers.spireStart({ clientRules: SPIRE_RULES_VERSION })),
+    // Lanternmaw (the Fen Gate): the same lobby calls with its own rules version.
+    /** Open a Lanternmaw lobby at the Fen Gate (you lead it). */
+    lanternOpen: () => run('lanternOpen', (c) => c.reducers.lanternOpen({ clientRules: LANTERN_RULES_VERSION })),
+    /** Join a lobby by run id, or quick-join an open one with 0n. */
+    lanternJoin: (runId: bigint = 0n) => run('lanternJoin', (c) => c.reducers.lanternJoin({ runId, clientRules: LANTERN_RULES_VERSION })),
+    /** Leave a lobby, or forfeit a run (no rewards). */
+    lanternLeave: () => run('lanternLeave', (c) => c.reducers.lanternLeave({})),
+    /** Leader: start the run (every member's Fen Bait and 5 coins are spent). */
+    lanternStart: () => run('lanternStart', (c) => c.reducers.lanternStart({ clientRules: LANTERN_RULES_VERSION })),
   };
 }

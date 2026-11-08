@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Plane, Raycaster, Vector2, Vector3 } from 'three';
-import { inBounds, inSpireFloor, type Tile } from '@sim';
+import { inBounds, type Tile } from '@sim';
 import { useGameActions } from '../../spacetime/actions';
 import { useMyPlayer } from '../../spacetime/hooks';
 import { useFrontierEnabled } from '../../frontier/useFrontier';
@@ -9,7 +9,7 @@ import { homeLand, homeLocation } from '../../../../shared/sim/frontier/homeMap'
 import { useUserInputStore } from '../../store';
 import { TOUCH_TAP_RADIUS, holdState, openMenuNear } from './tapAssist';
 import { hoverTile, isWorldSurface } from './hoverTarget';
-import { inSpire, isOpenGround } from '../../bosses/selectors';
+import { isOpenGround, myFloor, sealedFloorOf, type SealedFloor } from '../../bosses/selectors';
 
 /** Press this long without moving to start a hold. */
 export const HOLD_MS = 380;
@@ -28,10 +28,11 @@ const point = new Vector3();
  * A tile a held finger may walk to, on the walker's side of the Spire floor
  * boundary (both the connected-island and the Bramblewild-only branches).
  */
-export function holdWalkTile(t: Tile, connected: boolean, meOnFloor: boolean): boolean {
-  if (!connected) return inBounds(t) && isOpenGround(t, meOnFloor);
+export function holdWalkTile(t: Tile, connected: boolean, meOnFloor: boolean | SealedFloor | null): boolean {
+  const floor = meOnFloor === true ? 'spire' : meOnFloor === false ? null : meOnFloor;
+  if (!connected) return inBounds(t) && isOpenGround(t, floor);
   if (!homeLand(t)) return false;
-  return homeLocation(t).region === 'bramblewild' ? inSpireFloor(t) === meOnFloor : !meOnFloor;
+  return homeLocation(t).region === 'bramblewild' ? sealedFloorOf(t) === floor : !floor;
 }
 
 /**
@@ -40,10 +41,10 @@ export function holdWalkTile(t: Tile, connected: boolean, meOnFloor: boolean): b
  * - on the ground: walks continuously toward the finger until it lifts,
  *   with camera dragging paused meanwhile.
  */
-function HoldBindings({ live }: { live: React.MutableRefObject<{ setTarget: (x: number, z: number) => unknown; frontier: (c: any) => unknown; enabled: boolean; region: string | undefined; onFloor: boolean }> }) {
+function HoldBindings({ live }: { live: React.MutableRefObject<{ setTarget: (x: number, z: number) => unknown; frontier: (c: any) => unknown; enabled: boolean; region: string | undefined; onFloor: SealedFloor | null }> }) {
   const { setTarget, frontier } = useGameActions();
   const me = useMyPlayer(), enabled = useFrontierEnabled();
-  live.current = { setTarget, frontier, enabled, region: me?.region, onFloor: inSpire(me) };
+  live.current = { setTarget, frontier, enabled, region: me?.region, onFloor: myFloor(me) };
   return null;
 }
 
@@ -52,7 +53,7 @@ const HoldToWalk = () => {
   const camera = useThree((s) => s.camera);
   const scene = useThree((s) => s.scene);
   const connected = useThree((s) => s.events.connected);
-  const movement = useRef({ setTarget: ((_x: number, _z: number) => {}) as (x: number, z: number) => unknown, frontier: ((_c: any) => {}) as (c: any) => unknown, enabled: false, region: undefined as string | undefined, onFloor: false });
+  const movement = useRef({ setTarget: ((_x: number, _z: number) => {}) as (x: number, z: number) => unknown, frontier: ((_c: any) => {}) as (c: any) => unknown, enabled: false, region: undefined as string | undefined, onFloor: null as SealedFloor | null });
 
   useEffect(() => {
     const el = gl.domElement;

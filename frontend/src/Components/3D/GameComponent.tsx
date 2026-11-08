@@ -32,12 +32,14 @@ import { identityHex } from '../../spacetime/identity';
 import { isWebGLError, WebGLContextWatch, webglAvailable, webglSupport } from './webgl';
 import AdaptiveQuality from './AdaptiveQuality';
 import { QUALITY, spireDpr, useGraphicsTier } from './renderQuality';
-import { SPIRE_CENTRE, tileToWorld } from '@sim';
-import { isAwayDistrict, isHomeScene, useHasPlayer, useMeadowsMounted, useMyRegion, useOnSpireFloor } from './homePresence';
+import { LANTERN_CENTRE_TILE, SPIRE_CENTRE, tileToWorld } from '@sim';
+import { isAwayDistrict, isHomeScene, useHasPlayer, useMeadowsMounted, useMyRegion, useSealedFloor } from './homePresence';
 import { withVisibleFilter } from '../../bosses/visibleEvents';
 import { loadSpireScene } from '../../bosses/spire/loadSpireScene';
+import { loadLanternScene } from '../../bosses/lantern/loadLanternScene';
 import ClatterGlade from '../../bosses/clatterhorn/ClatterGlade';
 import SpireGate from '../../bosses/spire/SpireGate';
+import LanternGate from '../../bosses/lantern/LanternGate';
 import { setWalkViewerOnFloor } from './walkTarget';
 import type { CameraFocus } from './CameraController';
 import { useHudStore } from '../hudVisibility';
@@ -45,7 +47,7 @@ import { WATCHING, WATCH_PARAMS } from '../../spacetime/viewer';
 
 /** Only what you can see takes a click or a hover (FINAL_SPEC 7.4). */
 const canvasEvents = withVisibleFilter(pointerEvents);
-/** How long the Spire scene waits before fetching its chunk again after a failed load. */
+/** How long a sealed floor's scene (the Spire, Lanternmaw) waits before fetching its chunk again after a failed load. */
 export const SPIRE_RETRY_MS = 1500;
 
 /**
@@ -56,13 +58,15 @@ export const SPIRE_RETRY_MS = 1500;
 class SpireBoundary extends React.Component<{ children: React.ReactNode; onError: () => void }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch(error: unknown) { console.warn('The Spire scene could not load; retrying', error); this.props.onError(); }
+  componentDidCatch(error: unknown) { console.warn('The boss scene could not load; retrying', error); this.props.onError(); }
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-export function SpireSceneSlot() {
+/** A sealed floor's lazy scene with its own boundary and retry (the Spire's and Lanternmaw's). */
+function SealedSceneSlot({ load }: { load: () => Promise<{ default: React.ComponentType<any> }> }) {
   const [attempt, setAttempt] = useState(0);
-  const Scene = useMemo(() => React.lazy(() => loadSpireScene()), [attempt]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const Scene = useMemo(() => React.lazy(() => load()), [attempt]);
   const [waiting, setWaiting] = useState(false);
   useEffect(() => {
     if (!waiting) return;
@@ -71,9 +75,21 @@ export function SpireSceneSlot() {
   }, [waiting]);
   return <SpireBoundary key={attempt} onError={() => setWaiting(true)}><Suspense fallback={null}><Scene /></Suspense></SpireBoundary>;
 }
+
+export function SpireSceneSlot() {
+  return <SealedSceneSlot load={loadSpireScene} />;
+}
+
+/** Lanternmaw's Drowned Hollow, the same way (LanternLobbyPanel preloads its chunk). */
+export function LanternSceneSlot() {
+  return <SealedSceneSlot load={loadLanternScene} />;
+}
 const [spireX, , spireZ] = tileToWorld(SPIRE_CENTRE);
 /** Inside the Spire the camera frames the arena centre: 24 (landscape) or 30 (portrait), zoom 18..34. */
 export const SPIRE_CAMERA: CameraFocus = { target: [spireX, spireZ], distance: 24, min: 18, max: 34 };
+const [lanternX, , lanternZ] = tileToWorld(LANTERN_CENTRE_TILE);
+/** In the Drowned Hollow the camera frames the maw the same way (the floor is 15 x 15 too). */
+export const LANTERN_CAMERA: CameraFocus = { target: [lanternX, lanternZ], distance: 24, min: 18, max: 34 };
 
 class WorldBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -155,9 +171,10 @@ const GameComponent = ({ spectator = false }: { spectator?: boolean }) => {
   const inFrontier = isAwayDistrict(region);
   // Position-based, so it flips on the teleport row. Inside, the overworld is unmounted, not hidden:
   // R3F raycasts invisible meshes, and its useFrame loops would keep running during the bullet-hell.
-  const inside = useOnSpireFloor();
+  const floor = useSealedFloor();
+  const inside = floor !== null;
   const meadows = useMeadowsMounted(frontierEnabled, !!draft);
-  useEffect(() => { setWalkViewerOnFloor(inside); }, [inside]);
+  useEffect(() => { setWalkViewerOnFloor(floor); }, [floor]);
   const [playerRef, setPlayerRef] = useState<any>();
   const clickedOtherObject = useUserInputStore((state: any) => state.clickedOtherObject);
   // Settings > Graphics: a fixed tier, or auto (start from the device, then follow the frame rate).
@@ -178,7 +195,7 @@ const GameComponent = ({ spectator = false }: { spectator?: boolean }) => {
       </>}
       <div data-world-layer style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
       {webgl === 'webgl2' && <WorldBoundary>
-      {!homeScene ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" data-world-floor data-spire={inside || undefined} events={canvasEvents} frameloop={spectator ? 'never' : 'always'} dpr={spectator ? 1 : inside ? spireDpr(quality.dpr) : quality.dpr} shadows="percentage" camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
+      {!homeScene ? <FrontierWorld draft={draft} onDraft={setDraft} /> : <Canvas id="three-canvas" data-world-floor data-spire={floor === 'spire' || undefined} data-lantern={floor === 'lantern' || undefined} events={canvasEvents} frameloop={spectator ? 'never' : 'always'} dpr={spectator ? 1 : inside ? spireDpr(quality.dpr) : quality.dpr} shadows="percentage" camera={{ position: [8, 12, 15], fov: 42, near: 0.1, far: 180 }} gl={{ antialias: true, powerPreference: 'high-performance' }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
         <WebGLContextWatch />
         {spectator && <WatchFrameCap fps={WATCH_PARAMS?.fps ?? 30} />}
         {graphics === 'auto' && !worldLoading && <AdaptiveQuality />}
@@ -194,17 +211,19 @@ const GameComponent = ({ spectator = false }: { spectator?: boolean }) => {
             </group>}
             <ClatterGlade />
             <SpireGate />
+            <LanternGate />
           </>}
           <RenderOnlineUsers frontier={avatarFrontier} />
           <PlayerController setPlayerRef={setPlayerRef} frontier={avatarFrontier} />
-          <CameraController playerRef={playerRef} focus={inside ? SPIRE_CAMERA : undefined} />
+          <CameraController playerRef={playerRef} focus={floor === 'spire' ? SPIRE_CAMERA : floor === 'lantern' ? LANTERN_CAMERA : undefined} />
           {!spectator && !draft && <HoldToWalk />}
           {!spectator && !draft && !hudHidden && <WorldHover />}
           {!spectator && <DebugBridge />}
           <FxLayer />
         </Suspense>
         {/* Its own Suspense and error boundary: the chunk loading (or failing) never blanks the avatars. */}
-        {inside && <SpireSceneSlot />}
+        {floor === 'spire' && <SpireSceneSlot />}
+        {floor === 'lantern' && <LanternSceneSlot />}
       </Canvas>}
       </WorldBoundary>}
       </div>

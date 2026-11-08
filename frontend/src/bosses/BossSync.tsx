@@ -5,6 +5,7 @@ import { useMyIdentityHex } from '../spacetime/hooks';
 import { useBossStore, type BossTable } from './bossStore';
 import { startClatterFx } from './clatterhorn/clatterFx';
 import { startSpireFx } from './spire/spireFx';
+import { startLanternFx } from './lantern/lanternFx';
 
 /** Persistent boss tables mirrored into the store, with each row's key. */
 const TABLES: readonly [BossTable, (row: any) => string | number | bigint][] = [
@@ -13,6 +14,10 @@ const TABLES: readonly [BossTable, (row: any) => string | number | bigint][] = [
   ['spireRun', (r) => r.id],
   ['spireMember', (r) => r.identity.toHexString()],
   ['spireFight', (r) => r.runId],
+  ['lanternConfig', (r) => r.id],
+  ['lanternRun', (r) => r.id],
+  ['lanternMember', (r) => r.identity.toHexString()],
+  ['lanternFight', (r) => r.runId],
 ];
 
 /**
@@ -66,7 +71,7 @@ export default function BossSync() {
       off.push(() => players.removeOnUpdate(upd));
     }
 
-    off.push(startClatterFx(), startSpireFx());
+    off.push(startClatterFx(), startSpireFx(), startLanternFx());
     return () => { for (const f of off) f(); };
     // `me` is applied by the effect above; re-subscribing on an identity change is not needed.
     // eslint-disable-next-line react-hooks/exhaustive-deps

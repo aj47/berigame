@@ -494,7 +494,27 @@ const BUILDERS: Record<number, () => BufferGeometry> = {
   [Cosmetic.StarIronHelm]: starIronHelm,
   [Cosmetic.TidewrightsMedallion]: tidewrightsMedallion,
   [Cosmetic.ParagonSash]: paragonSash,
+  [Cosmetic.LanternmawLure]: lanternmawLure,
 };
+/**
+ * Lanternmaw Lure: an angler's stalk rising from the crown and arching forward, a glowing lure bulb dangling from
+ * its tip on a short line (vertex colours only, like every keepsake: the bulb is the brightest yellow on the avatar).
+ */
+function lanternmawLure(): BufferGeometry {
+  const b = new LowPolyBuilder();
+  const stalk = [0x3d4a2c, 0x4b5a34, 0x2d3a24].map(linear);
+  const base = new Vector3(0, HEAD_TOP - 0.04, -0.02);
+  const pts = [base, new Vector3(0, HEAD_TOP + 0.14, 0.02), new Vector3(0, HEAD_TOP + 0.24, 0.12), new Vector3(0, HEAD_TOP + 0.26, 0.26)];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const r0 = 0.03 - i * 0.006, r1 = 0.024 - i * 0.006;
+    b.log(pts[i], pts[i + 1], r0, r1, { sides: 5, rings: 1, seed: 301 + i, bark: stalk, cap: linear(stalk[0]) });
+  }
+  const tip = pts[pts.length - 1], hang = new Vector3(tip.x, tip.y - 0.07, tip.z + 0.01);
+  b.log(tip, hang, 0.006, 0.006, { sides: 3, rings: 1, seed: 305, bark: [linear(0x2b2b20)], cap: linear(0x2b2b20) });
+  b.rock(new Vector3(hang.x, hang.y - 0.045, hang.z), 0.055, new Vector3(1, 1.1, 1), { segments: 6, jitter: 0.06, seed: 306, colors: [linear(0xffe48a), linear(0xfff3b8), linear(0xffd25a)], top: linear(0xfffbe0) });
+  return b.build();
+}
+
 const geometries = new Map<number, BufferGeometry>();
 
 /** Shared geometry for cosmetic `id` (created on first use), or null for an unknown id. */

@@ -14,6 +14,30 @@ const store = () => useBossStore.getState();
 describe('bossStore rows and derived membership', () => {
   beforeEach(() => store().reset());
 
+  it('derives your Lanternmaw membership from the lantern tables, separately from the Spire', () => {
+    store().setMe('aa');
+    store().setRow('spireMember', member('aa', 41n));
+    store().setRow('spireMember', member('bb', 41n, 1));
+    store().setRow('lanternMember', member('aa', 7n));
+    store().setRow('lanternMember', member('dd', 7n, 1));
+    store().setRow('lanternMember', member('ee', 8n));
+    store().setRow('lanternRun', run(7n));
+    store().setRow('lanternFight', fight(7n, 1780));
+    store().setRow('lanternConfig', { id: 0, lanternOpen: true } as any);
+    expect(store().myLanternRun?.id).toBe(7n);
+    expect(store().lanternFight?.hp).toBe(1780);
+    expect([...store().myLanternHexes].sort()).toEqual(['aa', 'dd']);
+    expect([...store().myRunHexes].sort()).toEqual(['aa', 'bb']);
+    expect(store().lanternConfig?.lanternOpen).toBe(true);
+    store().deleteRow('lanternMember', 'aa');
+    expect(store().myLanternMember).toBeNull();
+    expect(store().lanternFight).toBeNull();
+    expect(store().myLanternHexes.size).toBe(0);
+    expect(store().myMember?.runId).toBe(41n);
+    store().deleteRow('lanternConfig', 0);
+    expect(store().lanternConfig).toBeNull();
+  });
+
   it('starts empty, so components without a provider render as before', () => {
     expect(store()).toMatchObject({ config: null, clatter: null, fight: null, myMember: null, myRun: null, lobbyOpen: false });
     expect(store().runs.size).toBe(0);
