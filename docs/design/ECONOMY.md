@@ -27,7 +27,7 @@ One meter per character, measured in **seconds of gathering**.
 | New character's meter, growing linearly over 3 days | 5400 points |
 | Rested line | two thirds of the meter |
 | Start | every meter starts at the rested line (normal pay) |
-| Refill | 1 point per 6 s. **Online only up to the rested line; logged out up to the top** (empty to full in 12 h away) |
+| Refill | **Only while logged out**: 1 point per 6 s up to the top (empty to full in 12 h away). Online time refills nothing (`ENERGY_ONLINE_REFILL_SHARE` = 0; it was 1, i.e. 1 point per 6 s up to the rested line, until 2026-11) |
 | Above the line (rested) | the event pays **double** items and XP |
 | At or below the line | normal pay |
 | Fewer points than the action costs (tired) | **one event in four** pays; the others give nothing, and a tired berry harvest never rolls for a stick |
@@ -39,18 +39,72 @@ grow in real time, so the meter leaves them alone. Quest and order coins are not
 scaled: order inputs are gathered (so energy-limited), and orders keep their
 60-coins-a-day cap.
 
-Effect: a person gathering about half the time in a 2 h session never reaches
-the tired band, and comes back rested after a night away. A character that
-gathers nonstop earns at most one 3 s action per 18 s from the refill, plus one
-tired action in four: well under half its nonstop rate
-(`shared/sim/__tests__/energy.test.ts`). It is never rested, because it never
-logs out.
+Effect: a person in 2 h sessions spends a few hundred points a session and a
+night away fills the meter, so they play rested and never see the tired band.
+A character that never logs off spends its meter once (about 9 hours for a
+24/7 AI seat) and then keeps one harvest in four. It is never rested, because
+it never logs out.
+
+### Why online time refills nothing (2026-11)
+
+With the old online refill (1 point per 6 s, 600 an hour, up to the rested
+line) the meter only bit a literal nonstop gatherer. A 24/7 AI seat on the beta
+finished ~176 harvests an hour (528 points) because walking, banking and
+crafting keep it gathering about half the time, so the refill covered it: one
+seat made 3,316 harvests without its meter falling below 56%, none of 27
+meters in the snapshot was tired, and seats earned ~1.8x a human per online
+hour against a target of at most 0.5x.
+
+`shared/sim/__tests__/energyPace.ts` replays fixed schedules through the meter
+(value = payouts, in normal harvests, per online hour; steady state = days
+2-7). The human plays 2 h at 08:00 and 19:00, gathering 14 of every 20
+minutes, at one harvest per 54 s while gathering (the pace that reproduces the
+measured 1.8x) or, as the "keen human", at the seat's one per 10.2 s. The seat
+is online 24/7 and alternates 78 minutes of gathering at one harvest per
+10.2 s with 78 minutes of other work, which reproduces ~176 harvests an hour
+and a meter that never drops below 56% on the old rules. Candidates:
+
+| rules | human /h | keen human /h | seat /h (day 1 / steady) | seat vs human (steady / first week) | seat tired after | seat reconnecting every 3 h vs human | nonstop /h | seat logged out 12 h a night, /online h | newcomer at seat pace: lowest in first 2 h, tired after (seat pace / human pace) |
+|---|---|---|---|---|---|---|---|---|---|
+| old (6 s online) | 96 | 498 | 181 / 177 | 1.84x / 1.85x | never | 1.84x | 400 | 258 | 60%, 24.2 h / never |
+| A: online refill 12 s | 96 | 498 | 167 / 100 | 1.04x / 1.14x | 19.0 h | 1.04x | 300 | 258 | 49%, 7.9 h / never |
+| B: online refill stops 3 h after a login | 96 | 498 | 112 / 44 | 0.46x / 0.56x | 11.3 h | 1.84x | 300 | 258 | 60%, 7.2 h / 28.3 h |
+| **C: refill only logged out (shipped)** | 96 | 498 | 95 / 44 | **0.46x** / 0.54x | 8.4 h | 0.46x | 300 | 258 | 39%, 4.8 h / 25.0 h |
+| D: C + 2 points per second of gathering | 96 | 449 | 70 / 44 | 0.46x / 0.50x | 3.6 h | 0.46x | 300 | 156 | 11%, 2.4 h / 12.5 h |
+
+- **A** halves the seat's take but leaves it level with a human.
+- **B** matches C for a seat that never reconnects, but any reconnect (a
+  gateway reset, or on purpose) restarts the clock, and it needs a new stored
+  field.
+- **C** is the simplest rule that reaches the target: a 2-hour session never
+  used the online refill (it starts rested after a night away), so humans at
+  either pace keep every unit, and a reconnect refills only the seconds
+  actually spent away.
+- **D** gets the seat tired sooner but costs keen humans 10% of their rested
+  pay and tires a keen newcomer after 2.4 h.
+
+Costs of C:
+- A newcomer's first login (meter at its 3,600-point rested line, nothing
+  refilling) lasts about 5 hours at a seat's pace or about a day at the human
+  pace before tired, against about a day and never before.
+- The fastest honest Long Season pace (8 h days, harvesting back to back half
+  of each session, `season.test.ts`) gains about 25% less XP and reaches 99 in
+  every skill in about 55 days instead of 45.
+- What it does not stop: a seat that logs out 12 h a night is never tired and
+  still earns 258 an online hour (2.7x a human, 73% of the old 24/7 seat's
+  daily take). Logging out is the price the meter asks, the same for everyone.
+
+Odds in contested claim draws follow the meter (`claimWeight`, `1 + 3 x
+points / max`), so a run-down seat also drops to weight 1 against a rested
+human's 4; the model above ignores this, so humans do a little better than
+shown.
 
 Storage: an `energy` record in `frontier_private`, shown to its owner through
 the owner-filtered `frontier_view` (no new row-level-security filter; adding one
 disconnects every client on publish). Session edges settle it
 (`lib/energy.ts settleEnergyFor`: disconnect = online stretch, reconnect = time
-away).
+away). An online stretch refills nothing and moves the refill clock to its
+end, so it is never counted as time away later.
 
 ## 2. Banking: value is safe only in the vault
 

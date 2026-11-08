@@ -112,7 +112,7 @@ export function describeEconomy(input: {
     energy: {
       ...energy,
       ...(energyState ? {} : { estimate: true }),
-      rule: `Measured in seconds of gathering: each finished harvest or gather spends its own length. Above restedLine you are rested and it pays double; with fewer points left than an action costs, only one in ${ENERGY_TIRED_EVERY} pays. One point returns every ${ENERGY_REGEN_MS / 1000} s: while online only up to restedLine, while logged out up to max, so rested time is earned only by time away. New characters start with a smaller meter that grows over three days. Gardens and planter crops are not affected.`,
+      rule: `Measured in seconds of gathering: each finished harvest or gather spends its own length. Above restedLine you are rested and it pays double; with fewer points left than an action costs, only one in ${ENERGY_TIRED_EVERY} pays. Points return only while you are logged out, one every ${ENERGY_REGEN_MS / 1000} s up to max (restToLineInMs and restToFullInMs say how long), so a character that never logs off runs down and rested time is earned only by time away. New characters start with a smaller meter that grows over three days. Gardens and planter crops are not affected.`,
     },
     carried: {
       unbankedValue: value, loadLevel: loadLevel(value), glowAt: LOAD_GLOW_VALUE, brightAt: LOAD_BRIGHT_VALUE,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ENERGY_MAX, ENERGY_REGEN_MS, ENERGY_SEASON_MS, ENERGY_START_MAX, ENERGY_TIRED_EVERY,
+  ENERGY_MAX, ENERGY_ONLINE_REFILL_SHARE, ENERGY_REGEN_MS, ENERGY_SEASON_MS, ENERGY_START_MAX, ENERGY_TIRED_EVERY,
   energyAt, energyBand, energyCost, energyMax, energyRestedLine, energyView, newEnergy, settleEnergy, spendEnergy,
   type EnergyState,
 } from '../energy';
@@ -28,20 +28,24 @@ describe('energy meter size', () => {
 
 describe('refill', () => {
   const line = energyRestedLine(ENERGY_MAX);
-  it('online, returns one point per ENERGY_REGEN_MS up to the rested line and keeps partial progress', () => {
+  it('online time does not refill, and is used up so a later logout never counts it as time away', () => {
+    expect(ENERGY_ONLINE_REFILL_SHARE).toBe(0);
     const s: EnergyState = { id: 'a', points: 0, at: 0, born: SEASONED, tired: 0 };
-    expect(energyAt(s, ENERGY_REGEN_MS - 1).points).toBe(0);
-    const later = energyAt(s, ENERGY_REGEN_MS * 10 + 500);
-    expect(later.points).toBe(10);
-    expect(later.at).toBe(ENERGY_REGEN_MS * 10);
-    expect(energyAt(s, 100 * HOUR).points).toBe(line);
+    const online = energyAt(s, 100 * HOUR);
+    expect(online).toMatchObject({ points: 0, at: 100 * HOUR });
+    expect(settleEnergy(online, 100 * HOUR + ENERGY_REGEN_MS, false).points).toBe(1);
+    expect(settleEnergy(s, 12 * HOUR, true)).toMatchObject({ points: 0, at: 12 * HOUR });
+    expect(energyAt({ ...s, points: line - 1 }, 100 * HOUR).points).toBe(line - 1);
   });
 
-  it('time logged out refills to the top: an empty seasoned meter in 12 hours', () => {
+  it('time logged out returns one point per ENERGY_REGEN_MS up to the top and keeps partial progress', () => {
     const s: EnergyState = { id: 'a', points: 0, at: 0, born: SEASONED, tired: 0 };
+    expect(settleEnergy(s, ENERGY_REGEN_MS - 1, false).points).toBe(0);
+    const later = settleEnergy(s, ENERGY_REGEN_MS * 10 + 500, false);
+    expect(later).toMatchObject({ points: 10, at: ENERGY_REGEN_MS * 10 });
+    // An empty seasoned meter is full after 12 hours away.
     expect(settleEnergy(s, 12 * HOUR, false).points).toBe(ENERGY_MAX);
     expect(settleEnergy(s, 12 * HOUR - ENERGY_REGEN_MS, false).points).toBe(ENERGY_MAX - 1);
-    expect(settleEnergy(s, 12 * HOUR, true).points).toBe(line);
   });
 
   it('online refills never take away points earned while away', () => {
@@ -115,29 +119,28 @@ describe('a session and a bot day', () => {
     return { paid, state: s };
   }
 
-  it('a two-hour session that gathers half the time never gets tired, even for a new character', () => {
-    const fresh = newEnergy('a', 0);
-    let s = fresh, tired = false;
-    for (let t = 0; t < 2 * HOUR; t += 6000) {
-      const spent = spendEnergy(s, t, 3);
-      if (spent.band === 'tired') tired = true;
-      s = spent.state;
-    }
-    expect(tired).toBe(false);
+  it('a two-hour session that finishes a harvest every 10 s never gets tired, even for a new character', () => {
+    const { state } = gather(newEnergy('a', 0), 0, 2 * HOUR, 10_000);
+    expect(state.points).toBeGreaterThan(0);
+    expect(state.tired).toBe(0);
   });
 
   it('a character that gathers nonstop for a day earns well under its nonstop rate', () => {
     const { paid } = gather(newEnergy('bot', 0, SEASONED), 0, 24 * HOUR, 3000);
     const nonstop = (24 * HOUR) / 3000;
-    // Refill (one point per 6 s buys one 3 s action per 18 s) plus one tired action in four.
-    expect(paid).toBeLessThan(nonstop * 0.45);
+    // The meter (from the rested line), then one tired action in four: nothing refills while online.
+    expect(paid).toBe(energyRestedLine(ENERGY_MAX) / 3 + Math.floor((nonstop - energyRestedLine(ENERGY_MAX) / 3) / ENERGY_TIRED_EVERY));
+    expect(paid).toBeLessThan(nonstop * 0.3);
   });
 
   it('the view reports band, line and refill times', () => {
     const v = energyView({ id: 'a', points: 0, at: 0, born: SEASONED, tired: 0 }, 1000);
     expect(v).toMatchObject({ points: 0, max: ENERGY_MAX, band: 'tired', restedLine: energyRestedLine(ENERGY_MAX) });
-    expect(v.nextPointInMs).toBe(ENERGY_REGEN_MS - 1000);
-    expect(v.refillInMs).toBe(ENERGY_REGEN_MS - 1000 + (energyRestedLine(ENERGY_MAX) - 1) * ENERGY_REGEN_MS);
+    // Online time does not refill: only time logged out does.
+    expect(v).toMatchObject({ nextPointInMs: 0, refillInMs: 0 });
+    expect(v.restToLineInMs).toBe(energyRestedLine(ENERGY_MAX) * ENERGY_REGEN_MS);
+    expect(v.restToFullInMs).toBe(ENERGY_MAX * ENERGY_REGEN_MS);
+    expect(energyView({ id: 'a', points: ENERGY_MAX, at: 0, born: SEASONED, tired: 0 }, 1000)).toMatchObject({ restToLineInMs: 0, restToFullInMs: 0 });
     expect(energyView(undefined, 0, 'x').band).toBe('normal');
   });
 });

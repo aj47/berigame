@@ -1542,7 +1542,7 @@ export function advance(w: World) {
         node.regrowsAt = w.now + FRONTIER.timberRegrow;
       }
       // On `p` itself: a separate note() would be overwritten by the profile saved just below.
-      if (!spent.payout) p.notes = [...p.notes.slice(-19), "You are tired: that gather found nothing. Energy comes back with time, and a rest away from the game makes you rested."];
+      if (!spent.payout) p.notes = [...p.notes.slice(-19), "You are tired: that gather found nothing. Energy comes back only while you are logged out, and a night away fills it."];
       r.put("profile", p);
       w.save(a);
     } else note(w, a.id, "Gathering stopped because your bag is full.");

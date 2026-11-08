@@ -162,7 +162,8 @@ take the same commissions.
 
 `season.test.ts` simulates a player on 8-hour days with the energy meter:
 
-- 16 hours away fill the meter.
+- 16 hours away fill the meter; online time refills nothing (ECONOMY.md
+  section 1).
 - Half of each session is spent harvesting, alternating 30 minutes per
   gathering skill at the best node unlocked.
 - Everything gathered is crafted.
@@ -173,7 +174,7 @@ a crowd is slower.
 
 | | Day 1 | Day 30 | Every skill at 99 |
 |---|---|---|---|
-| Lowest skill level | about 35 | 80–98 (asserted) | 40–100 days (asserted); about 45 at this pace |
+| Lowest skill level | about 33 | 80–98 (asserted); about 81 at this pace | 40–100 days (asserted); about 55 at this pace (45 while online time refilled) |
 
 At least one level is gained somewhere on every one of the first 30 days. In
 practice regrow waits, travel and contention stretch the cap to roughly two

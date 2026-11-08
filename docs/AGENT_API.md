@@ -422,8 +422,10 @@ per cut. All current IDs and positions are in `frontier.resources`.
 - **Energy, banking and risk** (`state.economy`, [design](./design/ECONOMY.md)).
   Harvests and gathers pay by an energy meter measured in seconds of gathering:
   double while rested (above `economy.energy.restedLine`), normal below it, and
-  one in four while tired. It refills one point per 6 s: online up to the
-  rested line, logged out up to the top, so only time away makes you rested.
+  one in four while tired. It refills only while you are logged out, one point
+  per 6 s up to the top (`restToLineInMs`, `restToFullInMs`); online time
+  refills nothing, so a character that never logs off runs down to one in four,
+  and only time away makes you rested.
   Everything in the bag drops on defeat; `vault_deposit` / `vault_withdraw` are
   instant in the safe ring, and the nine drop boxes (four on the original
   Coast, five in the mainland towns; `economy.vault.dropBoxes`) take deposits over 4 ticks that a hit or a step

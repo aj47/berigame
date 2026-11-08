@@ -4,17 +4,20 @@
  *
  * - The meter is measured in seconds of gathering. A finished harvest or
  *   gather spends its own length (a 3 s berry harvest spends 3 points).
- * - Points come back with real time, one every ENERGY_REGEN_MS. While you are
- *   online they refill only up to the rested line; while you are logged out
- *   they refill up to the top. So the rested band (above the line, where an
- *   event pays double) is earned only by time away, the classic rested bonus:
- *   a character that never logs off never gets it.
+ * - Points come back only while you are logged out, one every ENERGY_REGEN_MS,
+ *   up to the top (ENERGY_ONLINE_REFILL_SHARE of that rate also refills online,
+ *   up to the rested line; it is 0). So the rested band (above the line, where
+ *   an event pays double) is earned only by time away, the classic rested
+ *   bonus, and a character that never logs off runs its meter down.
  * - Every meter starts at the rested line, paying normally.
  * - Tired (fewer points left than the action costs): only every fourth event pays.
  *
- * A seasoned meter holds two hours of nonstop gathering, and a person who also
- * walks, fights, crafts and chats gathers about half the time, so a normal
- * session ends long before the tired band. A new character starts with a
+ * A seasoned meter holds two hours of nonstop gathering. A person who also
+ * walks, fights, crafts and chats spends a few hundred points in a 2-hour
+ * session, and a night away fills it, so normal sessions never see the tired
+ * band. A 24/7 AI seat gathering about half its time (~176 harvests an hour)
+ * is tired within about 9 hours and then keeps one harvest in four
+ * (shared/sim/__tests__/energyPace.test.ts). A new character starts with a
  * smaller meter that grows to full over its first three days.
  *
  * Times are Unix milliseconds. The state is plain data so the SpacetimeDB
@@ -27,8 +30,14 @@ export const ENERGY_MAX = 7200;
 export const ENERGY_START_MAX = 5400;
 /** Character age at which the meter reaches ENERGY_MAX. */
 export const ENERGY_SEASON_MS = 3 * 24 * 60 * 60 * 1000;
-/** One point (one second of gathering) back every 6 s: an empty seasoned meter refills to the top in 12 hours away. */
+/** One point (one second of gathering) back every 6 s logged out: an empty seasoned meter refills to the top in 12 hours away. */
 export const ENERGY_REGEN_MS = 6000;
+/**
+ * Share of the logged-out refill rate that also returns while online, up to the
+ * rested line. 0: online time never refills, so a character that never logs off
+ * runs down (was 1 until 2026-11, which a 24/7 AI seat never outspent).
+ */
+export const ENERGY_ONLINE_REFILL_SHARE = 0;
 /** Above this fraction of the meter, events pay double. Every meter starts exactly here. */
 export const ENERGY_RESTED_FRACTION = 2 / 3;
 /** While tired, one event in this many pays (25%). */
@@ -66,21 +75,27 @@ export function newEnergy(id: string, now: number, born = now): EnergyState {
   return { id, points: energyRestedLine(energyMax(first, now)), at: now, born: first, tired: 0 };
 }
 
+/** Milliseconds per point while online, or Infinity when online time does not refill. */
+const ONLINE_REGEN_MS = ENERGY_ONLINE_REFILL_SHARE > 0 ? ENERGY_REGEN_MS / ENERGY_ONLINE_REFILL_SHARE : Infinity;
+
 /**
  * The state at `now` after refilling since `s.at`. `online` (the default: a
- * character spending or looking at its meter is online) refills only to the
- * rested line; pass false to settle a logged-out stretch, which refills to the
- * top. Points already above the ceiling stay. Never mutates `s`.
+ * character spending or looking at its meter is online) refills at
+ * ENERGY_ONLINE_REFILL_SHARE of the rate and only to the rested line; pass
+ * false to settle a logged-out stretch, which refills to the top. Online time
+ * that refills nothing is used up (`at` moves to `now`), so it never counts as
+ * time away later. Points already above the ceiling stay. Never mutates `s`.
  */
 export function energyAt(s: EnergyState, now: number, online = true): EnergyState {
   const max = energyMax(s.born, now);
   const ceiling = online ? energyRestedLine(max) : max;
-  if (s.points >= ceiling) return { ...s, at: Math.max(s.at, now) };
+  const period = online ? ONLINE_REGEN_MS : ENERGY_REGEN_MS;
+  if (s.points >= ceiling || period === Infinity) return { ...s, at: Math.max(s.at, now) };
   const elapsed = Math.max(0, now - s.at);
-  const gained = Math.floor(elapsed / ENERGY_REGEN_MS);
+  const gained = Math.floor(elapsed / period);
   const points = Math.min(ceiling, s.points + gained);
   // A meter that reaches its ceiling restarts the refill clock; otherwise keep the partial point.
-  const at = points >= ceiling ? now : s.at + gained * ENERGY_REGEN_MS;
+  const at = points >= ceiling ? now : s.at + gained * period;
   return { ...s, points, at };
 }
 
@@ -136,10 +151,14 @@ export interface EnergyView {
   band: EnergyBand;
   /** Points left before the band drops (rested: to normal; normal: to tired; tired: 0). */
   untilNextBand: number;
-  /** Milliseconds until the next point, or 0 at or above the rested line (online refills stop there). */
+  /** Milliseconds online until the next point; 0 at or above the rested line, or when online time does not refill. */
   nextPointInMs: number;
-  /** Milliseconds of online time until the meter is back at the rested line. */
+  /** Milliseconds of online time until the meter is back at the rested line; 0 as for nextPointInMs. */
   refillInMs: number;
+  /** Milliseconds logged out until the meter is back at the rested line (0 at or above it). */
+  restToLineInMs: number;
+  /** Milliseconds logged out until the meter is full. */
+  restToFullInMs: number;
 }
 
 /** What the HUD and the agent API show. */
@@ -148,9 +167,12 @@ export function energyView(s: EnergyState | undefined, now: number, id = ''): En
   const max = energyMax(cur.born, now);
   const band = energyBand(cur.points, max);
   const restedLine = energyRestedLine(max);
-  // Online the meter refills to the rested line; the rest comes from time away.
+  // Online the meter refills (if at all) to the rested line; the rest comes from time away.
   const missing = Math.max(0, restedLine - cur.points);
-  const nextPointInMs = missing === 0 ? 0 : Math.max(0, cur.at + ENERGY_REGEN_MS - now);
+  const online = missing > 0 && ONLINE_REGEN_MS !== Infinity;
+  const nextPointInMs = online ? Math.max(0, cur.at + ONLINE_REGEN_MS - now) : 0;
+  // Time away counts from `at`, so partial progress toward the next point carries over.
+  const away = (points: number) => (points <= 0 ? 0 : Math.max(0, points * ENERGY_REGEN_MS - Math.max(0, now - cur.at)));
   return {
     points: cur.points,
     max,
@@ -158,6 +180,8 @@ export function energyView(s: EnergyState | undefined, now: number, id = ''): En
     band,
     untilNextBand: band === 'rested' ? cur.points - restedLine : band === 'normal' ? cur.points : 0,
     nextPointInMs,
-    refillInMs: missing === 0 ? 0 : nextPointInMs + (missing - 1) * ENERGY_REGEN_MS,
+    refillInMs: online ? nextPointInMs + (missing - 1) * ONLINE_REGEN_MS : 0,
+    restToLineInMs: away(missing),
+    restToFullInMs: away(max - cur.points),
   };
 }

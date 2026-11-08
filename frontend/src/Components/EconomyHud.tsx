@@ -32,10 +32,11 @@ export default function EconomyHud({ onOpenVault }: { onOpenVault?: () => void }
   const home = !me.region || me.region === 'bramblewild';
   const atVault = home && atGroveVault(me);
   const box = home && !atVault ? dropBoxInReach(me) : undefined;
-  const rules = 'Rested (above the line) gathering pays double; with nothing left only one gather in four pays. Online it refills up to the line; time logged out fills it above';
+  const rules = 'Rested (above the line) gathering pays double; with nothing left only one gather in four pays. It refills only while you are logged out, and a night away fills it';
   // Before your first harvest the server has not sized your meter yet (it depends on your character's age), so no numbers.
   const energyTitle = stored
-    ? `${energy.points} of ${energy.max} seconds of gathering. ${rules}${energy.refillInMs ? `. Back at the line in ${duration(energy.refillInMs)}` : ''}.`
+    ? `${energy.points} of ${energy.max} seconds of gathering. ${rules}${energy.refillInMs ? `. Back at the line in ${duration(energy.refillInMs)}`
+      : energy.restToLineInMs ? `. Back at the line after ${duration(energy.restToLineInMs)} logged out` : ''}.`
     : `Gathering pays normally. ${rules}.`;
   return (
     <div className="hud-economy">

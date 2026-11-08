@@ -45,7 +45,9 @@ describe("economy strip", () => {
     cleanup();
     mock.energy = seasoned(0);
     render(<EconomyHud />);
-    expect(screen.getByRole("meter", { name: "Energy: Tired" })).toBeInTheDocument();
+    const tired = screen.getByRole("meter", { name: "Energy: Tired" });
+    // Online time does not refill: an empty seasoned meter is back at the line after 8 hours away.
+    expect(tired.getAttribute("title")).toMatch(/refills only while you are logged out.*Back at the line after 8 h logged out\.$/);
   });
 
   it("before the first harvest shows normal pay without invented numbers", () => {

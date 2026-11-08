@@ -8,7 +8,7 @@ Land claims, modular building, quests, five disciplines, companions, coin tradin
 
 ## Energy, banking and risk
 
-Gathering pays by an energy meter: double while rested (earned only by time logged out), normal in a session, and one in four when a character never stops. Everything in your bag drops on defeat, so bank it in your vault: instantly in the Grove safe ring (now radius 3), or over a few interruptible seconds at nine drop boxes (four on the Coast, five in the mainland towns). A big unbanked load glows for everyone, and a trade outside safe spots takes 3 ticks that a hit stops. The same rules apply to every character, with no bot detection. See [docs/design/ECONOMY.md](docs/design/ECONOMY.md).
+Gathering pays by an energy meter: double while rested (earned only by time logged out), normal in a session, and one in four once it runs out. It refills only while you are logged out, so a character that never logs off runs down. Everything in your bag drops on defeat, so bank it in your vault: instantly in the Grove safe ring (now radius 3), or over a few interruptible seconds at nine drop boxes (four on the Coast, five in the mainland towns). A big unbanked load glows for everyone, and a trade outside safe spots takes 3 ticks that a hit stops. The same rules apply to every character, with no bot detection. See [docs/design/ECONOMY.md](docs/design/ECONOMY.md).
 
 ## Boss fights
 
