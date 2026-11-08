@@ -8,7 +8,7 @@ import { NODE_SEEDS, RECIPES, SEASON_RECIPES, TIER_NODE_SEEDS, harvestTicksFor, 
 import { SEASON_ITEMS, TIER_BIOMES, TIER_ID_BLOCK, TIER_NODES, FIRST_TIER_NODE_ID, placeTierNodes, tierNode } from '../season';
 import { biomeOf } from '../expanse';
 import { HARVEST_XP, SKILL_MAX_LEVEL, Skill, harvestTicksAtLevel, harvestXp, levelForXp, skillForNode, xpForLevel } from '../skills';
-import { ENERGY_MAX, ENERGY_REGEN_MS, energyRestedLine } from '../energy';
+import { ENERGY_MAX, ENERGY_ONLINE_REFILL_SHARE, ENERGY_REGEN_MS, energyRestedLine } from '../energy';
 import { LEDGER_SEALS_PER_DAY, LEDGER_TEMPLATES } from '../ledger';
 import { DROP_BOXES } from '../banking';
 import { WAYSTONES } from '../expanse';
@@ -177,7 +177,8 @@ function simulate(days: number) {
       const elapsed = seconds / harvestShare;
       t += elapsed;
       regen += elapsed * 1000;
-      while (regen >= ENERGY_REGEN_MS) { regen -= ENERGY_REGEN_MS; if (points < rested) points++; }
+      // Online time refills at ENERGY_ONLINE_REFILL_SHARE of the logged-out rate, up to the rested line.
+      while (ENERGY_ONLINE_REFILL_SHARE > 0 && regen >= ENERGY_REGEN_MS / ENERGY_ONLINE_REFILL_SHARE) { regen -= ENERGY_REGEN_MS / ENERGY_ONLINE_REFILL_SHARE; if (points < rested) points++; }
     }
     // Ledger: three commissions at the levels of the day.
     for (let s = 0; s < 3; s++) {

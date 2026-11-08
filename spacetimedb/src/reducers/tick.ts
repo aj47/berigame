@@ -381,7 +381,7 @@ function phaseHarvest(s: TickState): void {
       if (payout) giveItem(s.ctx, p.identity, tree.itemId, payout, p, s.T);
       activity(s.ctx, p.identity, 'harvests');
       if (payout) activity(s.ctx, p.identity, 'gathered', payout);
-      else notify(s.ctx, p.identity, p.identity, SocialNotice.Info, 'You are tired: that harvest found nothing. Energy comes back with time, and a rest away from the game makes you rested.');
+      else notify(s.ctx, p.identity, p.identity, SocialNotice.Info, 'You are tired: that harvest found nothing. Energy comes back only while you are logged out, and a night away fills it.');
       tree.cooldownUntilTick = s.T + regrowTicksFor(tree.kind);
       tree.harvester = undefined;
       markTree(s, tree);
