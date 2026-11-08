@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ADVENTURE_CAMP, BERRY_MARKET, GIANT_FEAST, TECHNIQUES, PlayerState, chebyshev, hasTechnique, getItemDef, inSafeRing, expeditionPayout, expeditionPaidStatus, EXPEDITION_CAP_NOTICE, type ExpeditionPaidState } from '@sim';
 import { useAdventureProfiles, useExpeditionPaid, useExpeditions, useExpeditionMembers, useFriendlyDuels, useGardenShowcases, useInventoryRows, useIslandProjects, useMyPlayer, usePlayers, useTick } from '../spacetime/hooks';
 import { useGameActions } from '../spacetime/actions';
+import { WATCHING } from '../spacetime/viewer';
 import { openAdventure, type AdventureView } from './adventureNavigation';
 import { FeastRewards, GiantFriendship } from './GiantFriendship';
 import { berryGiantMood } from './berryGiantUi';
@@ -35,10 +36,11 @@ function PaidToday({ state }: { state: ExpeditionPaidState | undefined }) {
 
 export function AdventureHud({ visible }: { visible: boolean }) {
   const me = useMyPlayer(), members = useExpeditionMembers(), expeditions = useExpeditions(), paidState = useExpeditionPaid();
+  // A spectator (/watch) cannot read the watched player's private expeditionPaid row, so it shows the plain line.
   const m = members.find(m => hex(m.identity) === hex(me?.identity));
   const e = expeditions.find(e => e.id === m?.expeditionId);
   if (!e || !visible) return null;
-  if (e.stage === 'complete') return <button className="adventure-hud" onClick={() => openAdventure(e.destination === 'feast' ? 'feast' : 'expedition')}><strong>{e.destination === 'feast' ? (m?.contributions ? '♥ You made a very big friend!' : 'The crew shared a feast!') : 'Berry delivered!'}</strong><span>{m?.contributions ? paidState?.lastPaid === String(e.id) ? `+${expeditionPayout(e.value, e.destination === 'feast')} goldberries · See rewards` : 'XP only: daily goldberry rewards used · See rewards' : 'The crew made it · See the celebration'} →</span></button>;
+  if (e.stage === 'complete') return <button className="adventure-hud" onClick={() => openAdventure(e.destination === 'feast' ? 'feast' : 'expedition')}><strong>{e.destination === 'feast' ? (m?.contributions ? '♥ You made a very big friend!' : 'The crew shared a feast!') : 'Berry delivered!'}</strong><span>{m?.contributions ? WATCHING ? 'Expedition complete · See rewards' : paidState?.lastPaid === String(e.id) ? `+${expeditionPayout(e.value, e.destination === 'feast')} goldberries · See rewards` : 'XP only: daily goldberry rewards used · See rewards' : 'The crew made it · See the celebration'} →</span></button>;
   if (!activeStage(e.stage)) return null;
   const hint = e.stage === 'growing' ? 'Your berry is growing. Go find it!' : hex(e.carrier) === hex(me?.identity)
     ? `Carry it to ${e.destination === 'feast' ? 'the Giant’s feast' : 'the drop-off'}.` : 'Help your berry reach its destination.';
