@@ -33,6 +33,18 @@ export const SPIRE_EXIT: Tile = { x: 61, z: 45 };
 /** The lobby: Chebyshev distance from the gate within which parties form and start. */
 export const SPIRE_GATE_RANGE = 3;
 
+// ---- The Drowned Hollow (Lanternmaw, Glimmerfen) ------------------------------
+/**
+ * Lanternmaw's sealed 15 x 15 floor in the strait off Glimmerfen's north shore,
+ * 7+ tiles from any land. Proposed: not yet joined to the land mask (terrain.ts)
+ * or the server; the shared simulation (lanternmaw.ts) works in local tiles.
+ */
+export const LANTERN_FLOOR: BossRect = { x0: 56, z0: 129, x1: 70, z1: 143 };
+
+export function inLanternFloor(t: Tile): boolean {
+  return Number.isInteger(t.x) && Number.isInteger(t.z) && inBossRect(t, LANTERN_FLOOR);
+}
+
 export function inBossRect(t: Tile, r: BossRect): boolean {
   return t.x >= r.x0 && t.x <= r.x1 && t.z >= r.z0 && t.z <= r.z1;
 }
