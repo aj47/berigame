@@ -12,7 +12,7 @@ this file is wrong: fix it. The constants live in:
 | Clatterhorn's AI, lanes, swarm, telegraph, rewards | `shared/sim/clatterhorn.ts` |
 | The Spire's patterns, scheduler, stars, damage, safety table | `shared/sim/spire.ts`, `shared/sim/spireValidate.ts` |
 | Owner switches and live HP knobs | `shared/sim/bossConfig.ts` |
-| Lanternmaw's floor, patterns, tide, fight and validator (section 9) | `shared/sim/lanternmaw.ts`, `shared/sim/lanternmawValidate.ts`, `LANTERN_FLOOR` in `bossZones.ts` |
+| Lanternmaw's floor, patterns, tide, fight and validator (section 9) | `shared/sim/lanternmaw.ts`, `shared/sim/lanternmawValidate.ts`, `LANTERN_FLOOR` in `bossZones.ts`, the Lanternmaw tunables in `constants.ts` |
 | Items, recipes, keepsakes | `shared/sim/items.ts`, `shared/sim/nodes.ts` (`RECIPES`), `shared/sim/skills.ts` (`COSMETICS`) |
 | Server | `spacetimedb/src/lib/clatterhorn.ts`, `lib/spire.ts`, `lib/spireGuards.ts`, `reducers/clatterhorn.ts`, `reducers/spire.ts`, `reducers/bossAdmin.ts` |
 | Agent feeds | `shared/sim/bossDanger.ts` (`/danger`), `shared/sim/bossPresentation.ts` (`/state` blocks) |
@@ -623,7 +623,7 @@ floor boundary or into another run.
 | `boss-guards-server.test.ts` | No-PvP zones, floor refusals, owner reducers |
 | `bossDanger.test.ts`, `bossPresentation.test.ts` | The danger feed against brute force; `/state` shapes and size caps |
 | `frontend/src/test/*` (bullets, overlay, scene, HUD, lobby, telegraph, Clatterhorn, integration) | Client behaviour |
-| `lanternmaw.test.ts`, `lanternmaw-patterns.test.ts`, `lanternmaw-bots.test.ts` | Lanternmaw's geometry, patterns, tide, reference tick; the full 15,808-instance validator, unwinnable-state checks and hash history; the scripted-player difficulty estimate (`LANTERN_BOTS=full` for 200 runs per point and parties) |
+| `lanternmaw.test.ts`, `lanternmaw-entry.test.ts`, `lanternmaw-patterns.test.ts`, `lanternmaw-bots.test.ts` | Lanternmaw's geometry, patterns, tide, reference tick; entry (weapon, bait, fee), rewards and the daily cap; the full 15,808-instance validator, unwinnable-state checks and hash history; the scripted-player difficulty estimate (`LANTERN_BOTS=full` for 400 runs per point and parties) |
 | `frontend/scripts/boss-smoke.ts` | End to end against a local server: closed by default, wake, telegraph, blows, defeat, payout, respawn; keys, lobby, start, bullets, i-frames, stars, knockout, clear rewards, the owner close refund. Needs the publisher's token (`BOSS_OWNER_TOKEN` or `BOSS_CLI_CONFIG`); seeds its test items through owner SQL, so never run it against a shared world |
 
 ## 8. Deviations from FINAL_SPEC
@@ -682,8 +682,9 @@ from are exactly the tiles you need all three ticks of warning to escape.
 - **Thinnest content.** One landmark, no node kind or recipe input of its own,
   no boss. Starfall's crater ("Bring friends") is left for the world boss.
 - **Material hook.** Glowcaps "glow on every hummock". The boss is a
-  lantern-lured angler, the entry bait is glowcaps, and its drop (fenlight)
-  extends the glow line (glowcap, Glowcap Lantern, Starpetal Incense).
+  lantern-lured angler and its drop, fenlight, is the glow the fen is known
+  for. Glimmerfen has no level-1 node, so the bait is made from common goods
+  and today's boss surpluses instead (9.2).
 - **Terrain.** A drowned marsh of reed beds and boardwalks (the fen's two
   boardwalk bridges, four lakes, the Glimmer Water). The arena is boardwalk
   over shallows that flood. Glimmerfen is also the nearest biome to the island
@@ -703,9 +704,19 @@ from are exactly the tiles you need all three ticks of warning to escape.
   grace, bag untouched), 50-tick away grace, 6 meals, refunds and the rules
   version.
 - **Party** 1-4 (`LANTERN_MAX_PARTY`).
-- **Entry cost**: one **Fen Bait** per member, spent at the start
-  (`LANTERN_BAIT`: 3 `glowcap` + 1 `flint`, Crafting 1, 30 XP), refunded only
-  on an owner close, a rules reset or a whole-party abandon, as Spire keys are.
+- **Weapon to enter.** Every member must have a weapon of at least 8 damage
+  (`LANTERN_MIN_WEAPON_DAMAGE`: a Stone Club, 1 driftwood + 2 flint at
+  Crafting 1) wielded or in the bag (`lanternEntryRejection`: "Bring a weapon
+  to the Drowned Hollow: a stone club or better"). Bare fists (3) and the
+  stick or knife (6) almost never beat the clock even played perfectly (a
+  perfect solo stick clears 5 of 100), so this removes the unwinnable starts.
+- **Entry cost per member per attempt**, spent at the start and refunded only on
+  an owner close, a rules reset or a whole-party abandon, as Spire keys are:
+  - one **Fen Bait** (`LANTERN_BAIT`: 1 `gleamshell` + 1 `obsidian` + 2
+    `driftwood`, Crafting 1, 30 XP). Level-1 inputs only: no tier material, so
+    Foraging levels never gate access;
+  - **5 coins** (`LANTERN_ENTRY_FEE`, coin sinks stage 1), debited through
+    `money()` with the reason `fee:lanternmaw`.
 
 ### 9.3 Arena
 
@@ -761,13 +772,14 @@ before S. The ebb's last tick publishes the next den pattern.
 ### 9.5 HP and phases
 
 ```
-maxHp = 850 + 900 * (members - 1)      // 850 / 1750 / 2650 / 3550
+maxHp = 810 + 970 * (members - 1)      // 810 / 1780 / 2750 / 3720
 ```
 
 Phases, evaluated when a pattern or a dive is published and never going back:
 P1 above 2/3 HP, P2 at or below 2/3, P3 at or below 1/3 or once enraged. The
-proposed `boss_config` knobs are `lanternHpBase` 850 and `lanternHpPerMember`
-900 (`LANTERN_HP_BASE`, `LANTERN_HP_PER_MEMBER` are the defaults).
+proposed `boss_config` knobs are `lanternHpBase` 810 and `lanternHpPerMember`
+970. Their defaults, the bite, the fee, the bait, the weapon floor and the
+daily cap live in `shared/sim/constants.ts` (Lanternmaw section).
 
 ### 9.6 Attacks
 
@@ -795,7 +807,7 @@ moved to the next entry if it repeats the current kind, with
 one costs 4 HP (`LANTERN_DROWN_DAMAGE`), with no i-frames either way.
 
 **Surfacing.** On tick S, before swings, every present member on the spring
-**caps** it: each capper is bitten for 5 (`LANTERN_BITE_DAMAGE`) and the boss
+**caps** it: each capper is bitten for 6 (`LANTERN_BITE_DAMAGE`) and the boss
 **chokes** for S .. S + 8 (`LANTERN_CHOKE_TICKS`): swings deal double damage, it
 does not heal and does not pulse. An **uncapped** spring feeds it 1 / 2 / 3 / 4
 HP per tide tick by party size (`LANTERN_FEED_HEAL`): 15 / 30 / 45 / 60 per tide.
@@ -809,11 +821,11 @@ exactly 2 away), starting from the pulse seed's parity. Skipped while it chokes.
 | Den blow (`LANTERN_BLOW_DAMAGE`) | 10 | 13 | 15 | +1 |
 | Lure pulse | 7 | 7 | 7 | +1 |
 | Flooded tile, per tick | 4 | 4 | 4 | |
-| Bite (capping) | 5 | 5 | 5 | |
+| Bite (capping) | 6 | 6 | 6 | |
 
 Blows and pulses give 2 ticks of i-frames (`LANTERN_IFRAME_TICKS`). With 30 HP
 and 6 goldberries a member has 90 HP of budget; a perfect solo run spends about
-53 of it on 10-11 bites and nothing else.
+60 of it on 10 bites and nothing else (5.2 meals a run).
 
 ### 9.7 What is new about it
 
@@ -878,17 +890,20 @@ tiles where standing still gets you hit.
 - **The cap walk.** Every standable tile reaches every spring within the dive
   (worst case 8 ticks around the maw; the first draft gave 6 and the validator
   caught it).
-- **Clock.** A perfect solo player with a Stone Club clears every sampled run
-  before the time limit (24 seeds in the test, 200 in the bots).
-- Bare fists cannot win in time (no punch-only clear): the server step must
-  refuse entry without a weapon, or this stays the one unwinnable state.
+- **Entry precondition.** Every member holds a weapon of at least 8
+  (`LANTERN_PRECONDITION_WEAPON`, enforced by `lanternEntryRejection`); the
+  clock check below is proved for that floor.
+- **Clock.** A perfect solo player with the weakest admitted weapon (a Stone
+  Club) clears every sampled run before the time limit (24 seeds in the test,
+  400 in the bots, about 500 ticks of 600).
 
 **Pattern edits.** `lanternPatternTableHash` covers the floor, planks, springs,
 spawns, pattern definitions, pools, timings, damages, heal, HP defaults, every
 blow of every kind for all 64 seeds (Mire Marks at two aims) and every pulse
 mask. A change fails the test with the line to append to
 `shared/sim/__tests__/lanternmawValidated.ts` and asks for a
-`LANTERN_RULES_VERSION` bump (now 1, hash `5f69cc7e`).
+`LANTERN_RULES_VERSION` bump (now 2, hash `b52934ff`; rules 1 was the first
+draft's numbers).
 
 ### 9.9 Difficulty estimate (scripted players)
 
@@ -897,65 +912,70 @@ mask. A change fails the test with the line to append to
 a random step with some chance per tick, cap with some chance per dive and eat a
 goldberry at low HP. Solo, Stone Club, 30 HP, 6 meals:
 
-| Player | React | Plan | Slips | Caps | Den reach | Win rate (200 runs) |
+| Player | React | Plan | Slips | Caps | Den reach | Win rate |
 |---|---|---|---|---|---|---|
-| Perfect | 0 ticks | full | 0 | always | always ring 2 | **100%**, clears in about 515 ticks (5:09) |
-| Careful (learned) | 1 tick | full | 2% | always | ring 2 on its swing tick, ring 3 otherwise | **39%** |
-| Sloppy | 2 ticks | this tick and the next | 6% | 30% | always ring 2 | **0%** |
+| Perfect | 0 ticks | full | 0 | always | always ring 2 | **100%** (400 runs), clears in about 500 ticks (5:00) |
+| Careful (learned) | 1 tick | full | 2% | always | ring 2 on its swing tick, ring 3 otherwise | **28%** (1,400 runs: 25%, 30% and 28% in three samples) |
+| Sloppy | 2 ticks | this tick and the next | 6% | 30% | always ring 2 | **0%** (400 runs) |
 
 Careful runs are lost to attrition (about 9 bites, 3 den hits and 2 ticks in
 the flood against 90 HP), not to the clock.
 
 **Attempts to a first clear.** A learner plays sloppy on its first attempt and
-blends linearly to careful over K attempts. Measured win rates at skill 0, 1/4,
-1/2, 3/4 and 1 are 0, 0, 0, 0.23 and 0.41, so:
+blends linearly to careful over K attempts. Measured win rates (400 runs each)
+at skill 0, 1/4, 1/2, 3/4 and 1 are 0, 0, 0, 0.20 and 0.30, so:
 
 | Learns over | Median attempts | Mean | 90% by |
 |---|---|---|---|
-| 10 attempts | 10 | 10.1 | 13 |
-| 30 attempts | 23 | 22.9 | 28 |
+| 10 attempts | 10 | 10.7 | 15 |
+| 30 attempts | 23 | 23.5 | 29 |
 
 The 10-50 target holds if the best seat needs about 10 or more attempts to
 learn the cap and the ring 2 rhythm. A seat that plays carefully from its first
-attempt would clear in about 2.6 attempts (1 / 0.39). The staging playtest
+attempt would clear in about 3.6 attempts (1 / 0.28). The staging playtest
 measures which is true.
 
-**Parties** (100 runs each): careful duo 64%, careful quad 83%, perfect quad
-100%, sloppy quad 0%. One capper takes every bite while the rest swing, so
-parties do better per head than solo (the Spire's 4-player target is 50-70%).
+**Parties** (100 runs each): careful duo 37%, careful quad 61%, perfect quad
+100%, sloppy quad 0%. One capper takes every bite while the rest swing; the HP
+per member is set so a careful party of four lands in 55-65%.
 
 ### 9.10 Rewards and economy
 
 **Rewards** at a clear, for every member with at least 40 damage dealt in the run
-(`LANTERN_MIN_DAMAGE`), Done or Out, and online (`LANTERN_REWARD`):
+(`LANTERN_MIN_DAMAGE`), Done or Out, and online (`lanternClearReward`):
 
-- 1 `fenlight` (new biome material, stack 99): a lure-bulb that still glows;
-- 2 `berry_goldberry`;
-- 120 Fighting XP (path 3, `Feat.Protect`);
-- the **Lanternmaw Lure** keepsake (head; proposed cosmetic 30, a dangling light).
+- 2 `fenlight` (new biome material, stack 99: a lure-bulb that still glows),
+  **only for the character's first 4 qualifying clears each UTC day**
+  (`LANTERN_DAILY_PAID_CLEARS`, CONTENT_ROADMAP's boss loot cap). Later clears
+  that day pay XP only;
+- 120 Fighting XP (path 3, `Feat.Protect`) on every qualifying clear;
+- no goldberries (CONTENT_ROADMAP: no new drop pays goldberries or heals).
 
-**Fenlight feeds a future recipe**, the endgame item line (AGENT_STUDIO.md
-backlog item 4). Proposed: the **Fenlight Hook**, 3 fenlight + 1 stone club + 2
-coral at Crafting 30, a weapon that matches the iron club (9) and is dropped on
-death like every weapon. This is new power from an item earned and lost on
-death, never from levels (ROADMAP section 4 and F2), but whether boss materials
-may make weapons at all is an owner decision (section 9.12). Until then fenlight
-has no use beyond trade, so it is not registered as an item yet.
+**Fenlight's uses.** At launch it feeds one keepsake: the **Lanternmaw Lure**
+(head, cosmetic 30, a dangling light), 3 fenlight + 2 driftwood at Crafting 10
+(`LANTERN_KEEPSAKE_RECIPE`, like the Shard Circlet). Everything else is
+reserved for the week-6 endgame item line (CONTENT_ROADMAP.md), whose items add
+max HP or damage reduction, one axis each, and never weapon damage over 9. No
+fenlight recipe makes a weapon (ROADMAP section 1.4: power comes from
+preparation, never time played; LONG_SEASON: no season item is a weapon).
 
-| Flow | Per attempt or clear | Notes |
+**Per attempt, per member:** 1 gleamshell + 1 obsidian + 2 driftwood (the bait),
+5 coins, and up to 6 meals of your own food.
+
+| Flow | Amount | Math |
 |---|---|---|
-| **Sink:** Fen Bait | 3 glowcap + 1 flint per member per attempt | glowcap's second sink (after the Glowcap Lantern); flint is the contested Coast input. At the careful 39% a fenlight costs about 8 glowcap and 3 flint; a learner's first clear burns 10-23 baits (30-69 glowcap) |
-| **Sink:** meals | up to 6 food per member per attempt | perfect runs eat about 4, careful about 6: goldberries out of the economy every attempt |
-| **Faucet:** goldberries | 2 per qualifying member per clear | a run lasts at least about 520 ticks plus the intro and the walk, so at most about 6 clears an hour (12 goldberries), below the Spire's 60 and one gold tree's output. Net goldberries are negative: each attempt eats more than a clear pays |
-| **Faucet:** fenlight | 1 per qualifying member per clear | at most about 6 an hour per player; zero today because nothing consumes it |
-| **Faucet:** Fighting XP | 120 per clear | capped Might, as with the other bosses |
-
-No coins move. A coin entry fee (backlog item 6) is an open question.
+| **Sink:** coins | 5 per member per attempt | Orders mint at most 60 coins a character a day (`FRONTIER.repeatCap`), so a day of orders pays 12 attempts. At the careful 28% a clear costs about 3.6 attempts (18 coins); a learner's first clear costs 10-23 attempts (50-115 coins, one to two days of orders). A seat attempting nonstop (about 8 an hour) would burn about 40 coins an hour, far past its income, so the fee also paces attempts. Six seats at 12 attempts a day burn 360 coins a day, against at most 360 minted by their orders. |
+| **Sink:** gleamshell | 1 per member per attempt | Clatterhorn mints 2 per qualifier per defeat and the Spire burns 1 per run (CONTENT_ROADMAP section 3: mints 2 for every 1 burned); this is its second repeatable sink |
+| **Sink:** obsidian | 1 per member per attempt | beside the Spire key's 3 |
+| **Sink:** driftwood | 2 per member per attempt, 2 per keepsake | common Coast node |
+| **Sink:** meals | up to 6 food per member per attempt | perfect runs eat about 5, careful about 6 |
+| **Faucet:** fenlight | 2 per qualifying member per paid clear, at most 4 paid clears a UTC day | at most 8 a character a day; with 6 seats and active humans, roughly 50-100 a day. Sink at launch: 3 per keepsake, once; the stockpile waits for week 6 |
+| **Faucet:** Fighting XP | 120 per qualifying clear | capped Might, as with the other bosses |
 
 ### 9.11 Ships closed, opens as an event
 
 - `boss_config` gains additive columns `lanternOpen` (default false),
-  `lanternMaxRuns` (12), `lanternHpBase` (850) and `lanternHpPerMember` (900);
+  `lanternMaxRuns` (12), `lanternHpBase` (810) and `lanternHpPerMember` (970);
   `bossConfigOr` reads a missing row as closed. `configure_bosses` takes the new
   values (owner only, ranges by `bossConfigProblem`); the CLI and the docs in
   `docs/CLOUDFLARE_BETA.md` change with it.
@@ -970,7 +990,10 @@ No coins move. A coin entry fee (backlog item 6) is an open question.
 
 - Tables (additive): `lantern_run`, `lantern_member`, `lantern_fight` (the
   `LanternFightLike` fields plus per-slot hit and damage columns), per-run
-  subscription. New enum values append: `BossId` Lanternmaw 3, `BossEventKind`
+  subscription, and a private `lantern_paid {identity, day, paid}` row for the
+  daily cap (`lanternUtcDay` of the reducer timestamp).
+- `lantern_start` checks every member with `lanternEntryRejection` (weapon,
+  bait, coins), then spends the bait and debits the fee. New enum values append: `BossId` Lanternmaw 3, `BossEventKind`
   LanternRunStart / LanternClear, `HurtSource` Blow 5, Pulse 6, Drown 7, Bite 8.
 - `phaseLantern` mirrors `lanternResolveTick` exactly: (1) surfacing, the cap and
   the bite; (2) swings, and a kill clears before any hazard; (3) blows and pulses
@@ -982,19 +1005,30 @@ No coins move. A coin entry fee (backlog item 6) is an open question.
 - The floor joins the land mask like the Spire's; the gate joins
   `SCENERY_BLOCKERS`; `TERRAIN_VERSION` bumps.
 
-### 9.13 Open questions for the owner
+### 9.13 Decisions and open questions
 
-1. **Boss materials into weapons.** May fenlight make a weapon (the Fenlight Hook,
-   9 damage, dropped on death)? If not, fenlight feeds a keepsake and the
-   endgame line waits for a separate decision.
-2. **Bait from a level-gated node.** Glowcap needs Foraging 30 to gather. It is
-   tradeable, so this is not an area gate, but new players will buy bait rather
-   than gather it. Acceptable, or use a level-1 input?
-3. **A weapon to enter.** Refuse entry without a weapon (the punch-only run is
-   unwinnable), or let people learn that?
-4. **Coin entry fee** on top of the bait, as a coin sink?
-5. **Difficulty band.** Careful solo is 39%, at the top of 20-40%. If the
-   playtest shows seats arriving careful, raise the bite to 6: careful drops to
-   18% and perfect still clears 199 of 200, but spends 5.7 of its 6 meals.
-6. **Party scaling.** Careful quads clear 83%, above the Spire's 50-70% band for
-   four. Keep it (cooperation pays), or raise `lanternHpPerMember`?
+Decided by the overseer (2026-11-07):
+
+1. **No weapon from fenlight.** It feeds the Lanternmaw Lure keepsake and is
+   reserved for the week-6 endgame line (max HP or damage reduction, never weapon
+   damage over 9). The Fenlight Hook is gone.
+2. **Bait from level-1 inputs only**: 1 gleamshell + 1 obsidian + 2 driftwood.
+3. **A weapon to enter**: at least a Stone Club, wielded or in the bag (a stick
+   cannot win in time, 9.8).
+4. **Coin fee**: 5 coins per member per attempt (coin sinks stage 1).
+5. **Tuning**: bite 6, HP 810 + 970 per member: careful solo 28%, careful quad
+   61%, sloppy solo 0%, perfect solo and quad 100%.
+6. **Daily cap**: fenlight from at most 4 qualifying clears per character per
+   UTC day, then XP only. No goldberries.
+
+Still open:
+
+- **No repeatable fenlight sink until week 6.** CONTENT_ROADMAP asks every new
+  material to ship with a repeatable sink; at launch fenlight has only the
+  one-off keepsake. The daily cap holds the stockpile to at most 8 a character a
+  day (about 40 by week 6 for a daily player). Ship as is, or add a small
+  repeatable sink (for example fenlight in the bait) at launch?
+- **The fee as a pace limit.** 5 coins makes nonstop attempts outspend order
+  income about eightfold. That paces the best seat toward the 2+ day runway, but
+  a seat with no coins cannot try at all. Keep it, or let the first attempt of
+  each UTC day go free?

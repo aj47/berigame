@@ -5,15 +5,16 @@
  * instances. Each must give at least 3 ticks of notice (8 for the tide), leave
  * every standable tile winning at publication, and never leave a tick with no
  * free tile. Plus the unwinnable-state checks: the heal bound, the cap walk,
- * swing room at the spring, separation between instances, and a perfect solo
- * player clearing every sampled run.
+ * swing room at the spring, separation between instances, the entry weapon
+ * precondition, and a perfect solo player with the weakest admitted weapon
+ * clearing every sampled run.
  */
 import { describe, expect, it } from 'vitest';
 import {
-  LANTERN_DIVE_TICKS, LANTERN_PATTERNS, LANTERN_RULES_VERSION, LANTERN_TIDE_TICKS, lanternPatternDuration,
+  LANTERN_DIVE_TICKS, LANTERN_PATTERNS, LANTERN_RULES_VERSION, LANTERN_TIDE_TICKS, lanternEntryRejection, lanternPatternDuration,
 } from '../lanternmaw';
 import {
-  lanternHealProblem, lanternInstances, lanternPatternTableHash, lanternValidateInstance, lanternWorstCapTicks,
+  LANTERN_PRECONDITION_WEAPON, lanternHealProblem, lanternInstances, lanternPatternTableHash, lanternValidateInstance, lanternWorstCapTicks,
   type LanternInstance, type LanternValidation,
 } from '../lanternmawValidate';
 import { LANTERN_VALIDATED } from './lanternmawValidated';
@@ -100,10 +101,16 @@ describe('Lanternmaw unwinnable states', () => {
     expect(lanternWorstCapTicks()).toBeLessThanOrEqual(LANTERN_DIVE_TICKS);
   });
 
-  it('a perfect solo player with a stone club clears every sampled run before the time limit', () => {
+  it('precondition: entry needs a weapon of at least the floor, and fists cannot pass it', () => {
+    expect(LANTERN_PRECONDITION_WEAPON).toBe(8);
+    expect(lanternEntryRejection([{ itemId: 'fen_bait', quantity: 1 }], 100, '')).not.toBeNull();
+    expect(lanternEntryRejection([{ itemId: 'fen_bait', quantity: 1 }, { itemId: 'stone_club', quantity: 1 }], 100, '')).toBeNull();
+  });
+
+  it('a perfect solo player with the weakest admitted weapon clears every sampled run before the time limit', () => {
     const fails: string[] = [];
     for (let s = 1; s <= 24; s++) {
-      const r = runLanternBots(0x1a00 + s, [PERFECT]);
+      const r = runLanternBots(0x1a00 + s, [{ ...PERFECT, weapon: LANTERN_PRECONDITION_WEAPON }]);
       if (r.outcome !== 'cleared') fails.push(`seed ${s}: ${JSON.stringify(r)}`);
     }
     expect(fails).toEqual([]);

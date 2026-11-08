@@ -13,10 +13,10 @@ import {
   LANTERN_CELLS, LANTERN_CHOKE_TICKS, LANTERN_DEN_PATTERNS, LANTERN_DIVE_TICKS, LANTERN_EBB_TICKS, LANTERN_FEED_HEAL,
   LANTERN_LEAD, LANTERN_MAX_PARTY, LANTERN_MOVE_AT, LANTERN_MOVE_TO, LANTERN_PATTERNS, LANTERN_PLANK, LANTERN_POOLS,
   LANTERN_SPRINGS, LANTERN_STANDABLE, LANTERN_SWING_TICKS, LANTERN_TIDE_TICKS, LANTERN_TILES, LANTERN_BLOW_DAMAGE,
-  LANTERN_PULSE_DAMAGE, LANTERN_DROWN_DAMAGE, LANTERN_BITE_DAMAGE, LANTERN_IFRAME_TICKS, LANTERN_HP_BASE,
-  LANTERN_HP_PER_MEMBER, LANTERN_TIME_LIMIT, LANTERN_ENRAGE_TICKS, LANTERN_SPAWNS,
+  LANTERN_PULSE_DAMAGE, LANTERN_DROWN_DAMAGE, LANTERN_IFRAME_TICKS, LANTERN_TIME_LIMIT, LANTERN_ENRAGE_TICKS, LANTERN_SPAWNS,
   lanternBuildPattern, lanternIdx, lanternInCourt, lanternNearSpring, lanternPatternDuration, lanternPulseOffsets, lanternPulseTiles,
 } from './lanternmaw';
+import { LANTERN_BITE_DAMAGE, LANTERN_HP_BASE, LANTERN_HP_PER_MEMBER, LANTERN_MIN_WEAPON_DAMAGE } from './constants';
 
 export interface LanternValidation {
   /** Every obligation met: notice, every standable tile winning at P, a free tile on every tick. */
@@ -167,6 +167,14 @@ export function lanternHealProblem(stickDamage = 6): string | null {
   return null;
 }
 
+/**
+ * The entry precondition the clock check relies on: every member brings a
+ * weapon of at least LANTERN_MIN_WEAPON_DAMAGE (a Stone Club, Crafting 1).
+ * Bare fists (3) cannot clear in time and the stick or knife (6) almost never
+ * does even played perfectly (5 of 100 runs), so the server refuses them.
+ */
+export const LANTERN_PRECONDITION_WEAPON = LANTERN_MIN_WEAPON_DAMAGE;
+
 /** Shortest walk (steps) between two standable tiles. */
 function stepsBetween(a: number, b: number): number {
   const dist = new Int16Array(N).fill(-1);
@@ -221,7 +229,7 @@ export function lanternPatternTableHash(): string {
   for (const ph of [1, 2, 3] as const) { int(ph); for (const k of LANTERN_POOLS[ph]) int(k); for (const o of lanternPulseOffsets(ph)) int(o); }
   for (const c of [LANTERN_LEAD, LANTERN_DEN_PATTERNS, LANTERN_DIVE_TICKS, LANTERN_TIDE_TICKS, LANTERN_EBB_TICKS, LANTERN_CHOKE_TICKS,
     LANTERN_PULSE_DAMAGE, LANTERN_DROWN_DAMAGE, LANTERN_BITE_DAMAGE, LANTERN_IFRAME_TICKS, LANTERN_SWING_TICKS,
-    LANTERN_HP_BASE, LANTERN_HP_PER_MEMBER, LANTERN_TIME_LIMIT, LANTERN_ENRAGE_TICKS]) int(c);
+    LANTERN_HP_BASE, LANTERN_HP_PER_MEMBER, LANTERN_TIME_LIMIT, LANTERN_ENRAGE_TICKS, LANTERN_MIN_WEAPON_DAMAGE]) int(c);
   for (const d of LANTERN_BLOW_DAMAGE) int(d);
   for (const d of LANTERN_FEED_HEAL) int(d);
   for (const p of LANTERN_PATTERNS) for (let s = 0; s < 64; s++) for (const aim of p.aimed ? LANTERN_HASH_AIMS : [-1]) {

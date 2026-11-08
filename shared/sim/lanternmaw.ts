@@ -12,10 +12,17 @@
  */
 import { LANTERN_FLOOR } from './bossZones';
 import { mix32, movesWithin } from './bullets';
+import {
+  LANTERN_BAIT, LANTERN_BITE_DAMAGE, LANTERN_DAILY_PAID_CLEARS, LANTERN_ENTRY_FEE, LANTERN_HP_BASE, LANTERN_HP_PER_MEMBER,
+  LANTERN_MIN_WEAPON_DAMAGE, LANTERN_REWARD,
+} from './constants';
+import { countItem } from './inventory';
+import { getItemDef } from './items';
+import type { Slot } from './types';
 import type { Tile } from './types';
 
 /** Stamped on every run; any change to the pattern table needs the validator and a bump (lanternmaw-patterns.test.ts). */
-export const LANTERN_RULES_VERSION = 1;
+export const LANTERN_RULES_VERSION = 2;
 export const LANTERN_BOSS_NAME = 'Lanternmaw';
 
 // ---- Geometry ------------------------------------------------------------------------------------------------------
@@ -259,27 +266,15 @@ export const LANTERN_BLOW_DAMAGE = [0, 10, 13, 15] as const;
 export const LANTERN_PULSE_DAMAGE = 7;
 /** Per tick on a flooded tile; no i-frames either way. */
 export const LANTERN_DROWN_DAMAGE = 4;
-/** The capper's price. */
-export const LANTERN_BITE_DAMAGE = 5;
 export const LANTERN_IFRAME_TICKS = 2;
 /** Heal per tide tick while it feeds, by party size (index 1..4): always below one stick swing per member per 4 ticks. */
 export const LANTERN_FEED_HEAL = [0, 1, 2, 3, 4] as const;
 /** Swing cadence: slot s swings on ticks with (T - startTick) mod 4 == s. */
 export const LANTERN_SWING_TICKS = 4;
-export const LANTERN_HP_BASE = 850;
-export const LANTERN_HP_PER_MEMBER = 900;
 export const LANTERN_MEALS = 6;
 export const LANTERN_KO_HP = 10;
 /** Damage dealt in the run needed for the clear reward. */
 export const LANTERN_MIN_DAMAGE = 40;
-export const LANTERN_REWARD: { items: readonly { itemId: string; quantity: number }[]; fightingXp: 120; keepsake: 30 } = {
-  items: [{ itemId: 'fenlight', quantity: 1 }, { itemId: 'berry_goldberry', quantity: 2 }],
-  fightingXp: 120,
-  keepsake: 30,
-};
-/** Entry: one Fen Bait per member, spent at the start (proposed recipe, registered in the server step). */
-export const LANTERN_BAIT = { itemId: 'fen_bait', inputs: [{ itemId: 'glowcap', quantity: 3 }, { itemId: 'flint', quantity: 1 }], level: 1, xp: 30 } as const;
-
 export function lanternMaxHp(members: number, base = LANTERN_HP_BASE, perMember = LANTERN_HP_PER_MEMBER): number {
   return base + perMember * (Math.max(1, Math.min(LANTERN_MAX_PARTY, members)) - 1);
 }
@@ -297,6 +292,37 @@ export function lanternEnraged(startTick: number, T: number): boolean {
 
 export function lanternQualifies(dealt: number, online: boolean): boolean {
   return online && dealt >= LANTERN_MIN_DAMAGE;
+}
+
+/** The UTC day of a timestamp in milliseconds (the daily cap's key). */
+export function lanternUtcDay(ms: number): number {
+  return Math.floor(ms / 86_400_000);
+}
+
+/**
+ * What a member gets at a clear. Qualifying members get Fighting XP; fenlight
+ * only while `paidClearsToday` (this character's paid clears this UTC day,
+ * before this one) is under LANTERN_DAILY_PAID_CLEARS.
+ */
+export function lanternClearReward(dealt: number, online: boolean, paidClearsToday: number): { items: readonly { itemId: string; quantity: number }[]; fightingXp: number; paid: boolean } {
+  if (!lanternQualifies(dealt, online)) return { items: [], fightingXp: 0, paid: false };
+  const paid = paidClearsToday < LANTERN_DAILY_PAID_CLEARS;
+  return { items: paid ? LANTERN_REWARD.items : [], fightingXp: LANTERN_REWARD.fightingXp, paid };
+}
+
+/**
+ * Why a member cannot start a run, or null: a weapon of at least
+ * LANTERN_MIN_WEAPON_DAMAGE wielded or in the bag (fists cannot win in time),
+ * one Fen Bait, and the coin fee.
+ */
+export function lanternEntryRejection(slots: readonly Slot[], coins: number, wielded: string): string | null {
+  const damage = (id: string) => (id ? getItemDef(id)?.weaponDamage ?? 0 : 0);
+  if (damage(wielded) < LANTERN_MIN_WEAPON_DAMAGE && !slots.some((s) => s && damage(s.itemId) >= LANTERN_MIN_WEAPON_DAMAGE)) {
+    return 'Bring a weapon to the Drowned Hollow: a stone club or better';
+  }
+  if (countItem(slots, LANTERN_BAIT.itemId) < 1) return `You need a ${LANTERN_BAIT.name}`;
+  if (coins < LANTERN_ENTRY_FEE) return `You need ${LANTERN_ENTRY_FEE} coins`;
+  return null;
 }
 
 // ---- The fight ---------------------------------------------------------------------------------------------------
