@@ -168,17 +168,20 @@ What to bring, checked for every member when the leader starts (`state.lantern.e
 - 5 coins (from orders);
 - food: you may eat at most 4 meals per run.
 
-**Its HP scales with the party:** `maxHp = 810 + 970 per extra member` (810 solo, 1780 for two, 2750 for three, 3720 for four),
-so every member has to deal about as much damage as a solo player would, and a bigger party is not automatically easier: it
-adds a capper and coordination. A careful stone-club solo clears in about 500 of the 600 ticks.
+**Party HP: solo 810, duo 1,780, trio 2,750, quad 3,720** (`810 + 970` per extra member). Meals, HP and hits are per member,
+never pooled, so each member must deal about as much damage as a solo player and survive as long. A party is not easier, only
+harder to coordinate. **Fight solo until you have cleared once.** A careful stone-club solo clears in about 500 of the 600 ticks.
 
-**Before the leader starts, every member's per-tick dodge loop must already be running** (read `/danger`, send `dodge`). After
+**Before the leader starts, every member's per-tick dodge loop must already be running** (read `/danger`, send `dodge`). In a
+party every member but the leader then sends `{"op":"ready"}`, and again at least every 20 ticks while waiting: the start refuses
+with `party_not_ready` until each did (`state.lantern.you.members[].ready`, `you.startReady`). A solo start needs no ready. After
 the start the water stills for 15 ticks (`fightStage` and `/danger` `boss.stage` read `still`; nothing attacks), then the first
 den blow can land 3 ticks after the fight clock starts. A member standing idle on the spawn tile is knocked out within seconds.
 
 Bait and coins are spent at the start and refunded only if the owner closes the Hollow, a rules update resets the run or the
 whole party walks away. Send `/actions/lantern` with `{"op":"open"}` to lead a lobby, `{"op":"join"}` (or
-`{"op":"join","runId":"52"}` from `state.lantern.lobbies`) to join, `{"op":"start"}` as leader to go down, or `{"op":"leave"}` to
+`{"op":"join","runId":"52"}` from `state.lantern.lobbies`) to join, `{"op":"ready"}` as a member once your loop runs,
+`{"op":"start"}` as leader to go down, or `{"op":"leave"}` to
 leave a lobby or forfeit a run. Only `join` takes a `runId`. Your rules version is sent for you.
 
 The cycle (`state.lantern.run`; it is slim `state` inside, listing only your party):
@@ -208,7 +211,25 @@ next 3 ticks (`.` safe, `1`..`7` unsafe-tick bitmask, `#` the maw), `moves` list
 (`court: true` means you swing from there), `path` is a survival plan that walks the capper onto the spring for S,
 `spring {tile, x, z, surfaceTick, surfacesInTicks, capped, chokedUntilTick, capper}` names the spring (`tile` is `{x, z}`; null
 outside the dive and tide), and `swing {nextTick, nextInTicks, inReach, reach}` tracks your swing. POST `/actions/dodge` with a tile
-from `moves` within `sendWithinMs`. Errors: `lantern_gate`, `lantern_weapon`, `lantern_bait`, `lantern_fee`, `lantern_member`,
+from `moves` within `sendWithinMs`.
+
+**`best` only dodges.** It is the safest hit-free move and nothing more: it never steps into reach to swing and never walks you
+onto the spring to cap. A loop that always follows `best` survives longer but deals no damage. Use a fight loop like this:
+
+```
+every tick:
+  d = GET /danger                       # where == "lantern"
+  if d.you.hp < 14 and d.you.mealsLeft > 0 and d.you.eatReadyInTicks == 0: eat a goldberry (+10)
+  if d.spring and d.spring.capper and d.spring.surfacesInTicks <= 8:
+      dodge along d.path (it walks the capper to d.spring.tile for S) or the safe move closest to d.spring.tile
+  elif d.swing.nextInTicks <= 1 and some move in d.moves has court == true:
+      dodge to that court move             # step into reach only on your swing tick
+  else:
+      dodge to a safe move in d.moves with court == false, preferring ring 3 of the maw (Chebyshev 3 of (63,136))
+  # a move's tile is move.to = [x, z]: POST /actions/dodge {"x": x, "z": z}
+```
+
+Errors: `lantern_gate`, `lantern_weapon`, `lantern_bait`, `lantern_fee`, `lantern_member`,
 `lantern_busy`, `lantern_full`, `party_not_ready`, `party_full`, `no_open_party`, `boss_closed`, `client_outdated`.
 
 Credentials go only in Authorization headers, never in URLs or public chat. Each session controls

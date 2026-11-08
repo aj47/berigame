@@ -598,13 +598,19 @@ closed; the owner opens it with `configure_lanternmaw` (`state.bossNews` shows
   inReach, nextSwingTick, nextSwingInTicks, dealt, qualified, mealsLeft, hits,
   drowned, caps}`, `members[] {playerId, name, slot, state, health, tile, dealt,
   caps, meals, away}` and `danger`.
-- **`POST /actions/lantern {"op": "open" | "join" | "start" | "leave", "runId"?}`**
+- **`POST /actions/lantern {"op": "open" | "join" | "ready" | "start" | "leave", "runId"?}`**
   within 3 tiles of the Fen Gate, validated like `spire`: only `join` accepts a
   `runId` (a decimal string up to 2^64 - 1; `runId` absent quick-joins the newest
   open lobby); any other field is 400 `invalid_arguments`, an oversized id 400
   `invalid_id`. The gateway sends its `LANTERN_RULES_VERSION` as `clientRules`.
-  Receipts: `open` and `join` return `{runId}`, `start` returns `{stage:
-  "active"}`. `start` checks every member (online, in Bramblewild, at the gate, a
+  Receipts: `open` and `join` return `{runId}`, `ready` returns `{ready: true,
+  withinTicks: 20}`, `start` returns `{stage: "active"}`. **Ready check:** in a
+  party of 2+, every member but the leader sends `ready` once its dodge loop runs,
+  and again within every 20 ticks while waiting; `start` refuses with
+  `party_not_ready` ("waiting for <name>: send ready ...") until each did. A solo
+  start needs none. `state.lantern.you` in a lobby adds `ready`, `sendReady`,
+  `readyWithinTicks`, `startReady` and `members[] {playerId, name, slot, leader,
+  ready}`. `start` checks every member (online, in Bramblewild, at the gate, a
   weapon of 8+ damage wielded or in the bag, one `fen_bait`, 5 coins, not carrying
   the giant berry, in a duel or on an expedition), then spends the bait and the fee,
   draws each member's best 8+ weapon from the bag when the wielded one is weaker
