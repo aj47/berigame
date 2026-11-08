@@ -548,3 +548,17 @@ test('the start grace reads "still" in /danger and state.lantern.run; the Wielde
   assert.equal(n.kind, 'wielded');
   assert.match(n.text, /You drew your Stone Club \(8 damage\)/);
 });
+
+test('state.lantern.you shows the lobby ready check from lantern_readiness rows', () => {
+  const runId = 95n;
+  const rows = lrows({ lanternRuns: [lrun(runId, { stage: SpireStage.Lobby, partySize: 2, endTick: LS + 100 })],
+    lanternMembers: [lmember(1, runId, 0, SpireMemberState.Lobby), lmember(2, runId, 1, SpireMemberState.Lobby)],
+    lanternReadiness: [{ identity: hexId(2), runId, tick: LS - 3 }] });
+  const lead = person(1, 47, 151), mate = person(2, 47, 151);
+  const you = (p: BossPlayer) => (describeBosses(rows, p, LS, { players: [lead, mate], keysHeld: 0, contribution: null, blocked: WORLD }) as any).lantern.you;
+  assert.deepEqual(you(lead).members.map((m: any) => m.ready), [true, true]);
+  assert.equal(you(lead).startReady, true);
+  assert.equal(you(mate).sendReady, true);
+  const stale = { ...rows, lanternReadiness: [{ identity: hexId(2), runId, tick: LS - 25 }] };
+  assert.equal((describeBosses(stale, lead, LS, { players: [lead, mate], keysHeld: 0, contribution: null, blocked: WORLD }) as any).lantern.you.startReady, false);
+});

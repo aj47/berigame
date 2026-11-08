@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Pending } from '@sim';
 import type {
-  BossConfig, BossEvent, BossNotice, Clatterhorn, LanternConfig, LanternFight, LanternMember, LanternRun, SpireFight, SpireMember, SpireRun,
+  BossConfig, BossEvent, BossNotice, Clatterhorn, LanternConfig, LanternFight, LanternMember, LanternReadiness, LanternRun, SpireFight, SpireMember, SpireRun,
 } from '../module_bindings/types';
 
 /**
@@ -21,12 +21,14 @@ export type LanternConfigRow = LanternConfig;
 export type LanternRunRow = LanternRun;
 export type LanternMemberRow = LanternMember;
 export type LanternFightRow = LanternFight;
+export type LanternReadinessRow = LanternReadiness;
 
 export type BossTable = 'bossConfig' | 'clatterhorn' | 'spireRun' | 'spireMember' | 'spireFight'
-  | 'lanternConfig' | 'lanternRun' | 'lanternMember' | 'lanternFight';
+  | 'lanternConfig' | 'lanternRun' | 'lanternMember' | 'lanternFight' | 'lanternReadiness';
 type RowOf<T extends BossTable> = {
   bossConfig: BossConfigRow; clatterhorn: ClatterhornRow; spireRun: SpireRunRow; spireMember: SpireMemberRow; spireFight: SpireFightRow;
   lanternConfig: LanternConfigRow; lanternRun: LanternRunRow; lanternMember: LanternMemberRow; lanternFight: LanternFightRow;
+  lanternReadiness: LanternReadinessRow;
 }[T];
 /** A row's key: config/clatterhorn id, run id, member identity hex, fight run id (bigints and numbers as strings). */
 export type BossRowKey = string | number | bigint;
@@ -70,6 +72,8 @@ export interface BossState {
   lanternMembers: Map<string, LanternMemberRow>;
   /** Fight rows in the cache (only your run's is subscribed), keyed by run id. */
   lanternFights: Map<string, LanternFightRow>;
+  /** lantern_readiness rows by identity hex (the lobby ready check). */
+  lanternReadiness: Map<string, LanternReadinessRow>;
   lanternFight: LanternFightRow | null;
   myLanternMember: LanternMemberRow | null;
   myLanternRun: LanternRunRow | null;
@@ -140,7 +144,7 @@ function initial(): Omit<BossState, 'setMe' | 'setRow' | 'deleteRow' | 'pushNoti
     config: null, clatter: null, runs: new Map(), members: new Map(), fights: new Map(), fight: null,
     meHex: null, myMember: null, myRun: null, myRunHexes: EMPTY_HEXES,
     notices: [], events: [], swingCues: [], lobbyOpen: false, seq: 0,
-    lanternConfig: null, lanternRuns: new Map(), lanternMembers: new Map(), lanternFights: new Map(), lanternFight: null,
+    lanternConfig: null, lanternRuns: new Map(), lanternMembers: new Map(), lanternFights: new Map(), lanternReadiness: new Map(), lanternFight: null,
     myLanternMember: null, myLanternRun: null, myLanternHexes: EMPTY_HEXES, lanternLobbyOpen: false,
   };
 }
@@ -168,6 +172,7 @@ export const useBossStore = create<BossState>((set, get) => {
         case 'lanternRun': { const r = row as LanternRunRow; update({ lanternRuns: new Map(s.lanternRuns).set(keyOf(r.id), r) }); break; }
         case 'lanternMember': { const m = row as LanternMemberRow & { identity: { toHexString(): string } }; update({ lanternMembers: new Map(s.lanternMembers).set(m.identity.toHexString(), m) }); break; }
         case 'lanternFight': { const f = row as LanternFightRow; update({ lanternFights: new Map(s.lanternFights).set(keyOf(f.runId), f) }); break; }
+        case 'lanternReadiness': { const r = row as LanternReadinessRow; set({ lanternReadiness: new Map(s.lanternReadiness).set(r.identity.toHexString(), r) }); break; }
       }
     },
 
@@ -184,6 +189,7 @@ export const useBossStore = create<BossState>((set, get) => {
         case 'lanternRun': if (s.lanternRuns.has(k)) update({ lanternRuns: without(s.lanternRuns) }); break;
         case 'lanternMember': if (s.lanternMembers.has(k)) update({ lanternMembers: without(s.lanternMembers) }); break;
         case 'lanternFight': if (s.lanternFights.has(k)) update({ lanternFights: without(s.lanternFights) }); break;
+        case 'lanternReadiness': if (s.lanternReadiness.has(k)) set({ lanternReadiness: without(s.lanternReadiness) }); break;
       }
     },
 

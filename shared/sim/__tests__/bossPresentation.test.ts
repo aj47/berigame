@@ -327,8 +327,26 @@ describe('describeLantern', () => {
 
   it('in a lobby: you without a run block', () => {
     const d = describeLantern({ ...base, runs: [lrun(9n, { leader: ME, partySize: 2 })], members: [lmember(ME, 9n, 0), lmember(hex(2), 9n, 1)], me: gate });
-    expect(d.you).toEqual({ runId: '9', stage: 'lobby', state: 'lobby', slot: 0, leader: true, party: 2 });
+    expect(d.you).toMatchObject({ runId: '9', stage: 'lobby', state: 'lobby', slot: 0, leader: true, party: 2 });
     expect(d.run).toBeNull();
+  });
+
+  it('in a lobby: ready per member within 20 ticks; the leader needs none; a solo party needs none', () => {
+    const runs = [lrun(9n, { leader: ME, partySize: 3 })];
+    const members = [lmember(ME, 9n, 0), lmember(hex(2), 9n, 1), lmember(hex(3), 9n, 2)];
+    const ready = [{ identity: hex(2), runId: 9n, tick: L - 5 }, { identity: hex(3), runId: 9n, tick: L - 21 }];
+    const lead = describeLantern({ ...base, runs, members, ready, me: gate });
+    expect((lead.you as any).readyWithinTicks).toBe(20);
+    expect((lead.you as any).members).toEqual([
+      { playerId: ME, name: names(ME), slot: 0, leader: true, ready: true },
+      { playerId: hex(2), name: names(hex(2)), slot: 1, leader: false, ready: true },
+      { playerId: hex(3), name: names(hex(3)), slot: 2, leader: false, ready: false },
+    ]);
+    expect((lead.you as any).startReady).toBe(false);
+    const mate = describeLantern({ ...base, runs, members, ready, me: { identity: hex(3), x: gate.x, z: gate.z } });
+    expect((mate.you as any)).toMatchObject({ ready: false, sendReady: true });
+    const solo = describeLantern({ ...base, runs: [lrun(8n, { leader: ME, partySize: 1 })], members: [lmember(ME, 8n, 0)], me: gate });
+    expect((solo.you as any)).toMatchObject({ startReady: true, sendReady: false });
   });
 
   it('in the den: boss, pattern and blow ticks, reach, swing cadence, meals and members', () => {

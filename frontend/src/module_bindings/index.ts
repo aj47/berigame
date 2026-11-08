@@ -71,6 +71,7 @@ import HarvestGardenReducer from "./harvest_garden_reducer";
 import LanternJoinReducer from "./lantern_join_reducer";
 import LanternLeaveReducer from "./lantern_leave_reducer";
 import LanternOpenReducer from "./lantern_open_reducer";
+import LanternReadyReducer from "./lantern_ready_reducer";
 import LanternStartReducer from "./lantern_start_reducer";
 import MoveItemReducer from "./move_item_reducer";
 import PickupItemReducer from "./pickup_item_reducer";
@@ -136,6 +137,7 @@ import IslandProjectRow from "./island_project_table";
 import LanternConfigRow from "./lantern_config_table";
 import LanternFightRow from "./lantern_fight_table";
 import LanternMemberRow from "./lantern_member_table";
+import LanternReadinessRow from "./lantern_readiness_table";
 import LanternRunRow from "./lantern_run_table";
 import MentorStatRow from "./mentor_stat_table";
 import PlayerRow from "./player_table";
@@ -496,6 +498,20 @@ const tablesSchema = __schema({
       { name: 'lantern_member_identity_key', constraint: 'unique', columns: ['identity'] },
     ],
   }, LanternMemberRow),
+  lanternReadiness: __table({
+    name: 'lantern_readiness',
+    indexes: [
+      { accessor: 'identity', name: 'lantern_readiness_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'runId', name: 'lantern_readiness_run_id_idx_btree', algorithm: 'btree', columns: [
+        'runId',
+      ] },
+    ],
+    constraints: [
+      { name: 'lantern_readiness_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, LanternReadinessRow),
   lanternRun: __table({
     name: 'lantern_run',
     indexes: [
@@ -713,6 +729,7 @@ const reducersSchema = __reducers(
   __reducerSchema("lantern_join", LanternJoinReducer),
   __reducerSchema("lantern_leave", LanternLeaveReducer),
   __reducerSchema("lantern_open", LanternOpenReducer),
+  __reducerSchema("lantern_ready", LanternReadyReducer),
   __reducerSchema("lantern_start", LanternStartReducer),
   __reducerSchema("move_item", MoveItemReducer),
   __reducerSchema("pickup_item", PickupItemReducer),

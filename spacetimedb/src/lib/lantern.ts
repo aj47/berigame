@@ -101,9 +101,14 @@ function writeMember(ctx: Ctx, m: LanternMemberRow): void {
   ctx.db.lanternMember.identity.update(m);
 }
 
+/** Drops a member's ready row, if any. */
+export function clearReady(ctx: Ctx, id: Identity): void {
+  if (ctx.db.lanternReadiness?.identity.find(id)) ctx.db.lanternReadiness.identity.delete(id);
+}
+
 function dissolveLobby(ctx: Ctx, run: LanternRunRow, text: string): void {
   const members = membersOf(ctx, run.id);
-  for (const m of members) ctx.db.lanternMember.identity.delete(m.identity);
+  for (const m of members) { ctx.db.lanternMember.identity.delete(m.identity); clearReady(ctx, m.identity); }
   ctx.db.lanternRun.id.delete(run.id);
   for (const m of members) notify(ctx, m.identity, m.identity, SocialNotice.Info, text);
 }
@@ -241,6 +246,7 @@ function lobbyUpkeep(t: BossTick, run: LanternRunRow): void {
     const p = t.players.get(hex(m.identity));
     if (p && p.online) return true;
     ctx.db.lanternMember.identity.delete(m.identity);
+    clearReady(ctx, m.identity);
     return false;
   });
   if (kept.length === members.length) return;
@@ -473,6 +479,7 @@ export function lanternStartRun(ctx: Ctx, T: number, run: LanternRunRow, members
     if (!p) continue;
     spend(ctx, p.identity, LANTERN_BAIT.itemId, 1);
     payers.push(p.identity);
+    clearReady(ctx, p.identity);
     drawWeapon(ctx, T, run.id, p);
     clearInteractions(ctx, p);
     for (const trade of tradesOf(ctx, p.identity)) cancelTrade(ctx, trade, 'Trade cancelled: they went down into the Drowned Hollow');
@@ -560,6 +567,7 @@ export function lanternLiveMembership(ctx: Ctx, id: Identity): { m: LanternMembe
 
 export function lanternLeaveLobby(ctx: Ctx, run: LanternRunRow, id: Identity): void {
   ctx.db.lanternMember.identity.delete(id);
+  clearReady(ctx, id);
   const rest = membersOf(ctx, run.id);
   if (rest.length === 0) { ctx.db.lanternRun.id.delete(run.id); return; }
   const leads = hex(run.leader) !== hex(id);

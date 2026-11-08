@@ -125,6 +125,7 @@ export function useGameActions() {
     lanternJoin: (runId: bigint = 0n) => run('lanternJoin', (c) => c.reducers.lanternJoin({ runId, clientRules: LANTERN_RULES_VERSION })),
     /** Leave a lobby, or forfeit a run (no rewards). */
     lanternLeave: () => run('lanternLeave', (c) => c.reducers.lanternLeave({})),
+    lanternReady: () => run('lanternReady', (c) => c.reducers.lanternReady({})),
     /** Leader: start the run (every member's Fen Bait and 5 coins are spent). */
     lanternStart: () => run('lanternStart', (c) => c.reducers.lanternStart({ clientRules: LANTERN_RULES_VERSION })),
   };

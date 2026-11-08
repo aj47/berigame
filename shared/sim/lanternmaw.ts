@@ -560,6 +560,8 @@ export const LANTERN_LOBBY_TICKS = 150;
 export const LANTERN_MAX_LOBBIES = 48;
 /** A finished run's rows linger this long for the result screen. */
 export const LANTERN_END_LINGER = 20;
+/** A party start needs every other member's `lantern_ready` within this many ticks (a solo start needs none). */
+export const LANTERN_READY_TICKS = 20;
 /** Away this long: Left (with a teammate present) or the run is Abandoned (nobody present). */
 export const LANTERN_AWAY_TICKS = 50;
 

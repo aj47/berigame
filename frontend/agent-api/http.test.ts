@@ -342,12 +342,12 @@ test('boss actions validate their documented fields before reaching the game', a
     assert.deepEqual(f.calls, []);
     const ok: [string, object][] = [['spire', { op: 'open' }], ['spire', { op: 'join' }], ['spire', { op: 'join', runId: '41' }], ['spire', { op: 'start' }],
       ['spire', { op: 'leave' }], ['dodge', { x: 76, z: 60 }], ['attack_clatterhorn', {}],
-      ['lantern', { op: 'open' }], ['lantern', { op: 'join' }], ['lantern', { op: 'join', runId: '52' }], ['lantern', { op: 'start' }], ['lantern', { op: 'leave' }]];
+      ['lantern', { op: 'open' }], ['lantern', { op: 'join' }], ['lantern', { op: 'join', runId: '52' }], ['lantern', { op: 'ready' }], ['lantern', { op: 'start' }], ['lantern', { op: 'leave' }]];
     for (const [name, body] of ok) {
       f.advance(1100);
       assert.equal((await f.request(`/actions/${name}`, token, body, { 'Idempotency-Key': randomUUID() })).status, 200, name);
     }
-    assert.deepEqual(f.calls, ['spire', 'spire', 'spire', 'spire', 'spire', 'dodge', 'attack_clatterhorn', 'lantern', 'lantern', 'lantern', 'lantern', 'lantern']);
+    assert.deepEqual(f.calls, ['spire', 'spire', 'spire', 'spire', 'spire', 'dodge', 'attack_clatterhorn', 'lantern', 'lantern', 'lantern', 'lantern', 'lantern', 'lantern']);
     assert.deepEqual(f.inputs[2], { op: 'join', runId: '41' });
     assert.deepEqual(f.inputs[9], { op: 'join', runId: '52' });
   } finally { await f.close(); }
@@ -368,7 +368,7 @@ test('OpenAPI 1.11.0 documents /danger and the boss actions without a capability
     assert.deepEqual(spire.properties.op.enum, ['open', 'join', 'start', 'leave']);
     assert.deepEqual(Object.keys(spire.properties).sort(), ['op', 'runId']);
     const lantern = spec.paths['/actions/lantern'].post;
-    assert.deepEqual(lantern.requestBody.content['application/json'].schema.properties.op.enum, ['open', 'join', 'start', 'leave']);
+    assert.deepEqual(lantern.requestBody.content['application/json'].schema.properties.op.enum, ['open', 'join', 'ready', 'start', 'leave']);
     assert.deepEqual(Object.keys(lantern.requestBody.content['application/json'].schema.properties).sort(), ['op', 'runId']);
     assert.deepEqual(lantern.requestBody.content['application/json'].schema.required, ['op']);
     assert.match(lantern.summary, /Fen Gate \(47,152\)/);

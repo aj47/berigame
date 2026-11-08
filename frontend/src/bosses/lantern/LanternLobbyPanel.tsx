@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
-  LANTERN_BAIT, LANTERN_ENTRY_FEE, LANTERN_GATE, LANTERN_GATE_RANGE, LANTERN_MAX_PARTY, SpireMemberState, SpireStage, TICK_MS,
+  LANTERN_BAIT, LANTERN_ENTRY_FEE, LANTERN_GATE, LANTERN_GATE_RANGE, LANTERN_MAX_PARTY, LANTERN_READY_TICKS, SpireMemberState, SpireStage, TICK_MS,
   chebyshev, lanternConfigOr, lanternEntryRejection,
 } from '@sim';
 import { useInventoryRows, useMyPlayer, usePlayersByHex, useTick } from '../../spacetime/hooks';
 import { useGameActions } from '../../spacetime/actions';
 import { useFrontierCoins } from '../../frontier/useFrontier';
 import { approachWorldInteraction } from '../../frontier/worldInteraction';
-import { useBossStore, type LanternMemberRow, type LanternRunRow } from '../bossStore';
+import { useBossStore, type LanternMemberRow, type LanternReadinessRow, type LanternRunRow } from '../bossStore';
 import { lanternActiveRuns, lanternLobbies } from '../selectors';
 import { clock } from '../spire/SpireHud';
 import { loadLanternScene } from './loadLanternScene';
@@ -42,7 +42,8 @@ export default function LanternLobbyPanel(_props: LanternLobbyPanelProps) {
   const players = usePlayersByHex();
   const inventory = useInventoryRows();
   const coins = useFrontierCoins();
-  const { lanternOpen, lanternJoin, lanternStart, lanternLeave } = useGameActions();
+  const { lanternOpen, lanternJoin, lanternStart, lanternLeave, lanternReady } = useGameActions();
+  const readiness = useBossStore((s) => s.lanternReadiness);
   const config = lanternConfigOr(useBossStore((s) => s.lanternConfig));
   const runs = useBossStore((s) => s.lanternRuns);
   const members = useBossStore((s) => s.lanternMembers);
@@ -81,7 +82,8 @@ export default function LanternLobbyPanel(_props: LanternLobbyPanelProps) {
     {config.lanternOpen && !full && <p className="spire-note">{active} {active === 1 ? 'party' : 'parties'} below · room for {config.lanternMaxRuns - active} more</p>}
 
     {inLobby && myRun && <YourParty run={myRun} tick={tick} leader={myRun.leader.toHexString() === meHex} meHex={meHex} ready={!entry}
-      players={players} members={lanternRunMembers(members, myRun.id)} full={full}
+      players={players} members={lanternRunMembers(members, myRun.id)} full={full} readiness={readiness}
+      onReady={() => { void lanternReady(); }}
       onStart={() => atGate(() => { void lanternStart(); })} onLeave={() => { void lanternLeave(); }} />}
     {inLobby && entry && <p className="spire-reason" data-testid="lantern-entry-reason">{entry}</p>}
 
@@ -123,12 +125,32 @@ function JoinById({ disabled, onJoin }: { disabled: boolean; onJoin: (id: bigint
   </form>;
 }
 
-function YourParty({ run, tick, leader, meHex, ready, players, members, full, onStart, onLeave }: {
+/** Whether `hex` passes the ready check (the leader and a solo party always do; others need lantern_ready within 20 ticks). */
+export function lanternMemberReady(run: LanternRunRow, hex: string, partySize: number, readiness: ReadonlyMap<string, LanternReadinessRow>, tick: number): boolean {
+  if (partySize <= 1 || run.leader.toHexString() === hex) return true;
+  const r = readiness.get(hex);
+  return !!r && r.runId === run.id && tick - r.tick <= LANTERN_READY_TICKS;
+}
+
+/** How often the panel re-sends a member's ready while it is on (well inside LANTERN_READY_TICKS). */
+const READY_RESEND_MS = 6000;
+
+function YourParty({ run, tick, leader, meHex, ready, players, members, full, readiness, onReady, onStart, onLeave }: {
   run: LanternRunRow; tick: number; leader: boolean; meHex: string | null; ready: boolean; full: boolean;
   players: Map<string, { name: string; x: number; z: number; online?: boolean; region?: string }>;
-  members: [string, { slot: number }][]; onStart: () => void; onLeave: () => void;
+  members: [string, { slot: number }][]; readiness: ReadonlyMap<string, LanternReadinessRow>;
+  onReady: () => void; onStart: () => void; onLeave: () => void;
 }) {
   const left = ((run.endTick - tick) * TICK_MS) / 1000;
+  const [readyOn, setReadyOn] = useState(false);
+  // The ready check expires after 20 ticks: while it is on, keep it fresh.
+  useEffect(() => {
+    if (!readyOn || leader) return;
+    const id = setInterval(onReady, READY_RESEND_MS);
+    return () => clearInterval(id);
+  }, [readyOn, leader]);
+  const isReady = (hex: string) => lanternMemberReady(run, hex, members.length, readiness, tick);
+  const waiting = members.filter(([hex]) => !isReady(hex)).map(([hex]) => players.get(hex)?.name || 'Someone');
   return <>
     <h3>Your party <small data-testid="lantern-party-id">#{String(run.id)}</small></h3>
     <ul aria-label="Your party">
@@ -138,16 +160,20 @@ function YourParty({ run, tick, leader, meHex, ready, players, members, full, on
         const away = !p || (p.region && p.region !== 'bramblewild') ? 'away' : chebyshev(p, LANTERN_GATE) <= LANTERN_GATE_RANGE ? 'at the gate' : `${chebyshev(p, LANTERN_GATE)} tiles away`;
         return <li key={hex}>
           <span><span className={`spire-online${p?.online !== false && p ? ' is-on' : ''}`} />{p?.name || 'Someone'}{run.leader.toHexString() === hex ? ' (leader)' : ''}</span>
-          <span>{mine ? (ready ? 'ready ✓' : 'not ready ✗') : `${LANTERN_BAIT.name} ?`} · {away}</span>
+          <span>{mine ? (ready ? 'kit ✓' : 'kit ✗') : `${LANTERN_BAIT.name} ?`} · {away}</span>
+          <span data-testid={`lantern-ready-${hex}`}>{isReady(hex) ? 'ready to start' : 'not ready'}</span>
         </li>;
       })}
     </ul>
     <p className="spire-note">Breaks up in {clock(left)}</p>
     <div className="spire-actions">
-      {leader && <button type="button" className="is-primary" disabled={full} onClick={onStart}>Start</button>}
+      {leader && <button type="button" className="is-primary" disabled={full || waiting.length > 0} onClick={onStart}>Start</button>}
+      {!leader && members.length > 1 && <button type="button" className={readyOn ? 'is-primary' : undefined} aria-pressed={readyOn}
+        onClick={() => { const on = !readyOn; setReadyOn(on); if (on) onReady(); }}>Ready</button>}
       <button type="button" onClick={onLeave}>Leave</button>
     </div>
     {leader && full && <p className="spire-reason">{LANTERN_FULL_MESSAGE}</p>}
-    {!leader && <p className="spire-note">The leader starts the run when everyone is at the gate.</p>}
+    {leader && waiting.length > 0 && <p className="spire-note" data-testid="lantern-waiting-ready">Waiting for {waiting.join(', ')} to ready</p>}
+    {!leader && <p className="spire-note">Press Ready when you are at the gate and set to dodge; the leader starts once everyone is ready.</p>}
   </>;
 }

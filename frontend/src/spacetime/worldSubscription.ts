@@ -9,7 +9,7 @@ import { POSITIONED_EVENT_TABLES, globalEventQueries } from './interestSubscript
  * Whole tables, and why each is cheap enough to send everyone:
  * - one-row or tiny world state: world, training_dummy, giant, giant_raid,
  *   island_project, boss_config, clatterhorn, spire_run, spire_member,
- *   lantern_config, lantern_run, lantern_member;
+ *   lantern_config, lantern_run, lantern_member, lantern_readiness;
  * - row-level security already narrows to your own rows: frontier_view,
  *   inventory_slot, invite_code, friend, trade, social_event, garden_plot;
  * - written only on a player's explicit action, never per tick: appearance
@@ -30,7 +30,7 @@ export const WORLD_TABLES = [
   // Bosses: lifecycle rows whole-table; boss_notice narrowed to your own in connection.ts (it has no RLS);
   // spire_fight and lantern_fight per run (bosses/spireSubscription.ts, lanternSubscription.ts).
   'bossConfig', 'clatterhorn', 'spireRun', 'spireMember', 'bossEvent',
-  'lanternConfig', 'lanternRun', 'lanternMember',
+  'lanternConfig', 'lanternRun', 'lanternMember', 'lanternReadiness',
 ] as const;
 
 /** Place-bound event tables: whole-table unless they are in POSITIONED_EVENT_TABLES (a cell column, 0 = global). */

@@ -10,7 +10,7 @@ export function adventureTables() { return { frontierObject: testTable('key'), f
   // Bosses (FINAL_SPEC 4.1): config and Clatterhorn rows by id, credit by identity, Spire runs autoInc, events autoInc.
   bossConfig: testTable(), clatterhorn: testTable(), clatterhornCredit: testTable('identity'), spireRun: testTable('id', true), spireMember: testTable('identity'), spireFight: testTable('runId'), bossEvent: testTable('id', true), bossNotice: testTable('id', true),
   // Lanternmaw (BOSSES.md section 9): config by id, runs autoInc, members and the daily cap by identity, fights by run.
-  lanternConfig: testTable(), lanternRun: testTable('id', true), lanternMember: testTable('identity'), lanternFight: testTable('runId'), lanternPaid: testTable('identity') }; }
+  lanternConfig: testTable(), lanternRun: testTable('id', true), lanternMember: testTable('identity'), lanternFight: testTable('runId'), lanternPaid: testTable('identity'), lanternReadiness: testTable('identity') }; }
 
 /**
  * `player` and `player_pos` (spacetimedb/src/lib/playerStore.ts) for the real-tick harnesses.

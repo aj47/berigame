@@ -7,12 +7,12 @@ import { identity, lanternMember, lanternRun } from './lanternFixtures';
 const mock = vi.hoisted(() => ({
   me: null as any, inventory: [] as any[], players: new Map<string, any>(), coins: 20,
   open: vi.fn().mockResolvedValue(true), join: vi.fn().mockResolvedValue(true), start: vi.fn().mockResolvedValue(true),
-  leave: vi.fn().mockResolvedValue(true), load: vi.fn(() => Promise.resolve({ default: () => null })), approach: vi.fn(),
+  leave: vi.fn().mockResolvedValue(true), ready: vi.fn().mockResolvedValue(true), load: vi.fn(() => Promise.resolve({ default: () => null })), approach: vi.fn(),
 }));
 vi.mock('../spacetime/hooks', () => ({
   useMyPlayer: () => mock.me, useTick: () => 100, usePlayersByHex: () => mock.players, useInventoryRows: () => mock.inventory,
 }));
-vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ lanternOpen: mock.open, lanternJoin: mock.join, lanternStart: mock.start, lanternLeave: mock.leave }) }));
+vi.mock('../spacetime/actions', () => ({ useGameActions: () => ({ lanternOpen: mock.open, lanternJoin: mock.join, lanternStart: mock.start, lanternLeave: mock.leave, lanternReady: mock.ready }) }));
 vi.mock('../frontier/useFrontier', () => ({ useFrontierCoins: () => mock.coins }));
 vi.mock('../bosses/lantern/loadLanternScene', () => ({ loadLanternScene: mock.load }));
 vi.mock('../frontier/worldInteraction', () => ({
@@ -31,7 +31,7 @@ beforeEach(() => {
   mock.players = new Map([['me', mock.me], ['ada', player('ada', 'Ada', 55, 153)], ['bo', player('bo', 'Bo')]]);
   mock.inventory = ready();
   mock.coins = 20;
-  for (const f of [mock.open, mock.join, mock.start, mock.leave, mock.load, mock.approach]) f.mockClear();
+  for (const f of [mock.open, mock.join, mock.start, mock.leave, mock.ready, mock.load, mock.approach]) f.mockClear();
   const s = useBossStore.getState();
   s.reset();
   s.setMe('me');
@@ -112,11 +112,12 @@ describe('LanternLobbyPanel', () => {
       s.setRow('lanternRun', lanternRun({ stage: SpireStage.Lobby, startTick: 0, endTick: 200 }));
       s.setRow('lanternMember', lanternMember('me', { state: SpireMemberState.Lobby }));
       s.setRow('lanternMember', lanternMember('ada', { slot: 1, state: SpireMemberState.Lobby }));
+      s.setRow('lanternReadiness', { identity: identity('ada'), runId: 11n, tick: 98 } as any);
     });
     render(<LanternLobbyPanel />);
     const party = screen.getByRole('list', { name: 'Your party' });
     expect(party).toHaveTextContent('Me (leader)');
-    expect(party).toHaveTextContent('ready ✓ · at the gate');
+    expect(party).toHaveTextContent('kit ✓ · at the gate');
     expect(party).toHaveTextContent('8 tiles away');
     expect(screen.getByTestId('lantern-party-id')).toHaveTextContent('#11');
     expect(screen.getByText('Breaks up in 1:00')).toBeInTheDocument();
@@ -142,5 +143,42 @@ describe('LanternLobbyPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(useBossStore.getState().lanternLobbyOpen).toBe(false);
     expect(useBossStore.getState().lobbyOpen).toBe(true);
+  });
+
+  it('the ready check: a member sends ready (and keeps it fresh); the leader waits for every other member', () => {
+    vi.useFakeTimers();
+    try {
+      const s = useBossStore.getState();
+      // Bo leads; you joined.
+      act(() => {
+        s.setRow('lanternRun', lanternRun({ id: 9n, leader: identity('bo'), stage: SpireStage.Lobby, partySize: 2, startTick: 0, endTick: 200 }));
+        s.setRow('lanternMember', lanternMember('bo', { runId: 9n, slot: 0, state: SpireMemberState.Lobby }));
+        s.setRow('lanternMember', lanternMember('me', { runId: 9n, slot: 1, state: SpireMemberState.Lobby }));
+      });
+      render(<LanternLobbyPanel />);
+      expect(screen.getByTestId('lantern-ready-me')).toHaveTextContent('not ready');
+      fireEvent.click(screen.getByRole('button', { name: 'Ready' }));
+      expect(mock.ready).toHaveBeenCalledTimes(1);
+      act(() => { vi.advanceTimersByTime(6100); });
+      expect(mock.ready).toHaveBeenCalledTimes(2);
+      act(() => s.setRow('lanternReadiness', { identity: identity('me'), runId: 9n, tick: 99 } as any));
+      expect(screen.getByTestId('lantern-ready-me')).toHaveTextContent('ready to start');
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('the leader cannot start until every other member is ready (within 20 ticks)', () => {
+    const s = useBossStore.getState();
+    act(() => {
+      s.setRow('lanternRun', lanternRun({ id: 9n, leader: identity('me'), stage: SpireStage.Lobby, partySize: 2, startTick: 0, endTick: 200 }));
+      s.setRow('lanternMember', lanternMember('me', { runId: 9n, slot: 0, state: SpireMemberState.Lobby }));
+      s.setRow('lanternMember', lanternMember('bo', { runId: 9n, slot: 1, state: SpireMemberState.Lobby }));
+    });
+    render(<LanternLobbyPanel />);
+    expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
+    expect(screen.getByTestId('lantern-waiting-ready')).toHaveTextContent('Waiting for Bo to ready');
+    act(() => s.setRow('lanternReadiness', { identity: identity('bo'), runId: 9n, tick: 95 } as any));
+    expect(screen.getByRole('button', { name: 'Start' })).not.toBeDisabled();
+    act(() => s.setRow('lanternReadiness', { identity: identity('bo'), runId: 9n, tick: 70 } as any));
+    expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled();
   });
 });

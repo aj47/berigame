@@ -491,6 +491,13 @@ export const LanternPaid = __t.object("LanternPaid", {
 });
 export type LanternPaid = __Infer<typeof LanternPaid>;
 
+export const LanternReadiness = __t.object("LanternReadiness", {
+  identity: __t.identity(),
+  runId: __t.u64(),
+  tick: __t.u32(),
+});
+export type LanternReadiness = __Infer<typeof LanternReadiness>;
+
 export const LanternRun = __t.object("LanternRun", {
   id: __t.u64(),
   leader: __t.identity(),

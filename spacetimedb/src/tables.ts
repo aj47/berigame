@@ -868,3 +868,14 @@ export const lanternPaid = table({ name: 'lantern_paid' }, {
   day: t.u32(),                         // lanternUtcDay of the clear
   paid: t.u8(),
 });
+
+/**
+ * Lobby ready checks: a member's last `lantern_ready` reducer call (lantern_start needs every other member of a party
+ * ready within LANTERN_READY_TICKS). Its own table so the publish only creates tables. Public, no RLS; rows are
+ * deleted at the start, on leave and when a lobby breaks up.
+ */
+export const lanternReadiness = table({ name: 'lantern_readiness', public: true }, {
+  identity: t.identity().primaryKey(),
+  runId: t.u64().index('btree'),
+  tick: t.u32(),
+});

@@ -18,6 +18,7 @@ const TABLES: readonly [BossTable, (row: any) => string | number | bigint][] = [
   ['lanternRun', (r) => r.id],
   ['lanternMember', (r) => r.identity.toHexString()],
   ['lanternFight', (r) => r.runId],
+  ['lanternReadiness', (r) => r.identity.toHexString()],
 ];
 
 /**

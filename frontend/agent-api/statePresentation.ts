@@ -38,6 +38,8 @@ export interface BossRows {
   lanternRuns?: readonly LanternBossRun[];
   lanternMembers?: readonly LanternBossMember[];
   lanternFights?: readonly LanternBossFight[];
+  /** lantern_readiness rows: the lobby ready check. */
+  lanternReadiness?: readonly { identity: { toHexString(): string }; runId: bigint; tick: number }[];
 }
 
 const hexOf = (v: Hex | string) => (typeof v === 'string' ? v : v.toHexString());
@@ -127,6 +129,7 @@ export function describeBosses(rows: BossRows, me: BossPlayer, tick: number, opt
       cfg: lanternConfigOr(rows.lanternConfig), runs: rows.lanternRuns ?? [], fight: myLanternRun(rows, meHex).fight,
       members: (rows.lanternMembers ?? []).map((m) => ({ ...m, identity: hexOf(m.identity) })),
       me: { identity: meHex, x: me.x, z: me.z }, tick, entry: options.entry ?? null, name, player,
+      ready: (rows.lanternReadiness ?? []).map((r) => ({ identity: hexOf(r.identity), runId: r.runId, tick: r.tick })),
     }),
   };
 }
@@ -238,7 +241,7 @@ const BOSS_ERRORS: readonly [string, readonly string[]][] = [
   ['spire_key', ['need a spire key']],
   ['lantern_member', ['already in a Lanternmaw party', 'waiting in a Lanternmaw party', 'in a Lanternmaw party; leave it first']],
   ['spire_member', ['already in a Spire party', 'belong to a party that is fighting', 'waiting in a Spire party', 'in a Spire party; leave it first']],
-  ['not_in_party', ['not in a Spire party', 'not in a Lanternmaw party']],
+  ['not_in_party', ['not in a Spire party', 'not in a Lanternmaw party', 'not in a Lanternmaw lobby']],
   ['not_leader', ['not leading a Spire party', 'not leading a Lanternmaw party']],
   ['party_full', ['party is full']],
   ['party_gone', ['party is gone', 'already gone down', 'already queued']],

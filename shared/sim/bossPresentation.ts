@@ -22,7 +22,7 @@ import {
 import { countItem } from './inventory';
 import {
   LANTERN_BLOW_DAMAGE, LANTERN_BOSS_NAME, LANTERN_CHOKE_TICKS, LANTERN_DEN_PATTERNS, LANTERN_DROWN_DAMAGE, LANTERN_ENRAGE_BONUS,
-  LANTERN_ENRAGE_TICKS, LANTERN_MAX_PARTY, LANTERN_MEALS, LANTERN_MIN_DAMAGE, LANTERN_NONE, LANTERN_PATTERNS, LANTERN_PULSE_DAMAGE,
+  LANTERN_ENRAGE_TICKS, LANTERN_MAX_PARTY, LANTERN_MEALS, LANTERN_READY_TICKS, LANTERN_MIN_DAMAGE, LANTERN_NONE, LANTERN_PATTERNS, LANTERN_PULSE_DAMAGE,
   LANTERN_RULES_VERSION, LANTERN_SPRINGS, LANTERN_STAGE_NAMES, LANTERN_TIDE_TICKS, LanternStage, lanternEnraged, lanternEntryRejection,
   lanternLocal, lanternSlot, lanternTile,
 } from './lanternmaw';
@@ -263,6 +263,8 @@ export function describeLantern(input: {
   entry: { slots: readonly Slot[]; coins: number | null; wielded: string } | null;
   name(hex: string): string | null;
   player(hex: string): { x: number; z: number; hp: number } | null;
+  /** lantern_readiness rows (identity hex): a party start needs every other member ready within LANTERN_READY_TICKS. */
+  ready?: readonly { identity: string; runId: bigint; tick: number }[];
 }): Record<string, unknown> {
   const { cfg, members, fight, me, tick, entry } = input;
   // Closed and not at the gate (and not in a lingering run): the compact block, about 1.8 KB less on every poll.
@@ -318,16 +320,30 @@ export function describeLantern(input: {
     },
     capacity: { active, max: cfg.lanternMaxRuns, lobbies, inside },
     lobbies: lobbyList,
-    you: mine && myRun ? {
-      runId: String(myRun.id), stage: SPIRE_STAGE_NAMES[myRun.stage] ?? 'unknown', state: SPIRE_MEMBER_STATE_NAMES[mine.state] ?? 'unknown',
-      slot: mine.slot, leader: leaderOf(myRun) === me.identity, party: membersOf(myRun.id).length,
-    } : null,
+    you: mine && myRun ? lanternYou(myRun, mine, membersOf(myRun.id), leaderOf(myRun), me.identity, tick, input) : null,
     run: mine && myRun && fight && myRun.stage >= SpireStage.Active ? describeLanternRun(myRun, fight, mine, membersOf(myRun.id), input) : null,
     reward: {
       items: LANTERN_REWARD.items.map((i) => ({ ...i, name: itemName(i.itemId) })), fightingXp: LANTERN_REWARD.fightingXp,
       minDamage: LANTERN_MIN_DAMAGE, keepsake: cosmeticKey(LANTERN_REWARD.keepsake), dailyPaidClears: LANTERN_DAILY_PAID_CLEARS, dailyCap: LANTERN_DAILY_CAP,
     },
     rule: LANTERN_RULE,
+  };
+}
+
+/** state.lantern.you: your membership, plus the ready check while in a lobby. */
+function lanternYou(run: LanternRunInput, mine: LanternMemberLike & { identity: string }, party: readonly (LanternMemberLike & { identity: string })[],
+  leader: string | null, meHex: string, tick: number, input: { name(hex: string): string | null; ready?: readonly { identity: string; runId: bigint; tick: number }[] }) {
+  const base = {
+    runId: String(run.id), stage: SPIRE_STAGE_NAMES[run.stage] ?? 'unknown', state: SPIRE_MEMBER_STATE_NAMES[mine.state] ?? 'unknown',
+    slot: mine.slot, leader: leader === meHex, party: party.length,
+  };
+  if (run.stage !== SpireStage.Lobby) return base;
+  const isReady = (hex: string) => hex === leader || party.length === 1
+    || (input.ready ?? []).some((r) => r.identity === hex && r.runId === run.id && tick - r.tick <= LANTERN_READY_TICKS);
+  const members = party.map((m) => ({ playerId: m.identity, name: input.name(m.identity), slot: m.slot, leader: m.identity === leader, ready: isReady(m.identity) }));
+  return {
+    ...base, ready: isReady(meHex), sendReady: party.length > 1 && leader !== meHex, readyWithinTicks: LANTERN_READY_TICKS,
+    startReady: members.every((m) => m.ready), members,
   };
 }
 

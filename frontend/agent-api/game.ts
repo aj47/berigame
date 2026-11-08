@@ -19,7 +19,7 @@ import {
   GIANT_REACH, GiantAttack, GiantState, attackDamage, attackRadius, giantHpAt, isLandTile,
   COSMETICS, CosmeticSlot, SKILLS, SKILL_MAX_LEVEL, Skill, harvestTickBonus, hasCosmetic, levelForXp, levelProgress,
   RAID_INTERVAL_MS, RAID_MIN_CONTRIBUTION, RAID_REWARD, RAID_WINDOW_MS, raidMaxHp, MENTOR_RANGE, MENTOR_PIN_TIERS,
-  bossNoPvpZone, inSafeRing, nearestLedgerClerk, LANTERN_RULES_VERSION, SPIRE_KEY_ITEM_ID, SPIRE_RULES_VERSION, type DangerFeed,
+  bossNoPvpZone, inSafeRing, nearestLedgerClerk, LANTERN_READY_TICKS, LANTERN_RULES_VERSION, SPIRE_KEY_ITEM_ID, SPIRE_RULES_VERSION, type DangerFeed,
   goalBosses, goalTarget, journeyChapterOf, nearestBag,
 } from '../../shared/sim';
 import { GARDEN_EXTRA_PLOT_LEVEL, GARDEN_PLOT_TILES, GARDEN_STAGE_NAMES, gardenPlotCountForXp, gardenRemainingMs, gardenStage, getGardenCrop, inGardenReach } from '../../shared/sim';
@@ -121,7 +121,7 @@ function subscriptionFor(scope: ConnectionScope, identity: Identity) {
     // Bosses: config, the beetle, every run and member, and the public boss news.
     tables.bossConfig, tables.clatterhorn, tables.spireRun, tables.spireMember, tables.bossEvent,
     // Lanternmaw: its switch, every run and member (fight rows are per run, on the player socket).
-    tables.lanternConfig, tables.lanternRun, tables.lanternMember,
+    tables.lanternConfig, tables.lanternRun, tables.lanternMember, tables.lanternReadiness,
   ];
   return [
     // Row-level security narrows these to your own rows.
@@ -292,7 +292,7 @@ export async function createGameService(credential: Credential, options: Service
         config: [...db.bossConfig.iter()][0] ?? null, clatter: [...db.clatterhorn.iter()][0] ?? null,
         runs: [...db.spireRun.iter()], members: [...db.spireMember.iter()], fights: [...conn.db.spireFight.iter()],
         lanternConfig: [...db.lanternConfig.iter()][0] ?? null, lanternRuns: [...db.lanternRun.iter()], lanternMembers: [...db.lanternMember.iter()],
-        lanternFights: [...conn.db.lanternFight.iter()],
+        lanternFights: [...conn.db.lanternFight.iter()], lanternReadiness: [...db.lanternReadiness.iter()],
       });
       /** Your tiles per tick: 1 while you carry the giant berry (the server's cargoMovementSteps). */
       const moveSteps = () => moveStepsOf(player.identity, db.expedition.iter());
@@ -699,6 +699,7 @@ export async function createGameService(credential: Credential, options: Service
               if (input.op === 'open') { await r.lanternOpen({ clientRules }); const runId = runOf(); return runId === undefined ? undefined : { runId: String(runId) }; }
               if (input.op === 'join') { await r.lanternJoin({ runId: BigInt(input.runId ?? 0), clientRules }); const runId = runOf(); return runId === undefined ? undefined : { runId: String(runId) }; }
               if (input.op === 'start') { await r.lanternStart({ clientRules }); return { stage: 'active' }; }
+              if (input.op === 'ready') { await r.lanternReady({}); return { ready: true, withinTicks: LANTERN_READY_TICKS }; }
               await r.lanternLeave({});
               break;
             }

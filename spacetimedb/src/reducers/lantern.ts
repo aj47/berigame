@@ -3,7 +3,7 @@ import type { Identity } from 'spacetimedb';
 import spacetimedb from '../schema';
 import {
   BossEventKind, BossId, LANTERN_CONFIG_ID, LANTERN_GATE, LANTERN_GATE_RANGE, LANTERN_LOBBY_TICKS, LANTERN_MAX_LOBBIES,
-  LANTERN_MAX_PARTY, LANTERN_RULES_VERSION, PlayerState, SpireMemberState, SpireOutcome, SpireStage, chebyshev,
+  LANTERN_MAX_PARTY, LANTERN_READY_TICKS, LANTERN_RULES_VERSION, PlayerState, SpireMemberState, SpireOutcome, SpireStage, chebyshev,
   lanternConfigProblem, type LanternConfigLike,
 } from '../../../shared/sim';
 import { requireOwner } from '../lib/access';
@@ -119,6 +119,22 @@ export const lanternJoin = spacetimedb.reducer(
   }
 );
 
+/**
+ * Ready (a lobby member, not needed solo): your dodge loop is running. The leader's start needs every other member
+ * ready within LANTERN_READY_TICKS (20 ticks, 12 s), so loops send it again while they wait.
+ */
+export const lanternReady = spacetimedb.reducer((ctx) => {
+  const p = requireAlivePlayer(ctx);
+  const T = currentTick(ctx);
+  touchInput(p, T);
+  savePlayer(ctx, p);
+  const m = ctx.db.lanternMember.identity.find(p.identity);
+  const run = m && ctx.db.lanternRun.id.find(m.runId);
+  if (!m || !run || run.stage !== SpireStage.Lobby) throw new SenderError('You are not in a Lanternmaw lobby');
+  const row = { identity: p.identity, runId: run.id, tick: T };
+  if (ctx.db.lanternReadiness.identity.find(p.identity)) ctx.db.lanternReadiness.identity.update(row); else ctx.db.lanternReadiness.insert(row);
+});
+
 /** Leave a lobby, or forfeit a run (no rewards). */
 export const lanternLeave = spacetimedb.reducer((ctx) => {
   const p = requireAlivePlayer(ctx);
@@ -155,6 +171,11 @@ export const lanternStart = spacetimedb.reducer(
       if (carrying(ctx, q.identity)) throw waiting('is carrying the giant berry');
       if (duelFor(ctx, q.identity)) throw waiting('is in a duel');
       if (onExpedition(ctx, q.identity)) throw waiting('is on an expedition');
+      // The ready check (a party only): every other member says its dodge loop is running.
+      if (members.length > 1 && !sameId(m.identity, p.identity)) {
+        const r = ctx.db.lanternReadiness.identity.find(m.identity);
+        if (!r || r.runId !== run.id || T - r.tick > LANTERN_READY_TICKS) throw waiting('send ready once your dodge loop is running');
+      }
     }
     let active = 0;
     for (const r of ctx.db.lanternRun.iter()) if (r.stage === SpireStage.Active) active++;

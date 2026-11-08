@@ -35,7 +35,7 @@ import * as craftReducers from '../../../spacetimedb/src/reducers/craft';
 import { recipeStatus } from '../nodes';
 import { tick } from '../../../spacetimedb/src/reducers/tick';
 
-const open = R(lantern.lanternOpen), join = R(lantern.lanternJoin), leave = R(lantern.lanternLeave), start = R(lantern.lanternStart);
+const open = R(lantern.lanternOpen), join = R(lantern.lanternJoin), leave = R(lantern.lanternLeave), start = R(lantern.lanternStart), readyUp = R(lantern.lanternReady);
 const configure = R(lantern.configureLanternmaw), debug = R(admin.bossDebug), eat = R(inventory.eatBerry);
 const RULES = { clientRules: LANTERN_RULES_VERSION };
 const hexOf = (x: { toHexString(): string }) => x.toHexString();
@@ -74,8 +74,11 @@ function lobby(members: Identity[]): bigint {
   for (const m of members.slice(1)) join(h.as(m), { runId, ...RULES });
   return runId;
 }
+/** Every non-leader member sends ready (a party start needs it). */
+function readyAll(members: Identity[]) { for (const m of members.slice(1)) { fresh(m); readyUp(h.as(m)); } }
 function begin(members: Identity[]): bigint {
   const runId = lobby(members);
+  readyAll(members);
   start(h.as(members[0]), RULES);
   return runId;
 }
@@ -214,6 +217,7 @@ describe('lantern_open, lantern_join, lantern_leave', () => {
 describe('lantern_start', () => {
   it('refuses while a member is not ready, naming them; a full Hollow refuses', () => {
     const runId = lobby([A, B]);
+    readyAll([A, B]);
     expect(() => start(h.as(B), RULES)).toThrow('You are not leading a Lanternmaw party');
     h.place(B, { x: 40, z: 25 });
     expect(() => start(h.as(A), RULES)).toThrow('This party is waiting for Bo: walk to the gate');
@@ -233,6 +237,7 @@ describe('lantern_start', () => {
 
   it('spends one bait and the fee each, teleports to the spawns, inserts the fight with the first pattern', () => {
     const runId = lobby([A, B]);
+    readyAll([A, B]);
     setCoins(A, 12);
     h.set(B, { respawnTick: 98 });
     start(h.as(A), RULES);
@@ -290,6 +295,38 @@ function pickMove(f: LanternFightLike, startTick: number, T: number, from: numbe
   const want = f.stage === LanternStage.Tide ? (i: number) => i === LANTERN_SPRINGS[f.spring] : (i: number) => lanternInCourt(i);
   return (swing || f.stage === LanternStage.Tide) ? pool.find(want) ?? pool[0] : pool[0];
 }
+
+describe('the ready check', () => {
+  it('a party start waits for every other member to send ready within 20 ticks; solo needs none', () => {
+    const runId = lobby([A, B, C]);
+    expect(() => start(h.as(A), RULES)).toThrow('This party is waiting for Bo: send ready once your dodge loop is running');
+    fresh(B); readyUp(h.as(B));
+    expect(h.db.lanternReadiness.identity.find(B)).toMatchObject({ runId, tick: h.T() });
+    fresh(A);
+    expect(() => start(h.as(A), RULES)).toThrow('This party is waiting for Cy: send ready');
+    fresh(C); readyUp(h.as(C));
+    h.run(21);
+    fresh(A);
+    expect(() => start(h.as(A), RULES)).toThrow('This party is waiting for Bo: send ready');
+    readyAll([A, B, C]);
+    fresh(A);
+    start(h.as(A), RULES);
+    expect(lanternRow(runId).stage).toBe(SpireStage.Active);
+    expect([...h.db.lanternReadiness.iter()]).toHaveLength(0);
+  });
+
+  it('ready is refused outside a lobby; leaving drops your ready; a solo leader starts without it', () => {
+    ready(A);
+    expect(() => { fresh(A); readyUp(h.as(A)); }).toThrow('You are not in a Lanternmaw lobby');
+    const runId = lobby([A, B]);
+    fresh(B); readyUp(h.as(B));
+    fresh(B); leave(h.as(B));
+    expect(h.db.lanternReadiness.identity.find(B)).toBeUndefined();
+    fresh(A);
+    start(h.as(A), RULES);
+    expect(lanternRow(runId).stage).toBe(SpireStage.Active);
+  });
+});
 
 describe('the start grace (the water stills)', () => {
   it('nothing can hit anyone for the first 15 + 3 ticks after the start, even standing idle on the spawn tile', () => {
