@@ -7,7 +7,7 @@ import { ensureFrontierProfile, frontierWorld, projectFrontier } from '../lib/fr
 import { readSlots } from '../lib/inventory';
 import { clearInteractions, currentTick, findPlayer, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { requireCapability } from '../lib/access';
-import { onSpireFloor, spireFollowProblem } from '../lib/spireGuards';
+import { onLanternFloor, onSpireFloor, spireFollowProblem } from '../lib/spireGuards';
 
 /**
  * Hold the weapon in quick slot `slot` (0..HOTBAR_SIZE-1). Takes effect at the
@@ -75,6 +75,8 @@ export const attack = spacetimedb.reducer(
     const zone = bossNoPvpZone(p) ?? bossNoPvpZone(tgt);
     if (zone === 'glade') throw new SenderError("No fighting in Clatterhorn's Glade");
     if (zone === 'gate') throw new SenderError('No fighting at the Spire gate');
+    if (onLanternFloor(p) || onLanternFloor(tgt)) throw new SenderError('No fighting inside the Drowned Hollow');
+    if (zone === 'fengate') throw new SenderError('No fighting at the Fen Gate');
     requireCapability(ctx, ctx.sender, 'combat');
     requireCapability(ctx, target, 'combat');
     if (inSafeRing(p) || inSafeRing(tgt)) throw new SenderError('No fighting in the safe ring');

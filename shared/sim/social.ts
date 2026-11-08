@@ -7,7 +7,7 @@ import { blockedSetFromTiles, chebyshev, tileKey } from './grid';
 import type { Tile } from './types';
 import { SCENERY_BLOCKERS } from './terrain';
 import { giantFootprint } from './giant';
-import { SPIRE_DAIS } from './bossZones';
+import { LANTERN_MAW, SPIRE_DAIS } from './bossZones';
 
 // ---- Training dummy ---------------------------------------------------------
 export const DUMMY_ID = 1;
@@ -22,7 +22,7 @@ export const DUMMY_MAX_HP = 60;
 /** Left alone this long, the dummy is back to full (computed lazily: no tick writes while idle). */
 export const DUMMY_IDLE_RESET_TICKS = 25;
 
-/** Every static blocker the client and server path around: the trees and nodes, the dummy, the Giant's footprint, the scenery (stones, gate) and the Spire's dais. */
+/** Every static blocker the client and server path around: the trees and nodes, the dummy, the Giant's footprint, the scenery (stones, gates), the Spire's dais and Lanternmaw's maw. */
 export function worldBlockedSet(nodes: Iterable<Tile>): Set<number> {
   const s = blockedSetFromTiles(nodes);
   for (const k of staticBlockedKeys()) s.add(k);
@@ -32,7 +32,7 @@ export function worldBlockedSet(nodes: Iterable<Tile>): Set<number> {
 let STATIC_KEYS: readonly number[] | undefined;
 /** The fixed blockers (the dummy, the Giant, forests, ridges, stones, the dais), keyed once: the tick rebuilds the set every tick. */
 function staticBlockedKeys(): readonly number[] {
-  return STATIC_KEYS ??= [DUMMY_TILE, ...giantFootprint(), ...SCENERY_BLOCKERS, ...SPIRE_DAIS].map(tileKey);
+  return STATIC_KEYS ??= [DUMMY_TILE, ...giantFootprint(), ...SCENERY_BLOCKERS, ...SPIRE_DAIS, ...LANTERN_MAW].map(tileKey);
 }
 
 export interface DummyHpState { hp: number; maxHp: number; lastHitTick: number }

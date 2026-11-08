@@ -3,7 +3,7 @@
  * `boss_event` is world-visible; `boss_notice` reaches only its `player` (RLS).
  */
 
-export const BossId = { Clatterhorn: 1, Spire: 2 } as const;
+export const BossId = { Clatterhorn: 1, Spire: 2, Lanternmaw: 3 } as const;
 export type BossId = (typeof BossId)[keyof typeof BossId];
 
 /** `boss_event.kind`. */
@@ -17,6 +17,14 @@ export const BossEventKind = {
   SpireRunStart: 4,
   /** runId, quantity = party size, value = clear ticks, text = member names joined by ", " */
   SpireClear: 5,
+  /** Lanternmaw: runId, quantity = party size */
+  LanternRunStart: 6,
+  /** Lanternmaw: runId, quantity = party size, value = clear ticks, text = member names joined by ", " */
+  LanternClear: 7,
+  /** Lanternmaw opened by the owner (the launch moment); x, z = the Fen Gate */
+  LanternOpened: 8,
+  /** Owner announcement before opening: value = minutes until it opens; x, z = the Fen Gate */
+  LanternSoon: 9,
 } as const;
 export type BossEventKind = (typeof BossEventKind)[keyof typeof BossEventKind];
 
@@ -37,11 +45,11 @@ export const BossNoticeKind = {
   Reward: 6,
   /** quantity = cosmetic id */
   Keepsake: 7,
-  /** quantity = SpireOutcome, total = clear ticks, amount = your stars */
+  /** quantity = SpireOutcome, total = clear ticks, amount = your stars (Spire) or damage dealt (Lanternmaw) */
   RunResult: 8,
 } as const;
 export type BossNoticeKind = (typeof BossNoticeKind)[keyof typeof BossNoticeKind];
 
 /** `boss_notice.quantity` of a Hurt notice. */
-export const HurtSource = { Charge: 1, Spin: 2, Runner: 3, Bullet: 4 } as const;
+export const HurtSource = { Charge: 1, Spin: 2, Runner: 3, Bullet: 4, Blow: 5, Pulse: 6, Drown: 7, Bite: 8 } as const;
 export type HurtSource = (typeof HurtSource)[keyof typeof HurtSource];

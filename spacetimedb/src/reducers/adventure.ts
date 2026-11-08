@@ -6,7 +6,7 @@ import { activityAction } from '../lib/activity';
 import { profile, saveProfile, progress, contribute, creditFor, carrying, spend, finishExpedition, syncShowcase, duelFor } from '../lib/adventure';
 import { giveItem } from '../lib/inventory';
 import { requireCapability } from '../lib/access';
-import { onSpireFloor, refuseOnSpireFloor } from '../lib/spireGuards';
+import { onLanternFloor, onSpireFloor, refuseOnSpireFloor } from '../lib/spireGuards';
 import { loadPlayer } from '../lib/playerStore';
 
 export const equipTechnique = spacetimedb.reducer({ technique: t.u8() }, (ctx, { technique }) => {
@@ -142,6 +142,7 @@ export const duelAction = spacetimedb.reducer({ action: t.string(), target: t.id
   if (!['challenge', 'accept'].includes(action)) throw new SenderError('Choose challenge, accept, decline or surrender');
   // Declining or surrendering stays possible; a new duel never starts across or inside the floor.
   if (onSpireFloor(p) || onSpireFloor(other)) throw new SenderError('You cannot duel inside the Sunken Spire');
+  if (onLanternFloor(p) || onLanternFloor(other)) throw new SenderError('You cannot duel inside the Drowned Hollow');
   requireCapability(ctx, p.identity, 'combat'); requireCapability(ctx, target, 'combat');
   if (!other.online || other.state !== PlayerState.Alive || chebyshev(p, other) > 4) throw new SenderError('Walk within four tiles of an available player');
   if (inSafeRing(p) || inSafeRing(other)) throw new SenderError('Both players must step outside the safe ring to duel');

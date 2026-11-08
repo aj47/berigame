@@ -11,6 +11,7 @@ import { readSlots } from '../lib/inventory';
 import { currentTick, hex, requireAlivePlayer, sameId, savePlayer, touchInput } from '../lib/players';
 import { activityAction } from '../lib/activity';
 import { readBossConfig } from '../lib/rows';
+import { inLanternParty } from '../lib/lantern';
 import {
   spireForfeit, spireLeaveLobby, spireLiveMembership, spireMembers, spireMembershipProblem, spireStartRun,
 } from '../lib/spire';
@@ -55,6 +56,7 @@ function requireReadyAtGate(ctx: Ctx, p: PlayerRow, T: number): void {
   if (chebyshev(p, SPIRE_GATE) > SPIRE_GATE_RANGE) throw new SenderError(`Walk to the Sunken Spire gate (${SPIRE_GATE.x},${SPIRE_GATE.z}) first`);
   const problem = spireMembershipProblem(ctx, p, T);
   if (problem) throw new SenderError(problem);
+  if (inLanternParty(ctx, p.identity)) throw new SenderError('You are in a Lanternmaw party; leave it first');
 }
 
 function lobbyCount(ctx: Ctx): number {

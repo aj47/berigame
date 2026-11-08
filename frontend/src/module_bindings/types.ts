@@ -421,6 +421,91 @@ export const IslandProject = __t.object("IslandProject", {
 });
 export type IslandProject = __Infer<typeof IslandProject>;
 
+export const LanternConfig = __t.object("LanternConfig", {
+  id: __t.u8(),
+  lanternOpen: __t.bool(),
+  lanternMaxRuns: __t.u8(),
+  lanternHpBase: __t.u32(),
+  lanternHpPerMember: __t.u32(),
+});
+export type LanternConfig = __Infer<typeof LanternConfig>;
+
+export const LanternFight = __t.object("LanternFight", {
+  runId: __t.u64(),
+  seed: __t.u32(),
+  hp: __t.u32(),
+  maxHp: __t.u32(),
+  phase: __t.u8(),
+  partySize: __t.u8(),
+  stage: __t.u8(),
+  cycle: __t.u32(),
+  denCount: __t.u8(),
+  patternCount: __t.u32(),
+  curKind: __t.u8(),
+  curStart: __t.u32(),
+  curSeed: __t.u8(),
+  curAim: __t.u8(),
+  surfaceTick: __t.u32(),
+  spring: __t.u8(),
+  pulseSeed: __t.u8(),
+  capped: __t.bool(),
+  hitTick0: __t.u32(),
+  hitTick1: __t.u32(),
+  hitTick2: __t.u32(),
+  hitTick3: __t.u32(),
+  hits0: __t.u8(),
+  hits1: __t.u8(),
+  hits2: __t.u8(),
+  hits3: __t.u8(),
+  dmg0: __t.u32(),
+  dmg1: __t.u32(),
+  dmg2: __t.u32(),
+  dmg3: __t.u32(),
+  drowned0: __t.u8(),
+  drowned1: __t.u8(),
+  drowned2: __t.u8(),
+  drowned3: __t.u8(),
+  caps0: __t.u8(),
+  caps1: __t.u8(),
+  caps2: __t.u8(),
+  caps3: __t.u8(),
+});
+export type LanternFight = __Infer<typeof LanternFight>;
+
+export const LanternMember = __t.object("LanternMember", {
+  identity: __t.identity(),
+  runId: __t.u64(),
+  slot: __t.u8(),
+  state: __t.u8(),
+  joinedTick: __t.u32(),
+  awaySinceTick: __t.u32(),
+  awayCount: __t.u8(),
+  meals: __t.u8(),
+});
+export type LanternMember = __Infer<typeof LanternMember>;
+
+export const LanternPaid = __t.object("LanternPaid", {
+  identity: __t.identity(),
+  day: __t.u32(),
+  paid: __t.u8(),
+});
+export type LanternPaid = __Infer<typeof LanternPaid>;
+
+export const LanternRun = __t.object("LanternRun", {
+  id: __t.u64(),
+  leader: __t.identity(),
+  stage: __t.u8(),
+  outcome: __t.u8(),
+  rules: __t.u32(),
+  partySize: __t.u8(),
+  createdTick: __t.u32(),
+  startTick: __t.u32(),
+  endTick: __t.u32(),
+  phase: __t.u8(),
+  clearTicks: __t.u32(),
+});
+export type LanternRun = __Infer<typeof LanternRun>;
+
 export const Mentee = __t.object("Mentee", {
   identity: __t.identity(),
   inviter: __t.option(__t.identity()),

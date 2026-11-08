@@ -5,6 +5,7 @@ import { requireOwner } from '../lib/access';
 import { clatterClose, clatterDebug, clatterOpen } from '../lib/clatterhorn';
 import { currentTick } from '../lib/players';
 import { spireCloseMode, spireDebug } from '../lib/spire';
+import { LANTERN_DEBUG_OPS, lanternDebug } from '../lib/lantern';
 
 /**
  * World-owner switches for both bosses (FINAL_SPEC 5.1, 5.5). `configure_bosses`
@@ -72,6 +73,11 @@ export const bossDebug = spacetimedb.reducer(
     }
     if (SPIRE_WORLD_DEBUG_OPS.includes(op)) {
       spireDebug(ctx, T, op, runId, value);
+      return;
+    }
+    // Lanternmaw: lantern_hp (an Active run, percent), lantern_fail_all, lantern_soon (value = minutes until it opens).
+    if (LANTERN_DEBUG_OPS.includes(op)) {
+      lanternDebug(ctx, T, op, runId, value);
       return;
     }
     throw new SenderError('This debug action does not exist');

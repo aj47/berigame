@@ -42,7 +42,8 @@ function spied(name: string, table: any, log: WriteLog): any {
   });
 }
 
-export const BOSS_TABLES = ['bossConfig', 'clatterhorn', 'clatterhornCredit', 'spireRun', 'spireMember', 'spireFight', 'bossEvent', 'bossNotice'] as const;
+export const BOSS_TABLES = ['bossConfig', 'clatterhorn', 'clatterhornCredit', 'spireRun', 'spireMember', 'spireFight', 'bossEvent', 'bossNotice',
+  'lanternConfig', 'lanternRun', 'lanternMember', 'lanternFight', 'lanternPaid'] as const;
 
 export function spireHarness(tick: Reducer, names = ['Ann', 'Bo', 'Cy', 'Di', 'Ed']) {
   const log: WriteLog = { insert: {}, update: {}, delete: {} };

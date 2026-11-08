@@ -15,7 +15,7 @@ import { unlockCosmetic } from '../lib/progress';
 import { Cosmetic } from '../../../shared/sim';
 import { foodHealing } from '../../../shared/sim/frontier/engine';
 import { frontierRepository, projectFrontier } from '../lib/frontier';
-import { onSpireFloor, refuseOnSpireFloor, spireEatGuard } from '../lib/spireGuards';
+import { lanternEatGuard, onLanternFloor, onSpireFloor, refuseOnSpireFloor, spireEatGuard } from '../lib/spireGuards';
 
 /** A weapon is only held while a copy of it sits in the quick slots. Mutates `p`. */
 function sheatheIfGone(p: PlayerRow, slots: readonly Slot[]): void {
@@ -37,6 +37,7 @@ export function eatFromSlot(ctx: Ctx, slot: number) {
     if (!def || def.healthRestore <= 0) throw new SenderError('not edible');
     // At most SPIRE_MEALS meals per member per run (counted on the member row).
     if (onSpireFloor(p)) spireEatGuard(ctx, p);
+    else if (onLanternFloor(p)) lanternEatGuard(ctx, p);
     const { slots } = removeFromSlot(snap.slots, slot, 1);
     writeSlots(ctx, p.identity, snap, slots);
     const before = p.hp;

@@ -1,3 +1,5 @@
+import { LANTERN_HP_BASE, LANTERN_HP_PER_MEMBER } from './constants';
+
 /**
  * Owner switches and live HP knobs for both bosses (the `boss_config` row,
  * id 0). An absent row means the defaults: both bosses closed.
@@ -56,5 +58,40 @@ export function bossConfigProblem(cfg: BossConfigLike): string | null {
   for (const hp of [cfg.spireHpBase, cfg.spireHpPerMember, cfg.clatterHpBase, cfg.clatterHpPerChallenger]) {
     if (!within(hp, BOSS_HP_RANGE)) return BOSS_CONFIG_RANGE_MESSAGE;
   }
+  return null;
+}
+
+// ---- Lanternmaw (BOSSES.md section 9.11) -------------------------------------------------------
+/**
+ * Lanternmaw's owner switch and live HP knobs: the `lantern_config` row (id 0),
+ * a table of its own so the publish only creates tables (adding columns to
+ * `boss_config` would disconnect every client). An absent row means closed.
+ */
+export interface LanternConfigLike {
+  lanternOpen: boolean;
+  /** Concurrent Active runs, 1..32. */
+  lanternMaxRuns: number;
+  lanternHpBase: number;
+  lanternHpPerMember: number;
+}
+
+export const LANTERN_CONFIG_ID = 0;
+
+export const LANTERN_CONFIG_DEFAULTS: LanternConfigLike = Object.freeze({
+  lanternOpen: false,
+  lanternMaxRuns: 12,
+  lanternHpBase: LANTERN_HP_BASE,
+  lanternHpPerMember: LANTERN_HP_PER_MEMBER,
+});
+
+export function lanternConfigOr(row?: LanternConfigLike | null): LanternConfigLike {
+  if (!row) return { ...LANTERN_CONFIG_DEFAULTS };
+  return { lanternOpen: row.lanternOpen, lanternMaxRuns: row.lanternMaxRuns, lanternHpBase: row.lanternHpBase, lanternHpPerMember: row.lanternHpPerMember };
+}
+
+/** "This value is out of range" or null. */
+export function lanternConfigProblem(cfg: LanternConfigLike): string | null {
+  if (!within(cfg.lanternMaxRuns, BOSS_MAX_RUNS_RANGE)) return BOSS_CONFIG_RANGE_MESSAGE;
+  for (const hp of [cfg.lanternHpBase, cfg.lanternHpPerMember]) if (!within(hp, BOSS_HP_RANGE)) return BOSS_CONFIG_RANGE_MESSAGE;
   return null;
 }

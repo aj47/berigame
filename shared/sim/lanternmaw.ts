@@ -541,3 +541,48 @@ export function lanternResolveTick(run: LanternRunSim, T: number): LanternRunSim
   f = lanternAdvance(f, T, run.startTick, ms.filter((m) => m.present).map((m) => m.tile));
   return { ...run, fight: f, members: ms };
 }
+
+// ---- The server's run machinery (BOSSES.md 9.2, 9.12) ------------------------------------------------------------
+// Lobbies, runs and members reuse the Spire's codes (SpireStage, SpireOutcome, SpireMemberState) so both
+// sealed floors read the same way in clients and agents; the rows live in their own lantern_* tables.
+
+/** A lobby expires 150 ticks (1:30) after it opens. */
+export const LANTERN_LOBBY_TICKS = 150;
+export const LANTERN_MAX_LOBBIES = 48;
+/** A finished run's rows linger this long for the result screen. */
+export const LANTERN_END_LINGER = 20;
+/** Away this long: Left (with a teammate present) or the run is Abandoned (nobody present). */
+export const LANTERN_AWAY_TICKS = 50;
+
+/** The run's fight seed. */
+export function lanternSeed(runId: bigint, startTick: number): number {
+  return mix32(Number(runId & 0xffffffffn) ^ 0x4c4d, startTick);
+}
+
+/** Per-slot columns of `lantern_fight`: last hit (i-frames), hits, damage dealt, flooded ticks, caps. */
+export type LanternSlotField = 'hitTick' | 'hits' | 'dmg' | 'drowned' | 'caps';
+export type LanternSlotColumns = { [K in `${LanternSlotField}${0 | 1 | 2 | 3}`]: number };
+const LANTERN_U8_FIELDS = new Set<LanternSlotField>(['hits', 'drowned', 'caps']);
+
+export function lanternSlot(f: LanternSlotColumns, k: LanternSlotField, slot: number): number {
+  return slot >= 0 && slot < LANTERN_MAX_PARTY ? f[`${k}${slot}` as keyof LanternSlotColumns] : 0;
+}
+
+/** A copy with the slot column set; u8 fields saturate at 255, every value is clamped >= 0. */
+export function withLanternSlot<F extends LanternSlotColumns>(f: F, k: LanternSlotField, slot: number, value: number): F {
+  if (!(slot >= 0 && slot < LANTERN_MAX_PARTY)) return { ...f };
+  const v = Math.min(LANTERN_U8_FIELDS.has(k) ? 255 : 0xffffffff, Math.max(0, Math.floor(value)));
+  return { ...f, [`${k}${slot}`]: v };
+}
+
+/** Empty per-slot columns for a fresh fight row. */
+export function lanternEmptySlots(): LanternSlotColumns {
+  const out = {} as LanternSlotColumns;
+  for (const k of ['hitTick', 'hits', 'dmg', 'drowned', 'caps'] as const) for (const s of [0, 1, 2, 3] as const) out[`${k}${s}`] = 0;
+  return out;
+}
+
+/** Seconds of fight time left at T (0 before the run starts or after it ends). */
+export function lanternSecondsLeft(startTick: number, endTick: number, T: number): number {
+  return T < startTick ? Math.ceil(LANTERN_TIME_LIMIT * 0.6) : Math.max(0, Math.ceil((endTick - T) * 0.6));
+}

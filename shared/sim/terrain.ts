@@ -2,9 +2,9 @@
 import { GRID_SIZE, ISLE_SIZE } from './constants';
 import { EXPANSE_LANDMARKS, EXPANSE_TRAILS, expanseLand, expanseWater, isExpanseBridge, onRidge, biomeOf, BIOMES, WAYSTONES, CAUSEWAYS, EXPANSE_BRIDGES } from './expanse';
 import type { Tile } from './types';
-import { CLATTER_GLADE, CLATTER_STONES, SPIRE_GATE, inBossRect, inSpireFloor } from './bossZones';
+import { CLATTER_GLADE, CLATTER_STONES, LANTERN_GATE, SPIRE_GATE, inBossRect, inLanternFloor, inSealedFloor, inSpireFloor } from './bossZones';
 
-export const TERRAIN_VERSION = 'bramblewild-expanse-v3';
+export const TERRAIN_VERSION = 'bramblewild-expanse-v4';
 export const ISLAND_NAME = 'Bramblewild';
 const ellipse = (x: number, z: number, cx: number, cz: number, rx: number, rz: number) =>
   (1 - Math.hypot((x - cx) / rx, (z - cz) / rz)) * Math.min(rx, rz);
@@ -92,8 +92,8 @@ export function terrainLand(t: Tile): boolean {
   if (!landTiles) {
     landTiles = new Uint8Array(GRID_SIZE * GRID_SIZE);
     for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++)
-      // The Sunken Spire's sealed floor is walkable land but never rendered (terrainField is unchanged).
-      if (terrainField(x, z) >= 0 || isBridge({ x, z }) || inSpireFloor({ x, z })) landTiles[z * GRID_SIZE + x] = 1;
+      // The sealed boss floors (the Sunken Spire, the Drowned Hollow) are walkable land but never rendered (terrainField is unchanged).
+      if (terrainField(x, z) >= 0 || isBridge({ x, z }) || inSealedFloor({ x, z })) landTiles[z * GRID_SIZE + x] = 1;
     dropSlivers(landTiles);
   }
   return landTiles[t.z * GRID_SIZE + t.x] === 1;
@@ -101,7 +101,7 @@ export function terrainLand(t: Tile): boolean {
 /**
  * Coastline slivers a walker can never reach (only diagonally, past two water
  * corners) are sea, so every walkable tile is connected to spawn. The sealed
- * Spire floor is the one deliberate exception.
+ * boss floors are the deliberate exceptions.
  */
 function dropSlivers(mask: Uint8Array): void {
   const seen = new Uint8Array(mask.length), queue = new Int32Array(mask.length);
@@ -120,7 +120,7 @@ function dropSlivers(mask: Uint8Array): void {
       seen[n] = 1; queue[tail++] = n;
     }
   }
-  for (let k = 0; k < mask.length; k++) if (mask[k] && !seen[k] && !inSpireFloor({ x: k % GRID_SIZE, z: Math.floor(k / GRID_SIZE) })) mask[k] = 0;
+  for (let k = 0; k < mask.length; k++) if (mask[k] && !seen[k] && !inSealedFloor({ x: k % GRID_SIZE, z: Math.floor(k / GRID_SIZE) })) mask[k] = 0;
 }
 
 /** Rounded woodland boundary. The familiar cardinal crossings stay in place. */
@@ -150,6 +150,7 @@ export const LANDMARKS = [
   { id: 'sunfall', name: 'Sunfall Bluffs', short: 'Sunfall', x: 106, z: 96, access: 'coast', detail: 'Wind-bent bluffs above the far south-east shore.' },
   { id: 'glade', name: "Clatterhorn's Glade", short: 'Glade', x: 84, z: 106, access: 'coast', detail: 'A mossy clearing ringed by standing stones. Something big clatters in the brush.' },
   { id: 'spire', name: 'Sunken Spire Gate', short: 'Spire', x: 62, z: 45, access: 'boulders', detail: 'Stairs into the inland sea. Bring a spire key and friends.' },
+  { id: 'fengate', name: 'Fen Gate', short: 'Fen Gate', x: LANTERN_GATE.x, z: LANTERN_GATE.z, access: 'coast', detail: 'A lantern-hung jetty over the strait. Lanternmaw waits in the Drowned Hollow: bring Fen Bait and a stone club.' },
   // The Expanse (expanse.ts).
   ...EXPANSE_LANDMARKS,
 ] as const;
@@ -186,7 +187,7 @@ export function trailDistance(x: number, z: number): number {
 export function nearestDryTile(from: Tile, blocked: ReadonlySet<number> = new Set()): Tile {
   let best = { x: 25, z: 25 }, distance = Infinity;
   const open = (x: number, z: number) => terrainLand({ x, z }) && !blocked.has(z * GRID_SIZE + x) && !groveBoundary({ x, z })
-    && !(inGiantHeadland({ x, z }) && Math.max(x, z) === 50) && !inSpireFloor({ x, z });
+    && !(inGiantHeadland({ x, z }) && Math.max(x, z) === 50) && !inSealedFloor({ x, z });
   const consider = (x: number, z: number) => {
     if (x < 0 || z < 0 || x >= GRID_SIZE || z >= GRID_SIZE) return;
     const d = (from.x - x) ** 2 + (from.z - z) ** 2;
@@ -287,16 +288,16 @@ export const SCENERY_BLOCKERS: readonly Tile[] = [
   ...[13,14,15].flatMap(z => [20,21,22].map(x => ({x,z}))),
   {x:27,z:4}, {x:27,z:5},
   {x:43,z:45}, {x:47,z:45}, {x:43,z:48}, {x:47,z:48},
-  // Clatterhorn's standing stones and the Sunken Spire's gate arch.
-  ...CLATTER_STONES, SPIRE_GATE,
+  // Clatterhorn's standing stones, the Sunken Spire's gate arch and the Fen Gate.
+  ...CLATTER_STONES, SPIRE_GATE, LANTERN_GATE,
   ...RIDGE_TILES,
 ];
 
 /** Compact machine-readable map; x is the column, z the row. */
 export const TERRAIN_MAP = {
   name: ISLAND_NAME, version: TERRAIN_VERSION, landmarks: LANDMARKS, bridges: BRIDGES,
-  legend: '. ground, ~ water, = bridge, # brambles, % the sealed Sunken Spire floor (reached only through the Spire Gate); static obstacles are listed separately',
+  legend: '. ground, ~ water, = bridge, # brambles, % the sealed Sunken Spire floor (reached only through the Spire Gate), & the sealed Drowned Hollow (reached only through the Fen Gate); static obstacles are listed separately',
   rows: Array.from({ length: GRID_SIZE }, (_, z) => Array.from({ length: GRID_SIZE }, (_, x) =>
-    !terrainLand({ x, z }) ? '~' : inSpireFloor({ x, z }) ? '%' : groveBoundary({ x, z }) ? '#' : isBridge({ x, z }) ? '=' : '.').join('')),
+    !terrainLand({ x, z }) ? '~' : inSpireFloor({ x, z }) ? '%' : inLanternFloor({ x, z }) ? '&' : groveBoundary({ x, z }) ? '#' : isBridge({ x, z }) ? '=' : '.').join('')),
   obstacles: SCENERY_BLOCKERS,
 };

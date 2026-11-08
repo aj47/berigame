@@ -7,7 +7,7 @@ import { worldBlockedSet } from '../social';
 import { TREE_SEEDS } from '../items';
 import { NODE_SEEDS } from '../nodes';
 import { groveBoundary, inGiantHeadland, nearestDryTile, terrainLand } from '../terrain';
-import { inSpireFloor } from '../bossZones';
+import { inSealedFloor, inSpireFloor } from '../bossZones';
 import { LEDGER_CLERK, LEDGER_CLERKS, LEDGER_RANGE, nearLedgerClerk, nearestLedgerClerk } from '../ledger';
 import { gridPath, distance, type PathBlocker } from '../frontier/regions';
 import type { Point } from '../frontier/catalog';
@@ -66,7 +66,7 @@ describe('ledger clerks', () => {
 function bruteNearestDry(from: Tile, blockedKeys: ReadonlySet<number>): Tile {
   let best = { x: 25, z: 25 }, d0 = Infinity;
   for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) {
-    if (!terrainLand({ x, z }) || blockedKeys.has(z * GRID_SIZE + x) || groveBoundary({ x, z }) || (inGiantHeadland({ x, z }) && Math.max(x, z) === 50) || inSpireFloor({ x, z })) continue;
+    if (!terrainLand({ x, z }) || blockedKeys.has(z * GRID_SIZE + x) || groveBoundary({ x, z }) || (inGiantHeadland({ x, z }) && Math.max(x, z) === 50) || inSealedFloor({ x, z })) continue;
     const d = (from.x - x) ** 2 + (from.z - z) ** 2;
     if (d < d0) { best = { x, z }; d0 = d; }
   }

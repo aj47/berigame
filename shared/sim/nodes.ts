@@ -15,7 +15,7 @@ import { WAYSTONES } from './expanse';
 import { worldBlockedSet } from './social';
 import { reachableTiles } from './pathfinding';
 import { enterRule } from './areas';
-import { inSpireFloor } from './bossZones';
+import { inSealedFloor } from './bossZones';
 import { GRID_SIZE, SPAWN_TILE } from './constants';
 import { isLandTile, tileKey } from './grid';
 import type { Slot, Tile } from './types';
@@ -136,7 +136,7 @@ function keepLandConnected(tier: NodeSeed[]): NodeSeed[] {
     const stranded: { x: number; z: number }[] = [];
     for (let z = 0; z < GRID_SIZE; z++) for (let x = 0; x < GRID_SIZE; x++) {
       const t = { x, z }, k = tileKey(t);
-      if (isLandTile(t) && !blocked.has(k) && !inSpireFloor(t) && !seen.has(k)) stranded.push(t);
+      if (isLandTile(t) && !blocked.has(k) && !inSealedFloor(t) && !seen.has(k)) stranded.push(t);
     }
     if (!stranded.length) break;
     kept = kept.filter((n) => !stranded.some((t) => Math.max(Math.abs(t.x - n.x), Math.abs(t.z - n.z)) <= 1));
@@ -247,6 +247,25 @@ export const RECIPES: readonly Recipe[] = [
     output: { itemId: 'spire_key', quantity: 1 },
     level: 1,
     xp: 30,
+  },
+  {
+    // One per member per Lanternmaw attempt, spent at the start (constants.ts LANTERN_BAIT): level-1 inputs only.
+    id: 'fen_bait',
+    name: 'Fen Bait',
+    inputs: [{ itemId: 'gleamshell', quantity: 1 }, { itemId: 'obsidian', quantity: 1 }, { itemId: 'driftwood', quantity: 2 }],
+    output: { itemId: 'fen_bait', quantity: 1 },
+    level: 1,
+    xp: 30,
+  },
+  {
+    // Fenlight's sink at launch (constants.ts LANTERN_KEEPSAKE_RECIPE).
+    id: 'lanternmaw_lure',
+    name: 'Lanternmaw Lure',
+    inputs: [{ itemId: 'fenlight', quantity: 3 }, { itemId: 'driftwood', quantity: 2 }],
+    // Cosmetic.LanternmawLure in skills.ts (a literal here avoids an import cycle).
+    cosmetic: 30,
+    level: 10,
+    xp: 60,
   },
   {
     id: 'shard_circlet',
