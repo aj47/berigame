@@ -88,3 +88,46 @@ describe('padded vest equipment and consistent eating', () => {
     expect(h.profile()).toMatchObject({ nextAttack: 1_005_000, nextAbility: 1_030_000 });
   });
 });
+
+// Sol's report (2026-11-07 17:34): banking one of two iron clubs removed the quick-slot copy, but the
+// row kept the club wielded until a Bramblewild swing (dummy training) re-checked the quick bar.
+import { vaultDeposit } from '../../../spacetimedb/src/reducers/vault';
+import { inHotbar } from '../items';
+import { readSlots } from '../../../spacetimedb/src/lib/inventory';
+
+describe('banking one of two wielded weapons', () => {
+  function twoClubs() {
+    const h = fixture();
+    h.db.player.identity.update({ ...h.me(), region: 'bramblewild', x: 25, z: 25, weapon: 'iron_club' });
+    for (const row of [...h.db.inventorySlot.iter()]) h.db.inventorySlot.id.delete(row.id);
+    h.db.inventorySlot.insert({ id: 0n, owner: h.identity, slot: 0, itemId: 'iron_club', quantity: 1 }); // quick slot 1, wielded
+    h.db.inventorySlot.insert({ id: 0n, owner: h.identity, slot: 5, itemId: 'iron_club', quantity: 1 }); // spare in the bag
+    const bag = () => readSlots(h.ctx, h.identity as any).slots;
+    return { ...h, bag };
+  }
+
+  it('the Grove vault takes the spare from the back and keeps the wielded quick-slot copy', () => {
+    const h = twoClubs();
+    (vaultDeposit as any)(h.ctx, { itemId: 'iron_club', quantity: 1 });
+    expect(h.bag()[0]?.itemId).toBe('iron_club');
+    expect(h.bag()[5]).toBeNull();
+    expect(h.me().weapon).toBe('iron_club');
+  });
+
+  it('the region container deposit (vault-<id>) also keeps the quick-slot copy, or puts the weapon away', () => {
+    const h = twoClubs();
+    h.act({ action: 'container', id: `vault-${h.identity.toHexString()}`, target: 'deposit', item: 'iron_club', quantity: 1 });
+    const bag = h.bag(), weapon = h.me().weapon;
+    // A wielded weapon must sit in the quick bar (combat.ts wieldItem; tick.ts re-checks before each swing).
+    expect(weapon === '' || inHotbar(bag, weapon)).toBe(true);
+    // Like vaultTransfer, banking gives from the back of the bag so the quick bar is kept.
+    expect(bag[0]?.itemId).toBe('iron_club');
+  });
+
+  it('is not a duplication: banking the last copy through either path puts the weapon away', () => {
+    const h = twoClubs();
+    h.act({ action: 'container', id: `vault-${h.identity.toHexString()}`, target: 'deposit', item: 'iron_club', quantity: 2 });
+    expect(h.bag().some((s) => s?.itemId === 'iron_club')).toBe(false);
+    expect(h.me().weapon).toBe('');
+  });
+});

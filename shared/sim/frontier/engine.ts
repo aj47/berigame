@@ -1,10 +1,11 @@
 import { GRID_SIZE } from "../constants";
 import { homePoint, homePath, homeTarget, homeDestination, homeLocation, isHomeRegion, isHomeTarget } from "./homeMap";
 import { addItem, countItem, removeFromSlot } from "../inventory";
-import { getItemDef } from "../items";
+import { getItemDef, inHotbar } from "../items";
 import { facingFromDelta } from "../grid";
 import { areaOf } from "../areas";
 import { atGroveVault } from "../banking";
+import { removeItemCount } from "../trade";
 import { inSpireFloor } from "../bossZones";
 import { TICK_MS } from "../constants";
 import { levelForXp } from "../skills";
@@ -942,10 +943,14 @@ export function perform(w: World, a: Actor, input: unknown): void {
         item = str(cmd.item);
       check(getItemDef(item), "Unknown item");
       if (cmd.target === "deposit") {
-        const bag = consume(a.bag, { [item]: quantity });
+        check(countItem(a.bag, item) >= quantity, `You do not have ${quantity} ${getItemDef(item)!.name}`);
+        // From the back of the bag first, as vaultTransfer does, so the quick bar is kept.
+        const bag = removeItemCount(a.bag, item, quantity);
         const slots = receive(c.slots, item, quantity, true);
         a.bag = bag;
         c.slots = slots;
+        // Banking the wielded weapon's last quick-bar copy puts it away (spacetimedb/src/lib/vault.ts).
+        if (a.weapon === item && !inHotbar(a.bag, item)) a.weapon = "";
         if (c.boat && (getItemDef(item)?.healthRestore ?? 0) > 0)
           event(p, "provisions");
       } else {
