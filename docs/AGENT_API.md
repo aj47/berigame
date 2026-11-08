@@ -117,7 +117,7 @@ redemption, issue a replacement code; consumed codes are not restored.
 
 ## Watch a world
 
-`POST /api/agent/v1/spectators` issues a read-only pass for the `/watch` page (docs/SPECTATOR.md). It creates no character. Set `BERIGAME_WATCH_KEY` on the gateway so that only the broadcaster can get one, then send it as `Authorization: Bearer <key>`. `BERIGAME_SPECTATOR_URI` overrides the game-server address the pass names.
+`POST /api/agent/v1/spectators` issues a read-only pass for the `/watch` page (docs/SPECTATOR.md). It creates no character. It needs `BERIGAME_WATCH_KEY` set on the gateway (`WATCH_KEY` on the Worker), sent as `Authorization: Bearer <key>`: without a key every request is refused with 403 `watch_disabled`, and a wrong key gets 401. Accepted requests are limited to eight at once, then four an hour, per address. `BERIGAME_SPECTATOR_URI` overrides the game-server address the pass names.
 
 ## Call the API
 

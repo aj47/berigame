@@ -26,12 +26,15 @@ const OFFLINE_RELOAD_MS = 5 * 60_000;
 const CRASH_RELOAD_MS = 5000;
 
 class WatchFailed extends Error {
-  constructor(message: string, readonly fatal: boolean) { super(message); }
+  constructor(message: string, readonly fatal: boolean, readonly retryMs = PASS_RETRY_MS) { super(message); }
 }
 
 async function requestPass(): Promise<WatchPass> {
   const response = await fetch(`${params.world ?? ''}${PASS_PATH}`, { method: 'POST', headers: params.key ? { Authorization: `Bearer ${params.key}` } : {} });
   if (response.status === 401) throw new WatchFailed('This world needs its watch key.', true);
+  if (response.status === 403) throw new WatchFailed('This world has no watch key set, so it cannot be watched.', true);
+  // Passes are rationed per address (a few an hour): wait as long as the gateway says.
+  if (response.status === 429) throw new WatchFailed('Waiting for a viewer pass…', false, Math.max(PASS_RETRY_MS, Number(response.headers.get('Retry-After')) * 1000 || 0));
   if (!response.ok) throw new WatchFailed('Waiting for the world…', false);
   const body = await response.json() as WatchPass;
   if (!body.token || !body.uri || !body.database) throw new WatchFailed('Waiting for the world…', false);
@@ -57,7 +60,7 @@ function useWatchPass(): { ready: boolean; note: string } {
         if (!alive) return;
         const failure = error instanceof WatchFailed ? error : new WatchFailed('Waiting for the world…', false);
         setNote(failure.message);
-        if (!failure.fatal) timer = window.setTimeout(() => void fetchPass(), PASS_RETRY_MS);
+        if (!failure.fatal) timer = window.setTimeout(() => void fetchPass(), failure.retryMs);
       } finally { busy = false; }
     };
     // A server that is simply down refuses every attempt: no need to ask the gateway each time.

@@ -1,5 +1,5 @@
-import { AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS, SPECTATOR_PATH, watchKeyAccepted } from './admissionPolicy';
-import { admissionError, unexpectedError } from './portable';
+import { AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS, MAX_SESSION_ACTIONS, SPECTATOR_PATH } from './admissionPolicy';
+import { admissionError, unexpectedError, watchKeyError } from './portable';
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage } from 'node:http';
 import { isIP } from 'node:net';
@@ -92,8 +92,6 @@ export function createAgentServer(options: Options) {
         if (typeof forwarded !== 'string' || !isIP(forwarded.trim())) throw new ApiError(400, 'invalid_proxy_header', 'Trusted proxy must overwrite X-Forwarded-For with one client address.');
         ip = canonicalIp(forwarded.trim());
       }
-      const joining = req.method === 'POST' && req.url === `${PREFIX}/sessions`;
-      limits.take(ip, joining, now());
       const hosts = [`127.0.0.1:${req.socket.localPort}`, `localhost:${req.socket.localPort}`, `[::1]:${req.socket.localPort}`];
       if (publicOrigin) hosts.push(new URL(publicOrigin).host);
       if (!req.headers.host || !hosts.includes(req.headers.host)) throw new ApiError(403, 'host_not_allowed', 'Host is not configured for this API.');
@@ -103,6 +101,17 @@ export function createAgentServer(options: Options) {
         res.setHeader('Access-Control-Allow-Headers', 'Authorization');
       }
       if (spectator && req.method === 'OPTIONS') { send(204); return; }
+      // A pass request is judged by its key before any budget, then spends only its own lane (docs/SPECTATOR.md).
+      if (spectator && req.method === 'POST') {
+        const refused = watchKeyError(options.watchKey, req.headers.authorization);
+        if (refused) throw refused;
+        limits.takePass(ip, now());
+        const pass = await options.game.spectate();
+        send(201, { token: pass.token, uri: options.spectatorUri ?? pass.uri, database: pass.database, expiresAt: pass.expiresAt });
+        return;
+      }
+      const joining = req.method === 'POST' && req.url === `${PREFIX}/sessions`;
+      limits.take(ip, joining, now());
       if (!spectator && req.headers.origin && req.headers.origin !== publicOrigin) throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       // The one query accepted: GET /state?map=1 (the full terrain map in state, kept for one release).
       const withMap = req.method === 'GET' && req.url === `${PREFIX}/state?map=1`;
@@ -114,12 +123,6 @@ export function createAgentServer(options: Options) {
           access: 'single-use invite', pollIntervalMs: AGENT_POLL_INTERVAL_MS, actionIntervalMs: AGENT_ACTION_INTERVAL_MS, idleTimeoutSeconds: idleMs / 1000 }); return;
       }
       if (route === '/openapi.json' && req.method === 'GET') { send(200, openapi); return; }
-      if (spectator && req.method === 'POST') {
-        if (!watchKeyAccepted(options.watchKey, req.headers.authorization)) throw new ApiError(401, 'invalid_watch_key', 'This world needs its watch key.');
-        const pass = await options.game.spectate();
-        send(201, { token: pass.token, uri: options.spectatorUri ?? pass.uri, database: pass.database, expiresAt: pass.expiresAt });
-        return;
-      }
       // Static world geometry, the same for everyone: no session, an ordinary request against the IP limit.
       if (route === '/world' && req.method === 'GET') { send(200, worldAtlas()); return; }
       if (!options.game.ready()) throw new ApiError(503, 'world_unavailable', 'The admitted game world is unavailable.');

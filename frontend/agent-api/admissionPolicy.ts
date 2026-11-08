@@ -28,17 +28,27 @@ export const CHARACTER_RENEWAL_BUDGET = { burst: 3, perSecond: 1 / 30 };
 /** Issues a read-only viewer's pass (/watch). Browser-callable from any origin: the page may be hosted apart from its world. */
 export const SPECTATOR_PATH = '/api/agent/v1/spectators';
 
-/** Without a configured key anyone may watch. Constant-time, as the key is a bearer credential. */
-export function watchKeyAccepted(key: string | undefined, authorization: string | null | undefined): boolean {
-  if (!key) return true;
+/**
+ * Pass requests per address that carry the right key: eight at once (a recorder opening every OBS source), then four
+ * an hour. The page keeps its pass across reloads, so this is only spent on new sources and renewals.
+ */
+export const WATCH_PASS_BUDGET = { burst: 8, perSecond: 4 / 3600 };
+
+/**
+ * A pass request's key against the world's. Fails closed: with no key configured nobody may watch, because a pass
+ * reads every position in the world. Constant-time, as the key is a bearer credential.
+ */
+export function watchKeyVerdict(key: string | undefined, authorization: string | null | undefined): 'ok' | 'disabled' | 'invalid' {
+  if (!key) return 'disabled';
   const given = authorization?.match(/^Bearer (.+)$/)?.[1] ?? '';
   let difference = given.length ^ key.length;
   for (let i = 0; i < key.length; i++) difference |= key.charCodeAt(i) ^ given.charCodeAt(i);
-  return difference === 0;
+  return difference === 0 ? 'ok' : 'invalid';
 }
 
 export function requestLane(path: string, method: string) {
-  if (method === 'POST' && ['/api/play/v1/sessions', '/api/agent/v1/sessions', SPECTATOR_PATH].includes(path)) return 'join';
+  if (method === 'POST' && path === SPECTATOR_PATH) return 'watch';
+  if (method === 'POST' && ['/api/play/v1/sessions', '/api/agent/v1/sessions'].includes(path)) return 'join';
   if (method === 'POST' && ['/api/play/v1/renewals', '/api/agent/v1/renewals'].includes(path)) return 'renew';
   return 'requests';
 }

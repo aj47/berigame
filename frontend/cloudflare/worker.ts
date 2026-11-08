@@ -1,11 +1,11 @@
-import { requestLane, SPECTATOR_PATH, watchKeyAccepted, agentSessionCapacity, agentShards, AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS_PER_SHARD, MAX_SESSION_ACTIONS, REQUEST_BUDGET, JOIN_BUDGET, NETWORK_JOIN_BUDGET, RENEWAL_BUDGET, CHARACTER_RENEWAL_BUDGET } from '../agent-api/admissionPolicy';
+import { requestLane, SPECTATOR_PATH, WATCH_PASS_BUDGET, agentSessionCapacity, agentShards, AGENT_ACTION_BUDGET, AGENT_ACTION_INTERVAL_MS, AGENT_POLL_INTERVAL_MS, AGENT_READ_BUDGET, MAX_AGENT_SESSIONS_PER_SHARD, MAX_SESSION_ACTIONS, REQUEST_BUDGET, JOIN_BUDGET, NETWORK_JOIN_BUDGET, RENEWAL_BUDGET, CHARACTER_RENEWAL_BUDGET } from '../agent-api/admissionPolicy';
 import { IDLE_LOGOUT_MINUTES, MAX_ONLINE_PLAYERS, MAX_STORED_CHARACTERS } from '../../shared/sim/admission';
 import { sealRecovery, openRecovery } from '../agent-api/recovery';
 import './codecs';
 import { DurableObject } from 'cloudflare:workers';
 import { timingSafeEqual } from 'node:crypto';
 import { ACTIONS, openapi, validateAction, validateObject } from '../agent-api/contract';
-import { admissionError, ApiError, digest, secret, unexpectedError, type Invite } from '../agent-api/portable';
+import { admissionError, ApiError, digest, secret, unexpectedError, watchKeyError, type Invite } from '../agent-api/portable';
 import { createGameService, deadline, type Credential, type GameSession } from '../agent-api/game';
 import { worldAtlas } from '../agent-api/worldAtlas';
 import { openCloudflareSocket } from './socket';
@@ -120,6 +120,8 @@ export default {
       if (url.search && !mapQuery && !isOAuthCallback(url.pathname)) throw new ApiError(404, 'not_found', 'Credentials belong in Authorization headers.');
       const spectator = url.pathname === SPECTATOR_PATH;
       if (spectator && request.method === 'OPTIONS') return new Response(null, { status: 204, headers: SPECTATOR_CORS });
+      // A pass request is judged by its key before any limit is charged (the coordinator checks again).
+      if (spectator && request.method === 'POST') { const refused = watchKeyError(env.WATCH_KEY, request.headers.get('Authorization')); if (refused) throw refused; }
       if (!spectator && request.headers.get('Origin') && request.headers.get('Origin') !== env.PUBLIC_ORIGIN) {
         throw new ApiError(403, 'origin_not_allowed', 'Cross-origin browser requests are not allowed.');
       }
@@ -604,6 +606,14 @@ export class AgentGateway extends DurableObject<Env> implements SessionHost {
       if (lane === 'join' && this.joining > 32) throw new ApiError(429, 'join_busy', 'Players are joining right now. Retry shortly.', 2);
       const now = Date.now();
       const ip = digest(request.headers.get('CF-Connecting-IP') ?? 'local');
+      // /watch passes: the key first, then their own per-address lane, never the players' join budgets.
+      if (lane === 'watch') {
+        const refused = watchKeyError(this.env.WATCH_KEY, request.headers.get('Authorization'));
+        if (refused) throw refused;
+        this.take(`watch:${ip}`, WATCH_PASS_BUDGET.burst, WATCH_PASS_BUDGET.perSecond, now);
+        const pass = await (await this.game()).spectate();
+        return send(201, { token: pass.token, uri: pass.uri, database: pass.database, expiresAt: pass.expiresAt });
+      }
       const budget = lane === 'join' ? JOIN_BUDGET : lane === 'renew' ? RENEWAL_BUDGET : REQUEST_BUDGET;
       this.take(`global:${lane}`, budget.burst, budget.perSecond, now);
       await this.reap();
@@ -674,12 +684,6 @@ export class AgentGateway extends DurableObject<Env> implements SessionHost {
       }
       if (path === `${PREFIX}/world` && request.method === 'GET') return send(200, worldAtlas());
       if (path === `${PREFIX}/openapi.json` && request.method === 'GET') return send(200, { ...openapi, paths: { ...openapi.paths, '/sessions': { post: { ...openapi.paths['/sessions'].post, summary: 'Join the open beta', security: [] } } } });
-      if (path === SPECTATOR_PATH && request.method === 'POST') {
-        this.take(`join:${ip}`, NETWORK_JOIN_BUDGET.burst, NETWORK_JOIN_BUDGET.perSecond, now);
-        if (!watchKeyAccepted(this.env.WATCH_KEY, request.headers.get('Authorization') ?? undefined)) throw new ApiError(401, 'invalid_watch_key', 'This world needs its watch key.');
-        const pass = await (await this.game()).spectate();
-        return send(201, { token: pass.token, uri: pass.uri, database: pass.database, expiresAt: pass.expiresAt });
-      }
       if ([`${PREFIX}/sessions`, '/api/play/v1/sessions'].includes(path) && request.method === 'POST') {
         this.take(`join:${ip}`, NETWORK_JOIN_BUDGET.burst, NETWORK_JOIN_BUDGET.perSecond, now);
         const token = request.headers.has('Authorization') ? bearer(request) : null;
