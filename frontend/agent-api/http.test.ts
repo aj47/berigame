@@ -8,7 +8,7 @@ import { request as httpRequest } from 'node:http';
 import { createAgentServer } from './http';
 import { ApiError, unexpectedError } from './portable';
 import { InviteStore } from './security';
-import { AGENT_ACTION_BUDGET, AGENT_READ_BUDGET } from './admissionPolicy';
+import { AGENT_ACTION_BUDGET, AGENT_READ_BUDGET, WATCH_PASS_BUDGET } from './admissionPolicy';
 import { GRID_SIZE } from '../../shared/sim/constants';
 import { describeObjective } from '../../shared/sim/agentState';
 import { firstDayGoal } from '../../shared/sim/goals';
@@ -418,22 +418,43 @@ test('GET /state?map=1 is the one accepted query: it adds world.map, which is ot
 });
 
 test('POST /spectators issues a read-only pass, from any origin, behind the world\'s watch key', async () => {
-  const open = await fixture({ spectatorUri: 'wss://public.example' });
+  const keyed = await fixture({ watchKey: 'secret-key', spectatorUri: 'wss://public.example' });
   try {
-    const response = await open.request('/spectators', undefined, undefined, { Origin: 'https://elsewhere.example' }, 'POST');
+    const response = await keyed.request('/spectators', 'secret-key', undefined, { Origin: 'https://elsewhere.example' }, 'POST');
     assert.equal(response.status, 201);
     assert.equal(response.headers.get('access-control-allow-origin'), '*');
     const pass = await response.json() as any;
     assert.equal(pass.token, 'viewer-token');
     assert.equal(pass.uri, 'wss://public.example');
-    assert.equal((await open.request('/spectators', undefined, undefined, { Origin: 'https://elsewhere.example' }, 'OPTIONS')).status, 204);
+    assert.equal((await keyed.request('/spectators', undefined, undefined, { Origin: 'https://elsewhere.example' }, 'OPTIONS')).status, 204);
     // The exemption is this path's alone.
-    assert.equal((await open.request('/world', undefined, undefined, { Origin: 'https://elsewhere.example' })).status, 403);
-  } finally { await open.close(); }
-  const keyed = await fixture({ watchKey: 'secret-key' });
-  try {
+    assert.equal((await keyed.request('/world', undefined, undefined, { Origin: 'https://elsewhere.example' })).status, 403);
     assert.equal((await keyed.request('/spectators', undefined, undefined, {}, 'POST')).status, 401);
     assert.equal((await keyed.request('/spectators', 'wrong-key!', undefined, {}, 'POST')).status, 401);
-    assert.equal((await keyed.request('/spectators', 'secret-key', undefined, {}, 'POST')).status, 201);
   } finally { await keyed.close(); }
+});
+
+test('POST /spectators fails closed when the world has no watch key', async () => {
+  const open = await fixture();
+  try {
+    const response = await open.request('/spectators', undefined, undefined, { Origin: 'https://elsewhere.example' }, 'POST');
+    assert.equal(response.status, 403);
+    assert.equal(((await response.json()) as any).error.code, 'watch_disabled');
+    assert.equal((await open.request('/spectators', 'anything', undefined, {}, 'POST')).status, 403);
+  } finally { await open.close(); }
+});
+
+test('passes have their own per-address lane, charged only after the key is accepted', async () => {
+  const f = await fixture({ watchKey: 'secret-key' });
+  try {
+    for (let i = 0; i < 50; i++) assert.equal((await f.request('/spectators', 'wrong-key!', undefined, {}, 'POST')).status, 401);
+    for (let i = 0; i < WATCH_PASS_BUDGET.burst; i++) assert.equal((await f.request('/spectators', 'secret-key', undefined, {}, 'POST')).status, 201, `pass ${i}`);
+    const refused = await f.request('/spectators', 'secret-key', undefined, {}, 'POST');
+    assert.equal(refused.status, 429);
+    assert.ok(Number(refused.headers.get('retry-after')) > 60);
+    // Players and agents still join from the same address.
+    await f.enter();
+    f.advance(Math.ceil(1000 / WATCH_PASS_BUDGET.perSecond));
+    assert.equal((await f.request('/spectators', 'secret-key', undefined, {}, 'POST')).status, 201);
+  } finally { await f.close(); }
 });
