@@ -1,7 +1,7 @@
 # Bosses: Clatterhorn, the Sunken Spire and Lanternmaw
 
 The shipped rules and numbers for the two boss fights, and the design of the
-third (Lanternmaw, section 9: shared simulation and validator only, not built).
+third (Lanternmaw, section 9: built, ships closed until its staging playtest).
 This file is the single reference for their numbers. When it disagrees with the code, the code wins and
 this file is wrong: fix it. The constants live in:
 
@@ -14,7 +14,7 @@ this file is wrong: fix it. The constants live in:
 | Owner switches and live HP knobs | `shared/sim/bossConfig.ts` |
 | Lanternmaw's floor, patterns, tide, fight and validator (section 9) | `shared/sim/lanternmaw.ts`, `shared/sim/lanternmawValidate.ts`, `LANTERN_FLOOR` in `bossZones.ts`, the Lanternmaw tunables in `constants.ts` |
 | Items, recipes, keepsakes | `shared/sim/items.ts`, `shared/sim/nodes.ts` (`RECIPES`), `shared/sim/skills.ts` (`COSMETICS`) |
-| Server | `spacetimedb/src/lib/clatterhorn.ts`, `lib/spire.ts`, `lib/spireGuards.ts`, `reducers/clatterhorn.ts`, `reducers/spire.ts`, `reducers/bossAdmin.ts` |
+| Server | `spacetimedb/src/lib/clatterhorn.ts`, `lib/spire.ts`, `lib/spireGuards.ts`, `lib/lantern.ts`, `reducers/clatterhorn.ts`, `reducers/spire.ts`, `reducers/lantern.ts`, `reducers/bossAdmin.ts` |
 | Agent feeds | `shared/sim/bossDanger.ts` (`/danger`), `shared/sim/bossPresentation.ts` (`/state` blocks) |
 
 The design history (three candidate specs, judge verdicts, the full decision log)
@@ -28,8 +28,9 @@ is 600 ms.
   `spireMaxRuns` 12, `spireHpBase` 1000, `spireHpPerMember` 700, `clatterHpBase` 300,
   `clatterHpPerChallenger` 200. The world owner opens them with
   `configure_bosses` (section 5).
-- **Lanternmaw** (section 9) is designed with its shared simulation, validator
-  and difficulty bots only. It ships closed in week 2 after a staging playtest.
+- **Lanternmaw** (section 9) is built and ships closed: with no `lantern_config`
+  row `lanternConfigOr` reads it as closed. The owner opens it with
+  `configure_lanternmaw` after the staging playtest (9.11).
 - **Cut from this release** (columns and enum values are kept, nothing reads or
   writes them beyond their defaults): practice runs (`mode` is always Normal,
   `spirePracticeOpen` is stored but unused), private lobbies, kick and the run
@@ -550,6 +551,13 @@ Revived 4 reserved), KnockedOut 5, Reward 6, Keepsake 7, RunResult 8; `HurtSourc
 Charge 1, Spin 2, Runner 3, Bullet 4; `SpirePhase` Bloom 1 .. Nightfall 4;
 `SpirePatternKind` 0..10 with `SPIRE_NONE` 255; cosmetics 12-15; area `'spire'`.
 
+Lanternmaw appends five tables (`lantern_config`, `lantern_run`, `lantern_member`,
+`lantern_fight`, private `lantern_paid`; 9.12) and the codes `BossId.Lanternmaw` 3,
+`BossEventKind` LanternRunStart 6, LanternClear 7, LanternOpened 8, LanternSoon 9,
+`HurtSource` Blow 5, Pulse 6, Drown 7, Bite 8, cosmetic 30 (Lanternmaw Lure), area
+`'lantern'` and the no-PvP zones `'lantern'` and `'fengate'`; items `fen_bait`
+(stack 10) and `fenlight` (99).
+
 | Item | Stack | Source | Use |
 |---|---|---|---|
 | `gleamshell` | 99 | Clatterhorn, 2 per qualifying helper | Spire keys |
@@ -623,6 +631,7 @@ floor boundary or into another run.
 | `boss-guards-server.test.ts` | No-PvP zones, floor refusals, owner reducers |
 | `bossDanger.test.ts`, `bossPresentation.test.ts` | The danger feed against brute force; `/state` shapes and size caps |
 | `frontend/src/test/*` (bullets, overlay, scene, HUD, lobby, telegraph, Clatterhorn, integration) | Client behaviour |
+| `lantern-server.test.ts`, `lantern-perf.test.ts` | Lanternmaw's reducers and tick through the real tick: closed by default, the owner switch and refunds, entry order, start effects, a field-for-field comparison with `lanternResolveTick` over a scripted run, blows, bites, the flood, knockouts, abandon, timeout, forfeit, rewards and the daily cap, floor guards, the rules reset, the gate's reachability and the floor's visibility; 12 runs x 4 members tick cost |
 | `lanternmaw.test.ts`, `lanternmaw-entry.test.ts`, `lanternmaw-patterns.test.ts`, `lanternmaw-bots.test.ts` | Lanternmaw's geometry, patterns, tide, reference tick; entry (weapon, bait, fee), rewards and the daily cap; the full 15,808-instance validator, unwinnable-state checks and hash history; the scripted-player difficulty estimate (`LANTERN_BOTS=full` for 400 runs per point and parties) |
 | `frontend/scripts/boss-smoke.ts` | End to end against a local server: closed by default, wake, telegraph, blows, defeat, payout, respawn; keys, lobby, start, bullets, i-frames, stars, knockout, clear rewards, the owner close refund. Needs the publisher's token (`BOSS_OWNER_TOKEN` or `BOSS_CLI_CONFIG`); seeds its test items through owner SQL, so never run it against a shared world |
 
@@ -657,11 +666,11 @@ The code is the source of truth; these differ from the spec text.
 
 ## 9. Lanternmaw (the Drowned Hollow, Glimmerfen)
 
-**Status: designed, not built.** The shared simulation, the validator and the
-difficulty bots exist (`shared/sim/lanternmaw.ts`, `lanternmawValidate.ts`,
-`LANTERN_FLOOR` in `bossZones.ts`, tests in section 7). There is no server
-reducer, schema, client or agent API change yet. It ships closed in week 2,
-after a staging playtest with copies of the cast.
+**Status: built, ships closed.** The shared simulation, validator and bots
+(`shared/sim/lanternmaw.ts`, `lanternmawValidate.ts`, `LANTERN_FLOOR` in
+`bossZones.ts`), the server (`spacetimedb/src/lib/lantern.ts`,
+`reducers/lantern.ts`, 9.12), the agent API and the browser client exist. It
+opens in week 2, after a staging playtest with copies of the cast.
 
 A bog-angler the size of a barge lies in a drowned hollow under Glimmerfen,
 its glowing lure swaying over a ring of boardwalk. Every few attacks it dives
@@ -696,13 +705,18 @@ from are exactly the tiles you need all three ticks of warning to escape.
   (logical instancing), `LANTERN_FLOOR` x 56..70, z 129..143, in the strait
   between the island's south shore and Glimmerfen's north shore, 7+ tiles from
   any land. It is not yet joined to the land mask (`terrainLand`).
-- **Fen Gate** (proposed): (47,152) on Glimmerfen's north shore, 9 tiles from
-  the floor, about 10 from the Fenway trail, 41 land tiles within 3 for the
-  lobby, nearest respawn Fenhold. The server step places it with the terrain
-  test and reuses the Spire's lobby, run and member machinery: open, join,
-  leave, start, knockouts that never kill (eject with 10 HP and 10 ticks of
-  grace, bag untouched), 50-tick away grace, 6 meals, refunds and the rules
-  version.
+- **Fen Gate** (`LANTERN_GATE`, a scenery blocker and the landmark `fengate`):
+  (47,152) on Glimmerfen's north shore, 9 tiles from the floor, about 10 from
+  the Fenway trail; the exit (`LANTERN_EXIT`) is (47,153) and the lobby is
+  Chebyshev 3 of the gate (a no-PvP zone, `'fengate'`). The floor (area
+  `'lantern'`) joins the land mask like the Spire's and the maw joins the
+  blocked set; `TERRAIN_VERSION` is `bramblewild-expanse-v4`. No node moved:
+  all 1,105 node seeds, tier nodes included, are identical before and after,
+  and none lies within 3 of the gate. The server reuses the Spire's lobby, run
+  and member machinery on its own tables: open, join, leave, start, knockouts
+  that never kill (eject with 10 HP and 10 ticks of grace, bag untouched),
+  50-tick away grace, 6 meals, refunds and the rules version. A Spire party
+  and a Lanternmaw party exclude each other.
 - **Party** 1-4 (`LANTERN_MAX_PARTY`).
 - **Weapon to enter.** Every member must have a weapon of at least 8 damage
   (`LANTERN_MIN_WEAPON_DAMAGE`: a Stone Club, 1 driftwood + 2 flint at
@@ -777,7 +791,7 @@ maxHp = 810 + 970 * (members - 1)      // 810 / 1780 / 2750 / 3720
 
 Phases, evaluated when a pattern or a dive is published and never going back:
 P1 above 2/3 HP, P2 at or below 2/3, P3 at or below 1/3 or once enraged. The
-proposed `boss_config` knobs are `lanternHpBase` 810 and `lanternHpPerMember`
+`lantern_config` knobs are `lanternHpBase` 810 and `lanternHpPerMember`
 970. Their defaults, the bite, the fee, the bait, the weapon floor and the
 daily cap live in `shared/sim/constants.ts` (Lanternmaw section).
 
@@ -974,36 +988,70 @@ preparation, never time played; LONG_SEASON: no season item is a weapon).
 
 ### 9.11 Ships closed, opens as an event
 
-- `boss_config` gains additive columns `lanternOpen` (default false),
-  `lanternMaxRuns` (12), `lanternHpBase` (810) and `lanternHpPerMember` (970);
-  `bossConfigOr` reads a missing row as closed. `configure_bosses` takes the new
-  values (owner only, ranges by `bossConfigProblem`); the CLI and the docs in
-  `docs/CLOUDFLARE_BETA.md` change with it.
-- Deployed closed. AJ (or the overseer) opens it at an announced day and time:
-  a `boss_event` world announcement at T - 10 minutes and on opening, which is
-  the launch moment the cast reacts to. Closing deletes lobbies and fails
-  Active runs with bait refunds, as for the Spire.
-- Every run stores `LANTERN_RULES_VERSION`; a publish that changes the table
-  resets live runs with refunds.
+- **Its own config row.** `lantern_config` (id 0: `lanternOpen` false,
+  `lanternMaxRuns` 12, `lanternHpBase` 810, `lanternHpPerMember` 970) instead of
+  new `boss_config` columns: appending columns to an existing table is
+  `AddColumns`, which in SpacetimeDB 2.10 disconnects every client and leaves
+  old bundles unable to decode the row. `lanternConfigOr` reads a missing row
+  as closed.
+- **Its own owner reducer.** `configure_lanternmaw lanternOpen lanternMaxRuns lanternHpBase lanternHpPerMember`
+  (owner only, ranges by `lanternConfigProblem`: runs 1..32, HP 50..20,000), so
+  `configure_bosses` and its eight-argument kill switch are unchanged. Opening
+  (a closed-to-open transition) emits the world `boss_event` `LanternOpened`;
+  closing deletes lobbies and fails Active runs with Closed, bait and fee
+  refunded, every time it is called.
+- **The announcement.** `boss_debug lantern_soon 0 <minutes>` emits
+  `LanternSoon` (value = minutes) for the T - 10 notice; `lantern_hp` (an Active
+  run's id, a percent) and `lantern_fail_all` (refunds) help the live check.
+- Every run stores `LANTERN_RULES_VERSION` (2); clients send theirs as
+  `clientRules`. A mismatch refuses open, join and start, and a live run from
+  older rules resets with refunds.
+- Release steps: [docs/CLOUDFLARE_BETA.md](../CLOUDFLARE_BETA.md) ("Lanternmaw release").
 
-### 9.12 Server step (not built)
+### 9.12 Server (built)
 
-- Tables (additive): `lantern_run`, `lantern_member`, `lantern_fight` (the
-  `LanternFightLike` fields plus per-slot hit and damage columns), per-run
-  subscription, and a private `lantern_paid {identity, day, paid}` row for the
-  daily cap (`lanternUtcDay` of the reducer timestamp).
-- `lantern_start` checks every member with `lanternEntryRejection` (weapon,
-  bait, coins), then spends the bait and debits the fee. New enum values append: `BossId` Lanternmaw 3, `BossEventKind`
-  LanternRunStart / LanternClear, `HurtSource` Blow 5, Pulse 6, Drown 7, Bite 8.
-- `phaseLantern` mirrors `lanternResolveTick` exactly: (1) surfacing, the cap and
-  the bite; (2) swings, and a kill clears before any hazard; (3) blows and pulses
-  (i-frames), the flood, knockouts at 0 HP; (4) the heal; (5) wipe and timeout;
-  (6) `lanternAdvance` with present members' end tiles. At most one
-  `lantern_fight` write per Active run per tick.
-- Agents: `state.lantern`, and `/danger` gains Lanternmaw tiles per tick from
-  `lanternHazardMask` (blows, pulses, flood) with the spring and S.
-- The floor joins the land mask like the Spire's; the gate joins
-  `SCENERY_BLOCKERS`; `TERRAIN_VERSION` bumps.
+- **Tables** (new tables only; a pure "Creating table" publish, rehearsed:
+  the plan is exactly the five steps below and nothing is flagged breaking):
+  `lantern_config` (public, one row), `lantern_run` (public: id, leader,
+  stage, outcome, rules, partySize, createdTick, startTick, endTick, phase,
+  clearTicks), `lantern_member` (public: identity, runId (btree), slot, state,
+  joinedTick, awaySinceTick, awayCount, meals), `lantern_fight` (public, per
+  run: the `LanternFightLike` fields with `curAim` a local tile, plus
+  `hitTick`, `hits`, `dmg`, `drowned` and `caps` per slot 0..3) and the private
+  `lantern_paid {identity, day, paid}` for the daily cap (`lanternUtcDay` of the
+  reducer timestamp). No RLS anywhere. Runs, members and outcomes use the
+  Spire's codes (`SpireStage`, `SpireOutcome`, `SpireMemberState`).
+- **Reducers.** `lantern_open {clientRules}`, `lantern_join {runId, clientRules}`
+  (0 = the newest open lobby), `lantern_leave`, `lantern_start {clientRules}`
+  (the leader; every member checked in order: online, in Bramblewild, within 3
+  of the gate, `lanternEntryRejection` (weapon, bait, coins), the giant berry,
+  a duel, an expedition; then the run cap). The start spends one Fen Bait per
+  member and debits 5 coins through the frontier ledger (`fee:lanternmaw`;
+  refunds are `refund:lanternmaw`).
+- **The tick.** `phaseLantern` runs after `phaseSpire`. For each Active run it
+  does the Spire's presence step (away bookkeeping, Left, Abandoned after 50
+  ticks with refunds), then builds a `LanternRunSim` from the rows (present
+  members on their end tiles, weapon damage from the wielded item, i-frames
+  and counters from the slot columns) and calls `lanternResolveTick`, writing
+  back HP, knockouts, `Hurt` notices (`Bite`, `Blow`, `Pulse`, `Drown`), the
+  slot columns and one `lantern_fight` row. `lantern-server.test.ts` compares
+  the stored fight and HP to the reference tick by tick. Then the stranded
+  sweep. Cost: 0.23 ms median, 0.70 ms p95 for 12 runs x 4 members
+  (`lantern-perf.test.ts`; `phaseSpire` measures 0.43 ms on the same machine),
+  25 microseconds idle with 250 loaded players.
+- **Deviations from the reference.** Away (offline) members are not in the
+  simulation: they take no hits and deal none (the Spire hits a frozen tile).
+  They still count against a wipe: when the reference reports a wipe with an
+  away member still In, the server runs `lanternAdvance` itself and the run
+  goes on. Clearing pays no keepsake (the Lure is crafted).
+- **Guards.** The floor is a no-PvP zone; trade, duel challenges, drop,
+  pickup, harvest, the Giant, garden, ledger, vault and region actions are
+  refused ("inside the Drowned Hollow"); `follow` cannot cross the floor or
+  into another run; eating counts toward 6 meals; nobody dies on the floor;
+  invites never pull a member out of a run; a lobby member cannot leave
+  Bramblewild; ground items that would land on the floor land at the exit.
+- Agents: `state.lantern`, the `lantern` action and `/danger` on the floor
+  (docs/AGENT_API.md, `frontend/public/agent.md`).
 
 ### 9.13 Decisions and open questions
 
