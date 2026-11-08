@@ -1,6 +1,6 @@
 import { isHomeTarget } from "../../../shared/sim/frontier/homeMap";
 import { tickFrontier, frontierRepository, projectFrontier } from '../lib/frontier';
-import { damage as frontierDamage } from '../../../shared/sim/frontier/engine';
+import { damage as frontierDamage, maxHealth } from '../../../shared/sim/frontier/engine';
 import { reconcileTerrain } from '../lib/terrain';
 import { carrying, profile, saveProfile, progress, tickExpeditions, tickDuels, duelFor } from '../lib/adventure';
 import { canFindStick, Feat, cargoMovementSteps, isLandTile, nearestDryTile } from '../../../shared/sim';
@@ -649,6 +649,10 @@ function phaseDeath(s: TickState): void {
     p.pending = Pending.None; p.pendingId = 0n;
     // The whole inventory was just dropped, weapon included.
     p.weapon = '';
+    // Max HP is stored on the row and a carried vest's bonus went with the bag: derive it again
+    // (empty bag) so the respawn heals to the right total. The vest flag stays: the bonus needs the vest carried.
+    const regional = s.ctx.db.frontierPrivate?.key.find(`profile:${hex(p.identity)}`);
+    if (regional) p.maxHp = maxHealth(JSON.parse(regional.data), { bag: [] });
     mark(s, p);
 
     if (!targeting) {
