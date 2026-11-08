@@ -2041,3 +2041,32 @@ describe('maximum health after a Bramblewild defeat', () => {
     expect(h.me()).toMatchObject({ state: PlayerState.Alive, maxHp: 33, hp: 33 });
   });
 });
+
+describe('long walks on the Expanse (Sol, 2026-11-08)', () => {
+  const notices = () => [...(h.ctx.db as any).socialEvent.iter()].map((n: any) => n.text as string);
+  beforeEach(() => {
+    Object.assign(h.ctx.db, { socialEvent: testTable('id', true), socialPair: testTable('pair'), trade: testTable('id', true), pendingDeposit: testTable('identity') });
+    for (const t of NODE_SEEDS) h.trees.set(t.id, { ...t, cooldownUntilTick: 0, harvester: undefined });
+    Object.assign(h.me(), { x: 218, z: 40 });
+  });
+
+  it('walks from Frostpine (218,40) to Crossroads (172,124): no search budget stops it', () => {
+    move(h.ctx, { x: 172, z: 124 });
+    expect(h.me()).toMatchObject({ targetX: 172, targetZ: 124 });
+    run(3);
+    expect(h.me().targetX).toBe(172);
+    expect(chebyshev(h.me(), { x: 218, z: 40 })).toBe(3 * MOVEMENT_STEPS_PER_TICK);
+  });
+
+  it('tells the walker why a walk ended short instead of leaving it silently idle', () => {
+    move(h.ctx, { x: 172, z: 124 });
+    run(1);
+    const stoppedAt = { x: h.me().x, z: h.me().z };
+    // A node seeded onto the destination mid-walk: the tick's search fails and the walk is dropped.
+    h.trees.set(99_999, { id: 99_999, x: 172, z: 124, itemId: 'berry_blueberry', kind: 0, cooldownUntilTick: 0, harvester: undefined });
+    run(1);
+    expect(h.me()).toMatchObject({ ...stoppedAt, targetX: undefined });
+    // Today the target is cleared with no notice: /state reads "idle" exactly as on arrival.
+    expect(notices().some((t) => /can(no|')t reach|no path/i.test(t))).toBe(true);
+  });
+});
