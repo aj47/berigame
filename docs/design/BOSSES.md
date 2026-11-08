@@ -1027,7 +1027,7 @@ preparation, never time played; LONG_SEASON: no season item is a weapon).
   `lantern_paid {identity, day, paid}` for the daily cap (`lanternUtcDay` of the
   reducer timestamp), and `lantern_readiness {identity, runId, tick}` (public) for
   the lobby ready check: in a party, `lantern_start` needs every other member's
-  `lantern_ready` within 20 ticks (`LANTERN_READY_TICKS`). No RLS anywhere. Runs, members and outcomes use the
+  `lantern_ready`, which lasts until they leave the lobby or the run starts. No RLS anywhere. Runs, members and outcomes use the
   Spire's codes (`SpireStage`, `SpireOutcome`, `SpireMemberState`).
 - **Reducers.** `lantern_open {clientRules}`, `lantern_join {runId, clientRules}`
   (0 = the newest open lobby), `lantern_leave`, `lantern_start {clientRules}`

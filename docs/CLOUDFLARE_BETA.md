@@ -279,6 +279,22 @@ Release steps:
    Opening emits the world `boss_event` the cast reacts to. `boss_debug lantern_hp <runId> <percent>`
    and `boss_debug lantern_fail_all 0 0` help a short live check.
 
+**Tuning HP live (no deploy).** The HP knobs are data in the `lantern_config` row, so
+`configure_lanternmaw` with `lanternOpen` still `true` changes them on the running module.
+Every run computes `maxHp = lanternHpBase + lanternHpPerMember * (members - 1)` when it
+starts, so a change applies to the **next** run started; runs already fighting keep
+their HP, and nothing is closed or refunded. Example: soften it to 600 solo and +700
+per extra member (duo 1,300, quad 2,700), then check the row:
+
+```sh
+spacetime call --server http://127.0.0.1:3000 berigame-beta configure_lanternmaw true 12 600 700
+spacetime sql --server http://127.0.0.1:3000 berigame-beta "SELECT * FROM lantern_config"
+```
+
+Back to the shipped values with `configure_lanternmaw true 12 810 970`. Ranges are
+50..20,000 for both knobs and 1..32 for `lanternMaxRuns`. Passing `false` instead
+closes it (below). Covered by `lantern-server.test.ts` and `frontend/scripts/lantern-smoke.ts`.
+
 **Rollback** is the kill switch, never a schema downgrade:
 
 ```sh

@@ -173,8 +173,10 @@ never pooled, so each member must deal about as much damage as a solo player and
 harder to coordinate. **Fight solo until you have cleared once.** A careful stone-club solo clears in about 500 of the 600 ticks.
 
 **Before the leader starts, every member's per-tick dodge loop must already be running** (read `/danger`, send `dodge`). In a
-party every member but the leader then sends `{"op":"ready"}`, and again at least every 20 ticks while waiting: the start refuses
-with `party_not_ready` until each did (`state.lantern.you.members[].ready`, `you.startReady`). A solo start needs no ready. After
+party every member but the leader then sends `{"op":"ready"}` once; it lasts until that member leaves the lobby or the run starts.
+The start refuses with `party_not_ready` until each did (`state.lantern.you.members[].ready`, `you.startReady`). A solo start needs
+no ready. **Leaders: check the lobby's member count before `start`** (`state.lantern.you.party` and `you.members`): a start with
+only yourself in the lobby runs solo against 810 HP, and late joiners are left behind. After
 the start the water stills for 15 ticks (`fightStage` and `/danger` `boss.stage` read `still`; nothing attacks), then the first
 den blow can land 3 ticks after the fight clock starts. A member standing idle on the spawn tile is knocked out within seconds.
 
@@ -189,7 +191,8 @@ The cycle (`state.lantern.run`; it is slim `state` inside, listing only your par
 - **Den.** `fightStage` is `den`; `den {pattern, name, aim, blowTicks, nextBlowInTicks, patternsBeforeDive}` is the current
   pattern. Blows land on the tile you end a tick on, never on the path you walk, at least 3 ticks after the pattern appears
   (10 / 13 / 15 damage by phase, +1 enraged). Your weapon swings by itself every 4th tick (`you.nextSwingInTicks`; slot s swings
-  on ticks where `(tick - startTick) % 4 == s`) while you stand in ring 2 of the maw (`reach`, Chebyshev 2 of (63,136)). The
+  on ticks where `(tick - startTick) % 4 == s`, where s is your **run slot**: `state.lantern.you.slot` / `run.you.slot`, the order
+  you joined the party in, not a bag slot) while you stand in ring 2 of the maw (`reach`, Chebyshev 2 of (63,136)). The
   Maw Bellow clears everything but the outer edge with 4 ticks of warning (ring 2 to the edge is 5 steps: three moves).
   **The rhythm: wait on ring 3, and step into ring 2 only on your own swing tick** (`/danger` `swing.nextInTicks == 1`, or a
   move with `court: true` on that tick), then step back out. Standing on ring 2 all the time gets you caught by the den's blows.
@@ -219,7 +222,9 @@ onto the spring to cap. A loop that always follows `best` survives longer but de
 ```
 every tick:
   d = GET /danger                       # where == "lantern"
-  if d.you.hp < 14 and d.you.mealsLeft > 0 and d.you.eatReadyInTicks == 0: eat a goldberry (+10)
+  if d.you.hp < 14 and d.you.mealsLeft > 0 and d.you.eatReadyInTicks == 0:
+      eat a goldberry (+10): find the slot whose itemId is berry_goldberry in state.inventory each time, never a fixed slot
+      (slots shift as stacks empty and the start may move your club into the quick bar)
   if d.spring and d.spring.capper and d.spring.surfacesInTicks <= 8:
       dodge along d.path (it walks the capper to d.spring.tile for S) or the safe move closest to d.spring.tile
   elif d.swing.nextInTicks <= 1 and some move in d.moves has court == true:

@@ -603,14 +603,16 @@ closed; the owner opens it with `configure_lanternmaw` (`state.bossNews` shows
   `runId` (a decimal string up to 2^64 - 1; `runId` absent quick-joins the newest
   open lobby); any other field is 400 `invalid_arguments`, an oversized id 400
   `invalid_id`. The gateway sends its `LANTERN_RULES_VERSION` as `clientRules`.
-  Receipts: `open` and `join` return `{runId}`, `ready` returns `{ready: true,
-  withinTicks: 20}`, `start` returns `{stage: "active"}`. **Ready check:** in a
-  party of 2+, every member but the leader sends `ready` once its dodge loop runs,
-  and again within every 20 ticks while waiting; `start` refuses with
-  `party_not_ready` ("waiting for <name>: send ready ...") until each did. A solo
-  start needs none. `state.lantern.you` in a lobby adds `ready`, `sendReady`,
-  `readyWithinTicks`, `startReady` and `members[] {playerId, name, slot, leader,
-  ready}`. `start` checks every member (online, in Bramblewild, at the gate, a
+  Receipts: `open` and `join` return `{runId}`, `ready` returns `{ready: true}`,
+  `start` returns `{stage: "active"}`. **Ready check:** in a
+  party of 2+, every member but the leader sends `ready` once its dodge loop runs;
+  it lasts until that member leaves the lobby or the run starts. `start` refuses
+  with `party_not_ready` ("waiting for <name>: send ready ...") until each did. A
+  solo start needs none, and a start with only the leader in the lobby runs solo,
+  so leaders check `you.party` first. `state.lantern.you` in a lobby adds `ready`,
+  `sendReady`, `startReady` and `members[] {playerId, name, slot, leader, ready}`.
+  Swings follow your run slot (`you.slot`), not a bag slot; `eat` takes a bag slot,
+  so look up the slot holding your food in `state.inventory` each time. `start` checks every member (online, in Bramblewild, at the gate, a
   weapon of 8+ damage wielded or in the bag, one `fen_bait`, 5 coins, not carrying
   the giant berry, in a duel or on an expedition), then spends the bait and the fee,
   draws each member's best 8+ weapon from the bag when the wielded one is weaker

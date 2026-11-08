@@ -288,8 +288,12 @@ async function main() {
   await A.r.lanternOpen({ clientRules: LANTERN_RULES_VERSION });
   await waitFor('A leads a lobby again', () => member(A)?.state === SpireMemberState.Lobby);
   const solo = member(A)!.runId;
+  // A live HP change (no deploy): the next run uses it.
+  await owner.r.configureLanternmaw({ lanternOpen: true, lanternMaxRuns: 12, lanternHpBase: 600, lanternHpPerMember: 700 });
+  await waitFor('the new HP knobs land', () => [...A.conn.db.lanternConfig.iter()].some((r) => r.lanternHpBase === 600));
   await A.r.lanternStart({ clientRules: LANTERN_RULES_VERSION });
-  await waitFor('the solo run starts', () => runOf(A, solo)?.stage === SpireStage.Active);
+  await waitFor('the solo run starts', () => runOf(A, solo)?.stage === SpireStage.Active && !!fightOf(A, solo));
+  check('configure_lanternmaw changed the next run\'s HP live (600 solo)', fightOf(A, solo)!.maxHp === 600, `maxHp ${fightOf(A, solo)!.maxHp}`);
   await owner.r.configureLanternmaw(cfg(false));
   await waitFor('the close fails the run', () => runOf(A, solo)?.stage === SpireStage.Failed);
   check('the owner close refunds bait and fee', runOf(A, solo)!.outcome === SpireOutcome.Closed && countOf(A, LANTERN_BAIT.itemId) === 1 && (await coinsOf(token, A)) === 5);
