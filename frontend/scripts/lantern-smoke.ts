@@ -45,7 +45,7 @@ interface Client { name: string; conn: DbConnection; r: DbConnection['reducers']
 
 const SUBSCRIBE = [
   tables.world, tables.player, tables.playerPos, tables.groundItem, tables.inventorySlot, tables.adventureProfile,
-  tables.lanternConfig, tables.lanternRun, tables.lanternMember, tables.lanternFight, tables.bossEvent,
+  tables.lanternConfig, tables.lanternRun, tables.lanternMember, tables.lanternFight, tables.lanternReadiness, tables.bossEvent,
 ];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -229,6 +229,9 @@ async function main() {
   await B.r.lanternJoin({ runId: 0n, clientRules: LANTERN_RULES_VERSION });
   await waitFor('B quick-joins', () => member(B)?.runId === runId);
   check('quick join fills slot 1', member(B)!.slot === 1);
+  check('a party start waits for the ready check', /send ready/.test(await rejection(() => A.r.lanternStart({ clientRules: LANTERN_RULES_VERSION }))));
+  await B.r.lanternReady({});
+  await waitFor('B is ready', () => [...A.conn.db.lanternReadiness.iter()].some((r) => r.identity.toHexString() === B.identity));
   await A.r.lanternStart({ clientRules: LANTERN_RULES_VERSION });
   await waitFor('the run starts', () => runOf(A, runId)?.stage === SpireStage.Active && !!fightOf(A, runId));
   const run = runOf(A, runId)!;

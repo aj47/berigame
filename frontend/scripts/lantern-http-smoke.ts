@@ -104,6 +104,8 @@ async function main() {
 
   const opened = await api('/actions/lantern', token, { op: 'open' });
   check('lantern open returns a string runId', opened.status === 200 && typeof opened.json.runId === 'string', `${opened.status} ${JSON.stringify(opened.json).slice(0, 120)}`);
+  const solo = await api('/actions/lantern', token, { op: 'ready' });
+  check('lantern ready answers 200 in a lobby', solo.status === 200 && solo.json.ready === true, `${solo.status} ${JSON.stringify(solo.json).slice(0, 120)}`);
   const started = await api('/actions/lantern', token, { op: 'start' });
   check('lantern start', started.status === 200 && started.json.stage === 'active', `${started.status} ${JSON.stringify(started.json).slice(0, 160)}`);
   await sleep(700);

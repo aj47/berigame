@@ -239,12 +239,13 @@ until `beta:deploy` lands, so deploy straight after the module.
 
 An additive, non-breaking publish. Rules and numbers: [docs/design/BOSSES.md](design/BOSSES.md) section 9.
 
-- **Schema.** Five new tables (`lantern_config`, `lantern_run`, `lantern_member`,
-  `lantern_fight`, private `lantern_paid`) and five new reducers (`lantern_open`,
-  `lantern_join`, `lantern_leave`, `lantern_start`, `configure_lanternmaw`).
+- **Schema.** Six new tables (`lantern_config`, `lantern_run`, `lantern_member`,
+  `lantern_fight`, `lantern_readiness`, private `lantern_paid`) and six new reducers
+  (`lantern_open`, `lantern_join`, `lantern_ready`, `lantern_leave`, `lantern_start`,
+  `configure_lanternmaw`).
   No column on an existing table changes, no RLS policy is added, and the column
   types are ones the Worker codecs already handle. Rehearsed locally on top of the
-  live `main` module (ea40fbe, PR #113): the plan is exactly five "Created user
+  live `main` module (ea40fbe, PR #113): the plan is exactly six "Created user
   table" steps, nothing is flagged breaking, tree rows survive, and a client on
   main's bundle stays connected through the publish.
 - **Terrain.** The Fen Gate at (47,152) is a new scenery blocker, the sealed floor
@@ -260,7 +261,7 @@ Release steps:
 
 1. **Rehearse locally** as for the boss fights release (publish the live `main`
    module, then this build with `--delete-data=never --yes=migrate,skip-login`;
-   expect the five "Created user table" steps only).
+   expect the six "Created user table" steps only).
 2. **Verify the live hashes** and build from a tree that contains everything live.
 3. **Publish the module** to the VM exactly as in the boss fights release.
 4. **`npm run beta:deploy` immediately afterwards** (new bindings, the Fen Gate,

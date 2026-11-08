@@ -551,8 +551,8 @@ Revived 4 reserved), KnockedOut 5, Reward 6, Keepsake 7, RunResult 8; `HurtSourc
 Charge 1, Spin 2, Runner 3, Bullet 4; `SpirePhase` Bloom 1 .. Nightfall 4;
 `SpirePatternKind` 0..10 with `SPIRE_NONE` 255; cosmetics 12-15; area `'spire'`.
 
-Lanternmaw appends five tables (`lantern_config`, `lantern_run`, `lantern_member`,
-`lantern_fight`, private `lantern_paid`; 9.12) and the codes `BossId.Lanternmaw` 3,
+Lanternmaw appends six tables (`lantern_config`, `lantern_run`, `lantern_member`,
+`lantern_fight`, `lantern_readiness`, private `lantern_paid`; 9.12) and the codes `BossId.Lanternmaw` 3,
 `BossEventKind` LanternRunStart 6, LanternClear 7, LanternOpened 8, LanternSoon 9,
 `HurtSource` Blow 5, Pulse 6, Drown 7, Bite 8, cosmetic 30 (Lanternmaw Lure), area
 `'lantern'` and the no-PvP zones `'lantern'` and `'fengate'`; items `fen_bait`
@@ -1017,7 +1017,7 @@ preparation, never time played; LONG_SEASON: no season item is a weapon).
 ### 9.12 Server (built)
 
 - **Tables** (new tables only; a pure "Creating table" publish, rehearsed:
-  the plan is exactly the five steps below and nothing is flagged breaking):
+  the plan is exactly the six steps below and nothing is flagged breaking):
   `lantern_config` (public, one row), `lantern_run` (public: id, leader,
   stage, outcome, rules, partySize, createdTick, startTick, endTick, phase,
   clearTicks), `lantern_member` (public: identity, runId (btree), slot, state,
@@ -1025,7 +1025,9 @@ preparation, never time played; LONG_SEASON: no season item is a weapon).
   run: the `LanternFightLike` fields with `curAim` a local tile, plus
   `hitTick`, `hits`, `dmg`, `drowned` and `caps` per slot 0..3) and the private
   `lantern_paid {identity, day, paid}` for the daily cap (`lanternUtcDay` of the
-  reducer timestamp). No RLS anywhere. Runs, members and outcomes use the
+  reducer timestamp), and `lantern_readiness {identity, runId, tick}` (public) for
+  the lobby ready check: in a party, `lantern_start` needs every other member's
+  `lantern_ready` within 20 ticks (`LANTERN_READY_TICKS`). No RLS anywhere. Runs, members and outcomes use the
   Spire's codes (`SpireStage`, `SpireOutcome`, `SpireMemberState`).
 - **Reducers.** `lantern_open {clientRules}`, `lantern_join {runId, clientRules}`
   (0 = the newest open lobby), `lantern_leave`, `lantern_start {clientRules}`
