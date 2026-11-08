@@ -136,5 +136,7 @@ export const SocialNotice = {
   TradeFailed: 6,
   /** Mentor rewards (shared/sim/mentor.ts). */
   Mentor: 7,
+  /** How a walk ended (shared/sim/walks.ts): no path for everyone; arrivals and cancellations to agents only. */
+  Walk: 8,
 } as const;
 export type SocialNotice = (typeof SocialNotice)[keyof typeof SocialNotice];

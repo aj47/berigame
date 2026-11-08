@@ -4,7 +4,7 @@ import { EXPANSE_LANDMARKS, EXPANSE_TRAILS, expanseLand, expanseWater, isExpanse
 import type { Tile } from './types';
 import { CLATTER_GLADE, CLATTER_STONES, LANTERN_GATE, SPIRE_GATE, inBossRect, inLanternFloor, inSealedFloor, inSpireFloor } from './bossZones';
 
-export const TERRAIN_VERSION = 'bramblewild-expanse-v4';
+export const TERRAIN_VERSION = 'bramblewild-expanse-v5';
 export const ISLAND_NAME = 'Bramblewild';
 const ellipse = (x: number, z: number, cx: number, cz: number, rx: number, rz: number) =>
   (1 - Math.hypot((x - cx) / rx, (z - cz) / rz)) * Math.min(rx, rz);

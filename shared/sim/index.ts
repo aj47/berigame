@@ -37,3 +37,4 @@ export * from './season';
 export * from './ledger';
 export * from './expanse';
 export * from './interest';
+export * from './walks';

@@ -144,7 +144,7 @@ describe('registries and shared rules', () => {
     expect(LANDMARKS[16]).toMatchObject({ id: 'glade', x: 84, z: 106, access: 'coast' });
     expect(LANDMARKS[17]).toMatchObject({ id: 'spire', x: 62, z: 45, access: 'boulders' });
     expect(LANDMARKS[18]).toMatchObject({ id: 'fengate', x: 47, z: 152, access: 'coast' });
-    expect(TERRAIN_MAP.version).toBe('bramblewild-expanse-v4');
+    expect(TERRAIN_MAP.version).toBe('bramblewild-expanse-v5');
   });
 
   it('names the no-PvP boss zones', () => {

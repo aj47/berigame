@@ -38,7 +38,7 @@ export const attackClatterhorn = spacetimedb.reducer((ctx) => {
     return;
   }
   const readyAt = p.nextSwingTick;
-  clearInteractions(ctx, p);
+  clearInteractions(ctx, p, false, 'attack_clatterhorn');
   if (!inReach) {
     const blocked = blockedTiles(ctx);
     const dest = interactionTile(ctx, p, row, blocked, CLATTER_REACH, clatterSwingGoal(row, blocked));

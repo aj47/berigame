@@ -50,6 +50,25 @@ describe('the Expanse', () => {
     }
   });
 
+  it('lands each causeway on both shores, so a walk across it goes straight over', () => {
+    // From open ground 8+ tiles beyond each end, outward along the causeway. Reedbank once ended at (92,198),
+    // three tiles short of the dunes (x 95..97 was sea), so dunes <-> fen walks went round by Crossroads.
+    const open = (t: Tile) => isLandTile(t) && !blocked.has(tileKey(t));
+    for (const c of CAUSEWAYS) {
+      const len = Math.hypot(c.to.x - c.from.x, c.to.z - c.from.z), ux = (c.to.x - c.from.x) / len, uz = (c.to.z - c.from.z) / len;
+      const beyond = (p: Tile, s: number) => {
+        for (let k = 8; k < 20; k++) { const t = { x: Math.round(p.x + s * ux * k), z: Math.round(p.z + s * uz * k) }; if (open(t)) return t; }
+        throw new Error(`${c.id}: no open ground beyond ${p.x},${p.z}`);
+      };
+      const a = beyond(c.from, -1), b = beyond(c.to, 1);
+      expect(biomeOf(a), c.id).not.toBe(biomeOf(b));
+      const path = bfsPath(a, goalIsTile(b), blocked, walk);
+      expect(path, c.id).not.toBeNull();
+      // Stonepass bends round the Spine pass; every other causeway is a straight walk.
+      expect(path!.length, `${c.id} ${a.x},${a.z} -> ${b.x},${b.z}`).toBeLessThan(Math.max(Math.abs(b.x - a.x), Math.abs(b.z - a.z)) * 1.25);
+    }
+  });
+
   it('runs the King\'s Road dry from the harbour road to the Meadows join', () => {
     for (let x = 100; x < GRID_SIZE; x++) expect(isLandTile({ x, z: 25 }), `${x},25`).toBe(true);
   });

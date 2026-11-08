@@ -35,7 +35,7 @@ export const vaultDeposit = spacetimedb.reducer(
     const box = dropBoxInReach(p);
     if (!box) throw new SenderError('Bank in the Grove safe ring, or stand beside a Coast drop box');
     if (countItem(readSlots(ctx, p.identity).slots, itemId) < quantity) throw new SenderError(`You do not have ${quantity} ${getItemDef(itemId)!.name}`);
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'deposit');
     clearDeposit(ctx, p.identity);
     ctx.db.pendingDeposit.insert({ identity: p.identity, boxId: box.id, itemId, quantity, doneTick: T + DROP_BOX_DEPOSIT_TICKS });
     p.pending = Pending.Deposit;

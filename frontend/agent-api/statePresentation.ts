@@ -7,6 +7,7 @@ import {
   lanternConfigOr, lanternHazardMask, lanternLocal, lanternStandable, spireFightBullets, spireHitsMove, spireSeesPlayer, spireStandable,
   type BossConfigLike, type ClatterRowLike, type DangerFeed, type DangerMemberInput, type LanternConfigLike, type LanternFightRowLike,
   type LanternMemberLike, type LanternRunLike, type Slot, type SpireFightLike, type SpireMemberLike, type SpireRunLike, type Tile,
+  SocialNotice, parseWalkNotice, type WalkOutcome,
 } from '../../shared/sim';
 
 /**
@@ -16,6 +17,25 @@ import {
  */
 
 type Hex = { toHexString(): string };
+
+/**
+ * Your personal notices (social_event rows addressed to you): the last 10 for state.notices, and
+ * state.player.lastWalk from the walk notices (shared/sim/walks.ts). Arrivals only set lastWalk, so a
+ * busy walker's arrivals never push trade or invite results out of the 10.
+ */
+export class PersonalNotices {
+  readonly notices: { tick: number; kind: number; from: string; text: string }[] = [];
+  lastWalk: WalkOutcome | null = null;
+  constructor(private readonly identity: string) {}
+  record(row: { tick: number; kind: number; from: Hex; to: Hex; text: string }): void {
+    if (row.to.toHexString() !== this.identity) return;
+    const walk = row.kind === SocialNotice.Walk ? parseWalkNotice(row.text, row.tick) : null;
+    if (walk) this.lastWalk = walk;
+    if (walk?.ended === 'arrived') return;
+    this.notices.push({ tick: row.tick, kind: row.kind, from: row.from.toHexString(), text: row.text });
+    if (this.notices.length > 10) this.notices.shift();
+  }
+}
 /** A player row as far as the boss presenters go (gateway and browser rows both fit). */
 export interface BossPlayer extends Tile { identity: Hex; name: string; hp: number; maxHp: number; region?: string; online?: boolean; eatCooldownUntilTick?: number }
 export type BossMember = SpireMemberLike & { identity: Hex };

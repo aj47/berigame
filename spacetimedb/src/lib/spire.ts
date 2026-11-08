@@ -463,7 +463,7 @@ export function spireStartRun(ctx: Ctx, T: number, run: SpireRunRow, members: re
     const p = io.player(hex(m.identity));
     if (!p) continue;
     if (run.mode === SpireMode.Normal) spend(ctx, p.identity, SPIRE_KEY_ITEM_ID, 1);
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'spire');
     for (const trade of tradesOf(ctx, p.identity)) cancelTrade(ctx, trade, 'Trade cancelled: they went down into the Sunken Spire');
     p.respawnTick = Math.min(p.respawnTick, Math.max(0, T - RESPAWN_GRACE_TICKS));
     const spawn = SPIRE_SPAWNS[m.slot] ?? SPIRE_SPAWNS[0];

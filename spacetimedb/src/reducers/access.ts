@@ -149,12 +149,12 @@ export const revokePlayer = spacetimedb.reducer({ identity: t.identity() }, (ctx
   const player = loadPlayer(ctx, identity);
   if (player) {
     const p = { ...player, online: false };
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'revoke');
     storePlayer(ctx, p);
   }
   for (const other of playersTargeting(ctx, identity)) {
     const p = { ...other };
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'revoke');
     storePlayer(ctx, p);
   }
 });
@@ -165,5 +165,5 @@ export const endVisit = spacetimedb.reducer({ identity: t.identity() }, (ctx, { 
   if (!grant?.agent || !sameId(policy?.gateway, ctx.sender) || !sameId(grant.issuer, ctx.sender)) throw new SenderError('issuing gateway required');
   if (grant.expiresAtMicros !== 0n) ctx.db.playerGrant.identity.update({ ...grant, expiresAtMicros: ctx.timestamp.microsSinceUnixEpoch });
   const row = loadPlayer(ctx, identity);
-  if (row) { const p = { ...row, online: false }; clearInteractions(ctx, p); storePlayer(ctx, p); }
+  if (row) { const p = { ...row, online: false }; clearInteractions(ctx, p, false, 'revoke'); storePlayer(ctx, p); }
 });

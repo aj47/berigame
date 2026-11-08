@@ -16,7 +16,7 @@ export const setTarget = spacetimedb.reducer(
     if (!inBounds({ x, z })) throw new SenderError('target out of bounds');
     const p = requireAlivePlayer(ctx);
     touchInput(p, currentTick(ctx));
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'move');
     const blocked = blockedTiles(ctx), keys = heldKeys(ctx, p);
     // The route found here is the tick's first walk step too (lib/routes.ts): searched once, not twice.
     const dest = nearestReachableTile(p, { x, z }, blocked, enterRule(keys.stick, keys.club), (path) => seedRoute(ctx, p, { x, z }, path, keys, blocked));
@@ -30,6 +30,6 @@ export const setTarget = spacetimedb.reducer(
 export const cancel = spacetimedb.reducer((ctx) => {
   const p = requireAlivePlayer(ctx, true);
   touchInput(p, currentTick(ctx));
-  clearInteractions(ctx, p);
+  clearInteractions(ctx, p, false, 'stop');
   savePlayer(ctx, p);
 });

@@ -40,7 +40,7 @@ export const attackGiant = spacetimedb.reducer(
       return;
     }
     const readyAt = p.nextSwingTick;
-    clearInteractions(ctx, p);
+    clearInteractions(ctx, p, false, 'attack_giant');
     if (chebyshev(p, giant) > GIANT_REACH) {
       const dest = interactionTile(ctx, p, giant, blockedTiles(ctx), GIANT_REACH);
       p.targetX = dest.x;

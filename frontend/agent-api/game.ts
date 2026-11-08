@@ -1,5 +1,5 @@
 import { frontierSnapshot, type FrontierSnapshot } from '../../shared/sim/frontier/snapshot';
-import { describeAction, describeDestination, describeEconomy, describeGathering, describeObjective } from './statePresentation';
+import { describeAction, describeDestination, describeEconomy, describeGathering, describeObjective, PersonalNotices } from './statePresentation';
 import { bossError, ClatterContribution, crossesLanternFloor, crossesSpireFloor, describeBossEvent, describeBossNotice, describeBosses, dangerFeed, dodgeCheck, LANTERN_FLOOR_MOVE, moveStepsOf, onSealedFloor, SPIRE_FLOOR_MOVE, visiblePlayers, type BossRows } from './statePresentation';
 import { subscribeSpire } from '../src/bosses/spireSubscription';
 import { subscribeLantern } from '../src/bosses/lanternSubscription';
@@ -271,13 +271,9 @@ export async function createGameService(credential: Credential, options: Service
       // The world cache hears of this connection's player row on its own socket: wait for it before the first read.
       await onlineInWorld(id);
       me();
-      // Notices addressed to you (trade requests and results, invite results): the last 10.
-      const notices: { tick: number; kind: number; from: string; text: string }[] = [];
-      conn.db.socialEvent.onInsert((_ctx, row) => {
-        if (row.to.toHexString() !== player.identity) return;
-        notices.push({ tick: row.tick, kind: row.kind, from: row.from.toHexString(), text: row.text });
-        if (notices.length > 10) notices.shift();
-      });
+      // Notices addressed to you (trade, invite and walk results): the last 10, and how your last walk ended.
+      const personal = new PersonalNotices(player.identity);
+      conn.db.socialEvent.onInsert((_ctx, row) => personal.record(row));
       // Boss feedback (FINAL_SPEC 8.1): your last 16 boss notices (subscription-filtered), the last 10 world boss moments
       // (shared bossNews), and your Clatterhorn damage this fight.
       const bossNotices: ReturnType<typeof describeBossNotice>[] = [];
@@ -397,7 +393,7 @@ export async function createGameService(credential: Credential, options: Service
           const raid = db.giantRaid.id.find(GIANT_ID);
           const mentees = (hex: string) => [...db.mentorStat.iter()].find(r => r.identity.toHexString() === hex)?.mentees ?? 0;
           return {
-            tick, tickMs: TICK_MS, gridSize: self.region && self.region !== 'bramblewild' ? 128 : GRID_SIZE, player: describePlayer(self, frontier, now),
+            tick, tickMs: TICK_MS, gridSize: self.region && self.region !== 'bramblewild' ? 128 : GRID_SIZE, player: { ...describePlayer(self, frontier, now), lastWalk: personal.lastWalk },
             frontier,
             economy: describeEconomy({ self, slots: slotsOf(), views: conn.db.frontierView.iter(), identity: player.identity, now }),
             me: { area: home ? areaOf(self) : self.region, biome: home ? biomeAt(self) : null, safe: home && isSafe(self, tick), graceTicks: inGrace(self, tick) ? Math.max(0, self.respawnTick + RESPAWN_GRACE_TICKS - tick) : 0,
@@ -543,7 +539,7 @@ export async function createGameService(credential: Credential, options: Service
                 swapInTicks: t.aConfirmed && t.bConfirmed && t.swapTick ? Math.max(0, t.swapTick - tick) : null,
                 rule: `Request within ${TRADE_RANGE} tiles; cancelled beyond ${TRADE_BREAK_RANGE}, on death or disconnect. Any offer change clears both confirmations; the swap is all or nothing. Where no attack can land (the safe ring, boss zones, Meadows town) it runs as soon as both confirm; elsewhere it runs ${TRADE_SWAP_TICKS} ticks later (swapInTicks) and a hit on either side stops it and clears both confirmations.` };
             })(),
-            notices: [...notices, ...bossNotices].sort((a, b) => a.tick - b.tick),
+            notices: [...personal.notices, ...bossNotices].sort((a, b) => a.tick - b.tick),
             appearance: conn.db.appearance.identity.find(id) ? { ...conn.db.appearance.identity.find(id), identity: player.identity } : appearance.DEFAULT_APPEARANCE,
             appearanceOptions: { hairStyle: appearance.HAIR_STYLES, skinTone: appearance.SKIN_TONES,
               hairColor: appearance.HAIR_COLORS, robeColor: appearance.ROBE_COLORS, wrapColor: appearance.WRAP_COLORS },

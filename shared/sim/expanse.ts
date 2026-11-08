@@ -74,7 +74,7 @@ export const CAUSEWAYS = [
   { id: 'stonepass', name: 'Stonepass', from: { x: 196, z: 66 }, to: { x: 192, z: 100 }, width: 3.4 },
   { id: 'fenway', name: 'Fenway', from: { x: 26, z: 118 }, to: { x: 32, z: 148 }, width: 3.0 },
   { id: 'dune-road', name: 'Dune Road', from: { x: 162, z: 150 }, to: { x: 140, z: 170 }, width: 3.2 },
-  { id: 'reedbank', name: 'Reedbank', from: { x: 78, z: 196 }, to: { x: 92, z: 198 }, width: 3.0 },
+  { id: 'reedbank', name: 'Reedbank', from: { x: 78, z: 196 }, to: { x: 99, z: 199 }, width: 3.0 },
   { id: 'ashway', name: 'Ashway', from: { x: 156, z: 214 }, to: { x: 180, z: 210 }, width: 3.0 },
   { id: 'emberstair', name: 'Emberstair', from: { x: 214, z: 146 }, to: { x: 214, z: 172 }, width: 3.0 },
 ] as const;

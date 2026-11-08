@@ -63,7 +63,7 @@ export function summarizeState(state: State): StateSummary {
     you: {
       id: player.id, name: player.name, tile: player.tile, health: player.health, maxHealth: player.maxHealth, alive: player.alive,
       region: player.region, area: player.area, safe: state.me?.safe, weapon: player.weapon?.itemId ?? null,
-      action: player.action ?? null, destination: player.destination ?? null, load: player.load || undefined,
+      action: player.action ?? null, destination: player.destination ?? null, lastWalk: player.lastWalk ?? null, load: player.load || undefined,
     },
     goal: state.goal ? pick(state.goal, ['text', 'hint', 'action', 'target', 'waiting']) : null,
     objective: state.objective ?? null,

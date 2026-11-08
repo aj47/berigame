@@ -40,6 +40,7 @@ import { canPlay } from '../lib/access';
 import { activePlayers, instanceState, onlinePlayers } from '../lib/activePlayers';
 import { idKey, loadPlayer, posOf, posTable, positions, storePlayer } from '../lib/playerStore';
 import { TERRAIN_VERSION } from '../../../shared/sim/terrain';
+import { walkEnded } from '../lib/walks';
 import { IDLE_SWEEP_TICKS, logOutIfIdle } from '../lib/idle';
 import { cancelTrade, notify } from '../lib/social';
 import { requestTradeInRange, tradePartnerProblem } from '../lib/trade';
@@ -300,6 +301,7 @@ function phaseMovement(s: TickState): void {
       const target = { x: p.targetX, z: p.targetZ };
       if (p.x === target.x && p.z === target.z) {
         p.targetX = undefined; p.targetZ = undefined; mark(s, p);
+        if (p.pending === Pending.None) walkEnded(s.ctx, s.T, p, target, 'arrived');
       } else {
         goal = goalIsTile(target);
       }
@@ -318,7 +320,11 @@ function phaseMovement(s: TickState): void {
           stopTradeApproach(s, p, 'Cannot reach them to trade');
           continue;
         }
-        if (!p.combatTarget) { p.targetX = undefined; p.targetZ = undefined; }
+        if (!p.combatTarget && p.targetX !== undefined && p.targetZ !== undefined) {
+          // Say so: a silently cleared target reads "idle", exactly like an arrival.
+          walkEnded(s.ctx, s.T, p, { x: p.targetX, z: p.targetZ }, 'no_path');
+          p.targetX = undefined; p.targetZ = undefined;
+        }
         if (p.pending !== Pending.None) { p.pending = Pending.None; p.pendingId = 0n; }
         mark(s, p);
       } else {
@@ -332,6 +338,7 @@ function phaseMovement(s: TickState): void {
           if (!p.combatTarget && p.targetX === p.x && p.targetZ === p.z) {
             p.targetX = undefined;
             p.targetZ = undefined;
+            if (p.pending === Pending.None) walkEnded(s.ctx, s.T, p, step, 'arrived');
           }
           mark(s, p);
           // Harvest/pickup stops at the first reachable interaction tile,
@@ -842,7 +849,7 @@ export const tick = spacetimedb.reducer(
       // client keeps its WebSocket open and sends no further requests.
       if (player.online && !canPlay(ctx, player.identity, policy)) {
         const p = { ...player, online: false };
-        clearInteractions(ctx, p);
+        clearInteractions(ctx, p, false, 'permit_expired');
         storePlayer(ctx, p, { before: player, pos });
         player = p;
         pos = undefined;

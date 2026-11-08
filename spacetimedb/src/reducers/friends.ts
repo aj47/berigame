@@ -102,7 +102,7 @@ export const redeemInvite = spacetimedb.reducer(
     } else {
       const keys = heldKeys(ctx, p);
       const spot = joinSpot(inviter, keys.stick, blockedTiles(ctx), keys.club);
-      clearInteractions(ctx, p);
+      clearInteractions(ctx, p, false, 'redeem_invite');
       p.x = spot.tile.x;
       p.z = spot.tile.z;
       // Landing past the hedge counts as reaching the Coast, like play_stats (the tick only sees walked steps).
