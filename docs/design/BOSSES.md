@@ -726,7 +726,8 @@ from are exactly the tiles you need all three ticks of warning to escape.
   stick or knife (6) almost never beat the clock even played perfectly (a
   perfect solo stick clears 5 of 100), so this removes the unwinnable starts.
 - **Entry cost per member per attempt**, spent at the start and refunded only on
-  an owner close, a rules reset or a whole-party abandon, as Spire keys are:
+  an owner close, a rules reset, or a whole-party abandon by a party that was
+  away since before the fight began (an abandon after the start is a loss):
   - one **Fen Bait** (`LANTERN_BAIT`: 1 `gleamshell` + 1 `obsidian` + 2
     `driftwood`, Crafting 1, 30 XP). Level-1 inputs only: no tier material, so
     Foraging levels never gate access;
@@ -995,6 +996,11 @@ preparation, never time played; LONG_SEASON: no season item is a weapon).
   `AddColumns`, which in SpacetimeDB 2.10 disconnects every client and leaves
   old bundles unable to decode the row. `lanternConfigOr` reads a missing row
   as closed.
+- **Closed means closed for crafting.** While closed, `craft` refuses `fen_bait`
+  and `lanternmaw_lure` ("Fen Bait can only be made while the Drowned Hollow is
+  open"; `lanternRecipeSealed`), and `recipeStatus` hides them from the craft
+  menu and `state.recipes`. The Fen Gate stays on the map as a sealed landmark,
+  and `state.lantern` is the compact `{open: false, gate}` away from the gate.
 - **Its own owner reducer.** `configure_lanternmaw lanternOpen lanternMaxRuns lanternHpBase lanternHpPerMember`
   (owner only, ranges by `lanternConfigProblem`: runs 1..32, HP 50..20,000), so
   `configure_bosses` and its eight-argument kill switch are unchanged. Opening
@@ -1031,7 +1037,7 @@ preparation, never time played; LONG_SEASON: no season item is a weapon).
   refunds are `refund:lanternmaw`).
 - **The tick.** `phaseLantern` runs after `phaseSpire`. For each Active run it
   does the Spire's presence step (away bookkeeping, Left, Abandoned after 50
-  ticks with refunds), then builds a `LanternRunSim` from the rows (present
+  ticks: refunded only if everyone was away since before `startTick`), then builds a `LanternRunSim` from the rows (present
   members on their end tiles, weapon damage from the wielded item, i-frames
   and counters from the slot columns) and calls `lanternResolveTick`, writing
   back HP, knockouts, `Hurt` notices (`Bite`, `Blow`, `Pulse`, `Drown`), the

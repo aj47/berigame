@@ -210,6 +210,7 @@ async function main() {
     await pickUpAll(c, markers.get(c)!, [STONE_CLUB_ITEM_ID, 'gleamshell', 'obsidian', 'driftwood', 'berry_goldberry']);
     await setCoins(token, c, 12);
   }
+  check('Fen Bait cannot be crafted while sealed', /only be made while the Drowned Hollow is open/.test(await rejection(() => A.r.craft({ recipe: LANTERN_BAIT.itemId }))));
   await owner.r.configureLanternmaw(cfg(true));
   await waitFor('LanternOpened announced', () => A.events.some((e) => e.boss === BossId.Lanternmaw && e.kind === BossEventKind.LanternOpened));
   check('opening announces it world-wide', true);

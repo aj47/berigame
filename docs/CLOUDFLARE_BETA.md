@@ -243,14 +243,18 @@ An additive, non-breaking publish. Rules and numbers: [docs/design/BOSSES.md](de
   `lantern_fight`, private `lantern_paid`) and five new reducers (`lantern_open`,
   `lantern_join`, `lantern_leave`, `lantern_start`, `configure_lanternmaw`).
   No column on an existing table changes, no RLS policy is added, and the column
-  types are ones the Worker codecs already handle. Rehearsed locally on top of
-  `main` (5c6db3d): the plan is exactly five "Created user table" steps, nothing is
-  flagged breaking, and tree rows survive.
+  types are ones the Worker codecs already handle. Rehearsed locally on top of the
+  live `main` module (ea40fbe, PR #113): the plan is exactly five "Created user
+  table" steps, nothing is flagged breaking, tree rows survive, and a client on
+  main's bundle stays connected through the publish.
 - **Terrain.** The Fen Gate at (47,152) is a new scenery blocker, the sealed floor
   (x 56..70, z 129..143) joins the land mask and the maw joins the blocked set
   (`TERRAIN_VERSION` `bramblewild-expanse-v4`). No resource node moves.
-- **Ships closed.** With no `lantern_config` row nothing a player can do changes
-  until the owner opens it. `configure_bosses` is unchanged.
+- **Ships closed.** With no `lantern_config` row the Fen Gate stands on the map as a
+  sealed landmark (a blocker; the gate panel and `state.lantern` say "sealed"), but
+  nobody can open, join or start a party, and `craft` refuses Fen Bait and the
+  Lanternmaw Lure (both are hidden from the craft menu and `state.recipes`) until
+  the owner opens it. `configure_bosses` is unchanged.
 
 Release steps:
 
