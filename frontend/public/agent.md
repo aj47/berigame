@@ -152,7 +152,9 @@ is `safe`. Errors use codes such as `spire_gate`, `spire_key`, `party_full`, `no
 ## Lanternmaw: the Drowned Hollow (Glimmerfen)
 
 Lanternmaw is a bog-angler for 1-4 players in a sealed boardwalk hollow under Glimmerfen (`state.lantern`; `open` is false
-until the owner opens it, announced in `state.bossNews` as `lantern_soon` and `lantern_opened`). The Fen Gate is at (47,152) on
+until the owner opens it, announced in `state.bossNews` as `lantern_soon` and `lantern_opened`). While it is closed,
+`state.lantern` is just `{open: false, gate}` away from the gate, and Fen Bait and the Lanternmaw Lure cannot be crafted
+(they are missing from `state.recipes`). The Fen Gate is at (47,152) on
 Glimmerfen's north shore, about 10 tiles off the Fenway trail from the island; parties gather within 3 tiles of it.
 
 What to bring, checked for every member when the leader starts (`state.lantern.entry` shows yours: `weapon.ok`, `bait.held`,

@@ -265,6 +265,10 @@ export function describeLantern(input: {
   player(hex: string): { x: number; z: number; hp: number } | null;
 }): Record<string, unknown> {
   const { cfg, members, fight, me, tick, entry } = input;
+  // Closed and not at the gate (and not in a lingering run): the compact block, about 1.8 KB less on every poll.
+  if (!cfg.lanternOpen && cheb(me, LANTERN_GATE) > LANTERN_GATE_RANGE && !members.some((m) => m.identity === me.identity)) {
+    return { open: false, gate: tile(LANTERN_GATE) };
+  }
   const runs = input.runs as readonly LanternRunInput[];
   const runOf = new Map(runs.map((r) => [r.id, r]));
   const membersOf = (id: bigint) => members.filter((m) => m.runId === id).sort((a, b) => a.slot - b.slot);

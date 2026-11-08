@@ -568,8 +568,12 @@ sealed 15 x 15 floor shared by every run, knockouts that never kill. It ships
 closed; the owner opens it with `configure_lanternmaw` (`state.bossNews` shows
 `lantern_soon` and `lantern_opened`).
 
-- **`state.lantern`** (null outside Bramblewild; always present there, `open:
-  false` while closed or when the module has no lantern tables): `open`,
+- **`state.lantern`** (null outside Bramblewild; always present there). While
+  closed (or when the module has no lantern tables) it is the compact
+  `{open: false, gate}` unless you stand within 3 of the Fen Gate or still belong
+  to a run, which get the full block. While closed, `fen_bait` and
+  `lanternmaw_lure` are missing from `state.recipes` and `craft` refuses them
+  ("Fen Bait can only be made while the Drowned Hollow is open"). Full block: `open`,
   `rulesVersion`, `gate` (47,152, Glimmerfen's north shore), `exit` (47,153),
   `joinRange` (3), `atGate`, `floor {x0: 56, z0: 129, x1: 70, z1: 143}`, `entry
   {weapon {minDamage: 8, best, ok, hint}, bait {itemId: fen_bait, held, recipe,

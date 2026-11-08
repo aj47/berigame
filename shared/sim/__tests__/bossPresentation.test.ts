@@ -317,6 +317,14 @@ describe('describeLantern', () => {
     expect(describeLantern({ ...base, cfg: LANTERN_CONFIG_DEFAULTS, runs: [], members: [], me: gate }).open).toBe(false);
   });
 
+  it('closed: a compact {open, gate} away from the gate; the full entry block at the gate', () => {
+    const away = describeLantern({ ...base, cfg: LANTERN_CONFIG_DEFAULTS, runs: [], members: [], me: { identity: ME, x: 10, z: 10 } });
+    expect(away).toEqual({ open: false, gate: { x: 47, z: 152 } });
+    expect(bytes(away)).toBeLessThan(64);
+    const at = describeLantern({ ...base, cfg: LANTERN_CONFIG_DEFAULTS, runs: [], members: [], me: gate });
+    expect(at).toMatchObject({ open: false, atGate: true, entry: { bait: { recipe: 'fen_bait' } } });
+  });
+
   it('in a lobby: you without a run block', () => {
     const d = describeLantern({ ...base, runs: [lrun(9n, { leader: ME, partySize: 2 })], members: [lmember(ME, 9n, 0), lmember(hex(2), 9n, 1)], me: gate });
     expect(d.you).toEqual({ runId: '9', stage: 'lobby', state: 'lobby', slot: 0, leader: true, party: 2 });
