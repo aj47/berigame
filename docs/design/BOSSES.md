@@ -768,7 +768,7 @@ Local tiles `i = v * 15 + u` (u = x - 56, v = z - 129); the centre is (7,7).
 
 ### 9.4 States and the cycle
 
-`LanternStage`: Den 0, Dive 1, Tide 2, Ebb 3. A run: 5-tick intro, then the
+`LanternStage`: Den 0, Dive 1, Tide 2, Ebb 3. A run: a 15-tick start grace ("the water stills": nothing attacks; rules 3, was a 5-tick intro), then the
 fight from `startTick` to `startTick + 600` (`LANTERN_TIME_LIMIT`, 6:00), enrage
 at 420 (`LANTERN_ENRAGE_TICKS`, 4:12).
 
@@ -811,7 +811,7 @@ lands at P + 3 or later):
 | 4 | `mire_marks` | P2, P3 | aimed: a 3 x 3 on the target's tile @3, then two seeded 2-tile hops @4, @5 | 5 |
 | 5 | `drowning_cross` | P3 | 3-wide axis bands and diagonal bands alternating @3, 5, 7 | 7 |
 | 6 | `lantern_storm` | P3 | ten 3 x 3 geysers, two per tick @3..7 | 7 |
-| 7 | `maw_bellow` | P1, P2, P3 | rings 2-6 @3 (only the outer edge is safe: 5 steps from the court, all 3 ticks of notice), then rings 5-7 @6 or @7 (straight back in) | 6-7 |
+| 7 | `maw_bellow` | P1, P2, P3 | rings 2-6 @4 (only the outer edge is safe: 5 steps from the court; rules 3 gives it 4 ticks of notice so a player a tick late still escapes), then rings 5-7 @7 or @8 (straight back in) | 7-8 |
 
 Pools: P1 sweep, lash, bellow; P2 geysers, lash, ripple, marks, bellow; P3
 ripple, marks, cross, storm, bellow. Pattern k is `pool[mix32(seed, 2k) % len]`,
@@ -820,7 +820,7 @@ moved to the next entry if it repeats the current kind, with
 (present members' end tiles by slot).
 
 **The tide.** From S to S + 14 every non-plank tile is flooded: ending a tick on
-one costs 4 HP (`LANTERN_DROWN_DAMAGE`), with no i-frames either way.
+one costs 3 HP (`LANTERN_DROWN_DAMAGE`; rules 3, was 4), with no i-frames either way.
 
 **Surfacing.** On tick S, before swings, every present member on the spring
 **caps** it: each capper is bitten for 6 (`LANTERN_BITE_DAMAGE`) and the boss
@@ -836,12 +836,12 @@ exactly 2 away), starting from the pulse seed's parity. Skipped while it chokes.
 |---|---|---|---|---|
 | Den blow (`LANTERN_BLOW_DAMAGE`) | 10 | 13 | 15 | +1 |
 | Lure pulse | 7 | 7 | 7 | +1 |
-| Flooded tile, per tick | 4 | 4 | 4 | |
+| Flooded tile, per tick | 3 | 3 | 3 | |
 | Bite (capping) | 6 | 6 | 6 | |
 
 Blows and pulses give 2 ticks of i-frames (`LANTERN_IFRAME_TICKS`). With 30 HP
-and 6 goldberries a member has 90 HP of budget; a perfect solo run spends about
-60 of it on 10 bites and nothing else (5.2 meals a run).
+and 4 goldberries (`LANTERN_MEALS`; rules 3, was 6) a member has 70 HP of budget; a perfect solo run spends about
+60 of it on 10 bites and nothing else.
 
 ### 9.7 What is new about it
 
@@ -887,7 +887,7 @@ default test always runs the full sweep. Each instance must:
 | mire_marks | 13,824 | 3 | 5 | 207 | 0.95 | 0.69 | 0.02 |
 | drowning_cross | 64 | 3 | 7 | 144 | 0.67 | 0.25 | 0.63 |
 | lantern_storm | 64 | 3 | 7 | 198 | 0.91 | 0.56 | 0.25 |
-| maw_bellow | 64 | 3 | 7 | 56 | 0.26 | 0 | 1.00 |
+| maw_bellow | 64 | 4 | 8 | 56 | 0.26 | 0 | 1.00 |
 | tide | 768 | 8 | 22 | 49 | 0.23 | 0.08 | 0.78 |
 | tide, capped | 768 | 8 | 22 | 49 | 0.12 | 0.08 | 0.78 |
 
@@ -918,7 +918,7 @@ spawns, pattern definitions, pools, timings, damages, heal, HP defaults, every
 blow of every kind for all 64 seeds (Mire Marks at two aims) and every pulse
 mask. A change fails the test with the line to append to
 `shared/sim/__tests__/lanternmawValidated.ts` and asks for a
-`LANTERN_RULES_VERSION` bump (now 2, hash `b52934ff`; rules 1 was the first
+`LANTERN_RULES_VERSION` bump (now 3, hash `91c36734`, after the staging playtest (9.14); rules 2 was `b52934ff`, rules 1 the first
 draft's numbers).
 
 ### 9.9 Difficulty estimate (scripted players)
@@ -926,32 +926,31 @@ draft's numbers).
 `lanternmawBots.ts` drives the reference tick with players that see the fight
 `react` ticks late, plan by backward induction over what is published, slip into
 a random step with some chance per tick, cap with some chance per dive and eat a
-goldberry at low HP. Solo, Stone Club, 30 HP, 6 meals:
+goldberry at low HP. Solo, Stone Club, 30 HP, 4 meals (rules 3; 400 runs each):
 
 | Player | React | Plan | Slips | Caps | Den reach | Win rate |
 |---|---|---|---|---|---|---|
-| Perfect | 0 ticks | full | 0 | always | always ring 2 | **100%** (400 runs), clears in about 500 ticks (5:00) |
-| Careful (learned) | 1 tick | full | 2% | always | ring 2 on its swing tick, ring 3 otherwise | **28%** (1,400 runs: 25%, 30% and 28% in three samples) |
-| Sloppy | 2 ticks | this tick and the next | 6% | 30% | always ring 2 | **0%** (400 runs) |
+| Perfect | 0 ticks | full | 0 | always | always ring 2 | **99.75%** (399 of 400; the one loss caps a twelfth spring on its last meal), clears in about 500 ticks (5:00) |
+| Careful (learned) | 1 tick | full | 2% | always | ring 2 on its swing tick, ring 3 otherwise | **31%** (rules 2: 28%) |
+| Sloppy | 2 ticks | this tick and the next | 6% | 30% | always ring 2 | **0%** |
 
-Careful runs are lost to attrition (about 9 bites, 3 den hits and 2 ticks in
-the flood against 90 HP), not to the clock.
+Careful runs are lost to attrition (bites, den hits and flood ticks against 70 HP), not to the clock.
 
 **Attempts to a first clear.** A learner plays sloppy on its first attempt and
 blends linearly to careful over K attempts. Measured win rates (400 runs each)
-at skill 0, 1/4, 1/2, 3/4 and 1 are 0, 0, 0, 0.20 and 0.30, so:
+at skill 0, 1/4, 1/2, 3/4 and 1 are 0, 0, 0.05, 0.18 and 0.28 (rules 3), so:
 
 | Learns over | Median attempts | Mean | 90% by |
 |---|---|---|---|
-| 10 attempts | 10 | 10.7 | 15 |
-| 30 attempts | 23 | 23.5 | 29 |
+| 10 attempts | 10 | 10.4 | 15 |
+| 30 attempts | 21 | 21.3 | 28 |
 
 The 10-50 target holds if the best seat needs about 10 or more attempts to
 learn the cap and the ring 2 rhythm. A seat that plays carefully from its first
-attempt would clear in about 3.6 attempts (1 / 0.28). The staging playtest
-measures which is true.
+attempt would clear in about 3.2 attempts (1 / 0.31). The first staging playtest
+(9.14) measured agents far below the careful bot.
 
-**Parties** (100 runs each): careful duo 37%, careful quad 61%, perfect quad
+**Parties** (100 runs each, rules 3): careful duo 49%, careful quad 65%, perfect quad
 100%, sloppy quad 0%. One capper takes every bite while the rest swing; the HP
 per member is set so a careful party of four lands in 55-65%.
 
@@ -976,15 +975,15 @@ fenlight recipe makes a weapon (ROADMAP section 1.4: power comes from
 preparation, never time played; LONG_SEASON: no season item is a weapon).
 
 **Per attempt, per member:** 1 gleamshell + 1 obsidian + 2 driftwood (the bait),
-5 coins, and up to 6 meals of your own food.
+5 coins, and up to 4 meals of your own food.
 
 | Flow | Amount | Math |
 |---|---|---|
-| **Sink:** coins | 5 per member per attempt | Orders mint at most 60 coins a character a day (`FRONTIER.repeatCap`), so a day of orders pays 12 attempts. At the careful 28% a clear costs about 3.6 attempts (18 coins); a learner's first clear costs 10-23 attempts (50-115 coins, one to two days of orders). A seat attempting nonstop (about 8 an hour) would burn about 40 coins an hour, far past its income, so the fee also paces attempts. Six seats at 12 attempts a day burn 360 coins a day, against at most 360 minted by their orders. |
+| **Sink:** coins | 5 per member per attempt | Orders mint at most 60 coins a character a day (`FRONTIER.repeatCap`), so a day of orders pays 12 attempts. At the careful 31% a clear costs about 3.2 attempts (16 coins); a learner's first clear costs 10-21 attempts (50-105 coins, one to two days of orders). A seat attempting nonstop (about 8 an hour) would burn about 40 coins an hour, far past its income, so the fee also paces attempts. Six seats at 12 attempts a day burn 360 coins a day, against at most 360 minted by their orders. |
 | **Sink:** gleamshell | 1 per member per attempt | Clatterhorn mints 2 per qualifier per defeat and the Spire burns 1 per run (CONTENT_ROADMAP section 3: mints 2 for every 1 burned); this is its second repeatable sink |
 | **Sink:** obsidian | 1 per member per attempt | beside the Spire key's 3 |
 | **Sink:** driftwood | 2 per member per attempt, 2 per keepsake | common Coast node |
-| **Sink:** meals | up to 6 food per member per attempt | perfect runs eat about 5, careful about 6 |
+| **Sink:** meals | up to 4 food per member per attempt | perfect and careful runs eat all 4 |
 | **Faucet:** fenlight | 2 per qualifying member per paid clear, at most 4 paid clears a UTC day | at most 8 a character a day; with 6 seats and active humans, roughly 50-100 a day. Sink at launch: 3 per keepsake, once; the stockpile waits for week 6 |
 | **Faucet:** Fighting XP | 120 per qualifying clear | capped Might, as with the other bosses |
 
@@ -1010,7 +1009,7 @@ preparation, never time played; LONG_SEASON: no season item is a weapon).
 - **The announcement.** `boss_debug lantern_soon 0 <minutes>` emits
   `LanternSoon` (value = minutes) for the T - 10 notice; `lantern_hp` (an Active
   run's id, a percent) and `lantern_fail_all` (refunds) help the live check.
-- Every run stores `LANTERN_RULES_VERSION` (2); clients send theirs as
+- Every run stores `LANTERN_RULES_VERSION` (3); clients send theirs as
   `clientRules`. A mismatch refuses open, join and start, and a live run from
   older rules resets with refunds.
 - Release steps: [docs/CLOUDFLARE_BETA.md](../CLOUDFLARE_BETA.md) ("Lanternmaw release").
@@ -1054,11 +1053,33 @@ preparation, never time played; LONG_SEASON: no season item is a weapon).
 - **Guards.** The floor is a no-PvP zone; trade, duel challenges, drop,
   pickup, harvest, the Giant, garden, ledger, vault and region actions are
   refused ("inside the Drowned Hollow"); `follow` cannot cross the floor or
-  into another run; eating counts toward 6 meals; nobody dies on the floor;
+  into another run; eating counts toward 4 meals; nobody dies on the floor;
   invites never pull a member out of a run; a lobby member cannot leave
   Bramblewild; ground items that would land on the floor land at the exit.
 - Agents: `state.lantern`, the `lantern` action and `/danger` on the floor
   (docs/AGENT_API.md, `frontend/public/agent.md`).
+
+### 9.14 Staging playtest and rules 3 (2026-11-08)
+
+Three Sonnet 5.5 seats on the HTTP API made 22 attempts in 1 h 53 min with no clears and no learning trend; the best
+run left the boss at 562/810. Den blows caused 17 of 25 knockouts, bites 5, the flood 3, and agents ran out of meals
+around tick 150-240 with the boss at 70-90%. The write-up is in the agent-studio staging notes. Changes:
+
+- **Reaction room.** Only the Maw Bellow trapped a player who sees a pattern one tick late on ring 2 (all 64 seeds x 16
+  court tiles; every other pattern 0%). It now lands its first blow at P + 4 and its second at P + 7 or P + 8.
+  `lanternReactionSafe` (lanternmawValidate.ts) checks every den instance: from every ring 2 tile, a player one tick late
+  can still dodge every blow.
+- **Retune** (bite 6 and HP 810 + 970 kept): the extra tick took the careful bot from 28% to 72%, so meals go from 6 to 4
+  and the flood from 4 to 3 HP a tick. The choke stays 9 ticks (7 made perfect solo runs time out). Careful solo 31%,
+  careful quad 65%.
+- **Start grace.** 15 ticks of "the water stills" before the fight clock (was a 5-tick intro), so a member whose loop
+  starts late is not knocked out by tick 11-19. `fightStage` and `/danger` `boss.stage` read `still`.
+- **The start draws your weapon.** Entry accepts a club in the bag, but the fight swings only the wielded weapon: the
+  start wields each member's best 8+ weapon (moving it into the quick bar) with a `Wielded` boss notice.
+- **Agent fixes.** `/danger` `spring.tile` (the docs named it; the feed had only x and z, so no phase-1 script capped), a
+  contract test of every documented field, and the BigInt crash in `/actions/move`. agent.md now states the HP formula,
+  the ring 3 rhythm, wielding and starting your loop before the leader starts.
+- `LANTERN_RULES_VERSION` 3, hash `91c36734`; the full 15,808-instance sweep passes.
 
 ### 9.13 Decisions and open questions
 

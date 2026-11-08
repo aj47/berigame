@@ -593,7 +593,7 @@ closed; the owner opens it with `configure_lanternmaw` (`state.bossNews` shows
   `mire_marks`), `spring {tile, surfaceTick, surfacesInTicks, floodUntilTick,
   capped, choked, chokedUntilTick, feeding}` (from the dive until the tide ends),
   `startsInTicks`, `timeLeftTicks`, `enrageInTicks`, `clearTicks` (cleared only),
-  `damage {blow, pulse, flood: 4, bite: 6}`, `reach {x, z, range}` (the maw centre
+  `damage {blow, pulse, flood: 3, bite: 6}`, `reach {x, z, range}` (the maw centre
   in the den, the spring at high tide, null in the dive and ebb), `you {slot,
   inReach, nextSwingTick, nextSwingInTicks, dealt, qualified, mealsLeft, hits,
   drowned, caps}`, `members[] {playerId, name, slot, state, health, tile, dealt,
@@ -606,8 +606,10 @@ closed; the owner opens it with `configure_lanternmaw` (`state.bossNews` shows
   Receipts: `open` and `join` return `{runId}`, `start` returns `{stage:
   "active"}`. `start` checks every member (online, in Bramblewild, at the gate, a
   weapon of 8+ damage wielded or in the bag, one `fen_bait`, 5 coins, not carrying
-  the giant berry, in a duel or on an expedition), then spends the bait and the fee
-  and teleports the party onto the south boardwalk. `leave` leaves a lobby or
+  the giant berry, in a duel or on an expedition), then spends the bait and the fee,
+  draws each member's best 8+ weapon from the bag when the wielded one is weaker
+  (a `wielded` boss notice; the fight swings only the wielded weapon) and teleports
+  the party onto the south boardwalk. `maxHp` is 810 + 970 per extra member. `leave` leaves a lobby or
   forfeits a run (no rewards).
 - **Errors** (422 unless noted): `boss_closed` (sealed), `client_outdated`,
   `lantern_gate` (walk to the gate), `lantern_weapon`, `lantern_bait`,
@@ -617,19 +619,22 @@ closed; the owner opens it with `configure_lanternmaw` (`state.bossNews` shows
   `not_leader`, `party_full`, `party_gone`, `no_open_party`, `lantern_busy` (48
   lobbies), `lantern_full` (`lanternMaxRuns` active runs: retry in a minute),
   `on_expedition`, `in_duel`; inside, `no_pvp_zone`, `lantern_inside` (trading,
-  following, dropping and the like), `meal_limit` (6 meals).
+  following, dropping and the like), `meal_limit` (4 meals).
 - **Inside.** The floor is sealed like the Spire's: a `move` across its edge
   returns `blockedBy: "lantern"`, `state` is slim and `players` lists only your
   run; from outside nobody on the floor is listed. Blows, lure pulses and the flood
   hit the tile you end a tick on (no swept paths). Swings are automatic: slot s
   swings on ticks with `(tick - startTick) % 4 == s` while in reach (ring 2 of the
   maw in the den, Chebyshev 2 of the spring at high tide). The tide floods every
-  tile but the 52 boardwalk planks from S through S + 14 (4 HP per tick, no
+  tile but the 52 boardwalk planks from S through S + 14 (3 HP per tick, no
   i-frames). Ending tick S on the spring caps it (a 6 HP bite per capper; double
-  damage, no heal and no pulses through S + 8). Blows and pulses give 2 ticks of
+  damage, no heal and no pulses through S + 8). Den patterns give at least 3 ticks
+  of notice and the Maw Bellow 4 (rules 3). Blows and pulses give 2 ticks of
   i-frames (`you.immuneTicks` in `/danger`). At 0 HP you are ejected to the exit
-  with 10 HP and your bag. The run lasts 600 ticks after a 5-tick intro and
-  enrages at 420 (+1 blow and pulse damage).
+  with 10 HP and your bag. The run lasts 600 ticks after a 15-tick start grace
+  ("the water stills": `fightStage` / `boss.stage` read `still`, `run.still
+  {untilTick, text}`, nothing attacks; have every member's dodge loop running
+  before the leader starts) and enrages at 420 (+1 blow and pulse damage).
 - **`GET /danger` in the Hollow.** `where: "lantern"`, `rulesVersion` is the
   gateway's `LANTERN_RULES_VERSION`, `grid {x0: 56, z0: 129, w: 15, h: 15}`, `map`
   (the same digits, from `lanternHazardMask`: blows, pulses and flooded tiles for
@@ -650,7 +655,7 @@ closed; the owner opens it with `configure_lanternmaw` (`state.bossNews` shows
   `quantity` 5 blow, 6 pulse, 7 flood, 8 bite; `knocked_out`; `reward`;
   `run_result` (`amount` = damage you dealt). `state.bossNews` adds
   `lantern_run_start`, `lantern_clear`, `lantern_opened` and `lantern_soon`.
-- **Limits.** One Lanternmaw or Spire party at a time; at most 6 meals per run;
+- **Limits.** One Lanternmaw or Spire party at a time; at most 4 meals per run;
   fenlight from at most 4 qualifying clears per character per UTC day (later clears
   pay XP only). `/danger` and `/state` share the 4 reads/second budget.
 

@@ -160,11 +160,21 @@ Glimmerfen's north shore, about 10 tiles off the Fenway trail from the island; p
 What to bring, checked for every member when the leader starts (`state.lantern.entry` shows yours: `weapon.ok`, `bait.held`,
 `fee.held`, `ready`, `problem`):
 
-- a `stone_club` or better, wielded or in the bag (fists, sticks and knives cannot win in time);
+- a `stone_club` or better. Entry accepts one in the bag, but the fight swings only your **wielded** weapon, so wield it before
+  the start (`/actions/wield`); if you are not wielding one that qualifies, the start draws your best one for you and says so
+  with a `wielded` notice. Fists, sticks and knives cannot win in time;
 - 1 `fen_bait` per attempt: `craft` recipe `fen_bait` = 1 gleamshell + 1 obsidian + 2 driftwood at Crafting 1 (gleamshell from
   Clatterhorn, obsidian from the Boulders, driftwood from the Coast);
 - 5 coins (from orders);
-- food: you may eat at most 6 meals per run.
+- food: you may eat at most 4 meals per run.
+
+**Its HP scales with the party:** `maxHp = 810 + 970 per extra member` (810 solo, 1780 for two, 2750 for three, 3720 for four),
+so every member has to deal about as much damage as a solo player would, and a bigger party is not automatically easier: it
+adds a capper and coordination. A careful stone-club solo clears in about 500 of the 600 ticks.
+
+**Before the leader starts, every member's per-tick dodge loop must already be running** (read `/danger`, send `dodge`). After
+the start the water stills for 15 ticks (`fightStage` and `/danger` `boss.stage` read `still`; nothing attacks), then the first
+den blow can land 3 ticks after the fight clock starts. A member standing idle on the spawn tile is knocked out within seconds.
 
 Bait and coins are spent at the start and refunded only if the owner closes the Hollow, a rules update resets the run or the
 whole party walks away. Send `/actions/lantern` with `{"op":"open"}` to lead a lobby, `{"op":"join"}` (or
@@ -177,10 +187,12 @@ The cycle (`state.lantern.run`; it is slim `state` inside, listing only your par
   pattern. Blows land on the tile you end a tick on, never on the path you walk, at least 3 ticks after the pattern appears
   (10 / 13 / 15 damage by phase, +1 enraged). Your weapon swings by itself every 4th tick (`you.nextSwingInTicks`; slot s swings
   on ticks where `(tick - startTick) % 4 == s`) while you stand in ring 2 of the maw (`reach`, Chebyshev 2 of (63,136)). The
-  Maw Bellow clears everything but the outer edge: from ring 2 you need all 3 ticks of warning to get out.
+  Maw Bellow clears everything but the outer edge with 4 ticks of warning (ring 2 to the edge is 5 steps: three moves).
+  **The rhythm: wait on ring 3, and step into ring 2 only on your own swing tick** (`/danger` `swing.nextInTicks == 1`, or a
+  move with `court: true` on that tick), then step back out. Standing on ring 2 all the time gets you caught by the den's blows.
 - **Dive.** After 3 patterns it dives. `spring {tile, surfaceTick, surfacesInTicks}` names the glow spring and the tick S it
   surfaces, 8 ticks ahead. Nothing hits during the dive and you cannot swing.
-- **Tide.** From S for 15 ticks every tile but the boardwalk planks floods: each tick you end on water costs 4 HP. End tick S
+- **Tide.** From S for 15 ticks every tile but the boardwalk planks floods: each tick you end on water costs 3 HP. End tick S
   on the spring itself to **cap** it: you take a 6 HP bite, and for 9 ticks it takes double damage, does not heal and does not
   pulse (`capped`, `choked`, `chokedUntilTick`). An uncapped spring feeds it (`feeding`: it heals every tide tick) and sends lure
   pulses, alternating between the tiles within 1 of the spring and the ring exactly 2 out (7 damage). Swing from within 2 of the spring.
