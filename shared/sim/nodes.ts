@@ -249,10 +249,10 @@ export const RECIPES: readonly Recipe[] = [
     xp: 30,
   },
   {
-    // One per member per Lanternmaw attempt, spent at the start (constants.ts LANTERN_BAIT): level-1 inputs only.
+    // One per member per Lanternmaw attempt, spent at the start (constants.ts LANTERN_BAIT): honeycomb's repeatable sink.
     id: 'fen_bait',
     name: 'Fen Bait',
-    inputs: [{ itemId: 'gleamshell', quantity: 1 }, { itemId: 'obsidian', quantity: 1 }, { itemId: 'driftwood', quantity: 2 }],
+    inputs: [{ itemId: 'obsidian', quantity: 1 }, { itemId: 'driftwood', quantity: 2 }, { itemId: 'honeycomb', quantity: 3 }],
     output: { itemId: 'fen_bait', quantity: 1 },
     level: 1,
     xp: 30,

@@ -96,13 +96,14 @@ export const LANTERN_DAILY_PAID_CLEARS = 4;
 /** Entry needs a weapon (wielded or in the bag) at least this strong: the floor the validator proves winnable solo. */
 export const LANTERN_MIN_WEAPON_DAMAGE = 8;
 /**
- * One Fen Bait per member, spent at the start. Level-1 inputs only: today's
- * gleamshell and obsidian surpluses and Coast driftwood (Glimmerfen has no
- * level-1 node of its own).
+ * One Fen Bait per member, spent at the start. Obsidian, Coast driftwood and
+ * honeycomb, the beta's largest unspent surplus (BOSSES.md 9.10). Honeycomb
+ * takes Foraging 15 to gather but is tradeable. No gleamshell: its only source
+ * is Clatterhorn, and the Spire key already spends it.
  */
 export const LANTERN_BAIT = {
   itemId: 'fen_bait', name: 'Fen Bait',
-  inputs: [{ itemId: 'gleamshell', quantity: 1 }, { itemId: 'obsidian', quantity: 1 }, { itemId: 'driftwood', quantity: 2 }],
+  inputs: [{ itemId: 'obsidian', quantity: 1 }, { itemId: 'driftwood', quantity: 2 }, { itemId: 'honeycomb', quantity: 3 }],
   level: 1, xp: 30,
 } as const;
 /** Paid at a qualifying clear (fenlight only within the daily cap). No goldberries. Keepsake: cosmetic 30. */

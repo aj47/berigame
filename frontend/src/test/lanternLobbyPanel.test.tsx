@@ -47,7 +47,7 @@ describe('LanternLobbyPanel', () => {
     expect(mock.load).toHaveBeenCalledTimes(1);
     const needs = screen.getByTestId('lantern-needs');
     expect(needs).toHaveTextContent('stone club or better');
-    expect(needs).toHaveTextContent('Fen Bait (1 gleamshell + 1 obsidian + 2 driftwood, Crafting 1)');
+    expect(needs).toHaveTextContent('Fen Bait (1 obsidian + 2 driftwood + 3 honeycomb, Crafting 1)');
     expect(needs).toHaveTextContent('5 coins');
     expect(LANTERN_NEEDS).toContain('5 coins');
   });

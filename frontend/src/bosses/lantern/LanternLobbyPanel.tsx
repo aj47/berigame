@@ -24,7 +24,7 @@ export type LanternLobbyPanelProps = Record<string, never>;
 
 export const LANTERN_SEALED_MESSAGE = 'The Drowned Hollow is sealed';
 export const LANTERN_FULL_MESSAGE = 'The Drowned Hollow is full right now. Try again in a minute';
-export const LANTERN_NEEDS = `Every member needs a stone club or better, a Fen Bait (1 gleamshell + 1 obsidian + 2 driftwood, Crafting 1) and ${LANTERN_ENTRY_FEE} coins; the bait and coins are spent when the party starts.`;
+export const LANTERN_NEEDS = `Every member needs a stone club or better, a Fen Bait (${LANTERN_BAIT.inputs.map((i) => `${i.quantity} ${i.itemId}`).join(' + ')}, Crafting ${LANTERN_BAIT.level}) and ${LANTERN_ENTRY_FEE} coins; the bait and coins are spent when the party starts.`;
 const ALREADY = 'You are already in a Lanternmaw party';
 const GATE = { region: 'bramblewild' as const, x: LANTERN_GATE.x, z: LANTERN_GATE.z };
 

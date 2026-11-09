@@ -203,11 +203,11 @@ async function main() {
   const markers = new Map([[A, 1_000_000_000 + Math.floor(Math.random() * 1e9)], [B, 3_000_000_000 + Math.floor(Math.random() * 1e9)]]);
   for (const c of [A, B]) {
     await teleport(token, c, LANTERN_EXIT);
-    await seedGround(token, owner.identity, LANTERN_EXIT, markers.get(c)!, [[STONE_CLUB_ITEM_ID, 1], ['gleamshell', 2], ['obsidian', 2], ['driftwood', 4], ['berry_goldberry', 10]]);
+    await seedGround(token, owner.identity, LANTERN_EXIT, markers.get(c)!, [[STONE_CLUB_ITEM_ID, 1], ['obsidian', 2], ['driftwood', 4], ['honeycomb', 6], ['berry_goldberry', 10]]);
   }
   await waitFor('seeded items arrive', () => [...A.conn.db.groundItem.iter()].filter((g) => g.droppedTick === markers.get(B)).length >= 5);
   for (const c of [A, B]) {
-    await pickUpAll(c, markers.get(c)!, [STONE_CLUB_ITEM_ID, 'gleamshell', 'obsidian', 'driftwood', 'berry_goldberry']);
+    await pickUpAll(c, markers.get(c)!, [STONE_CLUB_ITEM_ID, 'obsidian', 'driftwood', 'honeycomb', 'berry_goldberry']);
     await setCoins(token, c, 12);
   }
   check('Fen Bait cannot be crafted while sealed', /only be made while the Drowned Hollow is open/.test(await rejection(() => A.r.craft({ recipe: LANTERN_BAIT.itemId }))));
@@ -220,7 +220,7 @@ async function main() {
     await waitFor(`${c.name} crafts Fen Bait`, () => countOf(c, LANTERN_BAIT.itemId) === 1);
     await wield(c, STONE_CLUB_ITEM_ID);
   }
-  check('Fen Bait crafts from 1 gleamshell + 1 obsidian + 2 driftwood', [A, B].every((c) => countOf(c, 'gleamshell') === 1 && countOf(c, 'driftwood') === 2));
+  check('Fen Bait crafts from 1 obsidian + 2 driftwood + 3 honeycomb', [A, B].every((c) => countOf(c, 'honeycomb') === 3 && countOf(c, 'driftwood') === 2));
 
   // ---- Lobby and start ------------------------------------------------------------------------------------------
   await A.r.lanternOpen({ clientRules: LANTERN_RULES_VERSION });

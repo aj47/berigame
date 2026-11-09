@@ -74,7 +74,7 @@ async function main() {
   // Kit at the Fen Gate exit: a stone club, bait inputs, food; coins.
   await teleport(hex, LANTERN_EXIT);
   const marker = 2_000_000_000 + Math.floor(Math.random() * 1e8);
-  for (const [itemId, quantity] of [['stone_club', 1], ['gleamshell', 1], ['obsidian', 1], ['driftwood', 2], ['berry_goldberry', 8]] as const) {
+  for (const [itemId, quantity] of [['stone_club', 1], ['obsidian', 1], ['driftwood', 2], ['honeycomb', 3], ['berry_goldberry', 8]] as const) {
     await sql(`INSERT INTO ground_item (id, item_id, quantity, x, z, dropped_by, dropped_tick, expires_tick, dropped_on_death, cell) VALUES (0, '${itemId}', ${quantity}, ${LANTERN_EXIT.x}, ${LANTERN_EXIT.z}, 0x${hex}, ${marker}, 4000000000, false, ${nodeCell(LANTERN_EXIT.x, LANTERN_EXIT.z)})`);
   }
   await sql(`DELETE FROM frontier_private WHERE key = 'profile:${hex}'`);

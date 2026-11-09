@@ -287,7 +287,7 @@ describe('describeLantern', () => {
       entry: {
         weapon: { minDamage: 8, best: 8, ok: true },
         bait: { itemId: 'fen_bait', held: 2, recipe: 'fen_bait', craftingLevel: 1,
-          inputs: [{ itemId: 'gleamshell', quantity: 1 }, { itemId: 'obsidian', quantity: 1 }, { itemId: 'driftwood', quantity: 2 }] },
+          inputs: [{ itemId: 'obsidian', quantity: 1 }, { itemId: 'driftwood', quantity: 2 }, { itemId: 'honeycomb', quantity: 3 }] },
         fee: { coins: 5, held: 12 }, ready: true, problem: null,
       },
       capacity: { active: 1, max: 12, lobbies: 3, inside: 1 },
@@ -300,7 +300,7 @@ describe('describeLantern', () => {
       { runId: '2', leader: hex(2), leaderName: names(hex(2)), members: 2, closesInTicks: 140 },
       { runId: '1', leader: hex(1), leaderName: names(hex(1)), members: 1, closesInTicks: 140 },
     ]);
-    expect(String(d.rule)).toMatch(/1 fen_bait \(craft: 1 gleamshell \+ 1 obsidian \+ 2 driftwood, Crafting 1\) and 5 coins/);
+    expect(String(d.rule)).toMatch(/1 fen_bait \(craft: 1 obsidian \+ 2 driftwood \+ 3 honeycomb, Crafting 1\) and 5 coins/);
     expect(bytes(d)).toBeLessThan(3072);
   });
 

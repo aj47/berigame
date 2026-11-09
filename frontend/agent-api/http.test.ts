@@ -372,7 +372,7 @@ test('OpenAPI 1.11.0 documents /danger and the boss actions without a capability
     assert.deepEqual(Object.keys(lantern.requestBody.content['application/json'].schema.properties).sort(), ['op', 'runId']);
     assert.deepEqual(lantern.requestBody.content['application/json'].schema.required, ['op']);
     assert.match(lantern.summary, /Fen Gate \(47,152\)/);
-    assert.match(lantern.summary, /1 gleamshell \+ 1 obsidian \+ 2 driftwood, Crafting 1\) and 5 coins/);
+    assert.match(lantern.summary, /1 obsidian \+ 2 driftwood \+ 3 honeycomb, Crafting 1\) and 5 coins/);
     assert.match(lantern.summary, /lantern_weapon, lantern_bait, lantern_fee/);
     assert.match(spec.paths['/danger'].get.summary, /Drowned Hollow/);
     assert.deepEqual(spec.paths['/actions/dodge'].post.requestBody.content['application/json'].schema.required, ['x', 'z']);

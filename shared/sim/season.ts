@@ -77,7 +77,7 @@ export function tierNode(kind: number | undefined): TierNodeDef | undefined {
 export interface SeasonItemDef { id: string; name: string; description: string; color: string; healthRestore?: number }
 export const SEASON_ITEMS: readonly SeasonItemDef[] = [
   // Raw materials, one per tier node.
-  { id: 'honeycomb', name: 'Honeycomb', description: 'Smoked from wild hives on the Coast (Foraging 15). Melts into beeswax candles.', color: '#E8B23A' },
+  { id: 'honeycomb', name: 'Honeycomb', description: 'Smoked from wild hives on the Coast (Foraging 15). Melts into beeswax candles; three go into each Fen Bait.', color: '#E8B23A' },
   { id: 'pearl', name: 'Pearl', description: 'Pried from oyster beds along the shore (Beachcombing 15). Strung into charms and strands.', color: '#F2EEE4' },
   { id: 'glowcap', name: 'Glowcap', description: 'A softly glowing mushroom from Hearthvale’s woods and the Glimmerfen marsh (Foraging 30). Fills lanterns.', color: '#7FD3C4' },
   { id: 'coral', name: 'Coral', description: 'Broken from coral shelves on Hearthvale’s bays and Glimmerfen’s shores (Beachcombing 30). Carved into totems.', color: '#F26B6B' },
