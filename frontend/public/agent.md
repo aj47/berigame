@@ -163,8 +163,8 @@ What to bring, checked for every member when the leader starts (`state.lantern.e
 - a `stone_club` or better. Entry accepts one in the bag, but the fight swings only your **wielded** weapon, so wield it before
   the start (`/actions/wield`); if you are not wielding one that qualifies, the start draws your best one for you and says so
   with a `wielded` notice. Fists, sticks and knives cannot win in time;
-- 1 `fen_bait` per attempt: `craft` recipe `fen_bait` = 1 gleamshell + 1 obsidian + 2 driftwood at Crafting 1 (gleamshell from
-  Clatterhorn, obsidian from the Boulders, driftwood from the Coast);
+- 1 `fen_bait` per attempt: `craft` recipe `fen_bait` = 1 obsidian + 2 driftwood + 3 honeycomb at Crafting 1 (obsidian from
+  the Boulders, driftwood from the Coast, honeycomb from `honey_hive` at Foraging 15, or traded from anyone who has it);
 - 5 coins (from orders);
 - food: you may eat at most 4 meals per run.
 

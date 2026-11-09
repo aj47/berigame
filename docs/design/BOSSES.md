@@ -694,7 +694,7 @@ from are exactly the tiles you need all three ticks of warning to escape.
 - **Material hook.** Glowcaps "glow on every hummock". The boss is a
   lantern-lured angler and its drop, fenlight, is the glow the fen is known
   for. Glimmerfen has no level-1 node, so the bait is made from common goods
-  and today's boss surpluses instead (9.2).
+  and the beta's biggest unspent surplus, honeycomb, instead (9.2, 9.10).
 - **Terrain.** A drowned marsh of reed beds and boardwalks (the fen's two
   boardwalk bridges, four lakes, the Glimmer Water). The arena is boardwalk
   over shallows that flood. Glimmerfen is also the nearest biome to the island
@@ -728,9 +728,11 @@ from are exactly the tiles you need all three ticks of warning to escape.
 - **Entry cost per member per attempt**, spent at the start and refunded only on
   an owner close, a rules reset, or a whole-party abandon by a party that was
   away since before the fight began (an abandon after the start is a loss):
-  - one **Fen Bait** (`LANTERN_BAIT`: 1 `gleamshell` + 1 `obsidian` + 2
-    `driftwood`, Crafting 1, 30 XP). Level-1 inputs only: no tier material, so
-    Foraging levels never gate access;
+  - one **Fen Bait** (`LANTERN_BAIT`: 1 `obsidian` + 2 `driftwood` + 3
+    `honeycomb`, Crafting 1, 30 XP). Honeycomb is the one tier material: only
+    wild honey hives (`honey_hive`, tier 1, Foraging 15, 64 on Bramblewild's
+    Coast) yield it, but it is tradeable, so a player below Foraging 15 can buy
+    or be given it and access is not level-locked (9.10);
   - **5 coins** (`LANTERN_ENTRY_FEE`, coin sinks stage 1), debited through
     `money()` with the reason `fee:lanternmaw`.
 
@@ -974,13 +976,25 @@ max HP or damage reduction, one axis each, and never weapon damage over 9. No
 fenlight recipe makes a weapon (ROADMAP section 1.4: power comes from
 preparation, never time played; LONG_SEASON: no season item is a weapon).
 
-**Per attempt, per member:** 1 gleamshell + 1 obsidian + 2 driftwood (the bait),
+**Per attempt, per member:** 1 obsidian + 2 driftwood + 3 honeycomb (the bait),
 5 coins, and up to 4 meals of your own food.
+
+**Why honeycomb, not gleamshell (2026-11-08).** The bait first took 1
+gleamshell. Clatterhorn is gleamshell's only source and had 0 agent clears in
+the 24 h before the change, and the live beta held 8 gleamshell in the whole
+world, so opening Lanternmaw would have allowed about 8 attempts in total.
+Honeycomb was the biggest unspent surplus: +1,092 in the same 24 h, about 1,037
+of it sitting in one AI vault, and its only sinks were the Beeswax Candle (2),
+Sunpeach Preserves (1) and the 20-honeycomb ledger order. Honeycomb comes only
+from wild honey hives (`honey_hive`: tier 1, Foraging 15, 64 hives on
+Bramblewild's Coast 17+ tiles from spawn). Gathering it is gated at Foraging
+15, but it is an ordinary tradeable item, so the bait is not level-locked: a
+new player can trade for it or be handed it by a party member.
 
 | Flow | Amount | Math |
 |---|---|---|
 | **Sink:** coins | 5 per member per attempt | Orders mint at most 60 coins a character a day (`FRONTIER.repeatCap`), so a day of orders pays 12 attempts. At the careful 31% a clear costs about 3.2 attempts (16 coins); a learner's first clear costs 10-21 attempts (50-105 coins, one to two days of orders). A seat attempting nonstop (about 8 an hour) would burn about 40 coins an hour, far past its income, so the fee also paces attempts. Six seats at 12 attempts a day burn 360 coins a day, against at most 360 minted by their orders. |
-| **Sink:** gleamshell | 1 per member per attempt | Clatterhorn mints 2 per qualifier per defeat and the Spire burns 1 per run (CONTENT_ROADMAP section 3: mints 2 for every 1 burned); this is its second repeatable sink |
+| **Sink:** honeycomb | 3 per member per attempt | At N member-attempts a day the bait burns 3N honeycomb a day. Six seats at the fee-paced 12 attempts a day (72 member-attempts) burn 216 a day, about a fifth of the observed +1,092; burning the whole surplus takes about 364 member-attempts a day. The ~1,037 already banked is about 345 baits. Gleamshell is no longer an input, so its only sink is the Spire key |
 | **Sink:** obsidian | 1 per member per attempt | beside the Spire key's 3 |
 | **Sink:** driftwood | 2 per member per attempt, 2 per keepsake | common Coast node |
 | **Sink:** meals | up to 4 food per member per attempt | perfect and careful runs eat all 4 |
@@ -1090,7 +1104,9 @@ Decided by the overseer (2026-11-07):
 1. **No weapon from fenlight.** It feeds the Lanternmaw Lure keepsake and is
    reserved for the week-6 endgame line (max HP or damage reduction, never weapon
    damage over 9). The Fenlight Hook is gone.
-2. **Bait from level-1 inputs only**: 1 gleamshell + 1 obsidian + 2 driftwood.
+2. **Bait**: 1 obsidian + 2 driftwood + 3 honeycomb, Crafting 1 (2026-11-08;
+   was 1 gleamshell + 1 obsidian + 2 driftwood, from level-1 inputs only).
+   Honeycomb needs Foraging 15 to gather but is tradeable (9.10).
 3. **A weapon to enter**: at least a Stone Club, wielded or in the bag (a stick
    cannot win in time, 9.8).
 4. **Coin fee**: 5 coins per member per attempt (coin sinks stage 1).

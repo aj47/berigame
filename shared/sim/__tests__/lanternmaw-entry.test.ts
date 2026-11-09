@@ -9,7 +9,7 @@ import {
   LANTERN_BAIT, LANTERN_BITE_DAMAGE, LANTERN_DAILY_PAID_CLEARS, LANTERN_ENTRY_FEE, LANTERN_HP_BASE, LANTERN_HP_PER_MEMBER,
   LANTERN_KEEPSAKE_RECIPE, LANTERN_MIN_WEAPON_DAMAGE, LANTERN_REWARD,
 } from '../constants';
-import { NODE_KINDS, nodeMinLevel } from '../nodes';
+import { getRecipe, NODE_KINDS, nodeMinLevel } from '../nodes';
 import { TIER_NODES } from '../season';
 import { getItemDef } from '../items';
 import { lanternClearReward, lanternEntryRejection, lanternUtcDay } from '../lanternmaw';
@@ -41,15 +41,25 @@ describe('Lanternmaw entry', () => {
     expect(LANTERN_ENTRY_FEE * 12).toBeLessThanOrEqual(60);
   });
 
-  it('makes the bait at Crafting 1 from inputs anyone can gather at level 1 (no tier materials)', () => {
+  it('makes the bait at Crafting 1 from obsidian, driftwood and honeycomb (no gleamshell)', () => {
     expect(LANTERN_BAIT.level).toBe(1);
-    const tierItems = new Set(TIER_NODES.map((d) => d.itemId));
-    for (const input of LANTERN_BAIT.inputs) {
-      expect(tierItems.has(input.itemId), input.itemId).toBe(false);
-      expect(getItemDef(input.itemId), input.itemId).toBeDefined();
+    expect(LANTERN_BAIT.inputs).toEqual([{ itemId: 'obsidian', quantity: 1 }, { itemId: 'driftwood', quantity: 2 }, { itemId: 'honeycomb', quantity: 3 }]);
+    expect(getRecipe(BAIT)?.inputs).toEqual(LANTERN_BAIT.inputs);
+    expect(getRecipe(BAIT)?.level).toBe(LANTERN_BAIT.level);
+    // Gleamshell has one source (Clatterhorn), so the bait no longer competes with Spire keys for it.
+    expect(LANTERN_BAIT.inputs.map((i): string => i.itemId).includes('gleamshell')).toBe(false);
+    for (const input of LANTERN_BAIT.inputs) expect(getItemDef(input.itemId), input.itemId).toBeDefined();
+  });
+
+  it('uses one tier material, honeycomb (Foraging 15 to gather, tradeable), and nothing above tier 1', () => {
+    const tier = LANTERN_BAIT.inputs.map((i) => TIER_NODES.find((d) => d.itemId === i.itemId)).filter((d) => d !== undefined);
+    expect(tier.map((d) => d.itemId)).toEqual(['honeycomb']);
+    expect(tier[0]).toMatchObject({ key: 'honey_hive', tier: 1, minLevel: 15 });
+    // Every other input comes from a node anyone can work at level 1.
+    for (const kind of Object.keys(NODE_KINDS).map(Number)) {
+      const node = TIER_NODES.find((d) => d.kind === kind);
+      if (nodeMinLevel(kind) > 1 && node?.itemId !== 'honeycomb') expect(LANTERN_BAIT.inputs.some((i) => node?.itemId === i.itemId)).toBe(false);
     }
-    // Every gathered input comes from a node anyone can work.
-    for (const kind of Object.keys(NODE_KINDS).map(Number)) if (nodeMinLevel(kind) > 1) expect(LANTERN_BAIT.inputs.some((i) => TIER_NODES.find((d) => d.kind === kind)?.itemId === i.itemId)).toBe(false);
   });
 });
 

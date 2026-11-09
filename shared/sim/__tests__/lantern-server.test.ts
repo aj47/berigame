@@ -661,7 +661,7 @@ describe('the Fen Gate and the floor on the map', () => {
 
 describe('closed means closed for crafting', () => {
   const craft = R(craftReducers.craft);
-  const kit = () => { h.give(A, 'gleamshell', 1); h.give(A, 'obsidian', 1); h.give(A, 'driftwood', 2); };
+  const kit = () => { h.give(A, 'obsidian', 1); h.give(A, 'driftwood', 2); h.give(A, 'honeycomb', 3); };
   it('fen_bait and the Lanternmaw Lure are refused while sealed (no row, or open = false) and made once open', () => {
     kit();
     expect(() => craft(h.as(A), { recipe: 'fen_bait' })).toThrow('Fen Bait can only be made while the Drowned Hollow is open');
@@ -674,6 +674,7 @@ describe('closed means closed for crafting', () => {
     fresh(A);
     craft(h.as(A), { recipe: 'fen_bait' });
     expect(h.count(A, 'fen_bait')).toBe(1);
+    expect(['obsidian', 'driftwood', 'honeycomb'].map((id) => h.count(A, id))).toEqual([0, 0, 0]);
   });
 
   it('recipe lists hide them while sealed', () => {

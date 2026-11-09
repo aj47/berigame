@@ -205,7 +205,7 @@ const notes: Record<string, ItemNotes> = {
 
 /** Hand-written one-liners for the Long Season items (shared/sim/season.ts); the rest of each page is generated. */
 const seasonSummaries: Record<string, string> = {
-  honeycomb: 'The first Foraging tier: smoked from wild hives, melted into candles and sweetened preserves.',
+  honeycomb: 'The first Foraging tier: smoked from wild hives, melted into candles and sweetened preserves, and three go into every Fen Bait for Lanternmaw.',
   pearl: 'The first Beachcombing tier: pried from oyster beds, knotted into charms and strung into the Pearl Strand.',
   glowcap: 'A glowing mushroom from the second Foraging tier that fills lanterns.',
   coral: 'Second-tier Beachcombing material, carved around a pearl charm into totems.',
