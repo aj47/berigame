@@ -71,6 +71,8 @@
   box-shadow: 0 0 10px #ffd67acc;
 }
 .bank-button {
+  /* Stay a chip: the touch-size button floor pushed the hotbar down over the dock. */
+  min-height: 0;
   background: #57452f;
   border: 1px solid #d2a664;
   color: #ffe6b8;

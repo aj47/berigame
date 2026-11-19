@@ -66,6 +66,14 @@
 .spire-lobby .spire-reason { margin: 4px 0 0; font-size: 12px; color: #8a3b3b; }
 .spire-lobby .spire-note { margin: 4px 0 0; font-size: 12px; color: var(--ink-soft, #584635); }
 .spire-lobby .spire-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* Compact HUD: stop above the hotbar and dock instead of running under them. */
+@media (max-width: 900px) and (min-height: 501px) {
+  .spire-lobby { max-height: calc(100dvh - max(70px, calc(env(safe-area-inset-top) + 58px)) - max(10px, env(safe-area-inset-bottom)) - 210px); }
+}
+/* Short landscape keeps the hotbar and dock on the right half, so the lobby takes the left. */
+@media (min-width: 540px) and (max-height: 500px) {
+  .spire-lobby { left: max(12px, env(safe-area-inset-left)); right: auto; width: min(320px, calc(50vw - 24px)); max-height: calc(100dvh - max(70px, calc(env(safe-area-inset-top) + 58px)) - max(10px, env(safe-area-inset-bottom))); }
+}
 .spire-online { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #9a9a9a; margin-right: 4px; }
 .spire-online.is-on { background: #3fae5a; }
 
