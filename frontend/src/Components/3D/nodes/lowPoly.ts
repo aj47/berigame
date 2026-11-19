@@ -31,7 +31,9 @@ export class LowPolyBuilder {
    * capped ends. `wobble` offsets each interior ring sideways. Tris: 2*sides*(rings-1) + 2*sides.
    */
   log(from: Vector3, to: Vector3, r0: number, r1: number, opts: { sides?: number; rings?: number; wobble?: number; seed?: number; bark: Color[]; cap: Color; capStart?: boolean; capEnd?: boolean }) {
-    const sides = opts.sides ?? 6, rings = opts.rings ?? 3, rand = seeded(opts.seed ?? 1);
+    // A log needs its two end rings: with one, j / (rings - 1) is 0/0 and every vertex is NaN,
+    // which raycasts as a hit at every pixel (the Fen Gate swallowed every ground tap).
+    const sides = opts.sides ?? 6, rings = Math.max(2, opts.rings ?? 3), rand = seeded(opts.seed ?? 1);
     const axis = to.clone().sub(from);
     const turn = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), axis.clone().normalize());
     const ring: Vector3[][] = [];
