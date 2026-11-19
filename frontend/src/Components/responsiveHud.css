@@ -248,6 +248,8 @@
   body:has(.ui-group[data-panel-open="true"]) .social-hud .emote-wheel { display: none; }
   /* The boss lobbies sit top-right too, where the compact Emote button lives. */
   body:has(.spire-lobby) .social-hud .emote-wheel { display: none; }
+  /* ...and over the goal cards, which showed through the panel. */
+  body:has(.spire-lobby) .ui-group .world-objectives { display: none; }
   .social-hud .death-panel { top: calc(max(12px, env(safe-area-inset-top)) + 56px); }
   .social-hud .death-panel.compact { top: auto; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 176px); }
 }
@@ -277,8 +279,6 @@
   .ui-group .toolbar-secondary.is-open { max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom) - 68px); padding: 6px; }
   .ui-group .toolbar-secondary > button,
   .ui-group .toolbar-secondary .toolbar-external-link { min-height: 44px; }
-  /* The boss lobby takes the left half here (bosses.css). */
-  body:has(.spire-lobby) .ui-group .world-objectives { display: none; }
 }
 /* Keep the emote control clear of open panels at every screen size. */
 body:has(.ui-group[data-panel-open="true"]) .social-hud .emote-wheel { display: none; }
